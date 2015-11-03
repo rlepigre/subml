@@ -1,31 +1,32 @@
-OCAMLC = ocamlfind ocamlc -package bindlib
-OCAMLO = ocamlfind ocamlopt -package bindlib
+OCAMLC = ocamlc -I +decap -I +bindlib -I +compiler-libs
 
-all: typing.cmo
+all: main
+
+main: util.cmo ast.cmo print.cmo typing.cmo dparser.cmo main.cmo
+	$(OCAMLC) -o $@ $(CMA) \
+		bindlib.cma unix.cma str.cma ocamlcommon.cma decap.cma decap_ocaml.cma \
+		$^
+
+main.cmo: main.ml util.cmo ast.cmo print.cmo typing.cmo
+	$(OCAMLC) -c $<
 
 util.cmo: util.ml
 	$(OCAMLC) -c $<
 
-util.cmx: util.ml util.cmo
-	$(OCAMLO) -c $<
-
 ast.cmo: ast.ml util.cmo
 	$(OCAMLC) -c $<
 
-ast.cmx: ast.ml ast.cmo util.cmx
-	$(OCAMLO) -c $<
-
-print.cmo: print.ml ast.cmo
+print.cmi: print.mli ast.cmo
 	$(OCAMLC) -c $<
 
-print.cmx: print.ml ast.cmx print.cmo
-	$(OCAMLO) -c $<
+print.cmo: print.ml print.cmi ast.cmo
+	$(OCAMLC) -c $<
 
 typing.cmo: typing.ml ast.cmo
 	$(OCAMLC) -c $<
 
-typing.cmx: typing.ml ast.cmx typing.cmo
-	$(OCAMLO) -c $<
+dparser.cmo: dparser.ml ast.cmo
+	$(OCAMLC) -pp pa_ocaml -c $<
 
 clean:
 	rm -f *.cmi *.cmo *.cmx *.o

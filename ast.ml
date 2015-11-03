@@ -5,6 +5,9 @@ open Util
  *                         AST for kinds (or types)                         *
  ****************************************************************************)
 
+(* Orientation for binder constraints. *)
+type orient = GE | LE
+
 (* Abstract syntax tree for types. *)
 type kind =
   (**** Main type constructors ****)
@@ -12,13 +15,11 @@ type kind =
   | TVar of kind variable
   (* Function type: A ⇒ B. *)
   | Func of kind * kind
-  (* Extensible product type with default field: { A ; l : B }. *)
-  | Prod of kind * string * kind
-  (* Unit type (nullary product): {}. *)
-  | Unit
-  (* Quantifiers (with bounds): ∀/∃X X</>A1,...,An B. *)
-  | FAll of bounds option * (kind, kind) binder
-  | Exis of bounds option * (kind, kind) binder
+  (* Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
+  | Prod of (string * kind) list
+  (* Bounded quantifiers: ∀/∃X [= A] </> A1,...,An B. *)
+  | FAll of (kind, kind option * (orient * kind list) option * kind) binder
+  | Exis of (kind, kind option * (orient * kind list) option * kind) binder
   (* User-defined type applied to arguments: T(A1,...,An). *)
   | TDef of type_def * kind array
   (**** Special constructors (not accessible to user) ****)
@@ -26,10 +27,6 @@ type kind =
   | TCst of type_constant
   (* Unification variables - used for typechecking. *)
   | UVar of uvar
-
-(* Bounds for quantifiers. *)
-and orient = GE | LE
-and bounds = orient * (kind, kind) binder list
 
 (* Occurence markers for variables. *)
 and occur =
@@ -66,7 +63,7 @@ and type_constant =
   { cst_key      : int
   (* The bounds keeping track of the properties of the constant comming
      from its original quantifier. *)
-  ; cst_kind     : bounds option
+  ; cst_kind     : (orient * (kind, kind list) binder) option
   (* The witness term and its kind. *)
   ; witness      : term
   ; witness_kind : kind }
@@ -88,26 +85,22 @@ and term' =
   (**** Main term constructors ****)
   (* Type coercion. *)
   | Coer of term * kind
-  (* Type abstraction. *)
-  | TAbs of (kind, term) binder
   (* Free λ-variable. *)
   | LVar of term variable
   (* λ-abstraction. *)
   | LAbs of kind option * (term, term) binder
   (* Application. *)
   | Appl of term * term
-  (* Local let definition. *)
-  | LLet of bool * pos array * (term, term array) mbinder
-  (* Extensible record with only one field. *)
-  | Reco of term * string * term
-  (* Unit element. *)
-  | URec
+  (* Record. *)
+  | Reco of (string * term) list
   (* Projection. *)
   | Proj of term * string
   (* User-defined term. *)
   | VDef of value_def
   (* Print a string (side effect) and behave like the term. *)
   | Prnt of string * term
+  (* Fixpoint combinator. *)
+  | FixY
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(s,A,B) is a witness that there is a
      termed (nemed s) such that t has type A and does not have type B *)
@@ -132,8 +125,8 @@ type val_env = (string, value_def) Hashtbl.t
 type typ_env = (string, type_def ) Hashtbl.t
 
 (* Bindbox type shortcuts. *)
-type termbox = term bindbox
-type kindbox = kind bindbox
+type tbox = term bindbox
+type kbox = kind bindbox
 
 (* Kind variable management. *)
 let mk_free_tvar : kind variable -> kind =
@@ -156,38 +149,50 @@ let new_lvar' : string -> term variable =
  *                     Smart constructors for kinds                         *
  ****************************************************************************)
 
-let tvar : string -> kindbox =
+let tvar : string -> kbox =
   fun x -> box_of_var (new_tvar x)
 
-let func : kindbox -> kindbox -> kindbox =
+let func : kbox -> kbox -> kbox =
   box_apply2 (fun t u -> Func(t,u))
 
-let prod : kindbox -> string * kindbox -> kindbox =
-  fun dk (l,k) -> box_apply2 (fun dk k -> Prod(dk,l,k)) dk k
+let prod : (string * kbox) list -> kbox =
+  fun fs ->
+    let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
+    box_apply (fun fs -> Prod(fs)) (box_list fs)
 
-let uNit : kindbox =
-  box Unit
+(* Auxiliary function for fall and exis. *)
+let blift : (kbox option * (orient * kbox list) option * kbox)
+  -> (kind option * (orient * kind list) option * kind) bindbox =
+  fun (eq,bnd,t) ->
+    let bnd =
+      match bnd with
+      | None       -> None
+      | Some (o,k) -> Some (box_apply (fun k -> (o,k)) (box_list k))
+    in
+    box_triple (box_opt eq) (box_opt bnd) t
 
-let fall : bounds bindbox option -> string -> (kindbox -> kindbox)
-           -> kindbox =
-  fun bo x f ->
-    let b = bind mk_free_tvar x f in
-    box_apply2 (fun bo b -> FAll(bo,b)) (box_opt bo) b
+let fall : string
+  -> (kbox -> (kbox option * (orient * kbox list) option * kbox)) -> kbox =
+  fun x f ->
+    let b = bind mk_free_tvar x (fun k -> blift (f k)) in
+    box_apply (fun b -> FAll(b)) b
 
-let exis : bounds bindbox option -> string -> (kindbox -> kindbox)
-           -> kindbox =
-  fun bo x f ->
-    let b = bind mk_free_tvar x f in
-    box_apply2 (fun bo b -> FAll(bo,b)) (box_opt bo) b
+let fall' : string -> (kbox -> kbox) -> kbox =
+  fun x f ->
+    fall x (fun x -> (None, None, f x))
 
+let exis : string
+  -> (kbox -> (kbox option * (orient * kbox list) option * kbox)) -> kbox =
+  fun x f ->
+    let b = bind mk_free_tvar x (fun k -> blift (f k)) in
+    box_apply (fun b -> Exis(b)) b
 
-(* TDef of type_def * kind array *) (* TODO *)
-(* TCst of type_constant *) (* TODO *)
+let exis' : string -> (kbox -> kbox) -> kbox =
+  fun x f ->
+    exis x (fun x -> (None, None, f x))
 
-(*
-let tdef td a = box_apply2 (fun td a -> TDef(td,a)) td (box_array a)
-let tuvar v = box (TUVar v)
-*)
+let tdef : type_def -> kbox array -> kbox =
+  fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
 
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
@@ -203,9 +208,6 @@ let (new_uvar, reset_uvar) =
 let coer_p : pos -> term -> kind -> term =
   fun p t k -> in_pos p (Coer(t,k))
 
-let tabs_p : pos -> (kind, term) binder -> term =
-  fun p b -> in_pos p (TAbs(b))
-
 let lvar_p : pos -> term variable -> term =
   fun p x -> in_pos p (LVar(x))
 
@@ -215,14 +217,8 @@ let labs_p : pos -> kind option -> (term, term) binder -> term =
 let appl_p : pos -> term -> term -> term =
   fun p t u -> in_pos p (Appl(t,u))
 
-let llet_p : pos -> bool -> pos array -> (term, term array) mbinder -> term =
-  fun p r ps b -> in_pos p (LLet(r,ps,b))
-
-let reco_p : pos -> term -> string * term -> term =
-  fun p td (l,t) -> in_pos p (Reco(td,l,t))
-
-let urec_p : pos -> term =
-  fun p -> in_pos p URec
+let reco_p : pos -> (string * term) list -> term =
+  fun p fs -> in_pos p (Reco(fs))
 
 let proj_p : pos -> term -> string -> term =
   fun p t l -> in_pos p (Proj(t,l))
@@ -233,6 +229,9 @@ let vdef_p : pos -> value_def -> term =
 let prnt_p : pos -> string -> term -> term =
   fun p s t -> in_pos p (Prnt(s,t))
 
+let fixy_p : pos -> term =
+  fun p -> in_pos p FixY
+
 let cnst_p : pos -> (string * kind * kind) -> term =
   fun p c -> in_pos p (Cnst(c))
  
@@ -240,40 +239,36 @@ let cnst_p : pos -> (string * kind * kind) -> term =
  *                     Smart constructors for terms                         *
  ****************************************************************************)
 
-let coer : pos -> termbox -> kindbox -> termbox =
+let coer : pos -> tbox -> kbox -> tbox =
   fun p -> box_apply2 (coer_p p)
 
-let tabs : pos -> string -> (kindbox -> termbox) -> termbox =
-  fun p x f -> box_apply (tabs_p p) (bind (fun x -> TVar(x)) x f)
-
-let lvar : pos -> string -> termbox =
+let lvar : pos -> string -> tbox =
   fun p x -> box_of_var (new_lvar p x)
 
-let labs : pos -> kindbox option -> string position ->
-           (termbox -> termbox) -> termbox =
+let labs : pos -> kbox option -> string position ->
+           (tbox -> tbox) -> tbox =
   fun p ko x f ->
     box_apply2 (labs_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
 
-let appl : pos -> termbox -> termbox -> termbox =
+let appl : pos -> tbox -> tbox -> tbox =
   fun p -> box_apply2 (appl_p p)
 
-let llet : pos -> bool -> string array -> pos array
-           -> (term bindbox array -> term array bindbox) -> term bindbox =
-  fun p r ns ps f -> box_apply (llet_p p r ps) (mbind (lvar_p p) ns f)
+let reco : pos -> (string * tbox) list -> tbox =
+  fun p fs ->
+    let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
+    box_apply (fun fs -> reco_p p fs) (box_list fs)
 
-let reco : pos -> termbox -> string * termbox -> termbox =
-  fun p dt (l,t) -> box_apply2 (fun dt t -> reco_p p dt (l,t)) dt t
-
-let urec : pos -> termbox =
-  fun p -> box (urec_p p)
-
-let proj : pos -> termbox -> string -> termbox =
+let proj : pos -> tbox -> string -> tbox =
   fun p t l -> box_apply (fun t -> proj_p p t l) t
 
-(* VDef of value_def *) (* TODO *)
+let vdef : pos -> value_def -> tbox =
+  fun p vd -> box (vdef_p p vd)
 
-let prnt : pos -> string -> termbox -> termbox =
+let prnt : pos -> string -> tbox -> tbox =
   fun p s -> box_apply (prnt_p p s)
+
+let fixy : pos -> tbox =
+  fun p -> box (fixy_p p)
 
 (* Build a constant. Useful during typing. *)
 let cnst : string -> kind -> kind -> term =

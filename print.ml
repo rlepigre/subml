@@ -8,88 +8,104 @@ let rec print_list pelem sep ff = function
   | [e]   -> pelem ff e
   | e::es -> fprintf ff "%a%s%a" pelem e sep (print_list pelem sep) es
 
+let rec print_array pelem sep ff ls =
+  print_list pelem sep ff (Array.to_list ls)
+
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
 
-let rec print_kind br ff = function
-  | TVar(x)           ->
-      fprintf ff "%s" (name_of x)
-  | Func(a,b) when br ->
-      fprintf ff "(%a → %a)" (print_kind br) a (print_kind br) b
-  | Func(a,b)         ->
-      fprintf ff "%a → %a" (print_kind br) a (print_kind br) b
-  | Prod(a,l,b)       ->
-      fprintf ff "{%a ; l = %a}" (print_kind br) a (print_kind br) b
-  | Unit              ->
-      fprintf ff "{}"
-  | FAll(bo,b)        ->
-      let x = new_tvar (binder_name b) in
-      let a = subst b (free_of x) in
-      fprintf ff "∀ %a, %a" (print_bounds x) bo (print_kind true) a
-  | Exis(bo,b)        ->
-      let x = new_tvar (binder_name b) in
-      let a = subst b (free_of x) in
-      fprintf ff "∃ %a, %a" (print_bounds x) bo (print_kind true) a
-  | TDef(td,[||])      ->
-      fprintf ff "%s" td.tdef_name
-  | TDef(td,args)      ->
-      let ls = Array.to_list args in
-      fprintf ff "%s[%a]" td.tdef_name (print_list (print_kind false) ", ") ls
-  | TCst(c)            ->
+let rec print_kind wrap ff t =
+  let pkind = print_kind false in
+  let pkindw = print_kind true in
+  match t with
+  | TVar(x) ->
+      pp_print_string ff (name_of x)
+  | Func(a,b) ->
+      if wrap then
+        fprintf ff "(%a → %a)" pkindw a pkind b
+      else
+        fprintf ff "%a → %a" pkindw a pkind b
+  | Prod(fs) ->
+      let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
+      fprintf ff "{%a}" (print_list pfield "; ") fs
+  | FAll(b) ->
+      fprintf ff "∀%a" pquant b
+  | Exis(b) ->
+      fprintf ff "∃%a" pquant b
+  | TDef(td,args) ->
+      if Array.length args = 0 then
+        pp_print_string ff td.tdef_name
+      else
+        fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
+  | TCst(_) ->
       fprintf ff "ε(...)"
-  | UVar(v)            ->
+  | UVar(v) ->
       begin
         match v.uvar_val with
         | None   -> fprintf ff "?%i" v.uvar_key
-        | Some a -> print_kind br ff a
+        | Some a -> print_kind wrap ff a
       end
 
-and print_bounds x ff = function
-  | None        ->
-      fprintf ff "%s" (name_of x)
-  | Some(o,bs) ->
-      let nx = name_of x in
+and pquant ff b =
+  let x = new_tvar (binder_name b) in
+  let (ao, bnd, c) = subst b (free_of x) in
+  pp_print_string ff (name_of x);
+  let pkind = print_kind true in
+  let pklist = print_list pkind ", " in
+  match (ao, bnd) with
+  | (None  , None       ) -> fprintf ff " %a" pkind c
+  | (Some a, None       ) -> fprintf ff " = %a %a" pkind a pkind c
+  | (None  , Some (o,ls)) ->
       let o = match o with GE -> ">" | LE -> "<" in
-      let bs = List.map (fun b -> subst b (free_of x)) bs in
-      fprintf ff "%s %s %a" nx o (print_list (print_kind false) ", ") bs
-
-let print_kind = print_kind false
+      fprintf ff " %s %a %a" o pklist ls pkind c
+  | (Some a, Some (o,ls)) ->
+      let o = match o with GE -> ">" | LE -> "<" in
+      fprintf ff " = %a %s %a %a" pkind a o pklist ls pkind c
 
 (****************************************************************************
  *                           Printing of a term                             *
  ****************************************************************************)
 
-let rec print_term ff t = match t.elt with
-  | Coer(t,a)       ->
-      fprintf ff "%a : %a" print_term t print_kind a
-  | TAbs(b)         ->
-      let x = new_tvar (binder_name b) in
-      let t = subst b (free_of x) in
-      fprintf ff "Λ %s.%a" (name_of x) print_term t
-  | LVar(x)         ->
-      fprintf ff "%s" (name_of x)
-  | LAbs(None,b)    ->
+let rec print_term ff t =
+  let pkind = print_kind false in
+  match t.elt with
+  | Coer(t,a) ->
+      fprintf ff "(%a : %a)" print_term t pkind a
+  | LVar(x) ->
+      pp_print_string ff (name_of x)
+  | LAbs(ao,b) ->
       let x = binder_name b in
       let t = subst b (free_of (new_lvar' x)) in
-      fprintf ff "λ%s %a" x print_term t
-  | LAbs(Some(a),b) ->
-      let x = binder_name b in
-      let t = subst b (free_of (new_lvar' x)) in
-      fprintf ff "λ%s : %a %a" x print_kind a print_term t
-  | Appl(t,u)       ->
+      begin
+        match ao with
+        | None   -> fprintf ff "λ%s %a" x print_term t
+        | Some a -> fprintf ff "λ%s : %a %a" x pkind a print_term t
+      end
+  | Appl(t,u) ->
       fprintf ff "(%a) %a" print_term t print_term u
-  | LLet(r,ns,b)    ->
-      assert false (* TODO *)
-  | Reco(td,l,t)    ->
-      fprintf ff "{%a; %s = %a}" print_term td l print_term t
-  | URec            ->
-      fprintf ff "{}"
-  | Proj(t,l)       ->
+  | Reco(fs) ->
+      let pfield ff (l,t) = fprintf ff "%s = %a" l print_term t in
+      fprintf ff "{%a}" (print_list pfield "; ") fs
+  | Proj(t,l) ->
       fprintf ff "%a.%s" print_term t l
-  | VDef(v)         ->
-      fprintf ff "%s" v.name
-  | Prnt(s,t)       ->
-      fprintf ff "print(%s); %a" s print_term t
-  | Cnst(c)         ->
-      assert false (* TODO *)
+  | VDef(v) ->
+      pp_print_string ff v.name
+  | Prnt(s,t) ->
+      fprintf ff "print(%S); %a" s print_term t
+  | FixY ->
+      pp_print_string ff "fix"
+  | Cnst(_) ->
+      pp_print_string ff "ε(...)"
+
+(****************************************************************************
+ *                          Interface functions                             *
+ ****************************************************************************)
+
+let print_term ch t =
+  let ff = formatter_of_out_channel ch in
+  print_term ff t; pp_print_flush ff (); flush ch
+
+let print_kind ch t =
+  let ff = formatter_of_out_channel ch in
+  print_kind false ff t; pp_print_flush ff (); flush ch

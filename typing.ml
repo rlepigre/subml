@@ -15,9 +15,6 @@ let rec type_check : term -> kind -> unit = fun t c ->
   | Coer(t,a) ->
       subtype t a c;
       type_check t a
-  | TAbs(f) ->
-      let a = new_uvar () in (* NOTE prefered name in uvar? *)
-      type_check (subst f a) c
   | LVar(x) ->
       type_error t.pos "Cannot type-check open terms..."
   | LAbs(ao,f) ->
@@ -30,26 +27,16 @@ let rec type_check : term -> kind -> unit = fun t c ->
       let a = new_uvar () in
       type_check t (Func(a,c));
       type_check u a
-  | LLet(r,ps,f) -> (* FIXME *)
-      let names = mbinder_names f in
-      let arity = mbinder_arity f in
-      let uvars = Array.init arity (fun _ -> new_uvar ()) in
-      let cnsts = Array.mapi (fun i k -> cnst names.(i) k k) uvars in
-      let terms = msubst f cnsts in
-      for i = 0 to arity - 1 do
-        type_check terms.(i+1) uvars.(i)
-      done;
-      type_check terms.(0) c
-  | Reco(td,l,t) ->
-      let a = new_uvar () in
-      let b = new_uvar () in
-      let c' = Prod(a,l,b) in
-      subtype t c' c;
-      type_check td a;
-      type_check t b
-  | URec -> ()
+  | Reco(fs) ->
+      let ts = List.map (fun (x,_) -> (x, new_uvar ())) fs in
+      subtype t (Prod(ts)) c;
+      let check (l,t) =
+        let cl = List.assoc l ts in
+        type_check t cl
+      in
+      List.iter check fs
   | Proj(t,l) ->
-      let c' = Prod(new_uvar (), l, c) in
+      let c' = Prod([(l,c)]) in
       type_check t c'
   | VDef(v) ->
       begin
@@ -59,6 +46,8 @@ let rec type_check : term -> kind -> unit = fun t c ->
       end
   | Prnt(_,t) ->
       type_check t c
+  | FixY ->
+      subtype t (unbox (fall' "X" (fun x -> func (func (func x x) x) x))) c
   | Cnst(cst) ->
       let (_,a,_) = cst in
       subtype t a c

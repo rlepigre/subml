@@ -17,7 +17,7 @@ module StringMap = Map.Make (StringOrd)
 module StringSet = Set.Make (StringOrd)
 
 (* Type constructor to give position information in a source file. *)
-type pos = Lexing.position
+type pos = Location.t
 
 type 'a position =
   { elt : 'a
@@ -25,7 +25,7 @@ type 'a position =
 
 let in_pos : pos -> 'a -> 'a position = fun p e -> { elt = e; pos = p }
 
-let dummy_position : pos = Lexing.dummy_pos
+let dummy_position : pos = Location.none
 
 let dummy_pos : 'a -> 'a position = fun e -> in_pos dummy_position e
 
