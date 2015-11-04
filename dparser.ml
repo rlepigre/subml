@@ -83,6 +83,7 @@ and pterm' =
   | PProj of pterm * string
   | PCase of pterm * (string * string * pterm) list * pterm option
   | PReco of (string * pterm) list
+  | PFixY
 
 (* Basic tokens. *)
 let case_kw = new_keyword "case"
@@ -90,6 +91,7 @@ let rec_kw  = new_keyword "rec"
 let let_kw  = new_keyword "let"
 let of_kw   = new_keyword "of"
 let in_kw   = new_keyword "in"
+let y_kw    = new_keyword "Y"
 let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
 
@@ -186,8 +188,10 @@ let parser term p =
       in_pos _loc (PCase(t,ps,w))
   | "{" fs:field* "}" when p = TAtom ->
       in_pos _loc (PReco(fs))
+  | {fix_kw | y_kw} when p = TAtom ->
+      in_pos _loc PFixY
 
-  | "(" t:(term TAtom) ")"
+  | "(" t:(term TFunc) ")"
   | t:(term TAtom) when p = TColo
   | t:(term TColo) when p = TAppl
   | t:(term TAppl) when p = TFunc
@@ -326,6 +330,8 @@ let unsugar_term : state -> (string * tbox) list -> pterm -> tbox =
         assert false (* TODO *)
     | PReco(fs) ->
         reco pt.pos (List.map (fun (l,t) -> (l, unsugar env t)) fs)
+    | PFixY ->
+        fixy pt.pos
   in unsugar env pt
 
 (****************************************************************************
