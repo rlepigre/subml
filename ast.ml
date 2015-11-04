@@ -20,6 +20,9 @@ type kind =
   (* Bounded quantifiers: ∀/∃X [= A] </> A1,...,An B. *)
   | FAll of (kind, kind option * (orient * kind list) option * kind) binder
   | Exis of (kind, kind option * (orient * kind list) option * kind) binder
+  (* Least and greatest fixpoint: μX A, νX A. *)
+  | FixM of (kind, kind) binder
+  | FixN of (kind, kind) binder
   (* User-defined type applied to arguments: T(A1,...,An). *)
   | TDef of type_def * kind array
   (**** Special constructors (not accessible to user) ****)
@@ -43,9 +46,7 @@ and type_def =
   (* Arity of the constructor. *)
   ; tdef_arity : int
   (* Definition of the constructor. *)
-  ; tdef_value : (kind, kind) mbinder
-  (* Precomputed variance. *)
-  ; tdef_occur : occur array }
+  ; tdef_value : (kind, kind) mbinder }
 
 (* Epsilon constant.
  * In the constant
@@ -108,13 +109,11 @@ and term' =
   
 and value_def =
   (* Name of the value. *)
-  { name           : string
+  { name  : string
   (* The corresponding term. *)
-  ; mutable value  : term
+  ; value : term
   (* Raw version of the term (i.e. no anotations). *)
-  ; mutable ttype  : kind option
-  (* Flag for tracing variable. *)
-  ; mutable trace  : bool }
+  ; ttype : kind option }
 
 (****************************************************************************
  *                   Frequently used types and functions                    *
@@ -123,6 +122,15 @@ and value_def =
 (* Value and type environments. *)
 type val_env = (string, value_def) Hashtbl.t
 type typ_env = (string, type_def ) Hashtbl.t
+
+(* State. *)
+type state =
+  { tenv : typ_env
+  ; venv : val_env }
+
+let initial_state : unit -> state = fun () ->
+  { tenv = Hashtbl.create 17
+  ; venv = Hashtbl.create 17 }
 
 (* Bindbox type shortcuts. *)
 type tbox = term bindbox
@@ -194,12 +202,35 @@ let exis' : string -> (kbox -> kbox) -> kbox =
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
 
+let fixn : string -> (kbox -> kbox) -> kbox =
+  fun x f ->
+    let b = bind mk_free_tvar x f in
+    box_apply (fun b -> FixN(b)) b
+
+let fixm : string -> (kbox -> kbox) -> kbox =
+  fun x f ->
+    let b = bind mk_free_tvar x f in
+    box_apply (fun b -> FixM(b)) b
+
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
-  let new_uvar () = UVar {uvar_key = !c; uvar_val = None} in
+  let new_uvar () = incr c; UVar {uvar_key = !c; uvar_val = None} in
   let reset_uvar () = c := 0 in
   (new_uvar, reset_uvar)
+
+(****************************************************************************
+ *                     Definition of widely used types                      *
+ ****************************************************************************)
+
+let fix_kind : kind =
+  unbox (fall' "X" (fun x -> func (func (func x x) x) x))
+
+let bot : kind =
+  unbox (fall' "X" (fun x -> x))
+
+let top : kind =
+  unbox (exis' "X" (fun x -> x))
 
 (****************************************************************************
  *              Functional constructors with position for terms             *

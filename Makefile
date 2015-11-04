@@ -7,7 +7,7 @@ main: util.cmo ast.cmo print.cmo typing.cmo dparser.cmo main.cmo
 		bindlib.cma unix.cma str.cma ocamlcommon.cma decap.cma decap_ocaml.cma \
 		$^
 
-main.cmo: main.ml util.cmo ast.cmo print.cmo typing.cmo
+main.cmo: main.ml util.cmo ast.cmo print.cmo typing.cmo dparser.cmo
 	$(OCAMLC) -c $<
 
 util.cmo: util.ml
@@ -32,4 +32,4 @@ clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 
 distclean: clean
-	rm -f *~
+	rm -f *~ main
