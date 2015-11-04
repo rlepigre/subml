@@ -168,7 +168,7 @@ let parser var =
   | "(" id:ident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
 
 let parser term p =
-  | lambda xs:var+ t:(term TFunc) when p = TFunc ->
+  | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
   | "(" t:(term TFunc) ":" k:kind when p = TAtom ->
       in_pos _loc (PCoer(t,k))
@@ -306,6 +306,7 @@ let unsugar_term : state -> (string * tbox) list -> pterm -> tbox =
         appl pt.pos (unsugar env t) (unsugar env u)
     | PLVar(x) ->
         begin
+          try List.assoc x env with Not_found ->
           try
             let vd = Hashtbl.find st.venv x in
             vdef pt.pos vd

@@ -101,7 +101,7 @@ let rec print_term ff t =
       begin
         match ao with
         | None   -> fprintf ff "λ%s %a" x print_term t
-        | Some a -> fprintf ff "λ%s : %a %a" x pkind a print_term t
+        | Some a -> fprintf ff "λ(%s : %a) %a" x pkind a print_term t
       end
   | Appl(t,u) ->
       fprintf ff "(%a) %a" print_term t print_term u
