@@ -11,6 +11,7 @@ let rec interact () =
   Printf.printf ">> %!";
   try command_of_string st (read_line ()); interact () with
   | End_of_file          -> ()
+  | Finish               -> ()
   | Unsugar_error(_,msg) -> error msg
   | Failure("No parse.") -> interact ()
   | e                    -> error (Printexc.to_string e)

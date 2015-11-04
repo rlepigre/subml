@@ -94,8 +94,10 @@ let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
 
 let unfold_kw = new_keyword "unfold" 
-let clear_kw = new_keyword "clear" 
-let parse_kw = new_keyword "parse" 
+let clear_kw  = new_keyword "clear" 
+let parse_kw  = new_keyword "parse" 
+let quit_kw   = new_keyword "quit" 
+let exit_kw   = new_keyword "exit" 
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -329,6 +331,8 @@ let unsugar_term : state -> (string * tbox) list -> pterm -> tbox =
  *                      High level parsing functions                        *
  ****************************************************************************)
 
+exception Finish
+
 let blank = blank_regexp ''[ \t\n\r]*''
 
 let parser command =
@@ -362,6 +366,9 @@ let parser command =
       fun st ->
         let t = unbox (unsugar_term st [] t) in
         Printf.fprintf stdout "%a\n%!" print_term t
+  (* Exit the program. *)
+  | {quit_kw | exit_kw} ->
+      fun _ -> raise Finish
 
 let command_of_string : state -> string -> unit = fun st s ->
   let parse = parse_string command blank in
