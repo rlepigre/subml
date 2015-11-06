@@ -40,3 +40,11 @@ let split s =
   let num = String.sub s !last_num (l - !last_num) in
   if name = "" then raise (Invalid_argument "split");
   (name, if num = "" then 0 else int_of_string num)
+
+(* Ctrl-C handling. *)
+exception Stopped
+
+let handle_stop : bool -> unit =
+  let open Sys in function
+  | true  -> set_signal sigint (Signal_handle (fun i -> raise Stopped))
+  | false -> set_signal sigint Signal_default

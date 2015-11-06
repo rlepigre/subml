@@ -4,6 +4,7 @@ open Bindlib
 open Util
 open Ast
 open Print
+open Eval
 
 #define LOCATE locate
 
@@ -100,6 +101,7 @@ let clear_kw  = new_keyword "clear"
 let parse_kw  = new_keyword "parse" 
 let quit_kw   = new_keyword "quit" 
 let exit_kw   = new_keyword "exit" 
+let eval_kw   = new_keyword "eval" 
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -365,14 +367,20 @@ let parser command =
       fun st ->
         let k = unbox (unsugar_kind st [] k) in
         Printf.fprintf stdout "%a\n%!" (print_kind true) k
-  (* Clear the screen. *)
-  | clear_kw ->
-      fun _ -> ignore (Sys.command "clear")
   (* Parse a term. *)
   | parse_kw t:term ->
       fun st ->
         let t = unbox (unsugar_term st [] t) in
         Printf.fprintf stdout "%a\n%!" print_term t
+  (* Evaluate a term. *)
+  | eval_kw t:term ->
+      fun st ->
+        let t = unbox (unsugar_term st [] t) in
+        let t = eval st t in
+        Printf.fprintf stdout "%a\n%!" print_term t
+  (* Clear the screen. *)
+  | clear_kw ->
+      fun _ -> ignore (Sys.command "clear")
   (* Exit the program. *)
   | {quit_kw | exit_kw} ->
       fun _ -> raise Finish
