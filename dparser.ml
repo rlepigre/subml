@@ -90,6 +90,7 @@ and pterm' =
 let case_kw = new_keyword "case"
 let rec_kw  = new_keyword "rec"
 let let_kw  = new_keyword "let"
+let val_kw  = new_keyword "val"
 let of_kw   = new_keyword "of"
 let in_kw   = new_keyword "in"
 let y_kw    = new_keyword "Y"
@@ -290,7 +291,7 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
   in unsugar env pk
 
 let unsugar_term : state -> (string * tbox) list -> pterm ->
-                   term * (string * (term variable * pos list)) list =
+                   tbox * (string * (term variable * pos list)) list =
   fun st env pt ->
   let unbound = ref [] in
   let rec unsugar env pt =
@@ -347,7 +348,7 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
         fixy pt.pos
   in
   let t = unsugar env pt in
-  (unbox t, !unbound)
+  (t, !unbound)
 
 (****************************************************************************
  *                      High level parsing functions                        *
@@ -384,13 +385,24 @@ let parser command =
   | parse_kw t:term ->
       fun st ->
         let (t, unbs) = unsugar_term st [] t in
+        let t = unbox t in
         Printf.fprintf stdout "%a\n%!" print_term t
   (* Evaluate a term. *)
   | eval_kw t:term ->
       fun st ->
         let (t, unbs) = unsugar_term st [] t in
+        let t = unbox t in
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
+  (* Value definition. *)
+  | val_kw id:ident xs:var+ "=" t:term ->
+      fun st ->
+        let t = in_pos _loc (PLAbs(xs,t)) in
+        let (t, unbs) = unsugar_term st [] t in
+        assert (unbs = []); (* FIXME add error message *)
+        let t = eval st (unbox t) in
+        Printf.fprintf stdout "%s = %a\n%!" id print_term t;
+        Hashtbl.add st.venv id { name = id ; value = t ; ttype = None }
   (* Clear the screen. *)
   | clear_kw ->
       fun _ -> ignore (Sys.command "clear")
