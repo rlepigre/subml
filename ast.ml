@@ -273,8 +273,8 @@ let cnst_p : pos -> (string * kind * kind) -> term =
 let coer : pos -> tbox -> kbox -> tbox =
   fun p -> box_apply2 (coer_p p)
 
-let lvar : pos -> string -> tbox =
-  fun p x -> box_of_var (new_lvar p x)
+let lvar : pos -> term variable -> tbox =
+  fun p x -> box_of_var x
 
 let labs : pos -> kbox option -> string position ->
            (tbox -> tbox) -> tbox =

@@ -289,8 +289,10 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
     | Some k -> unsugar env k
   in unsugar env pk
 
-let unsugar_term : state -> (string * tbox) list -> pterm -> tbox =
+let unsugar_term : state -> (string * tbox) list -> pterm ->
+                   term * (string * (term variable * pos list)) list =
   fun st env pt ->
+  let unbound = ref [] in
   let rec unsugar env pt =
     match pt.elt with
     | PLAbs(vs,t) ->
@@ -318,8 +320,17 @@ let unsugar_term : state -> (string * tbox) list -> pterm -> tbox =
             vdef pt.pos vd
           with Not_found ->
             begin
-              let msg = Printf.sprintf "Unboud variable %s." x in
-              unsugar_error pt.pos msg
+              try
+                let (v, ps) = List.assoc x !unbound in
+                unbound := List.remove_assoc x !unbound;
+                unbound := (x, (v, pt.pos :: ps)) :: !unbound;
+                lvar pt.pos v
+              with Not_found ->
+                begin
+                  let v = new_lvar' x in
+                  unbound := (x, (v, [pt.pos])) :: !unbound;
+                  lvar pt.pos v
+                end
             end
         end
     | PPrnt(s,t) ->
@@ -334,7 +345,9 @@ let unsugar_term : state -> (string * tbox) list -> pterm -> tbox =
         reco pt.pos (List.map (fun (l,t) -> (l, unsugar env t)) fs)
     | PFixY ->
         fixy pt.pos
-  in unsugar env pt
+  in
+  let t = unsugar env pt in
+  (unbox t, !unbound)
 
 (****************************************************************************
  *                      High level parsing functions                        *
@@ -370,12 +383,12 @@ let parser command =
   (* Parse a term. *)
   | parse_kw t:term ->
       fun st ->
-        let t = unbox (unsugar_term st [] t) in
+        let (t, unbs) = unsugar_term st [] t in
         Printf.fprintf stdout "%a\n%!" print_term t
   (* Evaluate a term. *)
   | eval_kw t:term ->
       fun st ->
-        let t = unbox (unsugar_term st [] t) in
+        let (t, unbs) = unsugar_term st [] t in
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
   (* Clear the screen. *)
