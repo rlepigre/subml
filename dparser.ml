@@ -82,7 +82,7 @@ and pterm' =
   | PPrnt of string * pterm
   | PCstr of string * pterm option
   | PProj of pterm * string
-  | PCase of pterm * (string * string * pterm) list * pterm option
+  | PCase of pterm * (string * string * pterm) list
   | PReco of (string * pterm) list
   | PFixY
 
@@ -187,8 +187,8 @@ let parser term p =
       in_pos _loc (PCstr(c,uo))
   | t:(term TAtom) "." l:ident when p = TAtom ->
       in_pos _loc (PProj(t,l))
-  | case_kw t:(term TFunc) of_kw ps:pattern* w:wildcard? when p = TAtom ->
-      in_pos _loc (PCase(t,ps,w))
+  | case_kw t:(term TFunc) of_kw ps:pattern* when p = TAtom ->
+      in_pos _loc (PCase(t,ps))
   | "{" fs:field* "}" when p = TAtom ->
       in_pos _loc (PReco(fs))
   | {fix_kw | y_kw} when p = TAtom ->
@@ -337,11 +337,21 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
     | PPrnt(s,t) ->
         prnt pt.pos s (unsugar env t)
     | PCstr(c,uo) ->
-        assert false (* TODO *)
+        let p = dummy_position in
+        let u =
+          match uo with
+          | None   -> reco p []
+          | Some u -> unsugar env u
+        in
+        labs p None (dummy_pos "r") (fun r -> appl p (proj p r c) u)
     | PProj(t,l) ->
         proj pt.pos (unsugar env t) l
-    | PCase(t,cs,wo) ->
-        assert false (* TODO *)
+    | PCase(t,cs) ->
+        let p = dummy_position in
+        let f (c,x,t) =
+          (c, labs p None (dummy_pos x) (fun v -> unsugar ((x,v)::env) t))
+        in
+        appl p (unsugar env t) (reco p (List.map f cs))
     | PReco(fs) ->
         reco pt.pos (List.map (fun (l,t) -> (l, unsugar env t)) fs)
     | PFixY ->
@@ -395,7 +405,7 @@ let parser command =
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
   (* Value definition. *)
-  | val_kw id:ident xs:var+ "=" t:term ->
+  | val_kw id:ident xs:var* "=" t:term ->
       fun st ->
         let t = in_pos _loc (PLAbs(xs,t)) in
         let (t, unbs) = unsugar_term st [] t in
