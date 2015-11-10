@@ -31,7 +31,7 @@ typing.cmo: typing.ml ast.cmo
 dparser.cmo: dparser.ml ast.cmo print.cmo eval.cmo typing.cmo
 	$(OCAMLC) -pp pa_ocaml -c $<
 
-run:
+run: all
 	ledit ./main
 
 clean:
