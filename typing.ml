@@ -8,6 +8,7 @@ let type_error : pos -> string -> unit = fun p msg ->
   raise (Type_error(p,msg))
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
+  if a == b then () else
   assert false
 
 let rec type_check : term -> kind -> unit = fun t c ->
@@ -51,3 +52,7 @@ let rec type_check : term -> kind -> unit = fun t c ->
   | Cnst(cst) ->
       let (_,a,_) = cst in
       subtype t a c
+
+let type_infer : term -> kind = fun t ->
+  let a = new_uvar () in
+  type_check t a; repr a
