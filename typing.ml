@@ -4,23 +4,51 @@ open Ast
 open Print
 
 exception Type_error of pos * string
+exception Subtype_error of string
 
 let type_error : pos -> string -> unit = fun p msg ->
   raise (Type_error(p,msg))
 
+let subtype_error : string -> unit = fun msg ->
+  raise (Subtype_error msg)
+
 let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
   let rec subtype t a b = 
+    let a = repr a in
+    let b = repr b in
     if verbose then
       Printf.eprintf "Subtyping: %a ∈ %a ⊆ %a\n%!"
         print_term t (print_kind false) a (print_kind false) b;
     if a == b then () else
     match (a,b) with
-    | _ -> assert false
+    (* Handling of unification variables. *)
+    | (UVar ua    , UVar ub    ) ->
+        if ua == ub then () else
+        let c = new_uvar () in
+        assert (ua.uvar_val = None && ub.uvar_val = None);
+        ua.uvar_val <- Some c;
+        ub.uvar_val <- Some c
+    | (UVar ua    , _          ) ->
+        assert (ua.uvar_val = None);
+        ua.uvar_val <- Some b (* FIXME *)
+    | (_          , UVar ub    ) ->
+        assert (ub.uvar_val = None);
+        ub.uvar_val <- Some a (* FIXME *)
+
+    (* Arrow type. *)
+    | (Func(a1,b1), Func(a2,b2)) ->
+        let wit = cnst "?" a2 b2 in
+        subtype (dummy_pos (Appl(t,wit))) b1 b2;
+        subtype wit a2 a1
+
+    (* Subtype clash. *)
+    | (_, _) -> subtype_error "Subtype clash."
   in
   subtype t a b
 
 let type_check : bool -> term -> kind -> unit = fun verbose t c ->
   let subtype = subtype verbose in
+  let c = repr c in
   let rec type_check t c =
     if verbose then
       Printf.fprintf stderr "Typing:    %a : %a\n%!"
@@ -36,7 +64,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
         let b = new_uvar () in
         let c' = Func(a,b) in
         subtype t c' c;
-        type_check (subst f (cnst (binder_name f) a b)) c'
+        type_check (subst f (cnst (binder_name f) a b)) b
     | Appl(t,u) ->
         let a = new_uvar () in
         type_check t (Func(a,c));

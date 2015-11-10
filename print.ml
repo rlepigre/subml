@@ -18,14 +18,14 @@ let rec print_array pelem sep ff ls =
 let rec print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pkindw = print_kind unfold true in
-  match t with
+  match repr t with
   | TVar(x) ->
       pp_print_string ff (name_of x)
   | Func(a,b) ->
-      if wrap then
-        fprintf ff "(%a → %a)" pkindw a pkind b
-      else
-        fprintf ff "%a → %a" pkindw a pkind b
+      if wrap then pp_print_string ff "(";
+      (* fprintf ff "? → %a" pkindw b; *)
+      fprintf ff "%a → %a" pkindw a pkind b;
+      if wrap then pp_print_string ff ")"
   | Prod(fs) ->
       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
       fprintf ff "{%a}" (print_list pfield "; ") fs
@@ -51,12 +51,8 @@ let rec print_kind unfold wrap ff t =
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
   | TCst(_) ->
       fprintf ff "ε(...)"
-  | UVar(v) ->
-      begin
-        match v.uvar_val with
-        | None   -> fprintf ff "?%i" v.uvar_key
-        | Some a -> print_kind unfold wrap ff a
-      end
+  | UVar(u) ->
+      fprintf ff "?%i" u.uvar_key
 
 and pquant unfold ff b =
   let x = new_tvar (binder_name b) in

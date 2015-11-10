@@ -156,9 +156,15 @@ let new_lvar' : string -> term variable =
   new_lvar dummy_position
 
 (* Unfolding unification variable indirections. *)
-let rec repr : kind -> kind = function
-  | UVar({uvar_val = Some k}) -> repr k
-  | k                         -> k
+let rec uvar_repr : uvar -> kind = fun u ->
+  match u.uvar_val with
+  | None           -> UVar u
+  | Some (UVar u') -> uvar_repr u'
+  | Some k         -> k
+
+let repr : kind -> kind = function
+  | UVar u -> uvar_repr u
+  | k      -> k
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
