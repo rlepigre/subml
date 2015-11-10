@@ -46,7 +46,8 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
-        let wit = cnst "#?#" a2 b2 in
+        let f x = dummy_pos (Appl(t, x)) in
+        let wit = cnst (binder_from_fun "x" f) a2 b2 in
         subtype (dummy_pos (Appl(t,wit))) b1 b2;
         subtype wit a2 a1
 
@@ -84,7 +85,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
         let a = match ao with None -> new_uvar () | Some a -> a in
         let b = new_uvar () in
         subtype t (Func(a,b)) c;
-        type_check (subst f (cnst (binder_name f) a b)) b
+        type_check (subst f (cnst f a b)) b
     | Appl(t,u) ->
         let a = new_uvar () in
         type_check t (Func(a,c));

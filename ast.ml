@@ -103,9 +103,9 @@ and term' =
   (* Fixpoint combinator. *)
   | FixY
   (**** Special constructors (not accessible to user) ****)
-  (* Constant (a.k.a. epsilon). Cnst(s,A,B) is a witness that there is a
-     termed (nemed s) such that t has type A and does not have type B *)
-  | Cnst of (string * kind * kind)
+  (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
+     that has type A but not type B such that t[u] is in B. *)
+  | Cnst of ((term, term) binder * kind * kind)
   
 and value_def =
   (* Name of the value. *)
@@ -276,7 +276,7 @@ let prnt_p : pos -> string -> term -> term =
 let fixy_p : pos -> term =
   fun p -> in_pos p FixY
 
-let cnst_p : pos -> (string * kind * kind) -> term =
+let cnst_p : pos -> ((term, term) binder * kind * kind) -> term =
   fun p c -> in_pos p (Cnst(c))
  
 (****************************************************************************
@@ -315,7 +315,7 @@ let fixy : pos -> tbox =
   fun p -> box (fixy_p p)
 
 (* Build a constant. Useful during typing. *)
-let cnst : string -> kind -> kind -> term =
+let cnst : (term, term) binder -> kind -> kind -> term =
   fun s a b -> dummy_pos (Cnst(s,a,b))
 
 (****************************************************************************
