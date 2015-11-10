@@ -31,6 +31,9 @@ typing.cmo: typing.ml ast.cmo
 dparser.cmo: dparser.ml ast.cmo print.cmo eval.cmo typing.cmo
 	$(OCAMLC) -pp pa_ocaml -c $<
 
+run:
+	ledit ./main
+
 clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 
