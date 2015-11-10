@@ -23,7 +23,6 @@ let rec print_kind unfold wrap ff t =
       pp_print_string ff (name_of x)
   | Func(a,b) ->
       if wrap then pp_print_string ff "(";
-      (* fprintf ff "? → %a" pkindw b; *)
       fprintf ff "%a → %a" pkindw a pkind b;
       if wrap then pp_print_string ff ")"
   | Prod(fs) ->

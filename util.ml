@@ -4,7 +4,7 @@ module IntOrd =
     let compare = compare
   end
 
-module StringOrd =
+module StrOrd =
   struct
     type t = string
     let compare = compare
@@ -13,8 +13,8 @@ module StringOrd =
 module IntSet = Set.Make (IntOrd)
 module IntMap = Map.Make (IntOrd)
 
-module StringMap = Map.Make (StringOrd)
-module StringSet = Set.Make (StringOrd)
+module StrMap = Map.Make (StrOrd)
+module StrSet = Set.Make (StrOrd)
 
 (* Type constructor to give position information in a source file. *)
 type pos = Location.t

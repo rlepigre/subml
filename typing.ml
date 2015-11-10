@@ -21,25 +21,46 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         print_term t (print_kind false) a (print_kind false) b;
     if a == b then () else
     match (a,b) with
-    (* Handling of unification variables. *)
+    (* Handling of unification variables (immitation). *)
     | (UVar ua    , UVar ub    ) ->
         if ua == ub then () else
         let c = new_uvar () in
-        assert (ua.uvar_val = None && ub.uvar_val = None);
         ua.uvar_val <- Some c;
         ub.uvar_val <- Some c
     | (UVar ua    , _          ) ->
-        assert (ua.uvar_val = None);
-        ua.uvar_val <- Some b (* FIXME *)
+        let k =
+          match uvar_occur ua b with
+          | Non -> b
+          | Pos -> assert false (* TODO Nu *)
+          | _   -> bot
+        in
+        ua.uvar_val <- Some k
     | (_          , UVar ub    ) ->
-        assert (ub.uvar_val = None);
-        ub.uvar_val <- Some a (* FIXME *)
+        let k =
+          match uvar_occur ub a with
+          | Non -> a
+          | Pos -> assert false (* TODO Mu *)
+          | _   -> bot
+        in
+        ub.uvar_val <- Some k
 
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
-        let wit = cnst "?" a2 b2 in
+        let wit = cnst "#?#" a2 b2 in
         subtype (dummy_pos (Appl(t,wit))) b1 b2;
         subtype wit a2 a1
+
+    (* Product type. *)
+    | (Prod(fsa),   Prod(fsb)  ) ->
+        let lseta = StrSet.of_list (List.map fst fsa) in
+        let lsetb = StrSet.of_list (List.map fst fsb) in
+        if not (StrSet.subset lsetb lseta) then
+          subtype_error "Product fields clash.";
+        let check_field (l,b) =
+          let a = List.assoc l fsa in
+          subtype (dummy_pos (Proj(t,l))) a b
+        in
+        List.iter check_field fsb
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtype clash."
@@ -62,8 +83,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
     | LAbs(ao,f) ->
         let a = match ao with None -> new_uvar () | Some a -> a in
         let b = new_uvar () in
-        let c' = Func(a,b) in
-        subtype t c' c;
+        subtype t (Func(a,b)) c;
         type_check (subst f (cnst (binder_name f) a b)) b
     | Appl(t,u) ->
         let a = new_uvar () in
@@ -89,7 +109,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
     | Prnt(_,t) ->
         type_check t c
     | FixY ->
-        subtype t (unbox (fall' "X" (fun x -> func (func (func x x) x) x))) c
+        subtype t fix_kind c
     | Cnst(cst) ->
         let (_,a,_) = cst in
         subtype t a c

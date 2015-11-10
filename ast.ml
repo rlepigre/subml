@@ -317,3 +317,39 @@ let fixy : pos -> tbox =
 (* Build a constant. Useful during typing. *)
 let cnst : string -> kind -> kind -> term =
   fun s a b -> dummy_pos (Cnst(s,a,b))
+
+(****************************************************************************
+ *                 Occurence test for unification variables                 *
+ ****************************************************************************)
+
+let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
+  let combine oa ob =
+    match (oa, ob) with
+    | (Non  , _    ) -> ob
+    | (_    , Non  ) -> oa
+    | (InEps, _    ) -> InEps
+    | (_    , InEps) -> InEps
+    | (Both , _    ) -> Both
+    | (_    , Both ) -> Both
+    | (Neg  , Pos  ) -> Both
+    | (Pos  , Neg  ) -> Both
+    | (Neg  , Neg  ) -> Neg
+    | (Pos  , Pos  ) -> Pos
+  in
+  let neg = function
+    | Neg -> Pos
+    | Pos -> Neg
+    | o   -> o
+  in
+  let rec aux occ acc = function
+    | TVar(x)   -> acc
+    | Func(a,b) -> aux (neg occ) (aux occ acc b) a
+    | Prod(fs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc fs
+    | FAll(b)   -> assert false (* TODO *)
+    | Exis(b)   -> assert false (* TODO *)
+    | FixM(b)   -> assert false (* TODO *)
+    | FixN(b)   -> assert false (* TODO *)
+    | TDef(d,a) -> assert false (* TODO *)
+    | TCst(c)   -> assert false (* TODO *)
+    | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
+  in aux Pos Non k
