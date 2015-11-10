@@ -5,6 +5,7 @@ open Util
 open Ast
 open Print
 open Eval
+open Typing
 
 #define LOCATE locate
 
@@ -97,12 +98,14 @@ let y_kw    = new_keyword "Y"
 let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
 
-let unfold_kw = new_keyword "unfold" 
-let clear_kw  = new_keyword "clear" 
-let parse_kw  = new_keyword "parse" 
-let quit_kw   = new_keyword "quit" 
-let exit_kw   = new_keyword "exit" 
-let eval_kw   = new_keyword "eval" 
+let unfold_kw  = new_keyword "unfold" 
+let clear_kw   = new_keyword "clear" 
+let parse_kw   = new_keyword "parse" 
+let quit_kw    = new_keyword "quit" 
+let exit_kw    = new_keyword "exit" 
+let eval_kw    = new_keyword "eval" 
+let typed_kw   = new_keyword "typed" 
+let untyped_kw = new_keyword "untyped" 
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -367,6 +370,11 @@ exception Finish
 
 let blank = blank_regexp ''[ \t\n\r]*''
 
+let parser is_typed =
+  | typed_kw   -> true
+  | untyped_kw -> false
+  | EMPTY      -> true
+
 let parser command =
   (* Type definition command. *)
   | type_kw (name,args,k):kind_def ->
@@ -404,14 +412,21 @@ let parser command =
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
   (* Value definition. *)
-  | val_kw id:ident xs:var* "=" t:term ->
+  | ty:is_typed val_kw id:ident xs:var* "=" t:term ->
       fun st ->
         let t = in_pos _loc (PLAbs(xs,t)) in
         let (t, unbs) = unsugar_term st [] t in
         assert (unbs = []); (* FIXME add error message *)
-        let t = eval st (unbox t) in
-        Printf.fprintf stdout "%s = %a\n%!" id print_term t;
-        Hashtbl.add st.venv id { name = id ; value = t ; ttype = None }
+        let t = unbox t in
+        let ko = if ty then Some (type_infer t) else None in
+        let t = eval st t in
+        Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
+        begin
+          match ko with
+          | None   -> Printf.fprintf stdout "%s = %a\n%!" id print_term t;
+          | Some k -> Printf.fprintf stdout "%s = %a : %a\n%!" id
+                        print_term t (print_kind false) k
+        end
   (* Clear the screen. *)
   | clear_kw ->
       fun _ -> ignore (Sys.command "clear")
