@@ -126,11 +126,13 @@ type typ_env = (string, type_def ) Hashtbl.t
 (* State. *)
 type state =
   { tenv : typ_env
-  ; venv : val_env }
+  ; venv : val_env
+  ; mutable verbose : bool }
 
-let initial_state : unit -> state = fun () ->
+let initial_state : bool -> state = fun v ->
   { tenv = Hashtbl.create 17
-  ; venv = Hashtbl.create 17 }
+  ; venv = Hashtbl.create 17
+  ; verbose = v }
 
 (* Bindbox type shortcuts. *)
 type tbox = term bindbox

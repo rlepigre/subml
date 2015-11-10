@@ -4,7 +4,7 @@ open Ast
 open Print
 open Dparser
 
-let st = initial_state ()
+let st = initial_state true
 
 let _ = handle_stop true
 

@@ -106,6 +106,7 @@ let exit_kw    = new_keyword "exit"
 let eval_kw    = new_keyword "eval" 
 let typed_kw   = new_keyword "typed" 
 let untyped_kw = new_keyword "untyped" 
+let set_kw     = new_keyword "set" 
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -375,6 +376,13 @@ let parser is_typed =
   | untyped_kw -> false
   | EMPTY      -> true
 
+let parser enabled =
+  | "on"  -> true
+  | "off" -> false
+
+let parser opt_flag =
+  | "verbose" b:enabled -> fun st -> st.verbose <- b
+
 let parser command =
   (* Type definition command. *)
   | type_kw (name,args,k):kind_def ->
@@ -418,7 +426,7 @@ let parser command =
         let (t, unbs) = unsugar_term st [] t in
         assert (unbs = []); (* FIXME add error message *)
         let t = unbox t in
-        let ko = if ty then Some (type_infer t) else None in
+        let ko = if ty then Some (type_infer st.verbose t) else None in
         let t = eval st t in
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
         begin
@@ -427,6 +435,8 @@ let parser command =
           | Some k -> Printf.fprintf stdout "%s = %a : %a\n%!" id
                         print_term t (print_kind false) k
         end
+  (* Set a flag. *)
+  | _:set_kw f:opt_flag
   (* Clear the screen. *)
   | clear_kw ->
       fun _ -> ignore (Sys.command "clear")

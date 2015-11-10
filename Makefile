@@ -28,7 +28,7 @@ print.cmo: print.ml print.cmi ast.cmo
 typing.cmo: typing.ml ast.cmo
 	$(OCAMLC) -c $<
 
-dparser.cmo: dparser.ml ast.cmo print.cmo eval.cmo
+dparser.cmo: dparser.ml ast.cmo print.cmo eval.cmo typing.cmo
 	$(OCAMLC) -pp pa_ocaml -c $<
 
 clean:
