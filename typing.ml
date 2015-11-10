@@ -40,7 +40,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
           match uvar_occur ub a with
           | Non -> a
           | Pos -> assert false (* TODO Mu *)
-          | _   -> bot
+          | _   -> top
         in
         ub.uvar_val <- Some k
 
