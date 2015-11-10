@@ -18,8 +18,8 @@ type kind =
   (* Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
   | Prod of (string * kind) list
   (* Bounded quantifiers: ∀/∃X [= A] </> A1,...,An B. *)
-  | FAll of (kind, kind option * (orient * kind list) option * kind) binder
-  | Exis of (kind, kind option * (orient * kind list) option * kind) binder
+  | FAll of (kind, kind option * (orient * kind) option * kind) binder
+  | Exis of (kind, kind option * (orient * kind) option * kind) binder
   (* Least and greatest fixpoint: μX A, νX A. *)
   | FixM of (kind, kind) binder
   | FixN of (kind, kind) binder
@@ -169,18 +169,18 @@ let prod : (string * kbox) list -> kbox =
     box_apply (fun fs -> Prod(fs)) (box_list fs)
 
 (* Auxiliary function for fall and exis. *)
-let blift : (kbox option * (orient * kbox list) option * kbox)
-  -> (kind option * (orient * kind list) option * kind) bindbox =
+let blift : (kbox option * (orient * kbox) option * kbox)
+  -> (kind option * (orient * kind) option * kind) bindbox =
   fun (eq,bnd,t) ->
     let bnd =
       match bnd with
       | None       -> None
-      | Some (o,k) -> Some (box_apply (fun k -> (o,k)) (box_list k))
+      | Some (o,k) -> Some (box_apply (fun k -> (o,k)) k)
     in
     box_triple (box_opt eq) (box_opt bnd) t
 
 let fall : string
-  -> (kbox -> (kbox option * (orient * kbox list) option * kbox)) -> kbox =
+  -> (kbox -> (kbox option * (orient * kbox) option * kbox)) -> kbox =
   fun x f ->
     let b = bind mk_free_tvar x (fun k -> blift (f k)) in
     box_apply (fun b -> FAll(b)) b
@@ -190,7 +190,7 @@ let fall' : string -> (kbox -> kbox) -> kbox =
     fall x (fun x -> (None, None, f x))
 
 let exis : string
-  -> (kbox -> (kbox option * (orient * kbox list) option * kbox)) -> kbox =
+  -> (kbox -> (kbox option * (orient * kbox) option * kbox)) -> kbox =
   fun x f ->
     let b = bind mk_free_tvar x (fun k -> blift (f k)) in
     box_apply (fun b -> Exis(b)) b

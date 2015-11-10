@@ -65,8 +65,8 @@ type pkind = pkind' position
 and pkind' =
   | PFunc of pkind * pkind
   | PTVar of string * pkind list
-  | PFAll of string * pkind option * (orient * pkind list) option * pkind
-  | PExis of string * pkind option * (orient * pkind list) option * pkind
+  | PFAll of string * pkind option * (orient * pkind) option * pkind
+  | PExis of string * pkind option * (orient * pkind) option * pkind
   | PMu   of string * pkind
   | PNu   of string * pkind
   | PProd of (string * pkind) list
@@ -128,9 +128,9 @@ let parser kind p =
       -> in_pos _loc (PFunc(a,b))
   | id:ident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
       -> in_pos _loc (PTVar(id,l))
-  | forall id:ident ao:eq_kind? bnd:bounds? a:(kind KQuant) when p = KQuant
+  | forall id:ident ao:eq_kind? bnd:bound? a:(kind KQuant) when p = KQuant
       -> in_pos _loc (PFAll(id,ao,bnd,a))
-  | exists id:ident ao:eq_kind? bnd:bounds? a:(kind KQuant) when p = KQuant
+  | exists id:ident ao:eq_kind? bnd:bound? a:(kind KQuant) when p = KQuant
       -> in_pos _loc (PExis(id,ao,bnd,a))
   | mu id:ident a:(kind KQuant) when p = KQuant
       -> in_pos _loc (PMu(id,a))
@@ -147,12 +147,11 @@ let parser kind p =
   | a:(kind KQuant) when p = KFunc
   | a:(kind KAtom)  when p = KQuant
 
-and kind_list = l:(list_sep (kind KFunc) ",")
-and eq_kind   = "=" k:(kind KFunc)
-and bounds    = o:orien l:kind_list ->
-  if l = [] then raise (Give_up "At least one bound is required."); (o,l)
-and sum_item  = id:ident a:{_:of_kw a:(kind KFunc)}?
-and sum_items = l:(list_sep sum_item "|")
+and kind_list  = l:(list_sep (kind KFunc) ",")
+and eq_kind    = "=" k:(kind KFunc)
+and bound      = o:orien a:(kind KFunc)
+and sum_item   = id:ident a:{_:of_kw a:(kind KFunc)}?
+and sum_items  = l:(list_sep sum_item "|")
 and prod_item  = id:ident ":" a:(kind KFunc)
 and prod_items = l:(list_sep prod_item ";")
 
@@ -282,8 +281,8 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
     | Some k -> Some (unsugar env k)
   and unsugar_bound env bnd =
     match bnd with
-    | None        -> None
-    | Some (o,ls) -> Some (o, List.map (unsugar env) ls)
+    | None       -> None
+    | Some (o,a) -> Some (o, unsugar env a)
   and unsugar_top env ko =
     match ko with
     | None   -> box top

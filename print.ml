@@ -63,16 +63,15 @@ and pquant unfold ff b =
   let (ao, bnd, c) = subst b (free_of x) in
   pp_print_string ff (name_of x);
   let pkind = print_kind unfold true in
-  let pklist = print_list pkind ", " in
   match (ao, bnd) with
-  | (None  , None       ) -> fprintf ff " %a" pkind c
-  | (Some a, None       ) -> fprintf ff " = %a %a" pkind a pkind c
-  | (None  , Some (o,ls)) ->
+  | (None  , None      ) -> fprintf ff " %a" pkind c
+  | (Some a, None      ) -> fprintf ff " = %a %a" pkind a pkind c
+  | (None  , Some (o,b)) ->
       let o = match o with GE -> ">" | LE -> "<" in
-      fprintf ff " %s %a %a" o pklist ls pkind c
-  | (Some a, Some (o,ls)) ->
+      fprintf ff " %s %a %a" o pkind b pkind c
+  | (Some a, Some (o,b)) ->
       let o = match o with GE -> ">" | LE -> "<" in
-      fprintf ff " = %a %s %a %a" pkind a o pklist ls pkind c
+      fprintf ff " = %a %s %a %a" pkind a o pkind b pkind c
 
 let pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;
