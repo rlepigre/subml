@@ -437,6 +437,10 @@ let parser command =
         end
   (* Set a flag. *)
   | _:set_kw f:opt_flag
+
+let parser toplevel =
+  (* Regular commands. *)
+  | command
   (* Clear the screen. *)
   | clear_kw ->
       fun _ -> ignore (Sys.command "clear")
@@ -444,7 +448,15 @@ let parser command =
   | {quit_kw | exit_kw} ->
       fun _ -> raise Finish
 
-let command_of_string : state -> string -> unit = fun st s ->
-  let parse = parse_string command blank in
+let toplevel_of_string : state -> string -> unit = fun st s ->
+  let parse = parse_string toplevel blank in
   let action = Decap.handle_exception parse s in
+  action st
+
+let parser file_contents =
+  | cs:command* -> fun st -> List.iter (fun c -> c st) cs
+
+let eval_file fn st =
+  let parse = parse_file toplevel blank in
+  let action = Decap.handle_exception parse fn in
   action st

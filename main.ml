@@ -11,7 +11,7 @@ let _ = handle_stop true
 let rec interact () =
   let error msg = Printf.eprintf "%s\n%!" msg; interact () in
   Printf.printf ">> %!";
-  try command_of_string st (read_line ()); interact () with
+  try toplevel_of_string st (read_line ()); interact () with
   | End_of_file          -> ()
   | Finish               -> ()
   | Stopped              -> error "Stopped."
@@ -19,4 +19,10 @@ let rec interact () =
   | Failure("No parse.") -> interact ()
   | e                    -> error (Printexc.to_string e)
 
-let _ = interact ()
+let _ =
+  for i = 1 to Array.length Sys.argv - 1 do
+    let fn = Sys.argv.(i) in
+    Printf.printf "## Loading file %S\n%!" fn;
+    eval_file fn st
+  done;
+  interact ()
