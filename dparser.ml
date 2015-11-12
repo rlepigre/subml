@@ -20,7 +20,9 @@ let list_sep' elt sep = parser
 let parser string_char =
   | "\\\"" -> "\""
   | "\\\\" -> "\\"
-  | c:ANY  -> if c = '\\' || c = '"' || c = '\n' || c = '\r' then
+  | "\\n"  -> "\n"
+  | "\\t"  -> "\t"
+  | c:ANY  -> if c = '\\' || c = '"' || c = '\r' then
                 raise (Give_up "");
               String.make 1 c
 

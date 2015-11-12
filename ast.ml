@@ -415,9 +415,35 @@ let uvars : kind -> uvar list = fun k ->
   in
   UVarSet.elements (uvars k)
 
+let rec free_names : kind -> string list = function
+  | TVar(x)   -> [name_of x]
+  | Func(a,b) -> (free_names a) @ (free_names b)
+  | Prod(fs)  -> List.flatten (List.map (fun (_,a) -> free_names a) fs)
+  | FAll(b)   -> assert false (* TODO *)
+  | Exis(b)   -> assert false (* TODO *)
+  | FixM(b)   -> assert false (* TODO *)
+  | FixN(b)   -> assert false (* TODO *)
+  | TDef(d,a) -> let l = Array.to_list (Array.map free_names a) in
+                 d.tdef_name :: (List.flatten l)
+  | TCst(_)   -> assert false (* TODO *)
+  | UVar(u)   -> []
+
+let fresh_name : string -> string list -> string * string list =
+  fun pref used ->
+    let rec fresh i =
+      let pref = Printf.sprintf "%s%i" pref i in
+      if List.mem pref used then
+        fresh (i+1)
+      else
+        (pref, pref :: used)
+    in fresh 1
+
 let generalize : kind -> kind = fun k ->
   let us = uvars k in
-  let f u k =
-    FAll(binder_from_fun "X" (fun x -> (None, None, bind_uvar u k x)))
+  let f u (k, used) =
+    let (x, used) = fresh_name "X" used in
+    let k =
+      FAll(binder_from_fun x (fun x -> (None, None, bind_uvar u k x)))
+    in (k, used)
   in
-  List.fold_right f us k
+  fst (List.fold_right f us (k, free_names k))
