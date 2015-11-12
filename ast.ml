@@ -345,11 +345,12 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | TVar(x)   -> acc
     | Func(a,b) -> aux (neg occ) (aux occ acc b) a
     | Prod(fs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc fs
-    | FAll(b)   -> assert false (* TODO *)
+    | FAll(b)   -> let (ko, bndo, k) = subst b (Prod []) in
+                   aux occ acc k (* FIXME *)
     | Exis(b)   -> assert false (* TODO *)
     | FixM(b)   -> assert false (* TODO *)
     | FixN(b)   -> assert false (* TODO *)
-    | TDef(d,a) -> assert false (* TODO *)
+    | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
     | TCst(c)   -> assert false (* TODO *)
     | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
   in aux Pos Non k

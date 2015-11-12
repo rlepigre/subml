@@ -63,8 +63,15 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         in
         List.iter check_field fsb
 
+    (* Type definition. *)
+    | (TDef(d,a)  , _          ) ->
+        subtype t (msubst d.tdef_value a) b
+
+    | (_          , TDef(d,b)  ) ->
+        subtype t a (msubst d.tdef_value b)
+
     (* Subtype clash. *)
-    | (_, _) -> subtype_error "Subtype clash."
+    | (_, _) -> subtype_error "Subtype clash (no rule apply)."
   in
   subtype t a b
 
