@@ -10,11 +10,11 @@ module StrOrd =
     let compare = compare
   end
 
-module IntSet = Set.Make (IntOrd)
-module IntMap = Map.Make (IntOrd)
+module IntSet = Set.Make(IntOrd)
+module IntMap = Map.Make(IntOrd)
 
-module StrMap = Map.Make (StrOrd)
-module StrSet = Set.Make (StrOrd)
+module StrMap = Map.Make(StrOrd)
+module StrSet = Set.Make(StrOrd)
 
 (* Type constructor to give position information in a source file. *)
 type pos = Location.t

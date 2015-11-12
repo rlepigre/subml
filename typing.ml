@@ -119,4 +119,4 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
 
 let type_infer : bool -> term -> kind = fun verbose t ->
   let a = new_uvar () in
-  type_check verbose t a; repr a
+  type_check verbose t a; generalize (repr a)

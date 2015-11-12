@@ -353,3 +353,71 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | TCst(c)   -> assert false (* TODO *)
     | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
   in aux Pos Non k
+
+(****************************************************************************
+ *                 Binding a unification variable in a type                 *
+ ****************************************************************************)
+
+let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
+  match o with
+  | None   -> None
+  | Some e -> Some (f e)
+
+let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
+  let rec subst k =
+    match repr k with
+    | TVar(_)   -> k
+    | Func(a,b) -> Func(subst a, subst b)
+    | Prod(fs)  -> Prod(List.map (fun (l,a) -> (l, subst a)) fs)
+    | FAll(b)   -> FAll(binder_compose_right b bsubst)
+    | Exis(b)   -> Exis(binder_compose_right b bsubst)
+    | FixM(b)   -> FixM(binder_compose_right b subst)
+    | FixN(b)   -> FixN(binder_compose_right b subst)
+    | TDef(d,a) -> TDef(d, Array.map subst a)
+    | TCst(_)   -> k
+    | UVar(u)   -> if u.uvar_key = i then x else k
+  and bsubst (ko,bndo,k) =
+    (map_opt subst ko, map_opt (fun (o,k) -> (o,subst k)) bndo, subst k)
+  in
+  subst k
+
+(****************************************************************************
+ *             Collecting all the unification variables of a type           *
+ ****************************************************************************)
+
+module UVarOrd =
+  struct
+    type t = uvar
+    let compare u1 u2 = compare u1.uvar_key u2.uvar_key
+  end
+
+module UVarSet = Set.Make(UVarOrd)
+
+let uvars : kind -> uvar list = fun k ->
+  let rec uvars = function
+    | TVar(_)   -> UVarSet.empty
+    | Func(a,b) -> UVarSet.union (uvars a) (uvars b)
+    | Prod(fs)  -> let f s (_,a) = UVarSet.union s (uvars a) in
+                   List.fold_left f UVarSet.empty fs
+    | FAll(b)   -> assert false (* TODO *)
+    | Exis(b)   -> assert false (* TODO *)
+    | FixM(b)   -> assert false (* TODO *)
+    | FixN(b)   -> assert false (* TODO *)
+    | TDef(d,a) -> let f s a = UVarSet.union s (uvars a) in
+                   Array.fold_left f UVarSet.empty a
+    | TCst(_)   -> UVarSet.empty
+    | UVar(u)   ->
+        begin
+          match uvar_repr u with
+          | UVar u -> UVarSet.singleton u
+          | k      -> uvars k
+        end
+  in
+  UVarSet.elements (uvars k)
+
+let generalize : kind -> kind = fun k ->
+  let us = uvars k in
+  let f u k =
+    FAll(binder_from_fun "X" (fun x -> (None, None, bind_uvar u k x)))
+  in
+  List.fold_right f us k
