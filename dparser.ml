@@ -116,7 +116,7 @@ let parser exists : unit grammar = "∃" | "\\/"
 let parser mu     : unit grammar = "μ" | "!"
 let parser nu     : unit grammar = "ν" | "?"
 let parser lambda : unit grammar = "λ" | fun_kw
-let parser dot    : unit grammar = "." | "->" | "→"
+let parser dot    : unit grammar = "." | "->" | "→" | "↦"
 let parser hole   : unit grammar = "?"
 
 let parser ident = id:''[a-zA-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
@@ -180,7 +180,7 @@ let parser var =
 let parser term p =
   | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
-  | "(" t:(term TFunc) ":" k:kind when p = TAtom ->
+  | t:(term TFunc) ":" k:kind when p = TAtom ->
       in_pos _loc (PCoer(t,k))
   | t:(term TAppl) u:(term TAtom) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
@@ -459,6 +459,6 @@ let parser file_contents =
   | cs:command* -> fun st -> List.iter (fun c -> c st) cs
 
 let eval_file fn st =
-  let parse = parse_file toplevel blank in
+  let parse = parse_file file_contents blank in
   let action = Decap.handle_exception parse fn in
   action st
