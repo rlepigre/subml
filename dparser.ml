@@ -289,7 +289,7 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
     | Some (o,a) -> Some (o, unsugar env a)
   and unsugar_top env ko =
     match ko with
-    | None   -> box top
+    | None   -> prod []
     | Some k -> unsugar env k
   in unsugar env pk
 
