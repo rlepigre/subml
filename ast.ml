@@ -390,9 +390,16 @@ let uvars : kind -> uvar list = fun k ->
           | (Some a, Some (_,b)) -> union [ uvars a; uvars b; uvars c ]
         end
     | Exis(ao,bo,f) ->
-        assert false (* TODO *)
-    | FixM(f)   -> assert false (* TODO *)
-    | FixN(f)   -> assert false (* TODO *)
+        let c = subst f dummy in
+        begin
+          match (ao, bo) with
+          | (None  , None      ) -> uvars c
+          | (Some a, None      ) -> union [ uvars a; uvars c ]
+          | (None  , Some (_,b)) -> union [ uvars b; uvars c ]
+          | (Some a, Some (_,b)) -> union [ uvars a; uvars b; uvars c ]
+        end
+    | FixM(f)   -> uvars (subst f dummy)
+    | FixN(f)   -> uvars (subst f dummy)
     | TDef(d,a) -> let f s a = UVarSet.union s (uvars a) in
                    Array.fold_left f UVarSet.empty a
     | UCst(_)   -> assert false (* TODO *)
@@ -423,9 +430,17 @@ let rec free_names : kind -> string list = function
             (free_names a) @ (free_names b) @ (free_names c)
       end
   | Exis(ao,bo,f) ->
-      assert false (* TODO *)
-  | FixM(b)    -> assert false (* TODO *)
-  | FixN(b)    -> assert false (* TODO *)
+      begin
+        let c = subst f (Prod []) in
+        match (ao, bo) with
+        | (None  , None      ) -> free_names c
+        | (Some a, None      ) -> (free_names a) @ (free_names c)
+        | (None  , Some (_,b)) -> (free_names b) @ (free_names c)
+        | (Some a, Some (_,b)) ->
+            (free_names a) @ (free_names b) @ (free_names c)
+      end
+  | FixM(f)    -> free_names (subst f (Prod []))
+  | FixN(f)    -> free_names (subst f (Prod []))
   | TDef(d,a)  -> let l = Array.to_list (Array.map free_names a) in
                   d.tdef_name :: (List.flatten l)
   | UCst(_)    -> assert false (* TODO *)

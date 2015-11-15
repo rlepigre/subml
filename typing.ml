@@ -166,4 +166,3 @@ let type_infer : bool -> term -> kind option -> kind = fun verbose t ko ->
               type_check verbose t a;
               generalize (repr a)
   | Some k -> type_check verbose t k; k
-

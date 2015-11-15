@@ -443,7 +443,11 @@ let parser command =
       fun st ->
         let t = in_pos _loc (PLAbs(xs,t)) in
         let (t, unbs) = unsugar_term st [] t in
-        assert (unbs = []); (* FIXME add error message *)
+        if unbs <> [] then
+          begin
+            List.iter (fun (s,_) -> Printf.eprintf "Unbound: %s\n%!" s) unbs;
+            failwith "Unbound variable."
+          end;
         let t = unbox t in
         let ko = if ty then Some (type_infer st.verbose t None) else None in
         let t = eval st t in
@@ -457,7 +461,11 @@ let parser command =
   | ty:is_typed val_kw id:ident ko:{":" k:kind}? "=" t:term ->
       fun st ->
         let (t, unbs) = unsugar_term st [] t in
-        assert (unbs = []); (* FIXME add error message *)
+        if unbs <> [] then
+          begin
+            List.iter (fun (s,_) -> Printf.eprintf "Unbound: %s\n%!" s) unbs;
+            failwith "Unbound variable."
+          end;
         let t = unbox t in
         let ko = map_opt (unsugar_kind st []) ko in
         let ko = map_opt unbox ko in
