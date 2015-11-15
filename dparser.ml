@@ -109,6 +109,7 @@ let eval_kw    = new_keyword "eval"
 let typed_kw   = new_keyword "typed" 
 let untyped_kw = new_keyword "untyped" 
 let set_kw     = new_keyword "set" 
+let include_kw = new_keyword "include"
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -261,15 +262,15 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
     | PFAll(x,ko,bnd,k) ->
         let f xk =
           let env = (x,xk) :: env in
-          (unsugar_opt env ko, unsugar_bound env bnd, unsugar env k)
+          (unsugar_bound env bnd, unsugar env k)
         in
-        fall x f
+        fall x (unsugar_opt env ko) f
     | PExis(x,ko,bnd,k) ->
         let f xk =
           let env = (x,xk) :: env in
-          (unsugar_opt env ko, unsugar_bound env bnd, unsugar env k)
+          (unsugar_bound env bnd, unsugar env k)
         in
-        exis x f
+        exis x (unsugar_opt env ko) f
     | PMu(x,k) ->
         fixm x (fun xk -> unsugar ((x,xk) :: env) k)
     | PNu(x,k) ->
@@ -371,7 +372,27 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
 
 exception Finish
 
-let blank = blank_regexp ''[ \t\n\r]*''
+let top_level_blank = blank_regexp ''[ \t\n\r]*''
+
+let comment_char = black_box
+  (fun str pos ->
+    let (c, str', pos') = Input.read str pos in
+    match c with
+    | '\255' -> raise (Give_up "Unclosed comment.")
+    | '*'    ->
+        let (c', _, _) = Input.read str' pos' in
+        if c' = ')' then
+          raise (Give_up "Not the place to close a comment.")
+        else
+          ((), str', pos')
+    | _      -> ((), str', pos')
+  ) Charset.full_charset None "ANY"
+
+let comment = change_layout (parser "(*" _:comment_char** "*)") no_blank
+
+let parser blank_parser = _:comment**
+
+let file_blank = blank_grammar blank_parser top_level_blank
 
 let parser is_typed =
   | typed_kw   -> true
@@ -384,6 +405,8 @@ let parser enabled =
 
 let parser opt_flag =
   | "verbose" b:enabled -> fun st -> st.verbose <- b
+
+let read_file = ref (fun _ _ -> assert false)
 
 let parser command =
   (* Type definition command. *)
@@ -428,7 +451,7 @@ let parser command =
         let (t, unbs) = unsugar_term st [] t in
         assert (unbs = []); (* FIXME add error message *)
         let t = unbox t in
-        let ko = if ty then Some (type_infer st.verbose t) else None in
+        let ko = if ty then Some (type_infer st.verbose t None) else None in
         let t = eval st t in
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
         begin
@@ -437,6 +460,25 @@ let parser command =
           | Some k -> Printf.fprintf stdout "%s = %a : %a\n%!" id
                         print_term t (print_kind false) k
         end
+  | ty:is_typed val_kw id:ident ko:{":" k:kind}? "=" t:term ->
+      fun st ->
+        let (t, unbs) = unsugar_term st [] t in
+        assert (unbs = []); (* FIXME add error message *)
+        let t = unbox t in
+        let ko = map_opt (unsugar_kind st []) ko in
+        let ko = map_opt unbox ko in
+        let ko = if ty then Some (type_infer st.verbose t ko) else None in
+        let t = eval st t in
+        Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
+        begin
+          match ko with
+          | None   -> Printf.fprintf stdout "%s = %a\n%!" id print_term t;
+          | Some k -> Printf.fprintf stdout "%s = %a : %a\n%!" id
+                        print_term t (print_kind false) k
+        end
+  (* Include a file. *)
+  | _:include_kw fn:string_lit ->
+      !read_file fn
   (* Set a flag. *)
   | _:set_kw f:opt_flag
 
@@ -451,7 +493,7 @@ let parser toplevel =
       fun _ -> raise Finish
 
 let toplevel_of_string : state -> string -> unit = fun st s ->
-  let parse = parse_string toplevel blank in
+  let parse = parse_string toplevel top_level_blank in
   let action = Decap.handle_exception parse s in
   action st
 
@@ -459,6 +501,8 @@ let parser file_contents =
   | cs:command* -> fun st -> List.iter (fun c -> c st) cs
 
 let eval_file fn st =
-  let parse = parse_file file_contents blank in
+  let parse = parse_file file_contents file_blank in
   let action = Decap.handle_exception parse fn in
   action st
+
+let _ = read_file := eval_file

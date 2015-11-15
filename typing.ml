@@ -63,6 +63,42 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         in
         List.iter check_field fsb
 
+    (* Universal quantifier. *)
+    | (_          , FAll(bo,f) ) ->
+        let (bbndo, b) = subst f (UCst(t,f)) in
+        subtype t a b
+
+    | (FAll(ao,f) , _          ) ->
+        let v = match ao with None -> new_uvar () | Some k -> k in
+        let (bnd,a) = subst f v in
+        subtype t a b;
+        begin
+          match bnd with
+          | None         -> ()
+          | Some (LE, c) -> assert false (* TODO *)
+          | Some (GE, c) -> assert false (* TODO *)
+        end
+
+    | (UCst(ca)   , UCst(cb)   ) when ca == cb -> ()
+
+    (* Existantial quantifier. *)
+    | (Exis(ao,f) , _          ) ->
+        let (abndo, a) = subst f (ECst(t,f)) in
+        subtype t a b
+
+    | (_          , Exis(bo,f) ) ->
+        let v = match bo with None -> new_uvar () | Some k -> k in
+        let (bnd,b) = subst f v in
+        subtype t a b;
+        begin
+          match bnd with
+          | None         -> ()
+          | Some (LE, c) -> assert false (* TODO *)
+          | Some (GE, c) -> assert false (* TODO *)
+        end
+
+    | (ECst(ca)   , ECst(cb)   ) when ca == cb -> ()
+
     (* Type definition. *)
     | (TDef(d,a)  , _          ) ->
         subtype t (msubst d.tdef_value a) b
@@ -124,6 +160,10 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
   in
   type_check t c
 
-let type_infer : bool -> term -> kind = fun verbose t ->
-  let a = new_uvar () in
-  type_check verbose t a; generalize (repr a)
+let type_infer : bool -> term -> kind option -> kind = fun verbose t ko ->
+  match ko with
+  | None   -> let a = new_uvar () in
+              type_check verbose t a;
+              generalize (repr a)
+  | Some k -> type_check verbose t k; k
+
