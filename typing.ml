@@ -22,12 +22,12 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     if a == b then () else
     match (a,b) with
     (* Handling of unification variables (immitation). *)
-    | (UVar ua    , UVar ub    ) ->
+    | (UVar ua, UVar ub) ->
         if ua == ub then () else
         let c = new_uvar () in
         ua.uvar_val <- Some c;
         ub.uvar_val <- Some c
-    | (UVar ua    , _          ) ->
+    | (UVar ua, _      ) ->
         let k =
           match uvar_occur ua b with
           | Non -> b
@@ -35,7 +35,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
           | _   -> bot
         in
         ua.uvar_val <- Some k
-    | (_          , UVar ub    ) ->
+    | (_      , UVar ub) ->
         let k =
           match uvar_occur ub a with
           | Non -> a
@@ -52,7 +52,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         subtype wit a2 a1
 
     (* Product type. *)
-    | (Prod(fsa),   Prod(fsb)  ) ->
+    | (Prod(fsa), Prod(fsb)) ->
         let lseta = StrSet.of_list (List.map fst fsa) in
         let lsetb = StrSet.of_list (List.map fst fsb) in
         if not (StrSet.subset lsetb lseta) then
@@ -64,34 +64,34 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         List.iter check_field fsb
 
     (* Universal quantifier. *)
-    | (_          , FAll(bo,f) ) ->
-        let (bbndo, b) = subst f (UCst(t,f)) in
+    | (_                , FAll(bo,bbndo,f)) ->
+        let b = subst f (UCst(t,bbndo,f)) in
         subtype t a b
 
-    | (FAll(ao,f) , _          ) ->
+    | (FAll(ao,abndo,f) , _               ) ->
         let v = match ao with None -> new_uvar () | Some k -> k in
-        let (bnd,a) = subst f v in
+        let a = subst f v in
         subtype t a b;
         begin
-          match bnd with
+          match abndo with
           | None         -> ()
           | Some (LE, c) -> assert false (* TODO *)
           | Some (GE, c) -> assert false (* TODO *)
         end
 
-    | (UCst(ca)   , UCst(cb)   ) when ca == cb -> ()
+    | (UCst(ca)         , UCst(cb)        ) when ca == cb -> ()
 
     (* Existantial quantifier. *)
-    | (Exis(ao,f) , _          ) ->
-        let (abndo, a) = subst f (ECst(t,f)) in
+    | (Exis(ao,abndo,f) , _               ) ->
+        let a = subst f (ECst(t,abndo,f)) in
         subtype t a b
 
-    | (_          , Exis(bo,f) ) ->
+    | (_                , Exis(bo,bbndo,f)) ->
         let v = match bo with None -> new_uvar () | Some k -> k in
-        let (bnd,b) = subst f v in
+        let b = subst f v in
         subtype t a b;
         begin
-          match bnd with
+          match bbndo with
           | None         -> ()
           | Some (LE, c) -> assert false (* TODO *)
           | Some (GE, c) -> assert false (* TODO *)

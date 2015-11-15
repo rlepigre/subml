@@ -260,17 +260,11 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
             end
         end
     | PFAll(x,ko,bnd,k) ->
-        let f xk =
-          let env = (x,xk) :: env in
-          (unsugar_bound env bnd, unsugar env k)
-        in
-        fall x (unsugar_opt env ko) f
+        let f xk = unsugar ((x,xk) :: env) k in
+        fall x (unsugar_opt env ko) (unsugar_bound env bnd) f
     | PExis(x,ko,bnd,k) ->
-        let f xk =
-          let env = (x,xk) :: env in
-          (unsugar_bound env bnd, unsugar env k)
-        in
-        exis x (unsugar_opt env ko) f
+        let f xk = unsugar ((x,xk) :: env) k in
+        exis x (unsugar_opt env ko) (unsugar_bound env bnd) f
     | PMu(x,k) ->
         fixm x (fun xk -> unsugar ((x,xk) :: env) k)
     | PNu(x,k) ->

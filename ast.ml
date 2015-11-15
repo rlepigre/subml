@@ -18,8 +18,8 @@ type kind =
   (* Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
   | Prod of (string * kind) list
   (* Bounded quantifiers: ∀/∃X [= A] [</> B] C. *)
-  | FAll of kind option * (kind, (orient * kind) option * kind) binder
-  | Exis of kind option * (kind, (orient * kind) option * kind) binder
+  | FAll of kind option * (orient * kind) option * (kind, kind) binder
+  | Exis of kind option * (orient * kind) option * (kind, kind) binder
   (* Least and greatest fixpoint: μX A, νX A. *)
   | FixM of (kind, kind) binder
   | FixN of (kind, kind) binder
@@ -27,8 +27,8 @@ type kind =
   | TDef of type_def * kind array
   (**** Special constructors (not accessible to user) ****)
   (* Constants (a.k.a. epsilon) - used for subtyping. *)
-  | UCst of (term * (kind, (orient * kind) option * kind) binder)
-  | ECst of (term * (kind, (orient * kind) option * kind) binder)
+  | UCst of (term * (orient * kind) option * (kind, kind) binder)
+  | ECst of (term * (orient * kind) option * (kind, kind) binder)
   | MCst of (term * (kind, kind) binder)
   | NCst of (term * (kind, kind) binder)
   (* Unification variables - used for typechecking. *)
@@ -163,36 +163,25 @@ let prod : (string * kbox) list -> kbox =
     let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
     box_apply (fun fs -> Prod(fs)) (box_list fs)
 
-(* Auxiliary function for fall and exis. *)
-let blift : ((orient * kbox) option * kbox)
-  -> ((orient * kind) option * kind) bindbox =
-  fun (bnd,t) ->
-    let bnd =
-      match bnd with
-      | None       -> None
-      | Some (o,k) -> Some (box_apply (fun k -> (o,k)) k)
-    in
-    box_pair (box_opt bnd) t
-
-let fall : string -> kbox option
-  -> (kbox -> ((orient * kbox) option * kbox)) -> kbox =
-  fun x ko f ->
-    let b = bind mk_free_tvar x (fun k -> blift (f k)) in
-    box_apply2 (fun ko b -> FAll(ko,b)) (box_opt ko) b
+let fall : string -> kbox option -> (orient * kbox) option
+  -> (kbox -> kbox) -> kbox =
+  fun x ko bo f ->
+    let bo = map_opt (fun (o,k) -> box_apply (fun k -> (o,k)) k) bo in
+    let b = bind mk_free_tvar x f in
+    box_apply3 (fun ko bo b -> FAll(ko,bo,b)) (box_opt ko) (box_opt bo) b
 
 let fall' : string -> (kbox -> kbox) -> kbox =
-  fun x f ->
-    fall x None (fun x -> (None, f x))
+  fun x f -> fall x None None f
 
-let exis : string -> kbox option
-  -> (kbox -> ((orient * kbox) option * kbox)) -> kbox =
-  fun x ko f ->
-    let b = bind mk_free_tvar x (fun k -> blift (f k)) in
-    box_apply2 (fun ko b -> Exis(ko,b)) (box_opt ko) b
+let exis : string -> kbox option -> (orient * kbox) option
+  -> (kbox -> kbox) -> kbox =
+  fun x ko bo f ->
+    let bo = map_opt (fun (o,k) -> box_apply (fun k -> (o,k)) k) bo in
+    let b = bind mk_free_tvar x f in
+    box_apply3 (fun ko bo b -> Exis(ko,bo,b)) (box_opt ko) (box_opt bo) b
 
 let exis' : string -> (kbox -> kbox) -> kbox =
-  fun x f ->
-    exis x None (fun x -> (None, f x))
+  fun x f -> exis x None None f
 
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
@@ -325,50 +314,49 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
   in
   let dummy = Prod [] in
   let rec aux occ acc = function
-    | TVar(x)    -> acc
-    | Func(a,b)  -> aux (neg occ) (aux occ acc b) a
-    | Prod(fs)   -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc fs
-    | FAll(ko,b) -> let (bndo, k) = subst b dummy in
-                    aux occ acc k (* FIXME *)
-    | Exis(ao,b) -> assert false (* TODO *)
-    | FixM(b)    -> assert false (* TODO *)
-    | FixN(b)    -> assert false (* TODO *)
-    | TDef(d,a)  -> aux occ acc (msubst d.tdef_value a)
-    | UCst(c)    -> let (bnd, a) = subst (snd c) dummy in
-                    aux InEps acc a (* FIXME bnd ? *)
-    | ECst(c)    -> assert false (* TODO *)
-    | MCst(c)    -> assert false (* TODO *)
-    | NCst(c)    -> assert false (* TODO *)
-    | UVar(u)    -> if u.uvar_key = i then combine acc occ else acc
+    | TVar(x)   -> acc
+    | Func(a,b) -> aux (neg occ) (aux occ acc b) a
+    | Prod(fs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc fs
+    | FAll(ao,bo,f) -> aux occ acc (subst f dummy) (* FIXME *)
+    | Exis(ao,bo,f) -> assert false (* TODO *)
+    | FixM(f)   -> assert false (* TODO *)
+    | FixN(f)   -> assert false (* TODO *)
+    | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
+    | UCst(c)   -> let (t,bndo,b) = c in
+                   let a = subst b dummy in
+                   aux InEps acc a (* FIXME bnd ? *)
+    | ECst(c)   -> assert false (* TODO *)
+    | MCst(c)   -> assert false (* TODO *)
+    | NCst(c)   -> assert false (* TODO *)
+    | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
   in aux Pos Non k
 
 (****************************************************************************
  *                 Binding a unification variable in a type                 *
  ****************************************************************************)
 
-let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
-  match o with
-  | None   -> None
-  | Some e -> Some (f e)
-
 let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
   let rec subst k =
     match repr k with
-    | TVar(_)    -> k
-    | Func(a,b)  -> Func(subst a, subst b)
-    | Prod(fs)   -> Prod(List.map (fun (l,a) -> (l, subst a)) fs)
-    | FAll(ao,b) -> FAll(map_opt subst ao, binder_compose_right b bsubst)
-    | Exis(ao,b) -> Exis(map_opt subst ao, binder_compose_right b bsubst)
-    | FixM(b)    -> FixM(binder_compose_right b subst)
-    | FixN(b)    -> FixN(binder_compose_right b subst)
-    | TDef(d,a)  -> TDef(d, Array.map subst a)
-    | UCst(_)    -> assert false (* TODO *)
-    | ECst(_)    -> assert false (* TODO *)
-    | MCst(_)    -> assert false (* TODO *)
-    | NCst(_)    -> assert false (* TODO *)
-    | UVar(u)    -> if u.uvar_key = i then x else k
-  and bsubst (bndo,k) =
-    (map_opt (fun (o,k) -> (o,subst k)) bndo, subst k)
+    | TVar(_)   -> k
+    | Func(a,b) -> Func(subst a, subst b)
+    | Prod(fs)  -> Prod(List.map (fun (l,a) -> (l, subst a)) fs)
+    | FAll(ao,bo,f) ->
+        let ao = map_opt subst ao in
+        let bo = map_opt (fun (o,a) -> (o,subst a)) bo in
+        FAll(ao, bo, binder_compose_right f subst)
+    | Exis(ao,bo,f) ->
+        let ao = map_opt subst ao in
+        let bo = map_opt (fun (o,a) -> (o,subst a)) bo in
+        Exis(ao, bo, binder_compose_right f subst)
+    | FixM(f)   -> FixM(binder_compose_right f subst)
+    | FixN(f)   -> FixN(binder_compose_right f subst)
+    | TDef(d,a) -> TDef(d, Array.map subst a)
+    | UCst(_)   -> assert false (* TODO *)
+    | ECst(_)   -> assert false (* TODO *)
+    | MCst(_)   -> assert false (* TODO *)
+    | NCst(_)   -> assert false (* TODO *)
+    | UVar(u)   -> if u.uvar_key = i then x else k
   in
   subst k
 
@@ -388,29 +376,30 @@ let uvars : kind -> uvar list = fun k ->
   let dummy = Prod [] in
   let union = List.fold_left UVarSet.union UVarSet.empty in
   let rec uvars = function
-    | TVar(_)    -> UVarSet.empty
-    | Func(a,b)  -> UVarSet.union (uvars a) (uvars b)
-    | Prod(fs)   -> let f s (_,a) = UVarSet.union s (uvars a) in
-                    List.fold_left f UVarSet.empty fs
-    | FAll(ao,b) ->
-        let (bnd,b) = subst b dummy in
+    | TVar(_)   -> UVarSet.empty
+    | Func(a,b) -> UVarSet.union (uvars a) (uvars b)
+    | Prod(fs)  -> let f s (_,a) = UVarSet.union s (uvars a) in
+                   List.fold_left f UVarSet.empty fs
+    | FAll(ao,bo,f) ->
+        let c = subst f dummy in
         begin
-          match (ao, bnd) with
-          | (None  , None      ) -> uvars b
-          | (Some a, None      ) -> UVarSet.union (uvars a) (uvars b)
-          | (None  , Some (_,c)) -> UVarSet.union (uvars c) (uvars b)
-          | (Some a, Some (_,c)) -> union [ uvars a; uvars b; uvars c ]
+          match (ao, bo) with
+          | (None  , None      ) -> uvars c
+          | (Some a, None      ) -> union [ uvars a; uvars c ]
+          | (None  , Some (_,b)) -> union [ uvars b; uvars c ]
+          | (Some a, Some (_,b)) -> union [ uvars a; uvars b; uvars c ]
         end
-    | Exis(ao,b) -> assert false (* TODO *)
-    | FixM(b)    -> assert false (* TODO *)
-    | FixN(b)    -> assert false (* TODO *)
-    | TDef(d,a)  -> let f s a = UVarSet.union s (uvars a) in
+    | Exis(ao,bo,f) ->
+        assert false (* TODO *)
+    | FixM(f)   -> assert false (* TODO *)
+    | FixN(f)   -> assert false (* TODO *)
+    | TDef(d,a) -> let f s a = UVarSet.union s (uvars a) in
                    Array.fold_left f UVarSet.empty a
-    | UCst(_)    -> assert false (* TODO *)
-    | ECst(_)    -> assert false (* TODO *)
-    | MCst(_)    -> assert false (* TODO *)
-    | NCst(_)    -> assert false (* TODO *)
-    | UVar(u)    ->
+    | UCst(_)   -> assert false (* TODO *)
+    | ECst(_)   -> assert false (* TODO *)
+    | MCst(_)   -> assert false (* TODO *)
+    | NCst(_)   -> assert false (* TODO *)
+    | UVar(u)   ->
         begin
           match uvar_repr u with
           | UVar u -> UVarSet.singleton u
@@ -423,17 +412,18 @@ let rec free_names : kind -> string list = function
   | TVar(x)    -> [name_of x]
   | Func(a,b)  -> (free_names a) @ (free_names b)
   | Prod(fs)   -> List.flatten (List.map (fun (_,a) -> free_names a) fs)
-  | FAll(ao,b) ->
+  | FAll(ao,bo,f) ->
       begin
-        let (bnd,b) = subst b (Prod []) in
-        match (ao, bnd) with
-        | (None  , None      ) -> free_names b
-        | (Some a, None      ) -> (free_names a) @ (free_names b)
-        | (None  , Some (_,c)) -> (free_names c) @ (free_names b)
-        | (Some a, Some (_,c)) ->
-            (free_names c) @ (free_names b) @ (free_names a)
+        let c = subst f (Prod []) in
+        match (ao, bo) with
+        | (None  , None      ) -> free_names c
+        | (Some a, None      ) -> (free_names a) @ (free_names c)
+        | (None  , Some (_,b)) -> (free_names b) @ (free_names c)
+        | (Some a, Some (_,b)) ->
+            (free_names a) @ (free_names b) @ (free_names c)
       end
-  | Exis(ao,b) -> assert false (* TODO *)
+  | Exis(ao,bo,f) ->
+      assert false (* TODO *)
   | FixM(b)    -> assert false (* TODO *)
   | FixN(b)    -> assert false (* TODO *)
   | TDef(d,a)  -> let l = Array.to_list (Array.map free_names a) in
@@ -459,7 +449,7 @@ let generalize : kind -> kind = fun k ->
   let f u (k, used) =
     let (x, used) = fresh_name "X" used in
     let k =
-      FAll(None, binder_from_fun x (fun x -> (None, bind_uvar u k x)))
+      FAll(None, None, binder_from_fun x (fun x -> bind_uvar u k x))
     in (k, used)
   in
   fst (List.fold_right f us (k, free_names k))

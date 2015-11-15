@@ -28,10 +28,10 @@ let rec print_kind unfold wrap ff t =
   | Prod(fs) ->
       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
       fprintf ff "{%a}" (print_list pfield "; ") fs
-  | FAll(ao,b) ->
-      fprintf ff "∀%a" (pquant unfold ao) b
-  | Exis(ao,b) ->
-      fprintf ff "∃%a" (pquant unfold ao) b
+  | FAll(ao,bo,f) ->
+      fprintf ff "∀%a" (pquant unfold ao bo) f
+  | Exis(ao,bo,f) ->
+      fprintf ff "∃%a" (pquant unfold ao bo) f
   | FixM(b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
@@ -59,12 +59,12 @@ let rec print_kind unfold wrap ff t =
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
 
-and pquant unfold ao ff b =
+and pquant unfold ao bo ff b =
   let x = new_tvar (binder_name b) in
-  let (bnd, c) = subst b (free_of x) in
+  let c = subst b (free_of x) in
   pp_print_string ff (name_of x);
   let pkind = print_kind unfold true in
-  match (ao, bnd) with
+  match (ao, bo) with
   | (None  , None      ) -> fprintf ff " %a" pkind c
   | (Some a, None      ) -> fprintf ff " = %a %a" pkind a pkind c
   | (None  , Some (o,b)) ->
