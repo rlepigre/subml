@@ -96,7 +96,6 @@ let let_kw  = new_keyword "let"
 let val_kw  = new_keyword "val"
 let of_kw   = new_keyword "of"
 let in_kw   = new_keyword "in"
-let y_kw    = new_keyword "Y"
 let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
 
@@ -197,7 +196,7 @@ let parser term p =
       in_pos _loc (PCase(t,ps))
   | "{" fs:field* "}" when p = TAtom ->
       in_pos _loc (PReco(fs))
-  | {fix_kw | y_kw} when p = TAtom ->
+  | fix_kw when p = TAtom ->
       in_pos _loc PFixY
 
   | "(" t:(term TFunc) ")"
@@ -454,9 +453,10 @@ let parser command =
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
         begin
           match ko with
-          | None   -> Printf.fprintf stdout "%s = %a\n%!" id print_term t;
-          | Some k -> Printf.fprintf stdout "%s = %a : %a\n%!" id
-                        print_term t (print_kind false) k
+          | None   ->
+              Printf.fprintf stdout "%s : untyped\n%!" id
+          | Some k ->
+              Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
         end
   | ty:is_typed val_kw id:ident ko:{":" k:kind}? "=" t:term ->
       fun st ->
@@ -474,9 +474,10 @@ let parser command =
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
         begin
           match ko with
-          | None   -> Printf.fprintf stdout "%s = %a\n%!" id print_term t;
-          | Some k -> Printf.fprintf stdout "%s = %a : %a\n%!" id
-                        print_term t (print_kind false) k
+          | None   ->
+              Printf.fprintf stdout "%s : untyped\n%!" id
+          | Some k ->
+              Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
         end
   (* Include a file. *)
   | _:include_kw fn:string_lit ->

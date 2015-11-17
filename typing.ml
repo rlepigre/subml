@@ -17,7 +17,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     let a = repr a in
     let b = repr b in
     if verbose then
-      Printf.eprintf "Subtyping: %a ∈ %a ⊆ %a\n%!"
+      Printf.eprintf "Sub: %a ∈ %a ⊆ %a\n%!"
         print_term t (print_kind false) a (print_kind false) b;
     if a == b then () else
     match (a,b) with
@@ -133,7 +133,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
   let c = repr c in
   let rec type_check t c =
     if verbose then
-      Printf.fprintf stderr "Typing:    %a : %a\n%!"
+      Printf.fprintf stderr "Typ: %a : %a\n%!"
         print_term t (print_kind false) c;
     match t.elt with
     | Coer(t,a) ->

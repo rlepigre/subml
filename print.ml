@@ -49,13 +49,13 @@ let rec print_kind unfold wrap ff t =
         else
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
   | UCst(_) ->
-      pp_print_string ff "ε∀(...)"
+      pp_print_string ff "ε∀"
   | ECst(_) ->
-      pp_print_string ff "ε∃(...)"
+      pp_print_string ff "ε∃"
   | MCst(_) ->
-      pp_print_string ff "εμ(...)"
+      pp_print_string ff "εμ"
   | NCst(_) ->
-      pp_print_string ff "εν(...)"
+      pp_print_string ff "εν"
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(_) -> assert false
@@ -118,7 +118,7 @@ let rec print_term ff t =
   | FixY ->
       pp_print_string ff "fix"
   | Cnst(_) ->
-      pp_print_string ff "ε(...)"
+      pp_print_string ff "ε"
 
 (****************************************************************************
  *                          Interface functions                             *
