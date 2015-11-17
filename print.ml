@@ -58,6 +58,7 @@ let rec print_kind unfold wrap ff t =
       pp_print_string ff "εν(...)"
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
+  | TInt(_) -> assert false
 
 and pquant unfold ao bo ff b =
   let x = new_tvar (binder_name b) in

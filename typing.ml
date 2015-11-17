@@ -65,7 +65,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     (* Universal quantifier. *)
     | (_                , FAll(bo,bbndo,f)) ->
-        let b = subst f (UCst(t,bbndo,f)) in
+        let b = subst f (new_ucst t bbndo f) in
         subtype t a b
 
     | (FAll(ao,abndo,f) , _               ) ->
@@ -83,7 +83,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     (* Existantial quantifier. *)
     | (Exis(ao,abndo,f) , _               ) ->
-        let a = subst f (ECst(t,abndo,f)) in
+        let a = subst f (new_ecst t abndo f) in
         subtype t a b
 
     | (_                , Exis(bo,bbndo,f)) ->
@@ -98,6 +98,23 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         end
 
     | (ECst(ca)   , ECst(cb)   ) when ca == cb -> ()
+
+    (* μ - Least fixpoint *)
+    | (FixM(f)    , _          ) -> subtype t (subst f (new_mcst f)) b
+    (* TODO comp. of μs. *)
+
+    | (_          , FixM(f)    ) -> subtype t a (subst f (new_mcst f))
+
+    | (MCst(_)    , MCst(_)) when lower_kind a b -> () 
+
+    | (MCst(ca)   , _          ) when lower_kind a b -> ()
+    | (MCst(ca)   , _          ) ->
+        let c = MCst({ca with fcst_level = new_level ca.fcst_level}) in
+        subtype t (subst ca.fcst_wit_kind c) b
+
+    | (_          , MCst(cb)   ) ->
+        (* FIXME check lowerkind? *)
+        subtype t a (subst cb.fcst_wit_kind b)
 
     (* Type definition. *)
     | (TDef(d,a)  , _          ) ->
