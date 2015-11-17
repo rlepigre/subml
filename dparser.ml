@@ -78,14 +78,14 @@ and pkind' =
 
 type pterm = pterm' position
 and pterm' =
-  | PLAbs of (string position * pkind option) list * pterm
+  | PLAbs of (strpos * pkind option) list * pterm
   | PCoer of pterm * pkind
   | PAppl of pterm * pterm
   | PLVar of string
   | PPrnt of string * pterm
   | PCstr of string * pterm option
   | PProj of pterm * string
-  | PCase of pterm * (string * string * pterm) list
+  | PCase of pterm * (string * strpos * pterm) list
   | PReco of (string * pterm) list
   | PFixY
 
@@ -204,7 +204,8 @@ let parser term p =
   | t:(term TColo) when p = TAppl
   | t:(term TAppl) when p = TFunc
 
-and pattern  = "|" c:ident "[" x:ident "]" _:arrow t:(term TFunc)
+and pattern  = "|" c:ident "[" x:ident "]" _:arrow t:(term TFunc) ->
+  let x = in_pos _loc_x x in (c, x, t)
 and wildcard = "|" "_" _:arrow t:(term TFunc)
 and field    = l:ident "=" t:(term TFunc) ";"
 
@@ -271,9 +272,7 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
     | PProd(fs)  ->
         prod (List.map (fun (l,k) -> (l, unsugar env k)) fs)
     | PSum(cs)   ->
-        let cs = List.map (fun (c,ko) -> (c, unsugar_top env ko)) cs in
-        let f x = func (prod (List.map (fun (c,k) -> (c,func k x)) cs)) x in
-        fall' "XS" f
+        dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
     | PHole      -> box (new_uvar ())
   and unsugar_opt env ko =
     match ko with
@@ -336,21 +335,19 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
     | PPrnt(s,t) ->
         prnt pt.pos s (unsugar env t)
     | PCstr(c,uo) ->
-        let p = dummy_position in
         let u =
           match uo with
-          | None   -> reco p []
+          | None   -> reco dummy_position []
           | Some u -> unsugar env u
         in
-        labs p None (dummy_pos "r") (fun r -> appl p (proj p r c) u)
+        cons pt.pos c u
     | PProj(t,l) ->
         proj pt.pos (unsugar env t) l
     | PCase(t,cs) ->
-        let p = dummy_position in
         let f (c,x,t) =
-          (c, labs p None (dummy_pos x) (fun v -> unsugar ((x,v)::env) t))
+          (c, x, (fun v -> unsugar ((x.elt,v)::env) t))
         in
-        appl p (unsugar env t) (reco p (List.map f cs))
+        case pt.pos (unsugar env t) (List.map f cs)
     | PReco(fs) ->
         reco pt.pos (List.map (fun (l,t) -> (l, unsugar env t)) fs)
     | PFixY ->

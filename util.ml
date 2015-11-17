@@ -29,6 +29,8 @@ let dummy_position : pos = Location.none
 
 let dummy_pos : 'a -> 'a position = fun e -> in_pos dummy_position e
 
+type strpos = string position
+
 (* Split an indentifier into a name and an integer. *)
 let split s =
   let l = String.length s in

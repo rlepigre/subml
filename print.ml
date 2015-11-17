@@ -28,6 +28,9 @@ let rec print_kind unfold wrap ff t =
   | Prod(fs) ->
       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
       fprintf ff "{%a}" (print_list pfield "; ") fs
+  | DSum(cs) ->
+      let pvariant ff (c,a) = fprintf ff "%s of %a" c pkind a in
+      fprintf ff "[%a]" (print_list pvariant " | ") cs
   | FAll(ao,bo,f) ->
       fprintf ff "∀%a" (pquant unfold ao bo) f
   | Exis(ao,bo,f) ->
@@ -111,6 +114,15 @@ let rec print_term ff t =
       fprintf ff "{%a}" (print_list pfield "; ") fs
   | Proj(t,l) ->
       fprintf ff "%a.%s" print_term t l
+  | Cons(c,t) ->
+      fprintf ff "%s[%a]" c print_term t
+  | Case(t,l) ->
+      let pvariant ff (c,b) =
+        let x = binder_name b in
+        let t = subst b (free_of (new_lvar' x)) in
+        fprintf ff "| %s[%s] → %a" c x print_term t
+      in
+      fprintf ff "case %a of %a" print_term t (print_list pvariant "; ") l
   | VDef(v) ->
       pp_print_string ff v.name
   | Prnt(s,t) ->

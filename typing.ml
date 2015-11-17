@@ -63,6 +63,19 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         in
         List.iter check_field fsb
 
+    (* Sum type. *)
+    | (DSum(csa), DSum(csb)) ->
+        let cseta = StrSet.of_list (List.map fst csa) in
+        let csetb = StrSet.of_list (List.map fst csb) in
+        if not (StrSet.subset cseta csetb) then
+          subtype_error "Sum type constructor clash.";
+        let check_variant (c,a) =
+          let b = List.assoc c csb in
+          let t = dummy_pos (Reco([])) in (* FIXME FIXME FIXME *)
+          subtype t a b
+        in
+        List.iter check_variant csa
+
     (* Universal quantifier. *)
     | (_                , FAll(bo,bbndo,f)) ->
         let b = subst f (new_ucst t bbndo f) in
@@ -151,7 +164,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
         type_check t (Func(a,c));
         type_check u a
     | Reco(fs) ->
-        let ts = List.map (fun (x,_) -> (x, new_uvar ())) fs in
+        let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
         subtype t (Prod(ts)) c;
         let check (l,t) =
           let cl = List.assoc l ts in
@@ -161,6 +174,19 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
     | Proj(t,l) ->
         let c' = Prod([(l,c)]) in
         type_check t c'
+    | Cons(d,v) ->
+        let a = new_uvar () in
+        let c' = DSum([(d,a)]) in
+        type_check v a;
+        subtype t c' c
+    | Case(t,l) ->
+        let ts = List.map (fun (c,_) -> (c, new_uvar ())) l in
+        type_check t (DSum(ts));
+        let check (d,f) =
+          let cc = List.assoc d ts in
+          type_check (subst f (cnst f cc c)) c
+        in
+        List.iter check l
     | VDef(v) ->
         begin
           match v.ttype with

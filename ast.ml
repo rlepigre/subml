@@ -17,6 +17,8 @@ type kind =
   | Func of kind * kind
   (* Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
   | Prod of (string * kind) list
+  (* Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
+  | DSum of (string * kind) list
   (* Bounded quantifiers: ∀/∃X [= A] [</> B] C. *)
   | FAll of kind option * (orient * kind) option * (kind, kind) binder
   | Exis of kind option * (orient * kind) option * (kind, kind) binder
@@ -93,6 +95,10 @@ and term' =
   | Reco of (string * term) list
   (* Projection. *)
   | Proj of term * string
+  (* Variant. *)
+  | Cons of string * term
+  (* Case analysis. *)
+  | Case of term * (string * (term, term) binder) list
   (* User-defined term. *)
   | VDef of value_def
   (* Print a string (side effect) and behave like the term. *)
@@ -177,6 +183,11 @@ let prod : (string * kbox) list -> kbox =
   fun fs ->
     let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
     box_apply (fun fs -> Prod(fs)) (box_list fs)
+
+let dsum : (string * kbox) list -> kbox =
+  fun cs ->
+    let cs = List.map (fun (c,t) -> box_pair (box c) t) cs in
+    box_apply (fun cs -> DSum(cs)) (box_list cs)
 
 let fall : string -> kbox option -> (orient * kbox) option
   -> (kbox -> kbox) -> kbox =
@@ -308,6 +319,12 @@ let reco_p : pos -> (string * term) list -> term =
 let proj_p : pos -> term -> string -> term =
   fun p t l -> in_pos p (Proj(t,l))
 
+let cons_p : pos -> string -> term -> term =
+  fun p c t -> in_pos p (Cons(c,t))
+
+let case_p : pos -> term -> (string * (term, term) binder) list -> term =
+  fun p t cs -> in_pos p (Case(t,cs))
+
 let vdef_p : pos -> value_def -> term =
   fun p v -> in_pos p (VDef(v))
 
@@ -330,8 +347,7 @@ let coer : pos -> tbox -> kbox -> tbox =
 let lvar : pos -> term variable -> tbox =
   fun p x -> box_of_var x
 
-let labs : pos -> kbox option -> string position ->
-           (tbox -> tbox) -> tbox =
+let labs : pos -> kbox option -> strpos -> (tbox -> tbox) -> tbox =
   fun p ko x f ->
     box_apply2 (labs_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
 
@@ -345,6 +361,17 @@ let reco : pos -> (string * tbox) list -> tbox =
 
 let proj : pos -> tbox -> string -> tbox =
   fun p t l -> box_apply (fun t -> proj_p p t l) t
+
+let case : pos -> tbox -> (string * strpos * (tbox -> tbox)) list -> tbox =
+  fun p t cs ->
+    let aux (c,x,f) =
+      let b = bind (lvar_p x.pos) x.elt f in
+      box_pair (box c) b
+    in
+    box_apply2 (case_p p) t (box_list (List.map aux cs))
+
+let cons : pos -> string -> tbox -> tbox =
+  fun p c t -> box_apply (fun t -> cons_p p c t) t
 
 let vdef : pos -> value_def -> tbox =
   fun p vd -> box (vdef_p p vd)
@@ -387,6 +414,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | TVar(x)   -> acc
     | Func(a,b) -> aux (neg occ) (aux occ acc b) a
     | Prod(fs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc fs
+    | DSum(cs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc cs
     | FAll(ao,bo,f) -> aux occ acc (subst f dummy) (* FIXME bound *)
     | Exis(ao,bo,f) -> aux occ acc (subst f dummy) (* FIXME bound *)
     | FixM(f)   -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
@@ -414,6 +442,7 @@ let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
     | TVar(_)   -> k
     | Func(a,b) -> Func(subst a, subst b)
     | Prod(fs)  -> Prod(List.map (fun (l,a) -> (l, subst a)) fs)
+    | DSum(cs)  -> DSum(List.map (fun (c,a) -> (c, subst a)) cs)
     | FAll(ao,bo,f) ->
         let ao = map_opt subst ao in
         let bo = map_opt (fun (o,a) -> (o,subst a)) bo in
@@ -454,6 +483,8 @@ let uvars : kind -> uvar list = fun k ->
     | Func(a,b) -> UVarSet.union (uvars a) (uvars b)
     | Prod(fs)  -> let f s (_,a) = UVarSet.union s (uvars a) in
                    List.fold_left f UVarSet.empty fs
+    | DSum(cs)  -> let f s (_,a) = UVarSet.union s (uvars a) in
+                   List.fold_left f UVarSet.empty cs
     | FAll(ao,bo,f) ->
         let c = subst f dummy in
         begin
@@ -494,6 +525,7 @@ let rec free_names : kind -> string list = function
   | TVar(x)    -> [name_of x]
   | Func(a,b)  -> (free_names a) @ (free_names b)
   | Prod(fs)   -> List.flatten (List.map (fun (_,a) -> free_names a) fs)
+  | DSum(cs)   -> List.flatten (List.map (fun (_,a) -> free_names a) cs)
   | FAll(ao,bo,f) ->
       begin
         let c = subst f (Prod []) in
