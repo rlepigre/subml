@@ -112,22 +112,63 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     | (ECst(ca)   , ECst(cb)   ) when ca == cb -> ()
 
-    (* μ - Least fixpoint *)
-    | (FixM(f)    , _          ) -> subtype t (subst f (new_mcst f)) b
-    (* TODO comp. of μs. *)
+    (* μ - least fixpoint. *)
+    | (FixM(f)    , _          ) ->
+        begin
+          (* Compression of consecutive μs. *)
+          match subst f (Prod []) with
+          | FixM(_) ->
+              let aux x =
+                match subst f x with
+                | FixM(g) -> subst g x
+                | _       -> assert false (* Unreachable. *)
+              in
+              let a = FixM (binder_from_fun (binder_name f) aux) in
+              subtype t a b
+          (* Only on consecutive μ. *)
+          | _       -> subtype t (subst f (new_mcst f)) b
+        end
 
     | (_          , FixM(f)    ) -> subtype t a (subst f (new_mcst f))
 
-    | (MCst(_)    , MCst(_)) when lower_kind a b -> () 
+    | (MCst(_)    , MCst(_)    ) when lower_kind a b -> () 
 
-    | (MCst(ca)   , _          ) when lower_kind a b -> ()
+    | (MCst(_)    , _          ) when lower_kind a b -> ()
     | (MCst(ca)   , _          ) ->
         let c = MCst({ca with fcst_level = new_level ca.fcst_level}) in
         subtype t (subst ca.fcst_wit_kind c) b
 
-    | (_          , MCst(cb)   ) ->
-        (* FIXME check lowerkind? *)
-        subtype t a (subst cb.fcst_wit_kind b)
+    | (_          , MCst(cb)   ) when lower_kind a b -> ()
+    | (_          , MCst(cb)   ) -> subtype t a (subst cb.fcst_wit_kind b)
+
+    (* ν - greatest fixpoint. *)
+    | (FixN(f)    , _          ) -> subtype t (subst f (new_ncst f)) b
+
+    | (_          , FixN(f)    ) ->
+        begin
+          (* Compression of consecutive νs. *)
+          match subst f (Prod []) with
+          | FixN(_) ->
+              let aux x =
+                match subst f x with
+                | FixN(g) -> subst g x
+                | _       -> assert false (* Unreachable. *)
+              in
+              let b = FixN (binder_from_fun (binder_name f) aux) in
+              subtype t a b
+          (* Only on consecutive μ. *)
+          | _       -> subtype t a (subst f (new_ncst f))
+        end
+
+    | (NCst(_)    , NCst(_)    ) when lower_kind a b -> ()
+
+    | (NCst(_)    , _          ) when lower_kind a b -> ()
+    | (NCst(ca)   , _          ) -> subtype t (subst ca.fcst_wit_kind a) b
+
+    | (_          , NCst(_)    ) when lower_kind a b -> ()
+    | (_          , NCst(cb)   ) ->
+        let c = NCst({cb with fcst_level = new_level cb.fcst_level}) in
+        subtype t a (subst cb.fcst_wit_kind c)
 
     (* Type definition. *)
     | (TDef(d,a)  , _          ) ->

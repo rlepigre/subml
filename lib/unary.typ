@@ -1,4 +1,4 @@
-set verbose off
+set verbose on
 
 type UNat = μX [Z of {} | S of X]
 

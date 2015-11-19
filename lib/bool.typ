@@ -15,3 +15,7 @@ val or  (a : Bool) (b : Bool) = a tru b
 val and (a : Bool) (b : Bool) = a b fls
 val xor (a : Bool) (b : Bool) = a (b fls tru) a
 val not (a : Bool) = a fls tru
+
+(* Printing_function. *)
+val print_bool (a : Bool) =
+  (a (fun x -> print("tru\n"); {}) (fun x -> print("fls\n"); {})) {}
