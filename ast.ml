@@ -204,8 +204,6 @@ let eq_term : term -> term -> bool = fun t1 t2 ->
   let c = ref 0 in
   eq_term c t1 t2
 
-
-
 (****************************************************************************
  *                   Frequently used types and functions                    *
  ****************************************************************************)
@@ -335,23 +333,23 @@ let (new_ecst, reset_ecst) =
 
 (* Fixpoint constant management. *)
 let (new_mcst, reset_mcst) = (* TODO implement lookup in table. *)
-  let c = ref 0 in
+  let k = ref 0 in
   let new_mcst f = MCst
-    { fcst_key      = (incr c; !c)
+    { fcst_key      = (incr k; !k)
     ; fcst_level    = []
     ; fcst_wit_kind = f }
   in
-  let reset_mcst () = c := 0 in
+  let reset_mcst () = k := 0 in
   (new_mcst, reset_mcst)
 
 let (new_ncst, reset_ncst) = (* TODO implement lookup in table. *)
-  let c = ref 0 in
+  let k = ref 0 in
   let new_ncst f = NCst
-    { fcst_key      = (incr c; !c)
+    { fcst_key      = (incr k; !k)
     ; fcst_level    = []
     ; fcst_wit_kind = f }
   in
-  let reset_ncst () = c := 0 in
+  let reset_ncst () = k := 0 in
   (new_ncst, reset_ncst)
 
 let (new_level, reset_level) =

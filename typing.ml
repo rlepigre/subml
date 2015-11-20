@@ -242,7 +242,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
         let (_,a,_) = cst in
         subtype t a c
     | TagI(_) ->
-        assert false (* TODO error message. *)
+        assert false (* Cannot happen. *)
   in
   type_check t c
 

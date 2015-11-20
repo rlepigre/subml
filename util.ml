@@ -63,3 +63,10 @@ let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list ->
   List.for_all (fun (k,_) -> List.mem_assoc k l2) l1 &&
   List.for_all (fun (k,_) -> List.mem_assoc k l1) l2 &&
   List.for_all (fun (k,e1) -> eq e1 (List.assoc k l2)) l1
+
+(* List.assoc with given equality on keys. *)
+let assoc_eq : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b = fun eq k ->
+  let rec search = function
+    | []           -> raise Not_found
+    | (k',e) :: xs -> if eq k k' then e else search xs
+  in search
