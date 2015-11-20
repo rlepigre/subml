@@ -332,65 +332,61 @@ let (new_ecst, reset_ecst) =
   (new_ecst, reset_ecst)
 
 (* Fixpoint constant management. *)
-let (new_mcst, new_imcst, reset_mcst) =
+let (new_mcst, new_imcst, new_mcst_level, reset_mcst) =
   let k = ref 0 in
   let e = ref 0 in
   let tbl = ref [] in
   let new_mcst f =
-    let a = subst f (TInt(-1)) in
     let kf =
-      try assoc_eq eq_kind a !tbl
-      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
-    in NCst
+      try assoc_eq eq_kind (FixM(f)) !tbl
+      with Not_found -> incr k; tbl := (FixM(f),!k) :: !tbl; !k
+    in MCst
     { fcst_key      = kf
     ; fcst_level    = []
     ; fcst_wit_kind = f }
   in
   let new_imcst f =
-    let a = subst f (TInt(-1)) in
     let kf =
-      try assoc_eq eq_kind a !tbl
-      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
-    in NCst
+      try assoc_eq eq_kind (FixM(f)) !tbl
+      with Not_found -> incr k; tbl := (FixM(f),!k) :: !tbl; !k
+    in MCst
     { fcst_key      = kf
     ; fcst_level    = [(incr e; !e)]
     ; fcst_wit_kind = f }
   in
+  let new_mcst_level c =
+    { c with fcst_level = c.fcst_level @ [(incr e; !e)] }
+  in
   let reset_mcst () = k := 0; e := 0; tbl := [] in
-  (new_mcst, new_imcst, reset_mcst)
+  (new_mcst, new_imcst, new_mcst_level, reset_mcst)
 
-let (new_ncst, new_incst, reset_ncst) =
+let (new_ncst, new_incst, new_ncst_level, reset_ncst) =
   let k = ref 0 in
   let e = ref 0 in
   let tbl = ref [] in
   let new_ncst f =
-    let a = subst f (TInt(-1)) in
     let kf =
-      try assoc_eq eq_kind a !tbl
-      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
+      try assoc_eq eq_kind (FixN(f)) !tbl
+      with Not_found -> incr k; tbl := (FixN(f),!k) :: !tbl; !k
     in NCst
     { fcst_key      = kf
     ; fcst_level    = []
     ; fcst_wit_kind = f }
   in
   let new_incst f =
-    let a = subst f (TInt(-1)) in
     let kf =
-      try assoc_eq eq_kind a !tbl
-      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
+      try assoc_eq eq_kind (FixN(f)) !tbl
+      with Not_found -> incr k; tbl := (FixN(f),!k) :: !tbl; !k
     in NCst
     { fcst_key      = kf
     ; fcst_level    = [(incr e; !e)]
     ; fcst_wit_kind = f }
   in
+  let new_ncst_level c =
+    { c with fcst_level = c.fcst_level @ [(incr e; !e)] }
+  in
   let reset_ncst () = k := 0; e := 0; tbl := [] in
-  (new_ncst, new_incst, reset_ncst)
-
-let (new_level, reset_level) =
-  let e = ref 0 in
-  let new_level l = l @ [(incr e; !e)] in
-  let reset_level = e := 0 in
-  (new_level, reset_level)
+  (new_ncst, new_incst, new_ncst_level, reset_ncst)
 
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =

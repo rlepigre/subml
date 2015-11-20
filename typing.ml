@@ -135,8 +135,8 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     | (MCst(_)    , _          ) when lower_kind a b -> ()
     | (MCst(ca)   , _          ) ->
-        let c = MCst({ca with fcst_level = new_level ca.fcst_level}) in
-        subtype t (subst ca.fcst_wit_kind c) b
+        let ca = new_mcst_level ca in
+        subtype t (subst ca.fcst_wit_kind (MCst(ca))) b
 
     | (_          , MCst(cb)   ) when lower_kind a b -> ()
     | (_          , MCst(cb)   ) -> subtype t a (subst cb.fcst_wit_kind b)
@@ -167,8 +167,8 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     | (_          , NCst(_)    ) when lower_kind a b -> ()
     | (_          , NCst(cb)   ) ->
-        let c = NCst({cb with fcst_level = new_level cb.fcst_level}) in
-        subtype t a (subst cb.fcst_wit_kind c)
+        let cb = new_ncst_level cb in
+        subtype t a (subst cb.fcst_wit_kind (NCst(cb)))
 
     (* Type definition. *)
     | (TDef(d,a)  , _          ) ->
