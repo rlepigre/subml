@@ -126,7 +126,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
               let a = FixM (binder_from_fun (binder_name f) aux) in
               subtype t a b
           (* Only on consecutive μ. *)
-          | _       -> subtype t (subst f (new_mcst f)) b
+          | _       -> subtype t (subst f (new_imcst f)) b
         end
 
     | (_          , FixM(f)    ) -> subtype t a (subst f (new_mcst f))
@@ -157,7 +157,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
               let b = FixN (binder_from_fun (binder_name f) aux) in
               subtype t a b
           (* Only on consecutive μ. *)
-          | _       -> subtype t a (subst f (new_ncst f))
+          | _       -> subtype t a (subst f (new_incst f))
         end
 
     | (NCst(_)    , NCst(_)    ) when lower_kind a b -> ()

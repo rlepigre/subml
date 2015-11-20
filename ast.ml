@@ -332,25 +332,59 @@ let (new_ecst, reset_ecst) =
   (new_ecst, reset_ecst)
 
 (* Fixpoint constant management. *)
-let (new_mcst, reset_mcst) = (* TODO implement lookup in table. *)
+let (new_mcst, new_imcst, reset_mcst) =
   let k = ref 0 in
-  let new_mcst f = MCst
-    { fcst_key      = (incr k; !k)
+  let e = ref 0 in
+  let tbl = ref [] in
+  let new_mcst f =
+    let a = subst f (TInt(-1)) in
+    let kf =
+      try assoc_eq eq_kind a !tbl
+      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
+    in NCst
+    { fcst_key      = kf
     ; fcst_level    = []
     ; fcst_wit_kind = f }
   in
-  let reset_mcst () = k := 0 in
-  (new_mcst, reset_mcst)
+  let new_imcst f =
+    let a = subst f (TInt(-1)) in
+    let kf =
+      try assoc_eq eq_kind a !tbl
+      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
+    in NCst
+    { fcst_key      = kf
+    ; fcst_level    = [(incr e; !e)]
+    ; fcst_wit_kind = f }
+  in
+  let reset_mcst () = k := 0; e := 0; tbl := [] in
+  (new_mcst, new_imcst, reset_mcst)
 
-let (new_ncst, reset_ncst) = (* TODO implement lookup in table. *)
+let (new_ncst, new_incst, reset_ncst) =
   let k = ref 0 in
-  let new_ncst f = NCst
-    { fcst_key      = (incr k; !k)
+  let e = ref 0 in
+  let tbl = ref [] in
+  let new_ncst f =
+    let a = subst f (TInt(-1)) in
+    let kf =
+      try assoc_eq eq_kind a !tbl
+      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
+    in NCst
+    { fcst_key      = kf
     ; fcst_level    = []
     ; fcst_wit_kind = f }
   in
-  let reset_ncst () = k := 0 in
-  (new_ncst, reset_ncst)
+  let new_incst f =
+    let a = subst f (TInt(-1)) in
+    let kf =
+      try assoc_eq eq_kind a !tbl
+      with Not_found -> incr k; tbl := (a,!k) :: !tbl; !k
+    in NCst
+    { fcst_key      = kf
+    ; fcst_level    = [(incr e; !e)]
+    ; fcst_wit_kind = f }
+  in
+  let reset_ncst () = k := 0; e := 0; tbl := [] in
+  (new_ncst, new_incst, reset_ncst)
 
 let (new_level, reset_level) =
   let e = ref 0 in
