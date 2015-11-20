@@ -109,6 +109,8 @@ and term' =
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
   | Cnst of ((term, term) binder * kind * kind)
+  (* Integer tag. *)
+  | TagI of int
   
 and value_def =
   (* Name of the value. *)
@@ -117,6 +119,92 @@ and value_def =
   ; value : term
   (* Raw version of the term (i.e. no anotations). *)
   ; ttype : kind option }
+
+(****************************************************************************
+ *                        Equality of types and terms                       *
+ ****************************************************************************)
+
+let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
+  let rec eq_kind k1 k2 = k1 == k2 ||
+    match (k1,k2) with
+    | (TVar(x1)   , TVar(x2)   ) -> eq_variables x1 x2
+    | (Func(a1,b1), Func(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
+    | (Prod(fs1)  , Prod(fs2)  ) -> eq_assoc eq_kind fs1 fs2
+    | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
+    | (FAll(ko1,bo1,k1), FAll(ko2,bo2,k2)) ->
+        eq_kindo ko1 ko2 && eq_bound bo1 bo2 && eq_kbinder k1 k2
+    | (Exis(ko1,bo1,k1), Exis(ko2,bo2,k2)) ->
+        eq_kindo ko1 ko2 && eq_bound bo1 bo2 && eq_kbinder k1 k2
+    | (FixM(f1)   , FixM(f2)   ) -> eq_kbinder f1 f2
+    | (FixN(f1)   , FixN(f2)   ) -> eq_kbinder f1 f2
+    | (TDef(d1,a1), TDef(d2,a2)) ->
+        let k1 = msubst d1.tdef_value a1 in
+        let k2 = msubst d2.tdef_value a2 in
+        eq_kind k1 k2
+    | (UCst(c1)   , UCst(c2)   ) ->
+        eq_bound c1.qcst_bound c2.qcst_bound &&
+        eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
+        eq_term c c1.qcst_wit_term c2.qcst_wit_term
+    | (ECst(c1)   , ECst(c2)   ) ->
+        eq_bound c1.qcst_bound c2.qcst_bound &&
+        eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
+        eq_term c c1.qcst_wit_term c2.qcst_wit_term
+    | (MCst(c1)   , MCst(c2)   ) ->
+        c1.fcst_key = c2.fcst_key && c1.fcst_level = c2.fcst_level
+    | (NCst(c1)   , NCst(c2)   ) ->
+        c1.fcst_key = c2.fcst_key && c1.fcst_level = c2.fcst_level
+    | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
+    | (TInt(i1)   , TInt(i2)   ) -> i1 = i2
+    | (_          , _          ) -> false
+  and eq_kbinder f1 f2 = f1 == f2 ||
+    let i = incr c; TInt(!c) in
+    eq_kind (subst f1 i) (subst f2 i)
+  and eq_kindo ko1 ko2 =
+    match (ko1, ko2) with
+    | (None   , None   ) -> true
+    | (Some k1, Some k2) -> eq_kind k1 k2
+    | (_      , _      ) -> false
+  and eq_bound bo1 bo2 =
+    match (bo1, bo2) with
+    | (None       , None       ) -> true
+    | (Some(o1,k1), Some(o2,k2)) -> o1 = o2 && eq_kind k1 k2
+    | (_          , _          ) -> false
+  in
+  eq_kind k1 k2
+
+and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
+  let rec eq_term t1 t2 = t1.elt == t2.elt ||
+    match (t1.elt, t2.elt) with
+    | (Coer(t1,_) , Coer(t2,_) ) -> eq_term t1 t2
+    | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
+    | (LAbs(_,f1) , LAbs(_,f2) ) -> eq_tbinder f1 f2
+    | (Appl(t1,u1), Appl(t2,u2)) -> eq_term t1 t2 && eq_term u1 u2
+    | (Reco(fs1)  , Reco(fs2)  ) -> eq_assoc eq_term fs1 fs2
+    | (Proj(t1,l1), Proj(t2,l2)) -> l1 = l2 && eq_term t1 t2
+    | (Cons(c1,t1), Cons(c2,t2)) -> c1 = c2 && eq_term t1 t2
+    | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_tbinder l1 l2
+    | (VDef(d1)   , VDef(d2)   ) -> eq_term d1.value d2.value
+    | (Prnt(s1,t1), Prnt(s2,t2)) -> s1 = s2 && eq_term t1 t2
+    | (FixY       , FixY       ) -> true
+    | (Cnst(c1)   , Cnst(c2)   ) ->
+        let (f1,a1,b1) = c1 and (f2,a2,b2) = c2 in
+        eq_tbinder f1 f2 && eq_kind c a1 a2 && eq_kind c b1 b2
+    | (_          , _          ) -> false
+  and eq_tbinder f1 f2 =
+    let a = incr c; dummy_pos (TagI(!c)) in
+    eq_term (subst f1 a) (subst f2 a)
+  in
+  eq_term t1 t2
+
+let eq_kind : kind -> kind -> bool = fun k1 k2 ->
+  let c = ref 0 in
+  eq_kind c k1 k2
+
+let eq_term : term -> term -> bool = fun t1 t2 ->
+  let c = ref 0 in
+  eq_term c t1 t2
+
+
 
 (****************************************************************************
  *                   Frequently used types and functions                    *

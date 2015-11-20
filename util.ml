@@ -57,3 +57,9 @@ let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
   | None   -> None
   | Some e -> Some (f e)
 
+(* Equality of association lists. *)
+let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list ->
+               ('a * 'b) list -> bool = fun eq l1 l2 ->
+  List.for_all (fun (k,_) -> List.mem_assoc k l2) l1 &&
+  List.for_all (fun (k,_) -> List.mem_assoc k l1) l2 &&
+  List.for_all (fun (k,e1) -> eq e1 (List.assoc k l2)) l1

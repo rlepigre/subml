@@ -131,6 +131,8 @@ let rec print_term ff t =
       pp_print_string ff "fix"
   | Cnst(_) ->
       pp_print_string ff "ε"
+  | TagI(i) ->
+      fprintf ff "TAG(%i)" i
 
 (****************************************************************************
  *                          Interface functions                             *
