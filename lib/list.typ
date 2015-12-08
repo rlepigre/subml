@@ -12,8 +12,6 @@ val tail : ∀A (List(A) → Option(List(A))) = fun l ↦
   | Nil[x]  → None[{}]
   | Cons[l] → Some[l.tail]
 
-set verbose on
-
 val map : ∀A ∀B ((A → B) → List(A) → List(B)) = fix fun r f l ↦
   case l of
   | Nil[x]  → Nil[{}]
