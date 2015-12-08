@@ -34,6 +34,9 @@ dparser.cmo: dparser.ml ast.cmo print.cmo eval.cmo typing.cmo
 run: all
 	ledit ./main
 
+test: all
+	ledit ./main lib/all.typ
+
 clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 
