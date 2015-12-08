@@ -16,6 +16,84 @@ type subtype_ctxt =
   { lfix : (kind * (ordinal * kind) list) list
   ; rfix : (kind * (ordinal * kind) list) list }
 
+exception Induction_hypothesis
+
+let check_rec : subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
+  fun ctxt a b ->
+    let search k l =
+      let rec fn acc = function
+        | []        -> raise Not_found
+        | (x,l)::xs when eq_kind k x -> (acc, l, xs)
+        | (x,l)::xs -> fn ((x,l)::acc) xs
+      in fn [] l
+    in
+
+    (* Check left. *)
+    let (ctxt, a, b) =
+      match a with
+      | FixM(o,f) ->
+          begin
+            let o = new_olequ o in
+            let key = FixM(ODumm,f) in
+            let a = FixM(o,f) in
+            try
+              let (before, l, after) = search key ctxt.lfix in
+              let check (o', k) =
+                if less_ordinal o o' && lower_kind k b then
+                  raise Induction_hypothesis
+              in
+              List.iter check l;
+              let lfix = List.rev_append before ((key, (o,b)::l) :: after) in
+              ({ ctxt with lfix }, a, b)
+            with Not_found ->
+              ({ ctxt with lfix = (key, [(o,b)]) :: ctxt.lfix }, a, b)
+          end
+      | FixN(_,f) ->
+          begin
+            let o = ODumm in
+            let key = FixN(o,f) in
+            try
+              let (before, l, after) = search key ctxt.lfix in
+              let lfix = List.rev_append before ((key, (o,b)::l) :: after) in
+              ({ ctxt with lfix }, a, b)
+            with Not_found ->
+              ({ ctxt with lfix = (key, [(o,b)]) :: ctxt.lfix }, a, b)
+          end
+      | _         -> (ctxt, a, b)
+    in
+
+    (* Check right. *)
+    match b with
+    | FixM(o,f) ->
+        begin
+          let o = ODumm in
+          let key = FixM(o,f) in
+          try
+            let (before, l, after) = search key ctxt.rfix in
+            let rfix = List.rev_append before ((key, (o,a)::l) :: after) in
+            ({ ctxt with rfix }, a, b)
+          with Not_found ->
+            ({ ctxt with rfix = (key, [(o,a)]) :: ctxt.rfix }, a, b)
+        end
+    | FixN(o,f) ->
+        begin
+          let o = new_olequ o in
+          let key = FixN(ODumm, f) in
+          let b = FixN(o,f) in
+          try
+            let (before, l, after) = search key ctxt.rfix in
+            let check (o', k) =
+              if less_ordinal o o' && lower_kind a k then
+                raise Induction_hypothesis
+            in
+            List.iter check l;
+            let rfix = List.rev_append before ((key, (o,a)::l) :: after) in
+            ({ ctxt with rfix }, a, b)
+          with Not_found ->
+            ({ ctxt with rfix = (key, [(o,a)]) :: ctxt.rfix }, a, b)
+        end
+    | _         -> (ctxt, a , b)
+
 let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
   let rec subtype ctxt t a b = 
     let a = repr a in
@@ -23,6 +101,8 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     if verbose then
       Printf.eprintf "Sub: %a ∈ %a ⊆ %a\n%!"
         print_term t (print_kind false) a (print_kind false) b;
+    try
+    let (ctxt, a, b) = check_rec ctxt a b in
     if a == b then () else
     match (a,b) with
     (* Handling of unification variables (immitation). *)
@@ -176,6 +256,8 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtype clash (no rule apply)."
+
+    with Induction_hypothesis -> ()
   in
   subtype { lfix = [] ; rfix = [] } t a b
 

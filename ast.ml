@@ -27,6 +27,13 @@ let rec leq_ordinal o1 o2 =
   | (_           , OConv       ) -> true
   | (_           , _           ) -> false
 
+let rec less_ordinal o1 o2 =
+  match (o1, o2) with
+  | (OLess(n1,o1), _) -> leq_ordinal o1 o2
+  | (OLEqu(n1,o1), _) -> less_ordinal o1 o2
+  | (OProd(o1,o2), o) -> less_ordinal o1 o || less_ordinal o2 o
+  | (_           , _) -> false
+
 let new_oless, new_olequ, oreset =
   let e = ref 0 in
   let new_oless o = incr e; OLess(!e, o) in
