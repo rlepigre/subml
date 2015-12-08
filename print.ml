@@ -15,6 +15,18 @@ let rec print_array pelem sep ff ls =
  *                           Printing of a type                             *
  ****************************************************************************)
 
+let print_ordinal ff o =
+  let rec print_ordinal ff = function
+    | ODumm      -> pp_print_string ff "?"
+    | OConv      -> pp_print_string ff "∞"
+    | OProd(o,p) -> fprintf ff "(%a χ %a)" print_ordinal o print_ordinal p
+    | OLess(n,o) -> fprintf ff "(%i < %a)" n print_ordinal o
+    | OLEqu(n,o) -> fprintf ff "(%i ≤ %a)" n print_ordinal o
+  in
+  match o with
+  | OConv -> ()
+  | _     -> print_ordinal ff o
+
 let rec print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pkindw = print_kind unfold true in
@@ -35,14 +47,14 @@ let rec print_kind unfold wrap ff t =
       fprintf ff "∀%a" (pquant unfold ao bo) f
   | Exis(ao,bo,f) ->
       fprintf ff "∃%a" (pquant unfold ao bo) f
-  | FixM(b) ->
+  | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "μ%s %a" (name_of x) pkindw a
-  | FixN(b) ->
+      fprintf ff "μ%a%s %a" print_ordinal o (name_of x) pkindw a
+  | FixN(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "ν%s %a" (name_of x) pkindw a
+      fprintf ff "ν%a%s %a" print_ordinal o (name_of x) pkindw a
   | TDef(td,args) ->
       if unfold then
         print_kind unfold wrap ff (msubst td.tdef_value args)
@@ -55,10 +67,6 @@ let rec print_kind unfold wrap ff t =
       pp_print_string ff "ε∀"
   | ECst(_) ->
       pp_print_string ff "ε∃"
-  | MCst(_) ->
-      pp_print_string ff "εμ"
-  | NCst(_) ->
-      pp_print_string ff "εν"
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(_) -> assert false

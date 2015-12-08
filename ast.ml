@@ -2,6 +2,44 @@ open Bindlib
 open Util
 
 (****************************************************************************
+ *                                 Ordinals                                 *
+ ****************************************************************************)
+
+type ordinal =
+  | ODumm
+  | OConv
+  | OProd of ordinal * ordinal
+  | OLess of int * ordinal
+  | OLEqu of int * ordinal
+
+let rec leq_ordinal o1 o2 =
+  match (o1, o2) with
+  | (ODumm       , _           ) -> false
+  | (_           , ODumm       ) -> false
+  | (OLess(n1,_ ), OLess(n2,_ )) when n1 = n2 -> true
+  | (OLEqu(n1,_ ), OLEqu(n2,_ )) when n1 = n2 -> true
+  | (OLess(n1,o1), OLess(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
+  | (OLess(n1,o1), OLEqu(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
+  | (OLEqu(n1,o1), OLess(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
+  | (OLEqu(n1,o1), OLEqu(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
+  | (OProd(o1,o2), o           ) -> leq_ordinal o1 o || leq_ordinal o2 o
+  | (o           , OProd(o1,o2)) -> leq_ordinal o o1 && leq_ordinal o o2
+  | (_           , OConv       ) -> true
+  | (_           , _           ) -> false
+
+let new_oless, new_olequ, oreset =
+  let e = ref 0 in
+  let new_oless o = incr e; OLess(!e, o) in
+  let new_olequ o = incr e; OLEqu(!e, o) in
+  let oreset () = e := 0 in
+  (new_oless, new_olequ, oreset)
+
+let prod_ordinal o1 o2 =
+  match (o1, o2) with
+  | (OConv, OConv) -> OConv
+  | (_    , _    ) -> OProd(o1,o2)
+
+(****************************************************************************
  *                         AST for kinds (or types)                         *
  ****************************************************************************)
 
@@ -22,17 +60,15 @@ type kind =
   (* Bounded quantifiers: ∀/∃X [= A] [</> B] C. *)
   | FAll of kind option * (orient * kind) option * (kind, kind) binder
   | Exis of kind option * (orient * kind) option * (kind, kind) binder
-  (* Least and greatest fixpoint: μX A, νX A. *)
-  | FixM of (kind, kind) binder
-  | FixN of (kind, kind) binder
+  (* Least and greatest fixpoint: μα X A, να X A. *)
+  | FixM of ordinal * (kind, kind) binder
+  | FixN of ordinal * (kind, kind) binder
   (* User-defined type applied to arguments: T(A1,...,An). *)
   | TDef of type_def * kind array
   (**** Special constructors (not accessible to user) ****)
   (* Constants (a.k.a. epsilon) - used for subtyping. *)
   | UCst of qcst
   | ECst of qcst
-  | MCst of fcst
-  | NCst of fcst
   (* Unification variables - used for typechecking. *)
   | UVar of uvar
   (* Integer tag for comparing kinds. *)
@@ -135,8 +171,8 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
         eq_kindo ko1 ko2 && eq_bound bo1 bo2 && eq_kbinder k1 k2
     | (Exis(ko1,bo1,k1), Exis(ko2,bo2,k2)) ->
         eq_kindo ko1 ko2 && eq_bound bo1 bo2 && eq_kbinder k1 k2
-    | (FixM(f1)   , FixM(f2)   ) -> eq_kbinder f1 f2
-    | (FixN(f1)   , FixN(f2)   ) -> eq_kbinder f1 f2
+    | (FixM(o1,f1), FixM(o2,f2)) -> o1 = o2 && eq_kbinder f1 f2
+    | (FixN(o1,f1), FixN(o2,f2)) -> o1 = o2 && eq_kbinder f1 f2
     | (TDef(d1,a1), TDef(d2,a2)) ->
         let k1 = msubst d1.tdef_value a1 in
         let k2 = msubst d2.tdef_value a2 in
@@ -149,10 +185,6 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
         eq_bound c1.qcst_bound c2.qcst_bound &&
         eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
         eq_term c c1.qcst_wit_term c2.qcst_wit_term
-    | (MCst(c1)   , MCst(c2)   ) ->
-        c1.fcst_key = c2.fcst_key && c1.fcst_level = c2.fcst_level
-    | (NCst(c1)   , NCst(c2)   ) ->
-        c1.fcst_key = c2.fcst_key && c1.fcst_level = c2.fcst_level
     | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
     | (TInt(i1)   , TInt(i2)   ) -> i1 = i2
     | (_          , _          ) -> false
@@ -301,12 +333,12 @@ let tdef : type_def -> kbox array -> kbox =
 let fixn : string -> (kbox -> kbox) -> kbox =
   fun x f ->
     let b = bind mk_free_tvar x f in
-    box_apply (fun b -> FixN(b)) b
+    box_apply (fun b -> FixN(OConv,b)) b
 
 let fixm : string -> (kbox -> kbox) -> kbox =
   fun x f ->
     let b = bind mk_free_tvar x f in
-    box_apply (fun b -> FixM(b)) b
+    box_apply (fun b -> FixM(OConv,b)) b
 
 (* Quantifier constant management. *)
 let (new_ucst, reset_ucst) =
@@ -331,63 +363,6 @@ let (new_ecst, reset_ecst) =
   let reset_ecst () = c := 0 in
   (new_ecst, reset_ecst)
 
-(* Fixpoint constant management. *)
-let (new_mcst, new_imcst, new_mcst_level, reset_mcst) =
-  let k = ref 0 in
-  let e = ref 0 in
-  let tbl = ref [] in
-  let new_mcst f =
-    let kf =
-      try assoc_eq eq_kind (FixM(f)) !tbl
-      with Not_found -> incr k; tbl := (FixM(f),!k) :: !tbl; !k
-    in MCst
-    { fcst_key      = kf
-    ; fcst_level    = []
-    ; fcst_wit_kind = f }
-  in
-  let new_imcst f =
-    let kf =
-      try assoc_eq eq_kind (FixM(f)) !tbl
-      with Not_found -> incr k; tbl := (FixM(f),!k) :: !tbl; !k
-    in MCst
-    { fcst_key      = kf
-    ; fcst_level    = [(incr e; !e)]
-    ; fcst_wit_kind = f }
-  in
-  let new_mcst_level c =
-    { c with fcst_level = c.fcst_level @ [(incr e; !e)] }
-  in
-  let reset_mcst () = k := 0; e := 0; tbl := [] in
-  (new_mcst, new_imcst, new_mcst_level, reset_mcst)
-
-let (new_ncst, new_incst, new_ncst_level, reset_ncst) =
-  let k = ref 0 in
-  let e = ref 0 in
-  let tbl = ref [] in
-  let new_ncst f =
-    let kf =
-      try assoc_eq eq_kind (FixN(f)) !tbl
-      with Not_found -> incr k; tbl := (FixN(f),!k) :: !tbl; !k
-    in NCst
-    { fcst_key      = kf
-    ; fcst_level    = []
-    ; fcst_wit_kind = f }
-  in
-  let new_incst f =
-    let kf =
-      try assoc_eq eq_kind (FixN(f)) !tbl
-      with Not_found -> incr k; tbl := (FixN(f),!k) :: !tbl; !k
-    in NCst
-    { fcst_key      = kf
-    ; fcst_level    = [(incr e; !e)]
-    ; fcst_wit_kind = f }
-  in
-  let new_ncst_level c =
-    { c with fcst_level = c.fcst_level @ [(incr e; !e)] }
-  in
-  let reset_ncst () = k := 0; e := 0; tbl := [] in
-  (new_ncst, new_incst, new_ncst_level, reset_ncst)
-
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
@@ -397,7 +372,7 @@ let (new_uvar, reset_uvar) =
 
 (* Resset all counters. *)
 let reset_all () =
-  let reset = [reset_ucst; reset_ecst; reset_mcst; reset_ncst; reset_uvar] in
+  let reset = [reset_ucst; reset_ecst; reset_uvar] in
   List.iter (fun x -> x ()) reset
 
 (****************************************************************************
@@ -533,17 +508,13 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | DSum(cs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc cs
     | FAll(ao,bo,f) -> aux occ acc (subst f dummy) (* FIXME bound *)
     | Exis(ao,bo,f) -> aux occ acc (subst f dummy) (* FIXME bound *)
-    | FixM(f)   -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
-    | FixN(f)   -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
+    | FixM(_,f) -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
+    | FixN(_,f) -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
     | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
     | UCst(c)   -> let a = subst c.qcst_wit_kind dummy in
                    aux InEps acc a (* FIXME bnd ? *)
     | ECst(c)   -> let a = subst c.qcst_wit_kind dummy in
                    aux InEps acc a (* FIXME bnd ? *)
-    | MCst(c)   -> let a = subst c.fcst_wit_kind dummy in
-                   aux InEps acc a
-    | NCst(c)   -> let a = subst c.fcst_wit_kind dummy in
-                   aux InEps acc a
     | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | TInt(_)   -> assert false
   in aux Pos Non k
@@ -567,13 +538,11 @@ let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
         let ao = map_opt subst ao in
         let bo = map_opt (fun (o,a) -> (o,subst a)) bo in
         Exis(ao, bo, binder_compose_right f subst)
-    | FixM(f)   -> FixM(binder_compose_right f subst)
-    | FixN(f)   -> FixN(binder_compose_right f subst)
+    | FixM(o,f) -> FixM(o,binder_compose_right f subst)
+    | FixN(o,f) -> FixN(o,binder_compose_right f subst)
     | TDef(d,a) -> TDef(d, Array.map subst a)
     | UCst(_)   -> assert false (* TODO *)
     | ECst(_)   -> assert false (* TODO *)
-    | MCst(_)   -> assert false (* TODO *)
-    | NCst(_)   -> assert false (* TODO *)
     | UVar(u)   -> if u.uvar_key = i then x else k
     | TInt(_)   -> assert false
   in
@@ -619,14 +588,12 @@ let uvars : kind -> uvar list = fun k ->
           | (None  , Some (_,b)) -> union [ uvars b; uvars c ]
           | (Some a, Some (_,b)) -> union [ uvars a; uvars b; uvars c ]
         end
-    | FixM(f)   -> uvars (subst f dummy)
-    | FixN(f)   -> uvars (subst f dummy)
+    | FixM(_,f) -> uvars (subst f dummy)
+    | FixN(_,f) -> uvars (subst f dummy)
     | TDef(d,a) -> let f s a = UVarSet.union s (uvars a) in
                    Array.fold_left f UVarSet.empty a
     | UCst(_)   -> assert false (* TODO *)
     | ECst(_)   -> assert false (* TODO *)
-    | MCst(_)   -> assert false (* TODO *)
-    | NCst(_)   -> assert false (* TODO *)
     | UVar(u)   ->
         begin
           match uvar_repr u with
@@ -662,14 +629,12 @@ let rec free_names : kind -> string list = function
         | (Some a, Some (_,b)) ->
             (free_names a) @ (free_names b) @ (free_names c)
       end
-  | FixM(f)    -> free_names (subst f (Prod []))
-  | FixN(f)    -> free_names (subst f (Prod []))
+  | FixM(_,f)  -> free_names (subst f (Prod []))
+  | FixN(_,f)  -> free_names (subst f (Prod []))
   | TDef(d,a)  -> let l = Array.to_list (Array.map free_names a) in
                   d.tdef_name :: (List.flatten l)
   | UCst(_)    -> assert false (* TODO *)
   | ECst(_)    -> assert false (* TODO *)
-  | MCst(_)    -> assert false (* TODO *)
-  | NCst(_)    -> assert false (* TODO *)
   | UVar(u)    -> []
   | TInt(_)    -> assert false
 
@@ -688,7 +653,8 @@ let generalize : kind -> kind = fun k ->
   let f u (k, used) =
     let (x, used) = fresh_name "X" used in
     let k =
-      FAll(None, None, binder_from_fun x (fun x -> bind_uvar u k x))
+      (* FIXME 1 ? *)
+      FAll(None, None, binder_from_fun x 1 (fun x -> bind_uvar u k x))
     in (k, used)
   in
   fst (List.fold_right f us (k, free_names k))
@@ -720,12 +686,12 @@ let lower_kind k1 k2 =
     | (Exis(_,ba,a), FAll(_,bb,b)) ->
         let i = new_int () in
         lower_bound ba bb && lower_kind (subst a i) (subst b i)
-    | (FixM(fa)    , FixM(fb)    ) ->
-        let i = new_int () in
-        lower_kind (subst fa i) (subst fb i)
-    | (FixN(fa)    , FixN(fb)    ) ->
-        let i = new_int () in
-        lower_kind (subst fa i) (subst fb i)
+    | (FixM(oa,fa) , FixM(ob,fb) ) ->
+        leq_ordinal oa ob && (fa == fb ||
+          let i = new_int () in lower_kind (subst fa i) (subst fb i))
+    | (FixN(oa,fa) , FixN(ob,fb) ) ->
+        leq_ordinal ob oa && (fa == fb ||
+          let i = new_int () in lower_kind (subst fa i) (subst fb i))
     | (TDef(da,aa) , TDef(db,ab) ) ->
         lower_kind (msubst da.tdef_value aa) (msubst db.tdef_value ab)
     | (UCst(ca)    , UCst(cb)    ) ->
@@ -740,22 +706,6 @@ let lower_kind k1 k2 =
         let b = subst cb.qcst_wit_kind i in
         lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
         (* FIXME what of the bound ? *)
-    | (MCst(ca)    , MCst(cb)    ) when ca.fcst_key = cb.fcst_key ->
-        leq_level ca.fcst_level cb.fcst_level
-    | (MCst(ca)    , MCst(cb)    ) ->
-        let i = new_int () in
-        let a = subst ca.fcst_wit_kind i in
-        let b = subst cb.fcst_wit_kind i in
-        lower_kind a b && leq_level ca.fcst_level cb.fcst_level
-    | (NCst(ca)    , NCst(cb)    ) when ca.fcst_key = cb.fcst_key ->
-        leq_level cb.fcst_level ca.fcst_level
-    | (NCst(ca)    , NCst(cb)    ) ->
-        let i = new_int () in
-        let a = subst ca.fcst_wit_kind i in
-        let b = subst cb.fcst_wit_kind i in
-        lower_kind a b && leq_level cb.fcst_level ca.fcst_level
-    | (NCst(ca)    , MCst(cb)    ) -> false
-    | (MCst(ca)    , NCst(cb)    ) -> false
     | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false

@@ -47,7 +47,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
         let f x = dummy_pos (Appl(t, x)) in
-        let wit = cnst (binder_from_fun "x" f) a2 b2 in
+        let wit = cnst (binder_from_fun "x" 1 f) a2 b2 in (* FIXME 1 ? *)
         subtype (dummy_pos (Appl(t,wit))) b1 b2;
         subtype wit a2 a1
 
@@ -112,63 +112,56 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     | (ECst(ca)   , ECst(cb)   ) when ca == cb -> ()
 
-    (* μ - least fixpoint. *)
-    | (FixM(f)    , _          ) ->
-        begin
-          (* Compression of consecutive μs. *)
-          match subst f (Prod []) with
-          | FixM(_) ->
-              let aux x =
-                match subst f x with
-                | FixM(g) -> subst g x
-                | _       -> assert false (* Unreachable. *)
-              in
-              let a = FixM (binder_from_fun (binder_name f) aux) in
-              subtype t a b
-          (* Only on consecutive μ. *)
-          | _       -> subtype t (subst f (new_imcst f)) b
-        end
+    (* μ and ν - least and greatest fixpoint. *)
+    | (_          , FixM(o,f)) ->
+        if lower_kind a b then () else
+          let cst = if o = OConv then b else FixM(new_oless o, f) in
+          subtype t a (subst f cst)
 
-    | (_          , FixM(f)    ) -> subtype t a (subst f (new_mcst f))
+    | (FixN(o,f)  , _        ) ->
+        if lower_kind a b then () else
+          let cst = if o = OConv then a else FixN(new_oless o, f) in
+          subtype t (subst f cst) b
 
-    | (MCst(_)    , MCst(_)    ) when lower_kind a b -> () 
-
-    | (MCst(_)    , _          ) when lower_kind a b -> ()
-    | (MCst(ca)   , _          ) ->
-        let ca = new_mcst_level ca in
-        subtype t (subst ca.fcst_wit_kind (MCst(ca))) b
-
-    | (_          , MCst(cb)   ) when lower_kind a b -> ()
-    | (_          , MCst(cb)   ) -> subtype t a (subst cb.fcst_wit_kind b)
-
-    (* ν - greatest fixpoint. *)
-    | (FixN(f)    , _          ) -> subtype t (subst f (new_ncst f)) b
-
-    | (_          , FixN(f)    ) ->
+    | (_          , FixN(o,f)) ->
         begin
           (* Compression of consecutive νs. *)
           match subst f (Prod []) with
-          | FixN(_) ->
+          | FixN(o',_) ->
               let aux x =
                 match subst f x with
-                | FixN(g) -> subst g x
+                | FixN(_,g) -> subst g x
                 | _       -> assert false (* Unreachable. *)
               in
-              let b = FixN (binder_from_fun (binder_name f) aux) in
-              subtype t a b
+              let o = prod_ordinal o o' in
+              let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+              subtype t a (FixN(o,f))
           (* Only on consecutive μ. *)
-          | _       -> subtype t a (subst f (new_incst f))
+          | _       ->
+              if lower_kind a b then () else
+                let cst = FixN(new_oless o, f) in
+                subtype t a (subst f cst)
         end
 
-    | (NCst(_)    , NCst(_)    ) when lower_kind a b -> ()
-
-    | (NCst(_)    , _          ) when lower_kind a b -> ()
-    | (NCst(ca)   , _          ) -> subtype t (subst ca.fcst_wit_kind a) b
-
-    | (_          , NCst(_)    ) when lower_kind a b -> ()
-    | (_          , NCst(cb)   ) ->
-        let cb = new_ncst_level cb in
-        subtype t a (subst cb.fcst_wit_kind (NCst(cb)))
+    | (FixM(o,f)  , _        ) ->
+        begin
+          (* Compression of consecutive μs. *)
+          match subst f (Prod []) with
+          | FixM(o',_) ->
+              let aux x =
+                match subst f x with
+                | FixM(_,g) -> subst g x
+                | _       -> assert false (* Unreachable. *)
+              in
+              let o = prod_ordinal o o' in
+              let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+              subtype t (FixM(o, f)) b
+          (* Only on consecutive μ. *)
+          | _       ->
+              if lower_kind a b then () else
+                let cst = FixM(new_oless o, f) in
+              subtype t (subst f cst) b
+        end
 
     (* Type definition. *)
     | (TDef(d,a)  , _          ) ->
