@@ -12,8 +12,12 @@ let type_error : pos -> string -> unit = fun p msg ->
 let subtype_error : string -> unit = fun msg ->
   raise (Subtype_error msg)
 
+type subtype_ctxt =
+  { lfix : (kind * (ordinal * kind) list) list
+  ; rfix : (kind * (ordinal * kind) list) list }
+
 let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
-  let rec subtype t a b = 
+  let rec subtype ctxt t a b = 
     let a = repr a in
     let b = repr b in
     if verbose then
@@ -48,8 +52,8 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     | (Func(a1,b1), Func(a2,b2)) ->
         let f x = dummy_pos (Appl(t, x)) in
         let wit = cnst (binder_from_fun "x" 1 f) a2 b2 in (* FIXME 1 ? *)
-        subtype (dummy_pos (Appl(t,wit))) b1 b2;
-        subtype wit a2 a1
+        subtype ctxt (dummy_pos (Appl(t,wit))) b1 b2;
+        subtype ctxt wit a2 a1
 
     (* Product type. *)
     | (Prod(fsa), Prod(fsb)) ->
@@ -59,7 +63,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
           subtype_error "Product fields clash.";
         let check_field (l,b) =
           let a = List.assoc l fsa in
-          subtype (dummy_pos (Proj(t,l))) a b
+          subtype ctxt (dummy_pos (Proj(t,l))) a b
         in
         List.iter check_field fsb
 
@@ -72,19 +76,19 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         let check_variant (c,a) =
           let b = List.assoc c csb in
           let t = dummy_pos (Reco([])) in (* FIXME FIXME FIXME *)
-          subtype t a b
+          subtype ctxt t a b
         in
         List.iter check_variant csa
 
     (* Universal quantifier. *)
     | (_                , FAll(bo,bbndo,f)) ->
         let b = subst f (new_ucst t bbndo f) in
-        subtype t a b
+        subtype ctxt t a b
 
     | (FAll(ao,abndo,f) , _               ) ->
         let v = match ao with None -> new_uvar () | Some k -> k in
         let a = subst f v in
-        subtype t a b;
+        subtype ctxt t a b;
         begin
           match abndo with
           | None         -> ()
@@ -97,12 +101,12 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     (* Existantial quantifier. *)
     | (Exis(ao,abndo,f) , _               ) ->
         let a = subst f (new_ecst t abndo f) in
-        subtype t a b
+        subtype ctxt t a b
 
     | (_                , Exis(bo,bbndo,f)) ->
         let v = match bo with None -> new_uvar () | Some k -> k in
         let b = subst f v in
-        subtype t a b;
+        subtype ctxt t a b;
         begin
           match bbndo with
           | None         -> ()
@@ -116,12 +120,12 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     | (_          , FixM(o,f)) ->
         if lower_kind a b then () else
           let cst = if o = OConv then b else FixM(new_oless o, f) in
-          subtype t a (subst f cst)
+          subtype ctxt t a (subst f cst)
 
     | (FixN(o,f)  , _        ) ->
         if lower_kind a b then () else
           let cst = if o = OConv then a else FixN(new_oless o, f) in
-          subtype t (subst f cst) b
+          subtype ctxt t (subst f cst) b
 
     | (_          , FixN(o,f)) ->
         begin
@@ -135,12 +139,12 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
               in
               let o = prod_ordinal o o' in
               let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-              subtype t a (FixN(o,f))
+              subtype ctxt t a (FixN(o,f))
           (* Only on consecutive μ. *)
           | _       ->
               if lower_kind a b then () else
                 let cst = FixN(new_oless o, f) in
-                subtype t a (subst f cst)
+                subtype ctxt t a (subst f cst)
         end
 
     | (FixM(o,f)  , _        ) ->
@@ -155,25 +159,25 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
               in
               let o = prod_ordinal o o' in
               let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-              subtype t (FixM(o, f)) b
+              subtype ctxt t (FixM(o, f)) b
           (* Only on consecutive μ. *)
           | _       ->
               if lower_kind a b then () else
                 let cst = FixM(new_oless o, f) in
-              subtype t (subst f cst) b
+              subtype ctxt t (subst f cst) b
         end
 
     (* Type definition. *)
     | (TDef(d,a)  , _          ) ->
-        subtype t (msubst d.tdef_value a) b
+        subtype ctxt t (msubst d.tdef_value a) b
 
     | (_          , TDef(d,b)  ) ->
-        subtype t a (msubst d.tdef_value b)
+        subtype ctxt t a (msubst d.tdef_value b)
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtype clash (no rule apply)."
   in
-  subtype t a b
+  subtype { lfix = [] ; rfix = [] } t a b
 
 let type_check : bool -> term -> kind -> unit = fun verbose t c ->
   let subtype = subtype verbose in
