@@ -192,9 +192,10 @@ let parser term p =
       in_pos _loc (PCstr(c,uo))
   | t:(term TAtom) "." l:ident when p = TAtom ->
       in_pos _loc (PProj(t,l))
-  | case_kw t:(term TFunc) of_kw ps:pattern* when p = TAtom ->
+  | case_kw t:(term TFunc) of_kw "|"?
+    ps:(list_sep pattern "|") when p = TAtom ->
       in_pos _loc (PCase(t,ps))
-  | "{" fs:field* "}" when p = TAtom ->
+  | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
       in_pos _loc (PReco(fs))
   | fix_kw when p = TAtom ->
       in_pos _loc PFixY
@@ -204,10 +205,9 @@ let parser term p =
   | t:(term TColo) when p = TAppl
   | t:(term TAppl) when p = TFunc
 
-and pattern  = "|" c:ident "[" x:ident "]" _:arrow t:(term TFunc) ->
+and pattern  = c:ident "[" x:ident "]" _:arrow t:(term TFunc) ->
   let x = in_pos _loc_x x in (c, x, t)
-and wildcard = "|" "_" _:arrow t:(term TFunc)
-and field    = l:ident "=" t:(term TFunc) ";"
+and field    = l:ident "=" t:(term TFunc)
 
 let term = term TFunc
 
