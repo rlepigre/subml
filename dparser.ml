@@ -11,11 +11,11 @@ open Typing
 
 (* Some combinators. *)
 let list_sep elt sep = parser
-  | EMPTY                        -> []
-  | e:elt es:{_:STR(sep) e:elt}* -> e::es
+  | EMPTY                         -> []
+  | e:elt es:{_:STR(sep) e:elt}** -> e::es
 
 let list_sep' elt sep = parser
-  | e:elt es:{_:STR(sep) e:elt}* -> e::es
+  | e:elt es:{_:STR(sep) e:elt}** -> e::es
 
 let parser string_char =
   | "\\\"" -> "\""
@@ -99,15 +99,15 @@ let in_kw   = new_keyword "in"
 let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
 
-let unfold_kw  = new_keyword "unfold" 
-let clear_kw   = new_keyword "clear" 
-let parse_kw   = new_keyword "parse" 
-let quit_kw    = new_keyword "quit" 
-let exit_kw    = new_keyword "exit" 
-let eval_kw    = new_keyword "eval" 
-let typed_kw   = new_keyword "typed" 
-let untyped_kw = new_keyword "untyped" 
-let set_kw     = new_keyword "set" 
+let unfold_kw  = new_keyword "unfold"
+let clear_kw   = new_keyword "clear"
+let parse_kw   = new_keyword "parse"
+let quit_kw    = new_keyword "quit"
+let exit_kw    = new_keyword "exit"
+let eval_kw    = new_keyword "eval"
+let typed_kw   = new_keyword "typed"
+let untyped_kw = new_keyword "untyped"
+let set_kw     = new_keyword "set"
 let include_kw = new_keyword "include"
 
 let parser arrow  : unit grammar = "→" | "->"
@@ -180,7 +180,7 @@ let parser var =
 let parser term p =
   | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
-  | t:(term TFunc) ":" k:kind when p = TAtom ->
+  | t:(term TFunc) ":" k:kind when p = TFunc ->
       in_pos _loc (PCoer(t,k))
   | t:(term TAppl) u:(term TAtom) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
