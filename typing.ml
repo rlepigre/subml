@@ -130,8 +130,9 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
 
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
-        let f x = dummy_pos (Appl(t, x)) in
-        let wit = cnst (binder_from_fun "x" 1 f) a2 b2 in (* FIXME 1 ? *)
+        let f x = appl dummy_position (box t) x in
+        let bnd = unbox (bind (lvar_p dummy_position) "x" f) in
+        let wit = cnst bnd a2 b2 in
         subtype ctxt (dummy_pos (Appl(t,wit))) b1 b2;
         subtype ctxt wit a2 a1
 
@@ -155,7 +156,9 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
           subtype_error "Sum type constructor clash.";
         let check_variant (c,a) =
           let b = List.assoc c csb in
-          let t = dummy_pos (Reco([])) in (* FIXME FIXME FIXME *)
+          let t = unbox
+            (case dummy_position (box t) [(c, dummy_pos "x", (fun x -> x))])
+          in
           subtype ctxt t a b
         in
         List.iter check_variant csa
