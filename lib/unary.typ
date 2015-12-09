@@ -1,5 +1,3 @@
-set verbose on
-
 type UNat = μX [Z of {} | S of X]
 
 val print_unat : UNat → {} = fix fun r n ↦
