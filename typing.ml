@@ -211,15 +211,14 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         begin
           (* Compression of consecutive νs. *)
           match subst f (Prod []) with
-          | FixN(o',_) ->
+          | FixN(_,_) ->
               let aux x =
                 match subst f x with
                 | FixN(_,g) -> subst g x
                 | _       -> assert false (* Unreachable. *)
               in
-              let o = prod_ordinal o o' in
               let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-              subtype ctxt t a (FixN(o,f))
+              subtype ctxt t a (FixN(OConv,f))
           (* Only on consecutive μ. *)
           | _       ->
               if lower_kind a b then () else
@@ -231,15 +230,14 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         begin
           (* Compression of consecutive μs. *)
           match subst f (Prod []) with
-          | FixM(o',_) ->
+          | FixM(_,_) ->
               let aux x =
                 match subst f x with
                 | FixM(_,g) -> subst g x
                 | _       -> assert false (* Unreachable. *)
               in
-              let o = prod_ordinal o o' in
               let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-              subtype ctxt t (FixM(o, f)) b
+              subtype ctxt t (FixM(OConv, f)) b
           (* Only on consecutive μ. *)
           | _       ->
               if lower_kind a b then () else

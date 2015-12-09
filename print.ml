@@ -19,7 +19,6 @@ let print_ordinal ff o =
   let rec print_ordinal ff = function
     | ODumm      -> pp_print_string ff "?"
     | OConv      -> pp_print_string ff "∞"
-    | OProd(o,p) -> fprintf ff "(%a χ %a)" print_ordinal o print_ordinal p
     | OLess(n,o) -> fprintf ff "(%i < %a)" n print_ordinal o
     | OLEqu(n,o) -> fprintf ff "(%i ≤ %a)" n print_ordinal o
   in

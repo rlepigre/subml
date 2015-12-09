@@ -8,7 +8,6 @@ open Util
 type ordinal =
   | ODumm
   | OConv
-  | OProd of ordinal * ordinal
   | OLess of int * ordinal
   | OLEqu of int * ordinal
 
@@ -22,17 +21,14 @@ let rec leq_ordinal o1 o2 =
   | (OLess(n1,o1), OLEqu(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
   | (OLEqu(n1,o1), OLess(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
   | (OLEqu(n1,o1), OLEqu(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
-  | (OProd(o1,o2), o           ) -> leq_ordinal o1 o || leq_ordinal o2 o
-  | (o           , OProd(o1,o2)) -> leq_ordinal o o1 && leq_ordinal o o2
   | (_           , OConv       ) -> true
   | (_           , _           ) -> false
 
 let rec less_ordinal o1 o2 =
-  match (o1, o2) with
-  | (OLess(n1,o1), _) -> leq_ordinal o1 o2
-  | (OLEqu(n1,o1), _) -> less_ordinal o1 o2
-  | (OProd(o1,o2), o) -> less_ordinal o1 o || less_ordinal o2 o
-  | (_           , _) -> false
+  match o1 with
+  | OLess(n1,o1) -> leq_ordinal o1 o2
+  | OLEqu(n1,o1) -> less_ordinal o1 o2
+  | _            -> false
 
 let new_oless, new_olequ, oreset =
   let e = ref 0 in
@@ -40,11 +36,6 @@ let new_oless, new_olequ, oreset =
   let new_olequ o = incr e; OLEqu(!e, o) in
   let oreset () = e := 0 in
   (new_oless, new_olequ, oreset)
-
-let prod_ordinal o1 o2 =
-  match (o1, o2) with
-  | (OConv, OConv) -> OConv
-  | (_    , _    ) -> OProd(o1,o2)
 
 (****************************************************************************
  *                         AST for kinds (or types)                         *
