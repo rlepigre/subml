@@ -68,8 +68,8 @@ type pkind = pkind' position
 and pkind' =
   | PFunc of pkind * pkind
   | PTVar of string * pkind list
-  | PFAll of string * pkind option * (orient * pkind) option * pkind
-  | PExis of string * pkind option * (orient * pkind) option * pkind
+  | PFAll of string * pkind
+  | PExis of string * pkind
   | PMu   of string * pkind
   | PNu   of string * pkind
   | PProd of (string * pkind) list
@@ -99,15 +99,15 @@ let in_kw   = new_keyword "in"
 let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
 
-let unfold_kw  = new_keyword "unfold"
-let clear_kw   = new_keyword "clear"
-let parse_kw   = new_keyword "parse"
-let quit_kw    = new_keyword "quit"
-let exit_kw    = new_keyword "exit"
-let eval_kw    = new_keyword "eval"
-let typed_kw   = new_keyword "typed"
-let untyped_kw = new_keyword "untyped"
-let set_kw     = new_keyword "set"
+let unfold_kw  = new_keyword "unfold" 
+let clear_kw   = new_keyword "clear" 
+let parse_kw   = new_keyword "parse" 
+let quit_kw    = new_keyword "quit" 
+let exit_kw    = new_keyword "exit" 
+let eval_kw    = new_keyword "eval" 
+let typed_kw   = new_keyword "typed" 
+let untyped_kw = new_keyword "untyped" 
+let set_kw     = new_keyword "set" 
 let include_kw = new_keyword "include"
 
 let parser arrow  : unit grammar = "→" | "->"
@@ -121,8 +121,6 @@ let parser hole   : unit grammar = "?"
 
 let parser ident = id:''[a-zA-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 
-let parser orien = "<" -> LE | ">" -> GE
-
 (****************************************************************************
  *                         A parser for kinds (types)                       *
  ****************************************************************************)
@@ -134,10 +132,10 @@ let parser kind p =
       -> in_pos _loc (PFunc(a,b))
   | id:ident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
       -> in_pos _loc (PTVar(id,l))
-  | forall id:ident ao:eq_kind? bnd:bound? a:(kind KQuant) when p = KQuant
-      -> in_pos _loc (PFAll(id,ao,bnd,a))
-  | exists id:ident ao:eq_kind? bnd:bound? a:(kind KQuant) when p = KQuant
-      -> in_pos _loc (PExis(id,ao,bnd,a))
+  | forall id:ident a:(kind KQuant) when p = KQuant
+      -> in_pos _loc (PFAll(id,a))
+  | exists id:ident a:(kind KQuant) when p = KQuant
+      -> in_pos _loc (PExis(id,a))
   | mu id:ident a:(kind KQuant) when p = KQuant
       -> in_pos _loc (PMu(id,a))
   | nu id:ident a:(kind KQuant) when p = KQuant
@@ -154,8 +152,6 @@ let parser kind p =
   | a:(kind KAtom)  when p = KQuant
 
 and kind_list  = l:(list_sep (kind KFunc) ",")
-and eq_kind    = "=" k:(kind KFunc)
-and bound      = o:orien a:(kind KFunc)
 and sum_item   = id:ident a:{_:of_kw a:(kind KFunc)}?
 and sum_items  = l:(list_sep sum_item "|")
 and prod_item  = id:ident ":" a:(kind KFunc)
@@ -259,12 +255,12 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
                 end
             end
         end
-    | PFAll(x,ko,bnd,k) ->
+    | PFAll(x,k) ->
         let f xk = unsugar ((x,xk) :: env) k in
-        fall x (unsugar_opt env ko) (unsugar_bound env bnd) f
-    | PExis(x,ko,bnd,k) ->
+        fall x f
+    | PExis(x,k) ->
         let f xk = unsugar ((x,xk) :: env) k in
-        exis x (unsugar_opt env ko) (unsugar_bound env bnd) f
+        exis x f
     | PMu(x,k) ->
         fixm x (fun xk -> unsugar ((x,xk) :: env) k)
     | PNu(x,k) ->
@@ -274,14 +270,6 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
     | PSum(cs)   ->
         dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
     | PHole      -> box (new_uvar ())
-  and unsugar_opt env ko =
-    match ko with
-    | None   -> None
-    | Some k -> Some (unsugar env k)
-  and unsugar_bound env bnd =
-    match bnd with
-    | None       -> None
-    | Some (o,a) -> Some (o, unsugar env a)
   and unsugar_top env ko =
     match ko with
     | None   -> prod []
@@ -384,11 +372,6 @@ let parser blank_parser = _:comment**
 
 let file_blank = blank_grammar blank_parser top_level_blank
 
-let parser is_typed =
-  | typed_kw   -> true
-  | untyped_kw -> false
-  | EMPTY      -> true
-
 let parser enabled =
   | "on"  -> true
   | "off" -> false
@@ -434,8 +417,8 @@ let parser command =
         let t = unbox t in
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
-  (* Value definition. *)
-  | ty:is_typed val_kw id:ident xs:var* "=" t:term ->
+  (* Untyped value definition. *)
+  | val_kw id:ident xs:var* "=" t:term ->
       fun st ->
         let t = in_pos _loc (PLAbs(xs,t)) in
         let (t, unbs) = unsugar_term st [] t in
@@ -444,18 +427,11 @@ let parser command =
             List.iter (fun (s,_) -> Printf.eprintf "Unbound: %s\n%!" s) unbs;
             failwith "Unbound variable."
           end;
-        let t = unbox t in
-        let ko = if ty then Some (type_infer st.verbose t None) else None in
-        let t = eval st t in
-        Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
-        begin
-          match ko with
-          | None   ->
-              Printf.fprintf stdout "%s : untyped\n%!" id
-          | Some k ->
-              Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
-        end
-  | ty:is_typed val_kw id:ident ko:{":" k:kind}? "=" t:term ->
+        let t = eval st (unbox t) in
+        Hashtbl.add st.venv id { name = id ; value = t ; ttype = None };
+        Printf.fprintf stdout "%s : untyped\n%!" id
+  (* Typed value definition. *)
+  | val_kw id:ident ":" k:kind "=" t:term ->
       fun st ->
         let (t, unbs) = unsugar_term st [] t in
         if unbs <> [] then
@@ -464,18 +440,12 @@ let parser command =
             failwith "Unbound variable."
           end;
         let t = unbox t in
-        let ko = map_opt (unsugar_kind st []) ko in
-        let ko = map_opt unbox ko in
-        let ko = if ty then Some (type_infer st.verbose t ko) else None in
+        let k = unbox (unsugar_kind st [] k) in
+        type_check st.verbose t k;
+        reset_all ();
         let t = eval st t in
-        Hashtbl.add st.venv id { name = id ; value = t ; ttype = ko };
-        begin
-          match ko with
-          | None   ->
-              Printf.fprintf stdout "%s : untyped\n%!" id
-          | Some k ->
-              Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
-        end
+        Hashtbl.add st.venv id { name = id ; value = t ; ttype = Some k };
+        Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
       !read_file fn

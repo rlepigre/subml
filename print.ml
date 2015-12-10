@@ -42,10 +42,12 @@ let rec print_kind unfold wrap ff t =
   | DSum(cs) ->
       let pvariant ff (c,a) = fprintf ff "%s of %a" c pkind a in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
-  | FAll(ao,bo,f) ->
-      fprintf ff "∀%a" (pquant unfold ao bo) f
-  | Exis(ao,bo,f) ->
-      fprintf ff "∃%a" (pquant unfold ao bo) f
+  | FAll(f)  ->
+      let x = new_tvar (binder_name f) in
+      fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
+  | Exis(f)  ->
+      let x = new_tvar (binder_name f) in
+      fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
   | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
@@ -69,21 +71,6 @@ let rec print_kind unfold wrap ff t =
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(_) -> assert false
-
-and pquant unfold ao bo ff b =
-  let x = new_tvar (binder_name b) in
-  let c = subst b (free_of x) in
-  pp_print_string ff (name_of x);
-  let pkind = print_kind unfold true in
-  match (ao, bo) with
-  | (None  , None      ) -> fprintf ff " %a" pkind c
-  | (Some a, None      ) -> fprintf ff " = %a %a" pkind a pkind c
-  | (None  , Some (o,b)) ->
-      let o = match o with GE -> ">" | LE -> "<" in
-      fprintf ff " %s %a %a" o pkind b pkind c
-  | (Some a, Some (o,b)) ->
-      let o = match o with GE -> ">" | LE -> "<" in
-      fprintf ff " = %a %s %a %a" pkind a o pkind b pkind c
 
 let pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;

@@ -164,40 +164,26 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         List.iter check_variant csa
 
     (* Universal quantifier. *)
-    | (_                , FAll(bo,bbndo,f)) ->
-        let b = subst f (new_ucst t bbndo f) in
+    | (_        , FAll(f)  ) ->
+        let b = subst f (new_ucst t f) in
         subtype ctxt t a b
 
-    | (FAll(ao,abndo,f) , _               ) ->
-        let v = match ao with None -> new_uvar () | Some k -> k in
-        let a = subst f v in
+    | (FAll(f)  , _        ) ->
+        let a = subst f (new_uvar ()) in
         subtype ctxt t a b;
-        begin
-          match abndo with
-          | None         -> ()
-          | Some (LE, c) -> assert false (* TODO *)
-          | Some (GE, c) -> assert false (* TODO *)
-        end
 
     | (UCst(ca)         , UCst(cb)        ) when ca == cb -> ()
 
     (* Existantial quantifier. *)
-    | (Exis(ao,abndo,f) , _               ) ->
-        let a = subst f (new_ecst t abndo f) in
+    | (Exis(f)  , _        ) ->
+        let a = subst f (new_ecst t f) in
         subtype ctxt t a b
 
-    | (_                , Exis(bo,bbndo,f)) ->
-        let v = match bo with None -> new_uvar () | Some k -> k in
-        let b = subst f v in
+    | (_        , Exis(f)  ) ->
+        let b = subst f (new_uvar ()) in
         subtype ctxt t a b;
-        begin
-          match bbndo with
-          | None         -> ()
-          | Some (LE, c) -> assert false (* TODO *)
-          | Some (GE, c) -> assert false (* TODO *)
-        end
 
-    | (ECst(ca)   , ECst(cb)   ) when ca == cb -> ()
+    | (ECst(ca) , ECst(cb)   ) when ca == cb -> ()
 
     (* μ and ν - least and greatest fixpoint. *)
     | (_          , FixM(o,f)) ->
@@ -325,10 +311,3 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
         assert false (* Cannot happen. *)
   in
   type_check t c
-
-let type_infer : bool -> term -> kind option -> kind = fun verbose t ko ->
-  match ko with
-  | None   -> let a = new_uvar () in
-              type_check verbose t a;
-              generalize (repr a)
-  | Some k -> type_check verbose t k; k

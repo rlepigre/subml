@@ -41,9 +41,6 @@ let new_oless, new_olequ, oreset =
  *                         AST for kinds (or types)                         *
  ****************************************************************************)
 
-(* Orientation for binder constraints. *)
-type orient = GE | LE
-
 (* Abstract syntax tree for types. *)
 type kind =
   (**** Main type constructors ****)
@@ -55,9 +52,9 @@ type kind =
   | Prod of (string * kind) list
   (* Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
   | DSum of (string * kind) list
-  (* Bounded quantifiers: ∀/∃X [= A] [</> B] C. *)
-  | FAll of kind option * (orient * kind) option * (kind, kind) binder
-  | Exis of kind option * (orient * kind) option * (kind, kind) binder
+  (* Quantifiers: ∀/∃X A. *)
+  | FAll of (kind, kind) binder
+  | Exis of (kind, kind) binder
   (* Least and greatest fixpoint: μα X A, να X A. *)
   | FixM of ordinal * (kind, kind) binder
   | FixN of ordinal * (kind, kind) binder
@@ -92,7 +89,6 @@ and type_def =
 (* Quantifier constant. *)
 and qcst =
   { qcst_key      : int (* NOTE Not sure if useful. *)
-  ; qcst_bound    : (orient * kind) option
   ; qcst_wit_term : term
   ; qcst_wit_kind : (kind, kind) binder }
 
@@ -165,10 +161,8 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (Func(a1,b1), Func(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
     | (Prod(fs1)  , Prod(fs2)  ) -> eq_assoc eq_kind fs1 fs2
     | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
-    | (FAll(ko1,bo1,k1), FAll(ko2,bo2,k2)) ->
-        eq_kindo ko1 ko2 && eq_bound bo1 bo2 && eq_kbinder k1 k2
-    | (Exis(ko1,bo1,k1), Exis(ko2,bo2,k2)) ->
-        eq_kindo ko1 ko2 && eq_bound bo1 bo2 && eq_kbinder k1 k2
+    | (FAll(b1)   , FAll(b2)   ) -> eq_kbinder b1 b2
+    | (Exis(b1)   , Exis(b2)   ) -> eq_kbinder b1 b2
     | (FixM(o1,f1), FixM(o2,f2)) -> o1 = o2 && eq_kbinder f1 f2
     | (FixN(o1,f1), FixN(o2,f2)) -> o1 = o2 && eq_kbinder f1 f2
     | (TDef(d1,a1), TDef(d2,a2)) ->
@@ -176,11 +170,9 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
         let k2 = msubst d2.tdef_value a2 in
         eq_kind k1 k2
     | (UCst(c1)   , UCst(c2)   ) ->
-        eq_bound c1.qcst_bound c2.qcst_bound &&
         eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
         eq_term c c1.qcst_wit_term c2.qcst_wit_term
     | (ECst(c1)   , ECst(c2)   ) ->
-        eq_bound c1.qcst_bound c2.qcst_bound &&
         eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
         eq_term c c1.qcst_wit_term c2.qcst_wit_term
     | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
@@ -189,16 +181,6 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
   and eq_kbinder f1 f2 = f1 == f2 ||
     let i = incr c; TInt(!c) in
     eq_kind (subst f1 i) (subst f2 i)
-  and eq_kindo ko1 ko2 =
-    match (ko1, ko2) with
-    | (None   , None   ) -> true
-    | (Some k1, Some k2) -> eq_kind k1 k2
-    | (_      , _      ) -> false
-  and eq_bound bo1 bo2 =
-    match (bo1, bo2) with
-    | (None       , None       ) -> true
-    | (Some(o1,k1), Some(o2,k2)) -> o1 = o2 && eq_kind k1 k2
-    | (_          , _          ) -> false
   in
   eq_kind k1 k2
 
@@ -305,25 +287,13 @@ let dsum : (string * kbox) list -> kbox =
     let cs = List.map (fun (c,t) -> box_pair (box c) t) cs in
     box_apply (fun cs -> DSum(cs)) (box_list cs)
 
-let fall : string -> kbox option -> (orient * kbox) option
-  -> (kbox -> kbox) -> kbox =
-  fun x ko bo f ->
-    let bo = map_opt (fun (o,k) -> box_apply (fun k -> (o,k)) k) bo in
-    let b = bind mk_free_tvar x f in
-    box_apply3 (fun ko bo b -> FAll(ko,bo,b)) (box_opt ko) (box_opt bo) b
+let fall : string -> (kbox -> kbox) -> kbox =
+  fun x f ->
+    box_apply (fun b -> FAll(b)) (bind mk_free_tvar x f)
 
-let fall' : string -> (kbox -> kbox) -> kbox =
-  fun x f -> fall x None None f
-
-let exis : string -> kbox option -> (orient * kbox) option
-  -> (kbox -> kbox) -> kbox =
-  fun x ko bo f ->
-    let bo = map_opt (fun (o,k) -> box_apply (fun k -> (o,k)) k) bo in
-    let b = bind mk_free_tvar x f in
-    box_apply3 (fun ko bo b -> Exis(ko,bo,b)) (box_opt ko) (box_opt bo) b
-
-let exis' : string -> (kbox -> kbox) -> kbox =
-  fun x f -> exis x None None f
+let exis : string -> (kbox -> kbox) -> kbox =
+  fun x f ->
+    box_apply (fun b -> Exis(b)) (bind mk_free_tvar x f)
 
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
@@ -341,9 +311,8 @@ let fixm : string -> (kbox -> kbox) -> kbox =
 (* Quantifier constant management. *)
 let (new_ucst, reset_ucst) =
   let c = ref 0 in
-  let new_ucst t bnd f = UCst
+  let new_ucst t f = UCst
     { qcst_key      = (incr c; !c)
-    ; qcst_bound    = bnd
     ; qcst_wit_term = t
     ; qcst_wit_kind = f }
   in
@@ -352,9 +321,8 @@ let (new_ucst, reset_ucst) =
 
 let (new_ecst, reset_ecst) =
   let c = ref 0 in
-  let new_ecst t bnd f = ECst
+  let new_ecst t f = ECst
     { qcst_key      = (incr c; !c)
-    ; qcst_bound    = bnd
     ; qcst_wit_term = t
     ; qcst_wit_kind = f }
   in
@@ -370,7 +338,7 @@ let (new_uvar, reset_uvar) =
 
 (* Resset all counters. *)
 let reset_all () =
-  let reset = [reset_ucst; reset_ecst; reset_uvar] in
+  let reset = [reset_ucst; reset_ecst; reset_uvar; oreset] in
   List.iter (fun x -> x ()) reset
 
 (****************************************************************************
@@ -378,13 +346,13 @@ let reset_all () =
  ****************************************************************************)
 
 let fix_kind : kind =
-  unbox (fall' "X" (fun x -> func (func x x) x))
+  unbox (fall "X" (fun x -> func (func x x) x))
 
 let bot : kind =
-  unbox (fall' "X" (fun x -> x))
+  unbox (fall "X" (fun x -> x))
 
 let top : kind =
-  unbox (exis' "X" (fun x -> x))
+  unbox (exis "X" (fun x -> x))
 
 (****************************************************************************
  *              Functional constructors with position for terms             *
@@ -504,15 +472,15 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Func(a,b) -> aux (neg occ) (aux occ acc b) a
     | Prod(fs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc fs
     | DSum(cs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc cs
-    | FAll(ao,bo,f) -> aux occ acc (subst f dummy) (* FIXME bound *)
-    | Exis(ao,bo,f) -> aux occ acc (subst f dummy) (* FIXME bound *)
+    | FAll(f)   -> aux occ acc (subst f dummy)
+    | Exis(f)   -> aux occ acc (subst f dummy)
     | FixM(_,f) -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
     | FixN(_,f) -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
     | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
     | UCst(c)   -> let a = subst c.qcst_wit_kind dummy in
-                   aux InEps acc a (* FIXME bnd ? *)
+                   aux InEps acc a
     | ECst(c)   -> let a = subst c.qcst_wit_kind dummy in
-                   aux InEps acc a (* FIXME bnd ? *)
+                   aux InEps acc a
     | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | TInt(_)   -> assert false
   in aux Pos Non k
@@ -528,14 +496,8 @@ let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
     | Func(a,b) -> Func(subst a, subst b)
     | Prod(fs)  -> Prod(List.map (fun (l,a) -> (l, subst a)) fs)
     | DSum(cs)  -> DSum(List.map (fun (c,a) -> (c, subst a)) cs)
-    | FAll(ao,bo,f) ->
-        let ao = map_opt subst ao in
-        let bo = map_opt (fun (o,a) -> (o,subst a)) bo in
-        FAll(ao, bo, binder_compose_right f subst)
-    | Exis(ao,bo,f) ->
-        let ao = map_opt subst ao in
-        let bo = map_opt (fun (o,a) -> (o,subst a)) bo in
-        Exis(ao, bo, binder_compose_right f subst)
+    | FAll(f)   -> FAll(binder_compose_right f subst)
+    | Exis(f)   -> Exis(binder_compose_right f subst)
     | FixM(o,f) -> FixM(o,binder_compose_right f subst)
     | FixN(o,f) -> FixN(o,binder_compose_right f subst)
     | TDef(d,a) -> TDef(d, Array.map subst a)
@@ -545,117 +507,6 @@ let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
     | TInt(_)   -> assert false
   in
   subst k
-
-(****************************************************************************
- *             Collecting all the unification variables of a type           *
- ****************************************************************************)
-
-module UVarOrd =
-  struct
-    type t = uvar
-    let compare u1 u2 = compare u1.uvar_key u2.uvar_key
-  end
-
-module UVarSet = Set.Make(UVarOrd)
-
-let uvars : kind -> uvar list = fun k ->
-  let dummy = Prod [] in
-  let union = List.fold_left UVarSet.union UVarSet.empty in
-  let rec uvars = function
-    | TVar(_)   -> UVarSet.empty
-    | Func(a,b) -> UVarSet.union (uvars a) (uvars b)
-    | Prod(fs)  -> let f s (_,a) = UVarSet.union s (uvars a) in
-                   List.fold_left f UVarSet.empty fs
-    | DSum(cs)  -> let f s (_,a) = UVarSet.union s (uvars a) in
-                   List.fold_left f UVarSet.empty cs
-    | FAll(ao,bo,f) ->
-        let c = subst f dummy in
-        begin
-          match (ao, bo) with
-          | (None  , None      ) -> uvars c
-          | (Some a, None      ) -> union [ uvars a; uvars c ]
-          | (None  , Some (_,b)) -> union [ uvars b; uvars c ]
-          | (Some a, Some (_,b)) -> union [ uvars a; uvars b; uvars c ]
-        end
-    | Exis(ao,bo,f) ->
-        let c = subst f dummy in
-        begin
-          match (ao, bo) with
-          | (None  , None      ) -> uvars c
-          | (Some a, None      ) -> union [ uvars a; uvars c ]
-          | (None  , Some (_,b)) -> union [ uvars b; uvars c ]
-          | (Some a, Some (_,b)) -> union [ uvars a; uvars b; uvars c ]
-        end
-    | FixM(_,f) -> uvars (subst f dummy)
-    | FixN(_,f) -> uvars (subst f dummy)
-    | TDef(d,a) -> let f s a = UVarSet.union s (uvars a) in
-                   Array.fold_left f UVarSet.empty a
-    | UCst(_)   -> assert false (* TODO *)
-    | ECst(_)   -> assert false (* TODO *)
-    | UVar(u)   ->
-        begin
-          match uvar_repr u with
-          | UVar u -> UVarSet.singleton u
-          | k      -> uvars k
-        end
-    | TInt(_)   -> assert false
-  in
-  UVarSet.elements (uvars k)
-
-let rec free_names : kind -> string list = function
-  | TVar(x)    -> [name_of x]
-  | Func(a,b)  -> (free_names a) @ (free_names b)
-  | Prod(fs)   -> List.flatten (List.map (fun (_,a) -> free_names a) fs)
-  | DSum(cs)   -> List.flatten (List.map (fun (_,a) -> free_names a) cs)
-  | FAll(ao,bo,f) ->
-      begin
-        let c = subst f (Prod []) in
-        match (ao, bo) with
-        | (None  , None      ) -> free_names c
-        | (Some a, None      ) -> (free_names a) @ (free_names c)
-        | (None  , Some (_,b)) -> (free_names b) @ (free_names c)
-        | (Some a, Some (_,b)) ->
-            (free_names a) @ (free_names b) @ (free_names c)
-      end
-  | Exis(ao,bo,f) ->
-      begin
-        let c = subst f (Prod []) in
-        match (ao, bo) with
-        | (None  , None      ) -> free_names c
-        | (Some a, None      ) -> (free_names a) @ (free_names c)
-        | (None  , Some (_,b)) -> (free_names b) @ (free_names c)
-        | (Some a, Some (_,b)) ->
-            (free_names a) @ (free_names b) @ (free_names c)
-      end
-  | FixM(_,f)  -> free_names (subst f (Prod []))
-  | FixN(_,f)  -> free_names (subst f (Prod []))
-  | TDef(d,a)  -> let l = Array.to_list (Array.map free_names a) in
-                  d.tdef_name :: (List.flatten l)
-  | UCst(_)    -> assert false (* TODO *)
-  | ECst(_)    -> assert false (* TODO *)
-  | UVar(u)    -> []
-  | TInt(_)    -> assert false
-
-let fresh_name : string -> string list -> string * string list =
-  fun pref used ->
-    let rec fresh i =
-      let pref = Printf.sprintf "%s%i" pref i in
-      if List.mem pref used then
-        fresh (i+1)
-      else
-        (pref, pref :: used)
-    in fresh 1
-
-let generalize : kind -> kind = fun k ->
-  let us = uvars k in
-  let f u (k, used) =
-    let (x, used) = fresh_name "X" used in
-    let k =
-      (* FIXME 1 ? *)
-      FAll(None, None, binder_from_fun x 1 (fun x -> bind_uvar u k x))
-    in (k, used)
-  in
-  fst (List.fold_right f us (k, free_names k))
 
 (****************************************************************************
  *                                 Lower kind                               *
@@ -678,12 +529,12 @@ let lower_kind k1 k2 =
         let cmp (k1,_) (k2,_) = compare k1 k2 in
         let f (la,a) (lb,b) = la = lb && lower_kind a b in
         List.for_all2 f (List.sort cmp fsa) (List.sort cmp fsb)
-    | (FAll(_,ba,a), FAll(_,bb,b)) ->
+    | (FAll(a)     , FAll(b)     ) ->
         let i = new_int () in
-        lower_bound ba bb && lower_kind (subst a i) (subst b i)
-    | (Exis(_,ba,a), FAll(_,bb,b)) ->
+        lower_kind (subst a i) (subst b i)
+    | (Exis(a)     , FAll(b)     ) ->
         let i = new_int () in
-        lower_bound ba bb && lower_kind (subst a i) (subst b i)
+        lower_kind (subst a i) (subst b i)
     | (FixM(oa,fa) , FixM(ob,fb) ) ->
         leq_ordinal oa ob && (fa == fb ||
           let i = new_int () in lower_kind (subst fa i) (subst fb i))
@@ -707,10 +558,4 @@ let lower_kind k1 k2 =
     | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false
-  and lower_bound b1 b2 =
-    match (b1, b2) with
-    | (None      , None      ) -> true
-    | (Some(GE,a), Some(GE,b)) -> lower_kind a b
-    | (Some(LE,a), Some(LE,b)) -> lower_kind b a
-    | (_         , _         ) -> false
   in lower_kind k1 k2
