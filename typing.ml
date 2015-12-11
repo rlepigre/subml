@@ -248,6 +248,9 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
   in
   subtype { lfix = [] ; rfix = [] } t a b
 
+let generic_subtype : bool -> kind -> kind -> unit = fun vb a b ->
+  subtype vb (generic_cnst a b) a b
+
 let type_check : bool -> term -> kind -> unit = fun verbose t c ->
   let subtype = subtype verbose in
   let c = repr c in

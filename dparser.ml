@@ -107,6 +107,8 @@ let exit_kw    = new_keyword "exit"
 let eval_kw    = new_keyword "eval" 
 let set_kw     = new_keyword "set" 
 let include_kw = new_keyword "include"
+let check_kw   = new_keyword "check"
+let not_kw     = new_keyword "not"
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -444,6 +446,17 @@ let parser command =
         let t = eval st t in
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = Some k };
         Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
+  (* Check subtyping. *)
+  | check_kw n:{not_kw -> false}?[true] a:kind {"⊆" | "<"} b:kind ->
+      fun st ->
+        let a = unbox (unsugar_kind st [] a) in
+        let b = unbox (unsugar_kind st [] b) in
+        begin
+          try generic_subtype st.verbose a b
+          with
+            | e when n -> raise e
+            | _        -> ()
+        end
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
       !read_file fn

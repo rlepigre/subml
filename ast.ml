@@ -443,6 +443,11 @@ let fixy : pos -> tbox =
 let cnst : (term, term) binder -> kind -> kind -> term =
   fun s a b -> dummy_pos (Cnst(s,a,b))
 
+let generic_cnst : kind -> kind -> term =
+  fun a b ->
+    let f = bind (lvar_p dummy_position) "x" (fun x -> x) in
+    dummy_pos (Cnst(unbox f,a,b))
+
 (****************************************************************************
  *                 Occurence test for unification variables                 *
  ****************************************************************************)
