@@ -9,7 +9,7 @@ exception Subtype_error of string
 let type_error : pos -> string -> unit = fun p msg ->
   raise (Type_error(p,msg))
 
-let subtype_error : string -> unit = fun msg ->
+let subtype_error : string -> 'a = fun msg ->
   raise (Subtype_error msg)
 
 type subtype_ctxt =
@@ -115,7 +115,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         let k =
           match uvar_occur ua b with
           | Non -> b
-          | Pos -> assert false (* TODO Nu *)
+          | Pos -> subtype_error "Unification variable occuring positively."
           | _   -> bot
         in
         ua.uvar_val <- Some k
@@ -123,7 +123,7 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
         let k =
           match uvar_occur ub a with
           | Non -> a
-          | Pos -> assert false (* TODO Mu *)
+          | Pos -> subtype_error "Unification variable occuring positively."
           | _   -> top
         in
         ub.uvar_val <- Some k
