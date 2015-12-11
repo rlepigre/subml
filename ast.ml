@@ -92,12 +92,6 @@ and qcst =
   ; qcst_wit_term : term
   ; qcst_wit_kind : (kind, kind) binder }
 
-(* Fixpoint constant. *)
-and fcst =
-  { fcst_key      : int
-  ; fcst_level    : int list
-  ; fcst_wit_kind : (kind, kind) binder }
-
 (* Unification variable identified by a key and possibly a value. *)
 and uvar =
   (* Unique key identifying the variable. *)
