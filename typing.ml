@@ -2,6 +2,7 @@ open Bindlib
 open Util
 open Ast
 open Print
+open Trace
 
 exception Type_error of pos * string
 exception Subtype_error of string
@@ -94,14 +95,12 @@ let check_rec : subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
         end
     | _         -> (ctxt, a , b)
 
-let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
-  let rec subtype ctxt t a b = 
+let subtype : term -> kind -> kind -> unit = fun t a b ->
+  let rec subtype ctxt t a b =
+    trace_subtyping t a b;
     let a = repr a in
     let b = repr b in
-    if verbose then
-      Printf.eprintf "Sub: %a ∈ %a ⊆ %a\n%!"
-        print_term t (print_kind false) a (print_kind false) b;
-    try
+    (try
     let (ctxt, a, b) = check_rec ctxt a b in
     if a == b then () else
     match (a,b) with
@@ -244,21 +243,19 @@ let subtype : bool -> term -> kind -> kind -> unit = fun verbose t a b ->
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtype clash (no rule apply)."
 
-    with Induction_hypothesis -> ()
+    with Induction_hypothesis -> ());
+    trace_pop ()
   in
   subtype { lfix = [] ; rfix = [] } t a b
 
-let generic_subtype : bool -> kind -> kind -> unit = fun vb a b ->
-  subtype vb (generic_cnst a b) a b
+let generic_subtype : kind -> kind -> unit = fun a b ->
+  subtype (generic_cnst a b) a b
 
-let type_check : bool -> term -> kind -> unit = fun verbose t c ->
-  let subtype = subtype verbose in
+let type_check : term -> kind -> unit = fun t c ->
   let c = repr c in
   let rec type_check t c =
-    if verbose then
-      Printf.fprintf stderr "Typ: %a : %a\n%!"
-        print_term t (print_kind false) c;
-    match t.elt with
+    trace_typing t c;
+    (match t.elt with
     | Coer(t,a) ->
         subtype t a c;
         type_check t a
@@ -311,6 +308,7 @@ let type_check : bool -> term -> kind -> unit = fun verbose t c ->
         let (_,a,_) = cst in
         subtype t a c
     | TagI(_) ->
-        assert false (* Cannot happen. *)
+       assert false (* Cannot happen. *));
+    trace_pop ();
   in
   type_check t c

@@ -2,7 +2,7 @@ OCAMLC = ocamlc -I +decap -I +bindlib -I +compiler-libs
 
 all: main
 
-main: util.cmo ast.cmo eval.cmo print.cmo typing.cmo dparser.cmo main.cmo
+main: util.cmo ast.cmo eval.cmo print.cmo trace.cmo typing.cmo dparser.cmo main.cmo
 	$(OCAMLC) -o $@ $(CMA) \
 		bindlib.cma unix.cma str.cma ocamlcommon.cma decap.cma decap_ocaml.cma \
 		$^
@@ -25,7 +25,10 @@ print.cmi: print.mli ast.cmo
 print.cmo: print.ml print.cmi ast.cmo
 	$(OCAMLC) -c $<
 
-typing.cmo: typing.ml ast.cmo
+trace.cmo: trace.ml ast.cmo
+	$(OCAMLC) -c $<
+
+typing.cmo: typing.ml ast.cmo trace.cmo
 	$(OCAMLC) -c $<
 
 dparser.cmo: dparser.ml ast.cmo print.cmo eval.cmo typing.cmo

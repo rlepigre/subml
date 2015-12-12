@@ -6,6 +6,7 @@ open Ast
 open Print
 open Eval
 open Typing
+open Trace
 
 #define LOCATE locate
 
@@ -99,16 +100,15 @@ let in_kw   = new_keyword "in"
 let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
 
-let unfold_kw  = new_keyword "unfold" 
-let clear_kw   = new_keyword "clear" 
-let parse_kw   = new_keyword "parse" 
-let quit_kw    = new_keyword "quit" 
-let exit_kw    = new_keyword "exit" 
-let eval_kw    = new_keyword "eval" 
-let set_kw     = new_keyword "set" 
+let unfold_kw  = new_keyword "unfold"
+let clear_kw   = new_keyword "clear"
+let parse_kw   = new_keyword "parse"
+let quit_kw    = new_keyword "quit"
+let exit_kw    = new_keyword "exit"
+let eval_kw    = new_keyword "eval"
+let set_kw     = new_keyword "set"
 let include_kw = new_keyword "include"
 let check_kw   = new_keyword "check"
-let not_kw     = new_keyword "not"
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -176,12 +176,8 @@ let parser var =
 let parser term p =
   | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
-  | t:(term TFunc) ":" k:kind when p = TAtom ->
-      in_pos _loc (PCoer(t,k))
   | t:(term TAppl) u:(term TAtom) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
-  | id:ident when p = TAtom ->
-      in_pos _loc (PLVar(id))
   | "print(" - s:string_lit - ")" ";" t:(term TColo) when p = TColo ->
       in_pos _loc (PPrnt(s,t))
   | c:ident "[" uo:(term TFunc)? "]" when p = TAtom ->
@@ -193,10 +189,14 @@ let parser term p =
       in_pos _loc (PCase(t,ps))
   | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
       in_pos _loc (PReco(fs))
+  | t:(term TFunc) ":" k:kind when p = TAtom ->
+      in_pos _loc (PCoer(t,k))
+  | id:ident when p = TAtom ->
+      in_pos _loc (PLVar(id))
   | fix_kw when p = TAtom ->
       in_pos _loc PFixY
 
-  | "(" t:(term TFunc) ")"
+  | "(" t:(term TFunc) ")" when p = TAtom
   | t:(term TAtom) when p = TColo
   | t:(term TColo) when p = TAppl
   | t:(term TAppl) when p = TFunc
@@ -418,7 +418,7 @@ let parser command =
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
   (* Untyped value definition. *)
-  | val_kw id:ident xs:var* "=" t:term ->
+(*  | val_kw id:ident xs:var* "=" t:term ->
       fun st ->
         let t = in_pos _loc (PLAbs(xs,t)) in
         let (t, unbs) = unsugar_term st [] t in
@@ -429,10 +429,10 @@ let parser command =
           end;
         let t = eval st (unbox t) in
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = None };
-        Printf.fprintf stdout "%s : untyped\n%!" id
+    Printf.fprintf stdout "%s : untyped\n%!" id*)
   (* Typed value definition. *)
   | val_kw id:ident ":" k:kind "=" t:term ->
-      fun st ->
+     fun st ->
         let (t, unbs) = unsugar_term st [] t in
         if unbs <> [] then
           begin
@@ -441,21 +441,25 @@ let parser command =
           end;
         let t = unbox t in
         let k = unbox (unsugar_kind st [] k) in
-        type_check st.verbose t k;
+        type_check t k;
+	let _prf = collect_typing_proof () in
         reset_all ();
         let t = eval st t in
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = Some k };
         Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
   (* Check subtyping. *)
-  | check_kw n:{not_kw -> false}?[true] a:kind {"⊆" | "<"} b:kind ->
+  | check_kw n:{"not" -> false}?[true] a:kind {"⊆" | "<"} b:kind ->
       fun st ->
         let a = unbox (unsugar_kind st [] a) in
         let b = unbox (unsugar_kind st [] b) in
         begin
-          try generic_subtype st.verbose a b
+          try
+	    generic_subtype a b;
+	    let _prf = collect_subtyping_proof () in
+	    ()
           with
-            | e when n -> raise e
-            | _        -> ()
+            | e when n -> trace_state := []; raise e
+            | _        -> trace_state := []; ()
         end
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
@@ -479,7 +483,7 @@ let toplevel_of_string : state -> string -> unit = fun st s ->
   action st
 
 let parser file_contents =
-  | cs:command* -> fun st -> List.iter (fun c -> c st) cs
+  | cs:command** -> fun st -> List.iter (fun c -> c st) cs
 
 let eval_file fn st =
   let parse = parse_file file_contents file_blank in
