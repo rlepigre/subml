@@ -1,4 +1,5 @@
 open Ast
+open Print
 
 type sub_proof =
   { sterm : term;
@@ -69,12 +70,29 @@ let collect_subtyping_proof () =
   | [EndSubTyping prf] -> trace_state := [] ; prf
   | _ -> assert false
 
-(*
-    if verbose then
-      Printf.eprintf "Sub: %a ∈ %a ⊆ %a\n%!"
-        print_term t (print_kind false) a (print_kind false) b;
-    try
-    if verbose then
-      Printf.fprintf stderr "Typ: %a : %a\n%!"
-        print_term t (print_kind false) c;
-*)
+let print_subtyping_proof, print_typing_proof =
+  let rec fn indent (p:sub_proof) =
+    List.iter (fn (indent^"  ")) p.strees;
+    Printf.eprintf "%s%a ∈ %a ⊆ %a\n%!" indent
+      print_term p.sterm (print_kind false) p.left (print_kind false) p.right
+  and gn indent (p:typ_proof) =
+    List.iter (fn (indent^"  ")) p.strees;
+    List.iter (gn (indent^"  ")) p.ttrees;
+    Printf.eprintf "%s%a : %a\n%!" indent
+      print_term p.tterm (print_kind false) p.typ
+  in
+  (fn "", gn "")
+
+let trace_backtrace () =
+  let rec fn = function
+    | (Typing p | EndTyping p)::l ->
+       Printf.eprintf "%a : %a\n%!"
+	 print_term p.tterm (print_kind false) p.typ;
+      fn l
+    | (SubTyping p | EndSubTyping p)::l ->
+       Printf.eprintf "%a ∈ %a ⊆ %a\n%!"
+	 print_term p.sterm (print_kind false) p.left (print_kind false) p.right;
+      fn l
+    | [] -> ()
+  in
+  fn !trace_state; trace_state := []

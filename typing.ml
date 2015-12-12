@@ -241,7 +241,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         subtype ctxt t a (msubst d.tdef_value b)
 
     (* Subtype clash. *)
-    | (_, _) -> subtype_error "Subtype clash (no rule apply)."
+    | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
 
     with Induction_hypothesis -> ());
     trace_pop ()

@@ -14,8 +14,8 @@ val if : ∀X (Bool → X → X → X) = fun c t e ↦ (c t e)
 val or : Bool → Bool → Bool = fun a b ↦ (a tru b)
 val and : Bool → Bool → Bool = fun a b ↦ (a b fls)
 val xor : Bool → Bool → Bool = fun a b ↦ (a (b fls tru) a)
-val not : Bool → Bool → Bool = fun a  ↦ (a fls tru)
+val not : Bool → Bool = fun a  ↦ (a fls tru)
 
 (* Printing_function. *)
-val print_bool : Bool → {} = fun a ↦ (
-  (a (fun x -> print("tru\n"); {}) (fun x -> print("fls\n"); {})) {})
+val print_bool : Bool → {} → {} = fun a ↦ (
+  a (fun x → print("tru"); {}) (fun x → print("fls"); {}))

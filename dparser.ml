@@ -441,8 +441,12 @@ let parser command =
           end;
         let t = unbox t in
         let k = unbox (unsugar_kind st [] k) in
-        type_check t k;
-	let _prf = collect_typing_proof () in
+        (try
+	  type_check t k;
+	  let prf = collect_typing_proof () in
+	  if st.verbose then print_typing_proof prf;
+	with
+	  e -> trace_backtrace (); raise e);
         reset_all ();
         let t = eval st t in
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = Some k };
@@ -455,11 +459,12 @@ let parser command =
         begin
           try
 	    generic_subtype a b;
-	    let _prf = collect_subtyping_proof () in
+	    let prf = collect_subtyping_proof () in
+	    if st.verbose || not n then print_subtyping_proof prf;
 	    ()
           with
-            | e when n -> trace_state := []; raise e
-            | _        -> trace_state := []; ()
+            | e when n -> trace_backtrace (); raise e
+            | _        -> trace_state := [];
         end
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
