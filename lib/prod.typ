@@ -7,8 +7,8 @@ type Pair(A, B) = ∀X ((A → B → X) → X)
 (* Construction and projection of pairs. *)
 val pair : ∀A ∀B (A → B → Pair(A,B)) = fun x y f ↦ f x y
 
-val pi1 : ∀A ∀B (Pair(A,B) → A) = fun p -> p (fun x y ↦ x)
-val pi2 : ∀A ∀B (Pair(A,B) → B) = fun p -> p (fun x y ↦ y)
+val pi1 : ∀A ∀B (Pair(A,B) → A) = fun p ↦ p (fun x y ↦ x)
+val pi2 : ∀A ∀B (Pair(A,B) → B) = fun p ↦ p (fun x y ↦ y)
 
 (* Type of triples. *)
 type Triple(A,B,C) = ∀X ((A → B → C → X) → X)
