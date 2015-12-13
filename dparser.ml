@@ -417,19 +417,6 @@ let parser command =
         let t = unbox t in
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
-  (* Untyped value definition. *)
-(*  | val_kw id:ident xs:var* "=" t:term ->
-      fun st ->
-        let t = in_pos _loc (PLAbs(xs,t)) in
-        let (t, unbs) = unsugar_term st [] t in
-        if unbs <> [] then
-          begin
-            List.iter (fun (s,_) -> Printf.eprintf "Unbound: %s\n%!" s) unbs;
-            failwith "Unbound variable."
-          end;
-        let t = eval st (unbox t) in
-        Hashtbl.add st.venv id { name = id ; value = t ; ttype = None };
-    Printf.fprintf stdout "%s : untyped\n%!" id*)
   (* Typed value definition. *)
   | val_kw id:ident ":" k:kind "=" t:term ->
      fun st ->
@@ -488,7 +475,7 @@ let toplevel_of_string : state -> string -> unit = fun st s ->
   action st
 
 let parser file_contents =
-  | cs:command** -> fun st -> List.iter (fun c -> c st) cs
+  | cs:command* -> fun st -> List.iter (fun c -> c st) cs
 
 let eval_file fn st =
   let parse = parse_file file_contents file_blank in

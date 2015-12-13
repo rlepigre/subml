@@ -33,19 +33,18 @@ val pred : Nat → Nat = fun n ↦
   n (fun p x y ↦ p (S x) x) (fun x y ↦ y) Z Z
 
 (* Morley's inferior function. *)
-(*
 include "lib/bool.typ"
-val leq : Nat → Nat → Nat = fun n m ↦
-  n (fun f g ↦ g f) (fun i ↦ tru) (m (fun f g ↦ g f) (fun i ↦ fls))
-*)
+type t = μX ((X → Bool) → Bool)
+val leq : Nat → Nat → Bool = fun n m ↦
+  (n : (t → t) → (t → t)) (fun f g ↦ g f) (fun i ↦ tru)
+  ((m : (t → t) → (t → t)) (fun f g ↦ g f) (fun i ↦ fls))
 
-(*
-include "prod.typ";
-let pred = λn:Nat.pi2 (n
-        (λp. pair (S (pi1 p)) (pi1 p))
-        (pair 0 0));
 
-let pred = λn:Nat.(n
-        (λp.p (λx y p.p ((λn:Nat.(λf x.f (n f x))) x) x))
-        (λp.p 0 0)):Prod(Nat,Nat) (λx y.y);
-*)
+include "lib/prod.typ"
+val pred2 : Nat → Nat = fun n ↦ pi2 (n
+        (fun p ↦  pair (S (pi1 p)) (pi1 p))
+        (pair Z Z))
+
+val pred3 : Nat → Nat = fun n ↦ n
+        (fun p x y ↦ p (S x) x)
+        (fun x y ↦ y) Z Z
