@@ -13,7 +13,7 @@ val if : ∀X (Bool → X → X → X) = fun c t e ↦ c t e
 (* Basic operations. *)
 val or : Bool → Bool → Bool = fun a b ↦ a tru b
 val and : Bool → Bool → Bool = fun a b ↦ a b fls
-val xor : Bool → Bool → Bool = fun a b ↦ a (b fls tru) a
+val xor : Bool → Bool → Bool = fun a b ↦ a (b fls tru) b
 val not : Bool → Bool = fun a  ↦ a fls tru
 
 (* Printing_function. *)

@@ -1,12 +1,16 @@
 open Bindlib
 open Util
 open Ast
-open Print
+open Multi_print
 open Dparser
 
 let st = initial_state true
 
 let _ = handle_stop true
+
+let spec =
+  [ ("--latex", Arg.Unit (fun _ -> Printf.eprintf "coucou\n%!"; print_mode := Latex), "Activate latex mode");
+    ("--verbose", Arg.Unit (fun _ -> st.verbose <- true), "Activate verbose mode")]
 
 let rec interact () =
   let error msg = Printf.eprintf "%s\n%!" msg; interact () in
@@ -20,9 +24,5 @@ let rec interact () =
   | e                    -> error (Printexc.to_string e)
 
 let _ =
-  for i = 1 to Array.length Sys.argv - 1 do
-    let fn = Sys.argv.(i) in
-    Printf.printf "## Loading file %S\n%!" fn;
-    eval_file fn st
-  done;
+  Arg.parse spec (fun fn -> eval_file fn st) "";
   interact ()

@@ -3,7 +3,7 @@ open Decap
 open Bindlib
 open Util
 open Ast
-open Print
+open Multi_print
 open Eval
 open Typing
 open Trace
@@ -23,8 +23,7 @@ let parser string_char =
   | "\\\\" -> "\\"
   | "\\n"  -> "\n"
   | "\\t"  -> "\t"
-  | c:ANY  -> if c = '\\' || c = '"' || c = '\r' then
-                raise (Give_up "");
+  | c:ANY  -> if c = '\\' || c = '"' || c = '\r' then give_up "";
               String.make 1 c
 
 let string_lit =
@@ -38,7 +37,7 @@ let is_keyword : string -> bool = Hashtbl.mem keywords
 
 let check_not_keyword : string -> unit = fun s ->
   if is_keyword s then
-    raise (Give_up ("\""^s^"\" is a reserved identifier..."))
+    give_up ("\""^s^"\" is a reserved identifier...")
 
 let new_keyword : string -> unit grammar = fun s ->
   let ls = String.length s in
@@ -53,13 +52,13 @@ let new_keyword : string -> unit grammar = fun s ->
     for i = 0 to ls - 1 do
       let (c,str',pos') = Input.read !str !pos in
       if c <> s.[i] then
-        raise (Give_up ("The keyword "^s^" was expected..."));
+        give_up ("The keyword "^s^" was expected...");
       str := str'; pos := pos'
     done;
     let (c,_,_) = Input.read !str !pos in
     match c with
     | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' ->
-        raise (Give_up ("The keyword "^s^" was expected..."))
+        give_up ("The keyword "^s^" was expected...")
     | _                                           -> ((), !str, !pos)
   in
   black_box f (Charset.singleton s.[0]) None s
@@ -147,7 +146,7 @@ let parser kind p =
   | hole when p = KAtom
       -> in_pos _loc PHole
 
-  | "(" a:(kind KFunc) ")"
+  | "(" a:(kind KFunc) ")" when p = KAtom
   | a:(kind KQuant) when p = KFunc
   | a:(kind KAtom)  when p = KQuant
 
@@ -356,11 +355,11 @@ let comment_char = black_box
   (fun str pos ->
     let (c, str', pos') = Input.read str pos in
     match c with
-    | '\255' -> raise (Give_up "Unclosed comment.")
+    | '\255' -> give_up "Unclosed comment."
     | '*'    ->
         let (c', _, _) = Input.read str' pos' in
         if c' = ')' then
-          raise (Give_up "Not the place to close a comment.")
+          give_up "Not the place to close a comment."
         else
           ((), str', pos')
     | _      -> ((), str', pos')
@@ -378,6 +377,7 @@ let parser enabled =
 
 let parser opt_flag =
   | "verbose" b:enabled -> fun st -> st.verbose <- b
+  | "latex" b:enabled -> fun st -> Multi_print.print_mode := if b then Latex else Ascii
 
 let read_file = ref (fun _ _ -> assert false)
 
@@ -475,11 +475,14 @@ let toplevel_of_string : state -> string -> unit = fun st s ->
   action st
 
 let parser file_contents =
-  | cs:command* -> fun st -> List.iter (fun c -> c st) cs
+  | cs:command** -> fun st -> List.iter (fun c -> c st) cs
 
 let eval_file fn st =
+  Printf.printf "## Loading file %S\n%!" fn;
   let parse = parse_file file_contents file_blank in
   let action = Decap.handle_exception parse fn in
-  action st
+  let res = action st in
+  Printf.printf "## file Loaded %S\n%!" fn;
+  res
 
 let _ = read_file := eval_file

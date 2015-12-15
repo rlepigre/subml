@@ -26,7 +26,7 @@ val mul : Nat → Nat → Nat = fun n m f ↦ n (m f)
 
 (* Printing function. *)
 val print_nat : Nat → {} = fun n ↦
-  n (print("S"); fun x -> x) (print("Z\n"); {})
+  n (print("S"); (fun x -> x)) (print("Z\n"); {})
 
 (* Predecessor. *)
 val pred : Nat → Nat = fun n ↦

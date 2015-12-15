@@ -11,6 +11,8 @@ val pi1 : ∀A ∀B (Pair(A,B) → A) = fun p ↦ p (fun x y ↦ x)
 val pi2 : ∀A ∀B (Pair(A,B) → B) = fun p ↦ p (fun x y ↦ y)
 
 (* Type of triples. *)
+
+
 type Triple(A,B,C) = ∀X ((A → B → C → X) → X)
 
 (* Constructor and projection operators. *)

@@ -1,9 +1,9 @@
 open Format
 open Ast
 
-val print_list : (formatter -> 'a -> unit) -> string -> formatter -> 'a list -> unit
+type print_mode = Ascii | Latex
 
-val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -> unit
+val print_mode : print_mode ref
 
 (* Pretty-printer for terms. *)
 val print_term : out_channel -> term -> unit

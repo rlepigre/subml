@@ -1,10 +1,6 @@
 open Format
 open Ast
 
-val print_list : (formatter -> 'a -> unit) -> string -> formatter -> 'a list -> unit
-
-val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -> unit
-
 (* Pretty-printer for terms. *)
 val print_term : out_channel -> term -> unit
 
