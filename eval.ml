@@ -35,7 +35,7 @@ let rec eval : state -> term -> term = fun st t0 ->
         match t'.elt with
         | Cons(c,v) ->
             begin
-              try eval st (subst (List.assoc c l) v)
+              try eval st (dummy_pos (Appl(List.assoc c l, v)))
               with Not_found -> dummy_pos (Case(t',l))
             end
         | t   -> dummy_pos (Case(t',l))

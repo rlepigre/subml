@@ -1,16 +1,16 @@
-type UNat = μX [Z of {} | S of X]
+type UNat = μX [Z  | S of X]
 
-val print_unat : UNat → {} = fix (fun r n ↦
+val rec print_unat : UNat → {} = fun n ↦
   case n of
-  | Z[x] → print("Z\n")
-  | S[x] → print("S"); r x)
+  | Z  → print("Z\n")
+  | S x → print("S"); print_unat x
 
-val add : UNat → UNat → UNat = fix (fun r n m ↦
+val rec add : UNat → UNat → UNat = fun n m ↦
   case n of
-  | Z[x] → m
-  | S[x] → S[r x m])
+  | Z  → m
+  | S x → S(add x m)
 
-val mul : UNat → UNat → UNat = fix (fun r n m ↦
+val rec mul : UNat → UNat → UNat = fun n m ↦
   case n of
-  | Z[x] → Z[x]
-  | S[x] → add m (r x m))
+  | Z → Z
+  | S x → add m (mul x m)

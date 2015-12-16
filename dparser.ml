@@ -85,9 +85,16 @@ and pterm' =
   | PPrnt of string
   | PCstr of string * pterm option
   | PProj of pterm * string
-  | PCase of pterm * (string * strpos * pterm) list
+  | PCase of pterm * (string * (strpos * pkind option) option * pterm) list
   | PReco of (string * pterm) list
   | PFixY of pterm
+
+(* t ; u => (fun (x : unit) -> u) t *)
+let sequence pos t u =
+     in_pos pos (
+       PAppl(in_pos pos (
+	 PLAbs([in_pos pos "_",Some (in_pos pos (
+	   PProd []))] ,u)), t))
 
 (* Basic tokens. *)
 let case_kw = new_keyword "case"
@@ -119,15 +126,17 @@ let parser dot    : unit grammar = "." | "->" | "→" | "↦"
 let parser hole   : unit grammar = "?"
 
 let parser ident = id:''[a-zA-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
+let parser lident = id:''[a-z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
+let parser uident = id:''[A-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 
 (****************************************************************************
  *                         A parser for kinds (types)                       *
  ****************************************************************************)
 
-type pkind_prio = KFunc | KQuant | KAtom
+type pkind_prio = KQuant | KFunc | KAtom
 
 let parser kind p =
-  | a:(kind KQuant) arrow b:(kind KFunc) when p = KFunc
+  | a:(kind KAtom) arrow b:(kind KFunc) when p = KFunc
       -> in_pos _loc (PFunc(a,b))
   | id:ident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
       -> in_pos _loc (PTVar(id,l))
@@ -147,16 +156,16 @@ let parser kind p =
       -> in_pos _loc PHole
 
   | "(" a:(kind KFunc) ")" when p = KAtom
-  | a:(kind KQuant) when p = KFunc
-  | a:(kind KAtom)  when p = KQuant
+  | a:(kind KAtom) when p = KFunc
+  | a:(kind KFunc)  when p = KQuant
 
-and kind_list  = l:(list_sep (kind KFunc) ",")
-and sum_item   = id:ident a:{_:of_kw a:(kind KFunc)}?
+and kind_list  = l:(list_sep (kind KQuant) ",")
+and sum_item   = id:ident a:{_:of_kw a:(kind KQuant)}?
 and sum_items  = l:(list_sep sum_item "|")
-and prod_item  = id:ident ":" a:(kind KFunc)
+and prod_item  = id:ident ":" a:(kind KQuant)
 and prod_items = l:(list_sep prod_item ";")
 
-let kind = kind KFunc
+let kind = kind KQuant
 
 let parser kind_def =
   | id:ident args:{"(" ids:(list_sep' ident ",") ")"}?[[]] "=" k:kind
@@ -169,8 +178,8 @@ let parser kind_def =
 type pterm_prio = TFunc | TColo | TAppl | TAtom
 
 let parser var =
-  | id:ident                    -> (in_pos _loc_id id, None)
-  | "(" id:ident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
+  | id:lident                    -> (in_pos _loc_id id, None)
+  | "(" id:lident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
 
 let parser term p =
   | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
@@ -178,13 +187,10 @@ let parser term p =
   | t:(term TAppl) u:(term TAtom) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
   | t:(term TAppl) ";" u:(term TColo) when p = TColo ->
-     in_pos _loc (
-       PAppl(in_pos _loc (
-	 PLAbs([in_pos _loc "_",Some (in_pos _loc (
-	   PProd []))] ,u)), t))
+     sequence _loc t u
   | "print(" - s:string_lit - ")" when p = TAtom ->
       in_pos _loc (PPrnt(s))
-  | c:ident "[" uo:(term TFunc)? "]" when p = TAtom ->
+  | c:uident uo:(term TAtom)? when p = TAtom ->
       in_pos _loc (PCstr(c,uo))
   | t:(term TAtom) "." l:ident when p = TAtom ->
       in_pos _loc (PProj(t,l))
@@ -195,7 +201,7 @@ let parser term p =
       in_pos _loc (PReco(fs))
   | t:(term TAtom) ":" k:kind when p = TAtom ->
       in_pos _loc (PCoer(t,k))
-  | id:ident when p = TAtom ->
+  | id:lident when p = TAtom ->
       in_pos _loc (PLVar(id))
   | fix_kw u:(term TFunc) when p = TFunc ->
       in_pos _loc (PFixY(u))
@@ -205,8 +211,7 @@ let parser term p =
   | t:(term TAppl) when p = TColo
   | t:(term TColo) when p = TFunc
 
-and pattern  = c:ident "[" x:ident "]" _:arrow t:(term TFunc) ->
-  let x = in_pos _loc_x x in (c, x, t)
+and pattern  = c:uident x:var? _:arrow t:(term TFunc) -> (c, x, t)
 and field    = l:ident "=" t:(term TFunc)
 
 let term = term TFunc
@@ -336,8 +341,10 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
     | PProj(t,l) ->
         proj pt.pos (unsugar env t) l
     | PCase(t,cs) ->
-        let f (c,x,t) =
-          (c, x, (fun v -> unsugar ((x.elt,v)::env) t))
+       let f (c,x,t) =
+	 (c, unsugar env (match x with
+	 | None   -> dummy_pos (PLAbs([dummy_pos "_", Some(dummy_pos (PProd([])))], t))
+	 | Some x -> dummy_pos (PLAbs([x],t))))
         in
         case pt.pos (unsugar env t) (List.map f cs)
     | PReco(fs) ->
@@ -423,9 +430,12 @@ let parser command =
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" print_term t
   (* Typed value definition. *)
-  | val_kw id:ident ":" k:kind "=" t:term ->
+  | val_kw r:rec_kw? id:lident ":" k:kind "=" t:term ->
      fun st ->
-        let (t, unbs) = unsugar_term st [] t in
+       let t =
+	 if r = None then t
+	 else in_pos _loc_t (PFixY(in_pos _loc_t (PLAbs([in_pos _loc_id id, None], t)))) in
+       let (t, unbs) = unsugar_term st [] t in
         if unbs <> [] then
           begin
             List.iter (fun (s,_) -> Printf.eprintf "Unbound: %s\n%!" s) unbs;

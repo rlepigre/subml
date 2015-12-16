@@ -109,12 +109,18 @@ let rec print_term ff t =
   | Proj(t,l) ->
       fprintf ff "%a.%s" print_term t l
   | Cons(c,t) ->
-      fprintf ff "%s[%a]" c print_term t
+     (match t.elt with
+     | Reco([]) -> fprintf ff "%s" c
+     | _ -> fprintf ff "%s %a" c print_term t)
   | Case(t,l) ->
-      let pvariant ff (c,b) =
-        let x = binder_name b in
-        let t = subst b (free_of (new_lvar' x)) in
-        fprintf ff "| %s[%s] → %a" c x print_term t
+     let pvariant ff (c,b) =
+       match b.elt with
+       | LAbs(_,f) ->
+           let x = binder_name f in
+           let t = subst f (free_of (new_lvar' x)) in
+           fprintf ff "| %s[%s] → %a" c x print_term t
+       | _ ->
+           fprintf ff "| %s → %a" c print_term b
       in
       fprintf ff "case %a of %a" print_term t (print_list pvariant "; ") l
   | VDef(v) ->

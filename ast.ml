@@ -122,7 +122,7 @@ and term' =
   (* Variant. *)
   | Cons of string * term
   (* Case analysis. *)
-  | Case of term * (string * (term, term) binder) list
+  | Case of term * (string * term) list
   (* User-defined term. *)
   | VDef of value_def
   (* Print a string (side effect) and behave like the term. *)
@@ -188,7 +188,7 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (Reco(fs1)  , Reco(fs2)  ) -> eq_assoc eq_term fs1 fs2
     | (Proj(t1,l1), Proj(t2,l2)) -> l1 = l2 && eq_term t1 t2
     | (Cons(c1,t1), Cons(c2,t2)) -> c1 = c2 && eq_term t1 t2
-    | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_tbinder l1 l2
+    | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
     | (VDef(d1)   , VDef(d2)   ) -> eq_term d1.value d2.value
     | (Prnt(s1)   , Prnt(s2)   ) -> s1 = s2
     | (FixY(t1)   , FixY(t2)   ) -> eq_term t1 t2
@@ -251,15 +251,13 @@ let new_lvar' : string -> term variable =
   new_lvar dummy_position
 
 (* Unfolding unification variable indirections. *)
-let rec uvar_repr : uvar -> kind = fun u ->
-  match u.uvar_val with
-  | None           -> UVar u
-  | Some (UVar u') -> uvar_repr u'
-  | Some k         -> k
-
-let repr : kind -> kind = function
-  | UVar u -> uvar_repr u
+let rec repr : kind -> kind = function
+  | UVar { uvar_val = Some k} -> repr k
   | k      -> k
+
+let set v k =
+  assert (v.uvar_val = None);
+  v.uvar_val <- Some k
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
@@ -373,7 +371,7 @@ let proj_p : pos -> term -> string -> term =
 let cons_p : pos -> string -> term -> term =
   fun p c t -> in_pos p (Cons(c,t))
 
-let case_p : pos -> term -> (string * (term, term) binder) list -> term =
+let case_p : pos -> term -> (string * term) list -> term =
   fun p t cs -> in_pos p (Case(t,cs))
 
 let vdef_p : pos -> value_def -> term =
@@ -402,6 +400,9 @@ let labs : pos -> kbox option -> strpos -> (tbox -> tbox) -> tbox =
   fun p ko x f ->
     box_apply2 (labs_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
 
+let idt : tbox =
+  labs dummy_position None (dummy_pos "x") (fun x -> x)
+
 let appl : pos -> tbox -> tbox -> tbox =
   fun p -> box_apply2 (appl_p p)
 
@@ -413,12 +414,9 @@ let reco : pos -> (string * tbox) list -> tbox =
 let proj : pos -> tbox -> string -> tbox =
   fun p t l -> box_apply (fun t -> proj_p p t l) t
 
-let case : pos -> tbox -> (string * strpos * (tbox -> tbox)) list -> tbox =
+let case : pos -> tbox -> (string * tbox) list -> tbox =
   fun p t cs ->
-    let aux (c,x,f) =
-      let b = bind (lvar_p x.pos) x.elt f in
-      box_pair (box c) b
-    in
+    let aux (c,t) = box_apply (fun t -> (c,t)) t in
     box_apply2 (case_p p) t (box_list (List.map aux cs))
 
 let cons : pos -> string -> tbox -> tbox =
@@ -466,22 +464,38 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | o   -> o
   in
   let dummy = Prod [] in
-  let rec aux occ acc = function
+  let rec aux occ acc k =
+    match repr k with
     | TVar(x)   -> acc
     | Func(a,b) -> aux (neg occ) (aux occ acc b) a
-    | Prod(fs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc fs
-    | DSum(cs)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc cs
-    | FAll(f)   -> aux occ acc (subst f dummy)
+    | Prod(ks)
+    | DSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
+    | FAll(f)
     | Exis(f)   -> aux occ acc (subst f dummy)
-    | FixM(_,f) -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
+    | FixM(_,f)
     | FixN(_,f) -> aux occ acc (subst f dummy) (* FIXME is that right ? *)
     | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
     | UCst(c)   -> let a = subst c.qcst_wit_kind dummy in
-                   aux InEps acc a
+                   aux2 (aux InEps acc a) c.qcst_wit_term
     | ECst(c)   -> let a = subst c.qcst_wit_kind dummy in
-                   aux InEps acc a
+                   aux2 (aux InEps acc a) c.qcst_wit_term
     | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | TInt(_)   -> assert false
+  and aux2 acc t = match t.elt with
+    | Cnst(t,k1,k2) -> aux2 (aux InEps (aux InEps acc k1) k2) (subst t (dummy_pos (Reco [])))
+    | Coer(t,_)
+    | Proj(t,_)
+    | Cons(_,t)
+    | FixY(t)       -> aux2 acc t
+    | LAbs(_,f)     -> aux2 acc (subst f (dummy_pos (Reco [])))
+    | Appl(t1, t2)  -> aux2 (aux2 acc t1) t2
+    | Reco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
+    | Case(t,l)     -> List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
+    | LVar _
+    | VDef _
+    | Prnt _
+    | TagI _        -> acc
+
   in aux Pos Non k
 
 (****************************************************************************

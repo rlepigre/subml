@@ -106,26 +106,21 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     match (a,b) with
     (* Handling of unification variables (immitation). *)
     | (UVar ua, UVar ub) ->
-        if ua == ub then () else
-        let c = new_uvar () in
-        ua.uvar_val <- Some c;
-        ub.uvar_val <- Some c
+       if ua == ub then () else set ua b
     | (UVar ua, _      ) ->
         let k =
           match uvar_occur ua b with
           | Non -> b
-          | Pos -> subtype_error "Unification variable occuring positively."
           | _   -> bot
         in
-        ua.uvar_val <- Some k
+        set ua k
     | (_      , UVar ub) ->
         let k =
           match uvar_occur ub a with
           | Non -> a
-          | Pos -> subtype_error "Unification variable occuring positively."
           | _   -> top
         in
-        ub.uvar_val <- Some k
+        set ub k
 
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
@@ -156,7 +151,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         let check_variant (c,a) =
           let b = List.assoc c csb in
           let t = unbox
-            (case dummy_position (box t) [(c, dummy_pos "x", (fun x -> x))])
+            (case dummy_position (box t) [(c, idt)])
           in
           subtype ctxt t a b
         in
@@ -287,11 +282,11 @@ let type_check : term -> kind -> unit = fun t c ->
         type_check v a;
         subtype t c' c
     | Case(t,l) ->
-        let ts = List.map (fun (c,_) -> (c, new_uvar ())) l in
+       let ts = List.map (fun (c,_) -> (c, new_uvar ())) l in
         type_check t (DSum(ts));
         let check (d,f) =
           let cc = List.assoc d ts in
-          type_check (subst f (cnst f cc c)) c
+          type_check f (Func(cc,c))
         in
         List.iter check l
     | VDef(v) ->
