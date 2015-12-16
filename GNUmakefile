@@ -1,59 +1,22 @@
-OCAMLC = ocamlc -I +decap -I +bindlib -I +compiler-libs
+all: main.native main.byte
 
-all: main
+MLFILES=util.ml ast.ml eval.ml print.ml multi_print.ml latex.ml \
+				trace.ml typing.ml dparser.ml main.ml
 
-main: util.cmo ast.cmo eval.cmo print.cmo latex.cmo multi_print.cmo trace.cmo typing.cmo dparser.cmo main.cmo
-	$(OCAMLC) -o $@ $(CMA) \
-		bindlib.cma unix.cma str.cma ocamlcommon.cma decap.cma decap_ocaml.cma \
-		$^
+main.native: $(MLFILES)
+	ocamlbuild -use-ocamlfind $@
 
-main.cmo: main.ml util.cmo ast.cmo eval.cmo multi_print.cmo typing.cmo dparser.cmo
-	$(OCAMLC) -c $<
-
-util.cmo: util.ml
-	$(OCAMLC) -c $<
-
-ast.cmo: ast.ml util.cmo
-	$(OCAMLC) -c $<
-
-eval.cmo: eval.ml ast.cmo
-	$(OCAMLC) -c $<
-
-print.cmi: print.mli ast.cmo
-	$(OCAMLC) -c $<
-
-print.cmo: print.ml print.cmi ast.cmo
-	$(OCAMLC) -c $<
-
-latex.cmi: latex.mli ast.cmo
-	$(OCAMLC) -c $<
-
-latex.cmo: latex.ml latex.cmi print.cmo ast.cmo
-	$(OCAMLC) -c $<
-
-multi_print.cmi: multi_print.mli ast.cmo
-	$(OCAMLC) -c $<
-
-multi_print.cmo: multi_print.ml multi_print.cmi latex.cmo print.cmo ast.cmo
-	$(OCAMLC) -c $<
-
-trace.cmo: trace.ml ast.cmo
-	$(OCAMLC) -c $<
-
-typing.cmo: typing.ml ast.cmo trace.cmo
-	$(OCAMLC) -c $<
-
-dparser.cmo: dparser.ml ast.cmo print.cmo eval.cmo typing.cmo
-	$(OCAMLC) -pp pa_ocaml -c $<
+main.byte: $(MLFILES)
+	ocamlbuild -use-ocamlfind $@
 
 run: all
-	ledit ./main
+	ledit ./main.native
 
 test: all
-	ledit ./main lib/all.typ
+	ledit ./main.native lib/all.typ
 
 clean:
-	rm -f *.cmi *.cmo *.cmx *.o
+	rm -rf _build main.native main.byte
 
 distclean: clean
-	rm -f *~ lib/*~ main
+	rm -f *~ lib/*~
