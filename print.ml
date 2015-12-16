@@ -17,10 +17,11 @@ let rec print_array pelem sep ff ls =
 
 let print_ordinal ff o =
   let rec print_ordinal ff = function
-    | ODumm      -> pp_print_string ff "?"
-    | OConv      -> pp_print_string ff "∞"
-    | OLess(n,o) -> fprintf ff "(%i < %a)" n print_ordinal o
-    | OLEqu(n,o) -> fprintf ff "(%i ≤ %a)" n print_ordinal o
+    | ODumm        -> pp_print_string ff "?"
+    | OConv        -> pp_print_string ff "∞"
+    | OLess(o,t,k) -> fprintf ff "ε(< %a)" print_ordinal o
+    | OLEqu(o,t,k) -> fprintf ff "ε(≤ %a)" print_ordinal o
+    | OTag i       -> fprintf ff "?%i" i
   in
   match o with
   | OConv -> ()

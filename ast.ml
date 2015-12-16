@@ -1,41 +1,6 @@
 open Bindlib
 open Util
 
-(****************************************************************************
- *                                 Ordinals                                 *
- ****************************************************************************)
-
-type ordinal =
-  | ODumm
-  | OConv
-  | OLess of int * ordinal
-  | OLEqu of int * ordinal
-
-let rec leq_ordinal o1 o2 =
-  match (o1, o2) with
-  | (ODumm       , _           ) -> false
-  | (_           , ODumm       ) -> false
-  | (OLess(n1,_ ), OLess(n2,_ )) when n1 = n2 -> true
-  | (OLEqu(n1,_ ), OLEqu(n2,_ )) when n1 = n2 -> true
-  | (OLess(n1,o1), OLess(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
-  | (OLess(n1,o1), OLEqu(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
-  | (OLEqu(n1,o1), OLess(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
-  | (OLEqu(n1,o1), OLEqu(n2,_ )) when n1 > n2 -> leq_ordinal o1 o2
-  | (_           , OConv       ) -> true
-  | (_           , _           ) -> false
-
-let rec less_ordinal o1 o2 =
-  match o1 with
-  | OLess(n1,o1) -> leq_ordinal o1 o2
-  | OLEqu(n1,o1) -> less_ordinal o1 o2
-  | _            -> false
-
-let new_oless, new_olequ, oreset =
-  let e = ref 0 in
-  let new_oless o = incr e; OLess(!e, o) in
-  let new_olequ o = incr e; OLEqu(!e, o) in
-  let oreset () = e := 0 in
-  (new_oless, new_olequ, oreset)
 
 (****************************************************************************
  *                         AST for kinds (or types)                         *
@@ -68,6 +33,19 @@ type kind =
   | UVar of uvar
   (* Integer tag for comparing kinds. *)
   | TInt of int
+
+and ordinal =
+  | OConv
+  | OLess of ordinal * term * ord_constraint
+  | OLEqu of ordinal * term * ord_constraint
+  (* integer tag for comparing ordinals *)
+  | OTag of int
+  (* *)
+  | ODumm
+
+and ord_constraint =
+  | In of (ordinal,kind) binder
+  | NotIn of (ordinal,kind) binder
 
 (* Occurence markers for variables. *)
 and occur =
@@ -144,6 +122,7 @@ and value_def =
   (* Raw version of the term (i.e. no anotations). *)
   ; ttype : kind option }
 
+
 (****************************************************************************
  *                        Equality of types and terms                       *
  ****************************************************************************)
@@ -202,6 +181,23 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
   in
   eq_term t1 t2
 
+and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
+  let rec eq_ordinal o1 o2 =
+    if o1 == o2 then true else
+      match o1, o2 with
+      | OConv, OConv -> true
+      | OLEqu(o1,t1,c1), OLEqu(o2,t2,c2)
+      | OLess(o1,t1,c1), OLess(o2,t2,c2) -> eq_ordinal o1 o2 && eq_term c t1 t2 && eq_ocst c1 c2
+      | OTag n1, OTag n2 -> n1 = n2
+      | _ -> false
+  and eq_ocst c1 c2 =
+    let o = incr c; OTag (!c) in
+    match c1, c2 with
+    | In f1, In f2
+    | NotIn f1, NotIn f2 -> eq_kind c (subst f1 o) (subst f2 o)
+    | _ -> false
+  in eq_ordinal o1 o2
+
 let eq_kind : kind -> kind -> bool = fun k1 k2 ->
   let c = ref 0 in
   eq_kind c k1 k2
@@ -209,6 +205,31 @@ let eq_kind : kind -> kind -> bool = fun k1 k2 ->
 let eq_term : term -> term -> bool = fun t1 t2 ->
   let c = ref 0 in
   eq_term c t1 t2
+
+let eq_ordinal : ordinal -> ordinal -> bool = fun o1 o2 ->
+  let c = ref 0 in
+  eq_ordinal c o1 o2
+
+(****************************************************************************
+ *                                 Ordinals                                 *
+ ****************************************************************************)
+
+let rec leq_ordinal o1 o2 =
+  if o1 == o2 || eq_ordinal o1 o2 then true else
+
+  match (o1, o2) with
+  | (_            , ODumm       ) -> assert false
+  | (_            , OConv       ) -> true
+  | (OLess(o1,_,_), o2          )
+  | (OLEqu(o1,_,_), o2          ) -> leq_ordinal o1 o2
+  | (_            , _           ) -> false
+
+let rec less_ordinal o1 o2 =
+  match o1 with
+  | ODumm        -> assert false
+  | OLess(o,_,_) -> leq_ordinal  o o2
+  | OLEqu(o,_,_) -> less_ordinal o o2
+  | _            -> false
 
 (****************************************************************************
  *                   Frequently used types and functions                    *
@@ -330,7 +351,7 @@ let (new_uvar, reset_uvar) =
 
 (* Resset all counters. *)
 let reset_all () =
-  let reset = [reset_ucst; reset_ecst; reset_uvar; oreset] in
+  let reset = [reset_ucst; reset_ecst; reset_uvar] in
   List.iter (fun x -> x ()) reset
 
 (****************************************************************************

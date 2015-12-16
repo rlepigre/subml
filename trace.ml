@@ -51,6 +51,8 @@ let trace_subtyping t k1 k2 =
   | SubTyping (p)::_ as l ->
      p.strees <- prf :: p.strees;
      trace_state := SubTyping prf :: l
+  | [] ->
+     trace_state := SubTyping prf :: []
   | _ -> assert false
 
 let trace_pop () =

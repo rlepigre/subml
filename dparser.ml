@@ -454,7 +454,7 @@ let parser command =
         Hashtbl.add st.venv id { name = id ; value = t ; ttype = Some k };
         Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
   (* Check subtyping. *)
-  | check_kw n:{"not" -> false}?[true] a:kind {"⊆" | "<"} b:kind ->
+  | check_kw n:{"not" -> false}?[true] a:kind {"⊂" | "⊆" | "<"} b:kind ->
       fun st ->
         let a = unbox (unsugar_kind st [] a) in
         let b = unbox (unsugar_kind st [] b) in

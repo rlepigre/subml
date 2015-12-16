@@ -14,13 +14,13 @@ let subtype_error : string -> 'a = fun msg ->
   raise (Subtype_error msg)
 
 type subtype_ctxt =
-  { lfix : (kind * (ordinal * kind) list) list
-  ; rfix : (kind * (ordinal * kind) list) list }
+  { lfix : (kind * (ordinal * kind * bool ref) list) list
+  ; rfix : (kind * (ordinal * kind * bool ref) list) list }
 
 exception Induction_hypothesis
 
-let check_rec : subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
-  fun ctxt a b ->
+let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
+  fun t ctxt a b ->
     let search k l =
       let rec fn acc = function
         | []        -> raise Not_found
@@ -29,69 +29,70 @@ let check_rec : subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
       in fn [] l
     in
 
+    begin match a with
+      | FixM(o,f) ->
+         begin
+	   try
+	     let key = FixM(ODumm,f) in
+	     let (before, l, after) = search key ctxt.lfix in
+             let check (o', k, ptr) =
+               if less_ordinal o o' && lower_kind k b then
+		 (ptr := true; raise Induction_hypothesis)
+             in
+             List.iter check l
+	   with Not_found -> ()
+	 end
+      | _         -> ()
+    end;
+
+    (* Check right. *)
+    begin match b with
+      | FixN(o,f) ->
+	 begin
+	   try
+	     let key = FixN(ODumm,f) in
+	     let (before, l, after) = search key ctxt.rfix in
+             let check (o', k, ptr) =
+               if less_ordinal o o' && lower_kind a k then
+                 (ptr := true; raise Induction_hypothesis)
+             in
+             List.iter check l;
+	   with Not_found -> ()
+	 end
+      | _         -> ()
+    end;
+
     (* Check left. *)
     let (ctxt, a, b) =
       match a with
       | FixM(o,f) ->
-          begin
-            let o = new_olequ o in
-            let key = FixM(ODumm,f) in
-            let a = FixM(o,f) in
-            try
-              let (before, l, after) = search key ctxt.lfix in
-              let check (o', k) =
-                if less_ordinal o o' && lower_kind k b then
-                  raise Induction_hypothesis
-              in
-              List.iter check l;
-              let lfix = List.rev_append before ((key, (o,b)::l) :: after) in
-              ({ ctxt with lfix }, a, b)
-            with Not_found ->
-              ({ ctxt with lfix = (key, [(o,b)]) :: ctxt.lfix }, a, b)
-          end
-      | FixN(_,f) ->
-          begin
-            let o = ODumm in
-            let key = FixN(o,f) in
-            try
-              let (before, l, after) = search key ctxt.lfix in
-              let lfix = List.rev_append before ((key, (o,b)::l) :: after) in
-              ({ ctxt with lfix }, a, b)
-            with Not_found ->
-              ({ ctxt with lfix = (key, [(o,b)]) :: ctxt.lfix }, a, b)
-          end
+         begin
+           let o = OLEqu(o,t,In(binder_from_fun "a" 0 (fun o -> subst f (FixM(o,f))))) in
+           let key = FixM(ODumm,f) in
+           let a = FixM(o,f) in
+	   let (before, l, after) =
+	     try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
+	   in
+  	   trace_subtyping t a b;
+           let lfix = List.rev_append before ((key, (o,b,ref false)::l) :: after) in
+           ({ ctxt with lfix }, a, b)
+         end
       | _         -> (ctxt, a, b)
     in
 
     (* Check right. *)
     match b with
-    | FixM(o,f) ->
-        begin
-          let o = ODumm in
-          let key = FixM(o,f) in
-          try
-            let (before, l, after) = search key ctxt.rfix in
-            let rfix = List.rev_append before ((key, (o,a)::l) :: after) in
-            ({ ctxt with rfix }, a, b)
-          with Not_found ->
-            ({ ctxt with rfix = (key, [(o,a)]) :: ctxt.rfix }, a, b)
-        end
     | FixN(o,f) ->
         begin
-          let o = new_olequ o in
+          let o = OLEqu(o,t,NotIn(binder_from_fun "a" 0 (fun o -> subst f (FixN(o,f))))) in
           let key = FixN(ODumm, f) in
           let b = FixN(o,f) in
-          try
-            let (before, l, after) = search key ctxt.rfix in
-            let check (o', k) =
-              if less_ordinal o o' && lower_kind a k then
-                raise Induction_hypothesis
-            in
-            List.iter check l;
-            let rfix = List.rev_append before ((key, (o,a)::l) :: after) in
-            ({ ctxt with rfix }, a, b)
-          with Not_found ->
-            ({ ctxt with rfix = (key, [(o,a)]) :: ctxt.rfix }, a, b)
+          let (before, l, after) =
+	    try search key ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
+	  in
+          trace_subtyping t a b;
+          let rfix = List.rev_append before ((key, (o,a,ref false)::l) :: after) in
+          ({ ctxt with rfix }, a, b)
         end
     | _         -> (ctxt, a , b)
 
@@ -101,9 +102,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     let a = repr a in
     let b = repr b in
     (try
-    let (ctxt, a, b) = check_rec ctxt a b in
-    if a == b then () else
-    match (a,b) with
+    let (ctxt, a, b) = check_rec t ctxt a b in
+    if a == b || lower_kind a b then () else
+    begin match (a,b) with
     (* Handling of unification variables (immitation). *)
     | (UVar ua, UVar ub) ->
        if ua == ub then () else set ua b
@@ -180,15 +181,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | (ECst(ca) , ECst(cb)   ) when ca == cb -> ()
 
     (* μ and ν - least and greatest fixpoint. *)
-    | (_          , FixM(o,f)) ->
-        if lower_kind a b then () else
-          let cst = if o = OConv then b else FixM(new_oless o, f) in
-          subtype ctxt t a (subst f cst)
+    | (_          , FixM(OConv,f)) -> subtype ctxt t a (subst f b)
 
-    | (FixN(o,f)  , _        ) ->
-        if lower_kind a b then () else
-          let cst = if o = OConv then a else FixN(new_oless o, f) in
-          subtype ctxt t (subst f cst) b
+    | (FixN(OConv,f)  , _        ) -> subtype ctxt t (subst f a) b
 
     | (_          , FixN(o,f)) ->
         begin
@@ -204,9 +199,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
               subtype ctxt t a (FixN(OConv,f))
           (* Only on consecutive μ. *)
           | _       ->
-              if lower_kind a b then () else
-                let cst = FixN(new_oless o, f) in
-                subtype ctxt t a (subst f cst)
+	     let o = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
+             let cst = FixN(o, f) in
+             subtype ctxt t a (subst f cst)
         end
 
     | (FixM(o,f)  , _        ) ->
@@ -223,9 +218,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
               subtype ctxt t (FixM(OConv, f)) b
           (* Only on consecutive μ. *)
           | _       ->
-              if lower_kind a b then () else
-                let cst = FixM(new_oless o, f) in
-              subtype ctxt t (subst f cst) b
+	       let o = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
+               let cst = FixM(o, f) in
+               subtype ctxt t (subst f cst) b
         end
 
     (* Type definition. *)
@@ -237,9 +232,12 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
-
+    end;
+    (match a with FixM _ -> trace_pop () | _ -> ());
+    (match b with FixN _ -> trace_pop () | _ -> ())
     with Induction_hypothesis -> ());
-    trace_pop ()
+    trace_pop ();
+
   in
   subtype { lfix = [] ; rfix = [] } t a b
 
