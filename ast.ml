@@ -562,6 +562,7 @@ let lower_kind k1 k2 =
     | (Prod(fsa)   , Prod(fsb)   ) ->
         let cmp (k1,_) (k2,_) = compare k1 k2 in
         let f (la,a) (lb,b) = la = lb && lower_kind a b in
+        List.length fsa = List.length fsb &&
         List.for_all2 f (List.sort cmp fsa) (List.sort cmp fsb)
     | (FAll(a)     , FAll(b)     ) ->
         let i = new_int () in

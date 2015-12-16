@@ -56,4 +56,4 @@ clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 
 distclean: clean
-	rm -f *~ main
+	rm -f *~ lib/*~ main
