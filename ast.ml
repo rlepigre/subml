@@ -559,7 +559,8 @@ let lower_kind k1 k2 =
     | (k1          , k2          ) when k1 == k2 -> true
     | (TVar(_)     , TVar(_)     ) -> assert false
     | (Func(a1,b1) , Func(a2,b2) ) -> lower_kind a2 a1 && lower_kind b1 b2
-    | (Prod(fsa)   , Prod(fsb)   ) ->
+    | (Prod(fsa)   , Prod(fsb)   )
+    | (DSum(fsa)   , DSum(fsb)   ) ->
         let cmp (k1,_) (k2,_) = compare k1 k2 in
         let f (la,a) (lb,b) = la = lb && lower_kind a b in
         List.length fsa = List.length fsb &&
