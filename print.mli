@@ -7,8 +7,9 @@ val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -
 
 val ignored_ordinals : ordinal list ref
 
-(* Pretty-printer for terms. *)
-val print_term : out_channel -> term -> unit
+(* Pretty-printer for terms. If the boolean is true, definitions are unfolded,
+otherwise the name of the defined type is used instead. *)
+val print_term : bool -> out_channel -> term -> unit
 
 (* Pretty-printer for kind. If the boolean is true, definitions are unfolded,
 otherwise the name of the defined type is used instead. *)

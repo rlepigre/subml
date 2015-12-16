@@ -46,11 +46,11 @@ let rec print_kind unfold wrap ff t =
   | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\mu%s %a" (*print_ordinal o*) (name_of x) pkindw a
+      fprintf ff "\\mu %s %a" (*print_ordinal o*) (name_of x) pkindw a
   | FixN(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\nu%s %a" (*print_ordinal o*) (name_of x) pkindw a
+      fprintf ff "\\nu %s %a" (*print_ordinal o*) (name_of x) pkindw a
   | TDef(td,args) ->
       if unfold then
         print_kind unfold wrap ff (msubst td.tdef_value args)
@@ -81,7 +81,8 @@ let pkind_def unfold ff kd =
  *                           Printing of a term                             *
  ****************************************************************************)
 
-let rec print_term ff t =
+let rec print_term unfold ff t =
+  let print_term = print_term unfold in
   let pkind = print_kind false false in
   match t.elt with
   | Coer(t,a) ->
@@ -119,6 +120,9 @@ let rec print_term ff t =
       in
       fprintf ff "\\hbox{case } %a \\hbox{ of } %a" print_term t (print_list pvariant "; ") l
   | VDef(v) ->
+     if unfold then
+       print_term ff v.value
+     else
       pp_print_string ff v.name
   | Prnt(s) ->
       fprintf ff "print(%S)" s
@@ -133,9 +137,9 @@ let rec print_term ff t =
  *                          Interface functions                             *
  ****************************************************************************)
 
-let print_term ch t =
+let print_term unfold ch t =
   let ff = formatter_of_out_channel ch in
-  print_term ff t; pp_print_flush ff (); flush ch
+  print_term unfold ff t; pp_print_flush ff (); flush ch
 
 let print_kind unfold ch t =
   let ff = formatter_of_out_channel ch in
@@ -144,3 +148,15 @@ let print_kind unfold ch t =
 let print_kind_def unfold ch kd =
   let ff = formatter_of_out_channel ch in
   pkind_def unfold ff kd; pp_print_flush ff (); flush ch
+
+type latex_output =
+  | Kind of (bool * kind)
+  | Term of (bool * term)
+  | Text of string
+  | List of latex_output list
+
+let rec output ch = function
+  | Kind(unfold,k) -> print_kind unfold ch k
+  | Term(unfold,t) -> print_term unfold ch t
+  | Text(t)        -> Printf.fprintf ch "%s" t
+  | List(l)        -> List.iter (output ch) l

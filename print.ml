@@ -92,7 +92,8 @@ let pkind_def unfold ff kd =
  *                           Printing of a term                             *
  ****************************************************************************)
 
-let rec print_term ff t =
+let rec print_term unfold ff t =
+  let print_term = print_term unfold in
   let pkind = print_kind false false in
   match t.elt with
   | Coer(t,a) ->
@@ -130,7 +131,10 @@ let rec print_term ff t =
       in
       fprintf ff "case %a of %a" print_term t (print_list pvariant "; ") l
   | VDef(v) ->
-      pp_print_string ff v.name
+     if unfold then
+       print_term ff v.value
+     else
+       pp_print_string ff v.name
   | Prnt(s) ->
       fprintf ff "print(%S)" s
   | FixY(t) ->
@@ -144,9 +148,9 @@ let rec print_term ff t =
  *                          Interface functions                             *
  ****************************************************************************)
 
-let print_term ch t =
+let print_term unfold ch t =
   let ff = formatter_of_out_channel ch in
-  print_term ff t; pp_print_flush ff (); flush ch
+  print_term unfold ff t; pp_print_flush ff (); flush ch
 
 let print_kind unfold ch t =
   let ff = formatter_of_out_channel ch in

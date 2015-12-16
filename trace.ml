@@ -82,7 +82,7 @@ let print_subtyping_proof, print_typing_proof =
     | None ->
       List.iter (fn (indent^"  ")) p.strees;
       Printf.eprintf "%s%a ∈ %a ⊆ %a\n%!" indent
-	print_term p.sterm (print_kind false) p.left (print_kind false) p.right
+	(print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right
     | Some o ->
       ignored_ordinals := o :: !ignored_ordinals;
       Printf.eprintf "ignored\n%!";
@@ -91,7 +91,7 @@ let print_subtyping_proof, print_typing_proof =
     List.iter (fn (indent^"  ")) p.strees;
     List.iter (gn (indent^"  ")) p.ttrees;
     Printf.eprintf "%s%a : %a\n%!" indent
-      print_term p.tterm (print_kind false) p.typ
+      (print_term false) p.tterm (print_kind false) p.typ
   in
   (fun p -> fn "" p; ignored_ordinals := []),
   (fun p -> gn "" p; ignored_ordinals := [])
@@ -100,11 +100,11 @@ let trace_backtrace () =
   let rec fn = function
     | (Typing p | EndTyping p)::l ->
        Printf.eprintf "%a : %a\n%!"
-	 print_term p.tterm (print_kind false) p.typ;
+	 (print_term false) p.tterm (print_kind false) p.typ;
       fn l
     | (SubTyping p | EndSubTyping p)::l ->
        Printf.eprintf "%a ∈ %a ⊆ %a\n%!"
-	 print_term p.sterm (print_kind false) p.left (print_kind false) p.right;
+	 (print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right;
       fn l
     | [] -> ()
   in

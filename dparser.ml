@@ -115,6 +115,7 @@ let eval_kw    = new_keyword "eval"
 let set_kw     = new_keyword "set"
 let include_kw = new_keyword "include"
 let check_kw   = new_keyword "check"
+let latex_kw   = new_keyword "latex"
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -387,11 +388,24 @@ let parser enabled =
   | "on"  -> true
   | "off" -> false
 
+let latex_ch = ref stdout
+
 let parser opt_flag =
   | "verbose" b:enabled -> fun st -> st.verbose <- b
   | "latex" b:enabled -> fun st -> Multi_print.print_mode := if b then Latex else Ascii
+  | "texfile" fn:string_lit -> fun st ->
+    if !latex_ch <> stdout then close_out !latex_ch;
+    latex_ch := open_out fn
 
 let read_file = ref (fun _ _ -> assert false)
+
+let parser latex_atom =
+  | "#" u:"!"? k:kind "#" -> fun st -> Latex.Kind (u<>None, unbox (unsugar_kind st [] k))
+  | "@" u:"!"? t:term "@" -> fun st -> Latex.Term (u<>None, unbox (fst (unsugar_term st [] t)))
+  | t:''[^}@#]+''       -> fun st -> Latex.Text t
+  | "{" l:latex_text "}" -> l
+
+and latex_text = l:latex_atom* -> fun st -> Latex.List (List.map (fun x -> x st) l)
 
 let parser command =
   (* Type definition command. *)
@@ -421,14 +435,14 @@ let parser command =
       fun st ->
         let (t, unbs) = unsugar_term st [] t in
         let t = unbox t in
-        Printf.fprintf stdout "%a\n%!" print_term t
+        Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | eval_kw t:term ->
       fun st ->
         let (t, unbs) = unsugar_term st [] t in
         let t = unbox t in
         let t = eval st t in
-        Printf.fprintf stdout "%a\n%!" print_term t
+        Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Typed value definition. *)
   | val_kw r:rec_kw? id:lident ":" k:kind "=" t:term ->
      fun st ->
@@ -468,6 +482,8 @@ let parser command =
             | e when n -> trace_backtrace (); raise e
             | _        -> trace_state := [];
         end
+  | latex_kw t:latex_text ->
+     fun st -> Latex.output !latex_ch (t st); ()
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
       !read_file fn
