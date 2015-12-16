@@ -94,7 +94,7 @@ let rec print_term ff t =
       begin
         match ao with
         | None   -> fprintf ff "\\lambda%s %a" x print_term t
-        | Some a -> fprintf ff "\\lambda %s:%a \; %a" x pkind a print_term t
+        | Some a -> fprintf ff "\\lambda %s:%a \\; %a" x pkind a print_term t
       end
   | Appl(t,u) ->
       fprintf ff "(%a) %a" print_term t print_term u
@@ -111,15 +111,15 @@ let rec print_term ff t =
         let t = subst b (free_of (new_lvar' x)) in
         fprintf ff "| %s[%s] \\rightarrow %a" c x print_term t
       in
-      fprintf ff "\hbox{case } %a \hbox{ of } %a" print_term t (print_list pvariant "; ") l
+      fprintf ff "\\hbox{case } %a \\hbox{ of } %a" print_term t (print_list pvariant "; ") l
   | VDef(v) ->
       pp_print_string ff v.name
-  | Prnt(s,t) ->
-      fprintf ff "print(%S); %a" s print_term t
-  | FixY ->
-      pp_print_string ff "Y"
+  | Prnt(s) ->
+      fprintf ff "print(%S)" s
+  | FixY(t) ->
+     fprintf ff "Y %a" print_term t
   | Cnst(_) ->
-      pp_print_string ff "\varepsilon"
+      pp_print_string ff "\\varepsilon"
   | TagI(i) ->
       fprintf ff "TAG(%i)" i
 

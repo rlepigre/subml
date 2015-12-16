@@ -82,12 +82,12 @@ and pterm' =
   | PCoer of pterm * pkind
   | PAppl of pterm * pterm
   | PLVar of string
-  | PPrnt of string * pterm
+  | PPrnt of string
   | PCstr of string * pterm option
   | PProj of pterm * string
   | PCase of pterm * (string * strpos * pterm) list
   | PReco of (string * pterm) list
-  | PFixY
+  | PFixY of pterm
 
 (* Basic tokens. *)
 let case_kw = new_keyword "case"
@@ -166,7 +166,7 @@ let parser kind_def =
  *                          A parser for expressions                        *
  ****************************************************************************)
 
-type pterm_prio = TFunc | TAppl | TColo | TAtom
+type pterm_prio = TFunc | TColo | TAppl | TAtom
 
 let parser var =
   | id:ident                    -> (in_pos _loc_id id, None)
@@ -177,28 +177,33 @@ let parser term p =
       in_pos _loc (PLAbs(xs,t))
   | t:(term TAppl) u:(term TAtom) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
-  | "print(" - s:string_lit - ")" ";" t:(term TColo) when p = TColo ->
-      in_pos _loc (PPrnt(s,t))
+  | t:(term TAppl) ";" u:(term TColo) when p = TColo ->
+     in_pos _loc (
+       PAppl(in_pos _loc (
+	 PLAbs([in_pos _loc "_",Some (in_pos _loc (
+	   PProd []))] ,u)), t))
+  | "print(" - s:string_lit - ")" when p = TAtom ->
+      in_pos _loc (PPrnt(s))
   | c:ident "[" uo:(term TFunc)? "]" when p = TAtom ->
       in_pos _loc (PCstr(c,uo))
   | t:(term TAtom) "." l:ident when p = TAtom ->
       in_pos _loc (PProj(t,l))
   | case_kw t:(term TFunc) of_kw "|"?
-    ps:(list_sep pattern "|") when p = TAtom ->
+    ps:(list_sep pattern "|") when p = TFunc ->
       in_pos _loc (PCase(t,ps))
   | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
       in_pos _loc (PReco(fs))
-  | t:(term TFunc) ":" k:kind when p = TAtom ->
+  | t:(term TAtom) ":" k:kind when p = TAtom ->
       in_pos _loc (PCoer(t,k))
   | id:ident when p = TAtom ->
       in_pos _loc (PLVar(id))
-  | fix_kw when p = TAtom ->
-      in_pos _loc PFixY
+  | fix_kw u:(term TFunc) when p = TFunc ->
+      in_pos _loc (PFixY(u))
 
   | "(" t:(term TFunc) ")" when p = TAtom
-  | t:(term TAtom) when p = TColo
-  | t:(term TColo) when p = TAppl
-  | t:(term TAppl) when p = TFunc
+  | t:(term TAtom) when p = TAppl
+  | t:(term TAppl) when p = TColo
+  | t:(term TColo) when p = TFunc
 
 and pattern  = c:ident "[" x:ident "]" _:arrow t:(term TFunc) ->
   let x = in_pos _loc_x x in (c, x, t)
@@ -319,8 +324,8 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
                 end
             end
         end
-    | PPrnt(s,t) ->
-        prnt pt.pos s (unsugar env t)
+    | PPrnt(s) ->
+        prnt pt.pos s
     | PCstr(c,uo) ->
         let u =
           match uo with
@@ -337,8 +342,8 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
         case pt.pos (unsugar env t) (List.map f cs)
     | PReco(fs) ->
         reco pt.pos (List.map (fun (l,t) -> (l, unsugar env t)) fs)
-    | PFixY ->
-        fixy pt.pos
+    | PFixY(t) ->
+        fixy pt.pos (unsugar env t)
   in
   let t = unsugar env pt in
   (t, !unbound)

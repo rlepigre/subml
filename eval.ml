@@ -9,13 +9,14 @@ let rec eval : state -> term -> term = fun st t0 ->
   | LAbs(_,_) -> t0
   | Appl(t,u) ->
       begin
+        let u' = eval st u in
         let t' = eval st t in
         match t'.elt with
-        | LAbs(_,b) -> eval st (subst b u)
-        | FixY      -> eval st (dummy_pos (Appl(u, dummy_pos (Appl(t',u)))))
-        | t         -> dummy_pos (Appl(t',u))
+        | LAbs(_,b) -> eval st (subst b u')
+        | FixY(f)   -> eval st (dummy_pos (Appl(f, dummy_pos (Appl(t',u')))))
+        | t         -> dummy_pos (Appl(t',u'))
       end
-  | Reco(_)   -> t0
+  | Reco(l)   -> in_pos t0.pos (Reco (List.map (fun (s,t) -> (s, eval st t)) l))
   | Proj(t,l) ->
       begin
         let t' = eval st t in
@@ -27,7 +28,7 @@ let rec eval : state -> term -> term = fun st t0 ->
             end
         | t        -> dummy_pos (Proj(t',l))
       end
-  | Cons(_,_) -> t0
+  | Cons(s,t) -> in_pos t0.pos (Cons(s, eval st t))
   | Case(t,l) ->
       begin
         let t' = eval st t in
@@ -37,10 +38,10 @@ let rec eval : state -> term -> term = fun st t0 ->
               try eval st (subst (List.assoc c l) v)
               with Not_found -> dummy_pos (Case(t',l))
             end
-        | t         -> dummy_pos (Case(t',l))
+        | t   -> dummy_pos (Case(t',l))
       end
   | VDef(v)   -> eval st v.value
-  | Prnt(s,t) -> Printf.printf "%s%!" s; eval st t
-  | FixY      -> t0
+  | Prnt(s)   -> Printf.printf "%s%!" s; in_pos t0.pos (Reco[])
+  | FixY(_)   -> t0
   | Cnst(_)   -> invalid_arg "Constant during evaluation."
   | TagI(_)   -> invalid_arg "Integer tag during evaluation."

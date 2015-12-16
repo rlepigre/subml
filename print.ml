@@ -80,7 +80,7 @@ let pkind_def unfold ff kd =
   if Array.length names > 0 then
     fprintf ff "(%a)" (print_array pp_print_string ",") names;
   fprintf ff " = %a" (print_kind unfold false) k
-  
+
 
 (****************************************************************************
  *                           Printing of a term                             *
@@ -119,10 +119,10 @@ let rec print_term ff t =
       fprintf ff "case %a of %a" print_term t (print_list pvariant "; ") l
   | VDef(v) ->
       pp_print_string ff v.name
-  | Prnt(s,t) ->
-      fprintf ff "print(%S); %a" s print_term t
-  | FixY ->
-      pp_print_string ff "fix"
+  | Prnt(s) ->
+      fprintf ff "print(%S)" s
+  | FixY(t) ->
+      fprintf ff "fix %a" print_term t
   | Cnst(_) ->
       pp_print_string ff "ε"
   | TagI(i) ->

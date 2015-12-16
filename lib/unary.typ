@@ -2,8 +2,8 @@ type UNat = μX [Z of {} | S of X]
 
 val print_unat : UNat → {} = fix (fun r n ↦
   case n of
-  | Z[x] → print("Z\n"); {}
-  | S[x] → print("S"); (r x))
+  | Z[x] → print("Z\n")
+  | S[x] → print("S"); r x)
 
 val add : UNat → UNat → UNat = fix (fun r n m ↦
   case n of

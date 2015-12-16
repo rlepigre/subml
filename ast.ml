@@ -126,16 +126,16 @@ and term' =
   (* User-defined term. *)
   | VDef of value_def
   (* Print a string (side effect) and behave like the term. *)
-  | Prnt of string * term
+  | Prnt of string
   (* Fixpoint combinator. *)
-  | FixY
+  | FixY of term
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
   | Cnst of ((term, term) binder * kind * kind)
   (* Integer tag. *)
   | TagI of int
-  
+
 and value_def =
   (* Name of the value. *)
   { name  : string
@@ -190,8 +190,8 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (Cons(c1,t1), Cons(c2,t2)) -> c1 = c2 && eq_term t1 t2
     | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_tbinder l1 l2
     | (VDef(d1)   , VDef(d2)   ) -> eq_term d1.value d2.value
-    | (Prnt(s1,t1), Prnt(s2,t2)) -> s1 = s2 && eq_term t1 t2
-    | (FixY       , FixY       ) -> true
+    | (Prnt(s1)   , Prnt(s2)   ) -> s1 = s2
+    | (FixY(t1)   , FixY(t2)   ) -> eq_term t1 t2
     | (Cnst(c1)   , Cnst(c2)   ) ->
         let (f1,a1,b1) = c1 and (f2,a2,b2) = c2 in
         eq_tbinder f1 f2 && eq_kind c a1 a2 && eq_kind c b1 b2
@@ -379,15 +379,15 @@ let case_p : pos -> term -> (string * (term, term) binder) list -> term =
 let vdef_p : pos -> value_def -> term =
   fun p v -> in_pos p (VDef(v))
 
-let prnt_p : pos -> string -> term -> term =
-  fun p s t -> in_pos p (Prnt(s,t))
+let prnt_p : pos -> string -> term =
+  fun p s -> in_pos p (Prnt(s))
 
-let fixy_p : pos -> term =
-  fun p -> in_pos p FixY
+let fixy_p : pos -> term -> term =
+  fun p t -> in_pos p (FixY(t))
 
 let cnst_p : pos -> ((term, term) binder * kind * kind) -> term =
   fun p c -> in_pos p (Cnst(c))
- 
+
 (****************************************************************************
  *                     Smart constructors for terms                         *
  ****************************************************************************)
@@ -427,11 +427,11 @@ let cons : pos -> string -> tbox -> tbox =
 let vdef : pos -> value_def -> tbox =
   fun p vd -> box (vdef_p p vd)
 
-let prnt : pos -> string -> tbox -> tbox =
-  fun p s -> box_apply (prnt_p p s)
+let prnt : pos -> string -> tbox =
+  fun p s -> box (prnt_p p s)
 
-let fixy : pos -> tbox =
-  fun p -> box (fixy_p p)
+let fixy : pos -> tbox -> tbox =
+  fun p t -> box_apply (fixy_p p) t
 
 (* Build a constant. Useful during typing. *)
 let cnst : (term, term) binder -> kind -> kind -> term =

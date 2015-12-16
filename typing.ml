@@ -300,10 +300,10 @@ let type_check : term -> kind -> unit = fun t c ->
           | Some a -> subtype v.value a c
           | None   -> type_check v.value c
         end
-    | Prnt(_,t) ->
-        type_check t c
-    | FixY ->
-        subtype t fix_kind c
+    | Prnt(_) ->
+       subtype t (Prod []) c
+    | FixY(t) ->
+       type_check t (Func(c,c))
     | Cnst(cst) ->
         let (_,a,_) = cst in
         subtype t a c

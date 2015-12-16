@@ -9,7 +9,7 @@ let st = initial_state true
 let _ = handle_stop true
 
 let spec =
-  [ ("--latex", Arg.Unit (fun _ -> Printf.eprintf "coucou\n%!"; print_mode := Latex), "Activate latex mode");
+  [ ("--latex", Arg.Unit (fun _ -> print_mode := Latex), "Activate latex mode");
     ("--verbose", Arg.Unit (fun _ -> st.verbose <- true), "Activate verbose mode")]
 
 let rec interact () =
