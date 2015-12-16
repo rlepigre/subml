@@ -5,6 +5,8 @@ val print_list : (formatter -> 'a -> unit) -> string -> formatter -> 'a list -> 
 
 val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -> unit
 
+val ignored_ordinals : ordinal list ref
+
 (* Pretty-printer for terms. *)
 val print_term : out_channel -> term -> unit
 

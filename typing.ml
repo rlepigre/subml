@@ -14,8 +14,8 @@ let subtype_error : string -> 'a = fun msg ->
   raise (Subtype_error msg)
 
 type subtype_ctxt =
-  { lfix : (kind * (ordinal * kind * bool ref) list) list
-  ; rfix : (kind * (ordinal * kind * bool ref) list) list }
+  { lfix : (kind * (ordinal * kind * (unit -> unit)) list) list
+  ; rfix : (kind * (ordinal * kind * (unit -> unit)) list) list }
 
 exception Induction_hypothesis
 
@@ -35,9 +35,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	   try
 	     let key = FixM(ODumm,f) in
 	     let (before, l, after) = search key ctxt.lfix in
-             let check (o', k, ptr) =
+             let check (o', k, used) =
                if less_ordinal o o' && lower_kind k b then
-		 (ptr := true; raise Induction_hypothesis)
+		 (used (); raise Induction_hypothesis)
              in
              List.iter check l
 	   with Not_found -> ()
@@ -52,9 +52,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	   try
 	     let key = FixN(ODumm,f) in
 	     let (before, l, after) = search key ctxt.rfix in
-             let check (o', k, ptr) =
+             let check (o', k, used) =
                if less_ordinal o o' && lower_kind a k then
-                 (ptr := true; raise Induction_hypothesis)
+                 (used (); raise Induction_hypothesis)
              in
              List.iter check l;
 	   with Not_found -> ()
@@ -73,8 +73,8 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	   let (before, l, after) =
 	     try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
 	   in
-  	   trace_subtyping t a b;
-           let lfix = List.rev_append before ((key, (o,b,ref false)::l) :: after) in
+  	   let ptr = trace_subtyping ~ordinal:o t a b in
+           let lfix = List.rev_append before ((key, (o,b,ptr)::l) :: after) in
            ({ ctxt with lfix }, a, b)
          end
       | _         -> (ctxt, a, b)
@@ -90,15 +90,15 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
           let (before, l, after) =
 	    try search key ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
 	  in
-          trace_subtyping t a b;
-          let rfix = List.rev_append before ((key, (o,a,ref false)::l) :: after) in
+          let used = trace_subtyping ~ordinal:o t a b in
+          let rfix = List.rev_append before ((key, (o,a,used)::l) :: after) in
           ({ ctxt with rfix }, a, b)
         end
     | _         -> (ctxt, a , b)
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a b =
-    trace_subtyping t a b;
+    let _ = trace_subtyping t a b in
     let a = repr a in
     let b = repr b in
     (try

@@ -11,6 +11,9 @@ let rec print_list pelem sep ff = function
 let rec print_array pelem sep ff ls =
   print_list pelem sep ff (Array.to_list ls)
 
+(* ordinals in this list are not printed *)
+let ignored_ordinals = ref []
+
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
@@ -19,8 +22,10 @@ let print_ordinal ff o =
   let rec print_ordinal ff = function
     | ODumm        -> pp_print_string ff "?"
     | OConv        -> pp_print_string ff "∞"
-    | OLess(o,t,k) -> fprintf ff "ε(< %a)" print_ordinal o
-    | OLEqu(o,t,k) -> fprintf ff "ε(≤ %a)" print_ordinal o
+    | OLess(o,t,k) -> if List.memq o !ignored_ordinals then print_ordinal ff o
+                      else fprintf ff "ε(< %a)" print_ordinal o
+    | OLEqu(o,t,k) -> if List.memq o !ignored_ordinals then print_ordinal ff o
+	              else fprintf ff "ε(≤ %a)" print_ordinal o
     | OTag i       -> fprintf ff "?%i" i
   in
   match o with
