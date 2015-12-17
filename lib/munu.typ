@@ -10,4 +10,8 @@ type S2 = νY νX [ A of X | B of Y]
 check S1 ⊂ S2
 
 set texfile "test.tex"
-latex { we have $#!S1# \subset #!S2#$ }
+latex { we have $#!S1# \subset #!S2#$
+\begin{prooftree}
+#? S1 ⊂ S2 #
+\end{prooftree}
+}

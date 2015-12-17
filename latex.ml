@@ -35,14 +35,14 @@ let rec print_kind unfold wrap ff t =
       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
       fprintf ff "{%a}" (print_list pfield "; ") fs
   | DSum(cs) ->
-      let pvariant ff (c,a) = fprintf ff "%s \\hbox{of} %a" c pkind a in
+      let pvariant ff (c,a) = fprintf ff "%s \\of %a" c pkind a in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
   | FAll(f)  ->
       let x = new_tvar (binder_name f) in
-      fprintf ff "\\forall %s %a" (name_of x) pkind (subst f (free_of x))
+      fprintf ff "\\forall %s.%a" (name_of x) pkind (subst f (free_of x))
   | Exis(f)  ->
       let x = new_tvar (binder_name f) in
-      fprintf ff "\\exists %s %a" (name_of x) pkind (subst f (free_of x))
+      fprintf ff "\\exists %s.%a" (name_of x) pkind (subst f (free_of x))
   | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
@@ -81,54 +81,64 @@ let pkind_def unfold ff kd =
  *                           Printing of a term                             *
  ****************************************************************************)
 
-let rec print_term unfold ff t =
+let rec print_term unfold lvl ff t =
   let nprint_term = print_term false in
   let print_term = print_term unfold in
   let pkind = print_kind false false in
   match t.elt with
   | Coer(t,a) ->
-      fprintf ff "(%a : %a)" print_term t pkind a
+      fprintf ff "%a{:}%a" (print_term 2) t pkind a
   | LVar(x) ->
       pp_print_string ff (name_of x)
-  | LAbs(ao,b) ->
-      let x = binder_name b in
-      let t = subst b (free_of (new_lvar' x)) in
-      begin
-        match ao with
-        | None   -> fprintf ff "\\lambda %s %a" x print_term t
-        | Some a -> fprintf ff "\\lambda %s:%a \\; %a" x pkind a print_term t
-      end
+  | LAbs(_) ->
+     if lvl > 0 then pp_print_string ff "(";
+     let rec fn ff t = match t.elt with
+       | LAbs(ao,b) ->
+	  let x = binder_name b in
+	  let t = subst b (free_of (new_lvar' x)) in
+	  begin
+            match ao with
+            | None   -> fprintf ff " %s%a" x fn t
+            | Some a -> fprintf ff " %s{:}%a%a" x pkind a fn t
+	  end
+       | _ ->
+	  fprintf ff ".%a" (print_term 0) t
+     in
+     fprintf ff "\\lambda%a" fn t;
+     if lvl > 0 then pp_print_string ff ")";
   | Appl(t,u) ->
-      fprintf ff "(%a) %a" print_term t print_term u
+     if lvl > 1 then pp_print_string ff "(";
+    fprintf ff "%a %a" (print_term 1) t (print_term 2) u;
+    if lvl > 1 then pp_print_string ff ")";
   | Reco(fs) ->
-      let pfield ff (l,t) = fprintf ff "%s = %a" l print_term t in
+      let pfield ff (l,t) = fprintf ff "%s = %a" l (print_term 0) t in
       fprintf ff "{%a}" (print_list pfield "; ") fs
   | Proj(t,l) ->
-      fprintf ff "%a.%s" print_term t l
+      fprintf ff "%a.%s" (print_term 0) t l
   | Cons(c,t) ->
      (match t.elt with
      | Reco([]) -> fprintf ff "%s" c
-     | _ -> fprintf ff "%s[%a]" c print_term t)
+     | _ -> fprintf ff "%s[%a]" c (print_term 0) t)
   | Case(t,l) ->
      let pvariant ff (c,b) =
        match b.elt with
        | LAbs(_,f) ->
           let x = binder_name f in
           let t = subst f (free_of (new_lvar' x)) in
-          fprintf ff "| %s[%s] \\rightarrow %a" c x print_term t
+          fprintf ff "| %s[%s] \\rightarrow %a" c x (print_term 0) t
        | _ ->
-          fprintf ff "| %s \\rightarrow %a" c print_term b
+          fprintf ff "| %s \\rightarrow %a" c (print_term 0) b
       in
-      fprintf ff "\\case{%a}{%a}" print_term t (print_list pvariant "; ") l
+      fprintf ff "\\case{%a}{%a}" (print_term 0) t (print_list pvariant "; ") l
   | VDef(v) ->
      if unfold then
-       nprint_term ff v.value
+       nprint_term lvl ff v.value
      else
       pp_print_string ff v.tex_name
   | Prnt(s) ->
       fprintf ff "print(%S)" s
   | FixY(t) ->
-     fprintf ff "Y %a" print_term t
+     fprintf ff "Y %a" (print_term 2) t
   | Cnst(_) ->
       pp_print_string ff "\\varepsilon"
   | TagI(i) ->
@@ -140,7 +150,7 @@ let rec print_term unfold ff t =
 
 let print_term unfold ch t =
   let ff = formatter_of_out_channel ch in
-  print_term unfold ff t; pp_print_flush ff (); flush ch
+  print_term unfold 0 ff t; pp_print_flush ff (); flush ch
 
 let print_kind unfold ch t =
   let ff = formatter_of_out_channel ch in
@@ -149,21 +159,3 @@ let print_kind unfold ch t =
 let print_kind_def unfold ch kd =
   let ff = formatter_of_out_channel ch in
   pkind_def unfold ff kd; pp_print_flush ff (); flush ch
-
-type latex_output =
-  | Kind of (bool * kind)
-  | Term of (bool * term)
-  | Text of string
-  | List of latex_output list
-
-let rec output ch = function
-  | Kind(unfold,k) -> print_kind unfold ch k
-  | Term(unfold,t) -> print_term unfold ch t
-  | Text(t)        -> Printf.fprintf ch "%s" t
-  | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
-
-let rec to_string = function
-  | Kind(unfold,_)
-  | Term(unfold,_) -> assert false
-  | Text t -> t
-  | List(l) -> "{" ^ String.concat "" (List.map to_string l) ^"}"

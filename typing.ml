@@ -123,6 +123,14 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         in
         set ub k
 
+    (* Type definition. *)
+    | (TDef(d,a)  , _          ) ->
+        subtype ctxt t (msubst d.tdef_value a) b
+
+    | (_          , TDef(d,b)  ) ->
+        subtype ctxt t a (msubst d.tdef_value b)
+
+
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
         let f x = appl dummy_position (box t) x in
@@ -181,10 +189,6 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | (ECst(ca) , ECst(cb)   ) when ca == cb -> ()
 
     (* μ and ν - least and greatest fixpoint. *)
-    | (_          , FixM(OConv,f)) -> subtype ctxt t a (subst f b)
-
-    | (FixN(OConv,f)  , _        ) -> subtype ctxt t (subst f a) b
-
     | (_          , FixN(o,f)) ->
         begin
           (* Compression of consecutive νs. *)
@@ -223,12 +227,10 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
                subtype ctxt t (subst f cst) b
         end
 
-    (* Type definition. *)
-    | (TDef(d,a)  , _          ) ->
-        subtype ctxt t (msubst d.tdef_value a) b
+    | (_          , FixM(OConv,f)) -> subtype ctxt t a (subst f b)
 
-    | (_          , TDef(d,b)  ) ->
-        subtype ctxt t a (msubst d.tdef_value b)
+    | (FixN(OConv,f)  , _        ) -> subtype ctxt t (subst f a) b
+
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtyping clash (no rule apply)."

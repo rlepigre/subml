@@ -402,18 +402,25 @@ let parser opt_flag =
 let read_file = ref (fun _ _ -> assert false)
 
 let parser latex_atom =
-  | "#" u:"!"? k:kind "#" -> fun st -> Latex.Kind (u<>None, unbox (unsugar_kind st [] k))
-  | "@" u:"!"? t:term "@" -> fun st -> Latex.Term (u<>None, unbox (fst (unsugar_term st [] t)))
-  | t:''[^}{@#]+''        -> fun st -> Latex.Text t
+  | "#" u:"!"? k:kind "#" -> fun st -> Latex_trace.Kind (u<>None, unbox (unsugar_kind st [] k))
+  | "@" u:"!"? t:term "@" -> fun st -> Latex_trace.Term (u<>None, unbox (fst (unsugar_term st [] t)))
+  | t:''[^}{@#]+''        -> fun st -> Latex_trace.Text t
   | l:latex_text          -> l
+  | "#?" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
+      fun st ->
+        let a = unbox (unsugar_kind st [] a) in
+        let b = unbox (unsugar_kind st [] b) in
+	generic_subtype a b;
+	let prf = collect_subtyping_proof () in
+	Latex_trace.SProof prf
 
-and latex_text = "{" l:latex_atom* "}" -> fun st -> Latex.List (List.map (fun x -> x st) l)
+and latex_text = "{" l:latex_atom* "}" -> fun st -> Latex_trace.List (List.map (fun x -> x st) l)
 
 let parser latex_name_aux =
-    | t:''[^{}]+''              -> Latex.Text t
-    | "{" l:latex_name_aux* "}" -> Latex.List l
+    | t:''[^{}]+''              -> Latex_trace.Text t
+    | "{" l:latex_name_aux* "}" -> Latex_trace.List l
 
-and latex_name = "{" t:latex_name_aux* "}" -> Latex.to_string (Latex.List t)
+and latex_name = "{" t:latex_name_aux* "}" -> Latex_trace.to_string (Latex_trace.List t)
 
 let parser command =
   (* Type definition command. *)
@@ -497,7 +504,7 @@ let parser command =
             | _        -> trace_state := [];
         end
   | latex_kw t:latex_text ->
-     fun st -> Latex.output !latex_ch (t st)
+     fun st -> Latex_trace.output !latex_ch (t st)
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
       !read_file fn
