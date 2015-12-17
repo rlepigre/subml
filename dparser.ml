@@ -390,27 +390,35 @@ let parser enabled =
 
 let latex_ch = ref stdout
 
+let open_latex fn =
+  if !latex_ch <> stdout then close_out !latex_ch;
+  latex_ch := open_out fn
+
 let parser opt_flag =
   | "verbose" b:enabled -> fun st -> st.verbose <- b
   | "latex" b:enabled -> fun st -> Multi_print.print_mode := if b then Latex else Ascii
-  | "texfile" fn:string_lit -> fun st ->
-    if !latex_ch <> stdout then close_out !latex_ch;
-    latex_ch := open_out fn
+  | "texfile" fn:string_lit -> fun st -> open_latex fn
 
 let read_file = ref (fun _ _ -> assert false)
 
 let parser latex_atom =
   | "#" u:"!"? k:kind "#" -> fun st -> Latex.Kind (u<>None, unbox (unsugar_kind st [] k))
   | "@" u:"!"? t:term "@" -> fun st -> Latex.Term (u<>None, unbox (fst (unsugar_term st [] t)))
-  | t:''[^}@#]+''       -> fun st -> Latex.Text t
-  | "{" l:latex_text "}" -> l
+  | t:''[^}{@#]+''        -> fun st -> Latex.Text t
+  | l:latex_text          -> l
 
-and latex_text = l:latex_atom* -> fun st -> Latex.List (List.map (fun x -> x st) l)
+and latex_text = "{" l:latex_atom* "}" -> fun st -> Latex.List (List.map (fun x -> x st) l)
+
+let parser latex_name_aux =
+    | t:''[^{}]+''              -> Latex.Text t
+    | "{" l:latex_name_aux* "}" -> Latex.List l
+
+and latex_name = "{" t:latex_name_aux* "}" -> Latex.to_string (Latex.List t)
 
 let parser command =
   (* Type definition command. *)
-  | type_kw (name,args,k):kind_def ->
-      fun st ->
+  | type_kw tex:latex_name? (name,args,k):kind_def ->
+     fun st ->
         let arg_names = Array.of_list args in
         let f args =
           let env = ref [] in
@@ -420,6 +428,7 @@ let parser command =
         let b = mbind mk_free_tvar arg_names f in
         let td =
           { tdef_name  = name
+	  ; tdef_tex_name = (match tex with None -> "\\hbox{"^name^"}" | Some s -> s)
           ; tdef_arity = Array.length arg_names
           ; tdef_value = unbox b }
         in
@@ -444,7 +453,7 @@ let parser command =
         let t = eval st t in
         Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Typed value definition. *)
-  | val_kw r:rec_kw? id:lident ":" k:kind "=" t:term ->
+  | val_kw r:rec_kw? tex:latex_name? id:lident ":" k:kind "=" t:term ->
      fun st ->
        let t =
 	 if r = None then t
@@ -465,7 +474,12 @@ let parser command =
 	  e -> trace_backtrace (); raise e);
         reset_all ();
         let t = eval st t in
-        Hashtbl.add st.venv id { name = id ; value = t ; ttype = Some k };
+        Hashtbl.add st.venv id
+	  { name = id
+	  ; tex_name = (match tex with None -> "\\hbox{"^id^"}" | Some s -> s)
+	  ; value = t
+	  ; ttype = Some k
+	  };
         Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
   (* Check subtyping. *)
   | check_kw n:{"not" -> false}?[true] a:kind {"⊂" | "⊆" | "<"} b:kind ->
@@ -483,7 +497,7 @@ let parser command =
             | _        -> trace_state := [];
         end
   | latex_kw t:latex_text ->
-     fun st -> Latex.output !latex_ch (t st); ()
+     fun st -> Latex.output !latex_ch (t st)
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
       !read_file fn

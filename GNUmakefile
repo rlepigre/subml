@@ -1,5 +1,6 @@
 all: main.native main.byte
 
+DESTDIR=/usr/local/bin
 MLFILES=util.ml ast.ml eval.ml print.ml multi_print.ml latex.ml \
 				trace.ml typing.ml dparser.ml main.ml
 
@@ -20,3 +21,6 @@ clean:
 
 distclean: clean
 	rm -f *~ lib/*~
+
+install: all
+	install ./main.byte $(DESTDIR)/proto.byt

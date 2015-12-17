@@ -53,12 +53,12 @@ let rec print_kind unfold wrap ff t =
       fprintf ff "\\nu %s %a" (*print_ordinal o*) (name_of x) pkindw a
   | TDef(td,args) ->
       if unfold then
-        print_kind unfold wrap ff (msubst td.tdef_value args)
+        print_kind false wrap ff (msubst td.tdef_value args)
       else
         if Array.length args = 0 then
-          pp_print_string ff td.tdef_name
+          pp_print_string ff td.tdef_tex_name
         else
-          fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
+          fprintf ff "%s(%a)" td.tdef_tex_name (print_array pkind ", ") args
   | UCst(_) ->
       pp_print_string ff "\\vapepsilon_\\forall"
   | ECst(_) ->
@@ -82,6 +82,7 @@ let pkind_def unfold ff kd =
  ****************************************************************************)
 
 let rec print_term unfold ff t =
+  let nprint_term = print_term false in
   let print_term = print_term unfold in
   let pkind = print_kind false false in
   match t.elt with
@@ -94,7 +95,7 @@ let rec print_term unfold ff t =
       let t = subst b (free_of (new_lvar' x)) in
       begin
         match ao with
-        | None   -> fprintf ff "\\lambda%s %a" x print_term t
+        | None   -> fprintf ff "\\lambda %s %a" x print_term t
         | Some a -> fprintf ff "\\lambda %s:%a \\; %a" x pkind a print_term t
       end
   | Appl(t,u) ->
@@ -118,12 +119,12 @@ let rec print_term unfold ff t =
        | _ ->
           fprintf ff "| %s \\rightarrow %a" c print_term b
       in
-      fprintf ff "\\hbox{case } %a \\hbox{ of } %a" print_term t (print_list pvariant "; ") l
+      fprintf ff "\\case{%a}{%a}" print_term t (print_list pvariant "; ") l
   | VDef(v) ->
      if unfold then
-       print_term ff v.value
+       nprint_term ff v.value
      else
-      pp_print_string ff v.name
+      pp_print_string ff v.tex_name
   | Prnt(s) ->
       fprintf ff "print(%S)" s
   | FixY(t) ->
@@ -159,4 +160,10 @@ let rec output ch = function
   | Kind(unfold,k) -> print_kind unfold ch k
   | Term(unfold,t) -> print_term unfold ch t
   | Text(t)        -> Printf.fprintf ch "%s" t
-  | List(l)        -> List.iter (output ch) l
+  | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
+
+let rec to_string = function
+  | Kind(unfold,_)
+  | Term(unfold,_) -> assert false
+  | Text t -> t
+  | List(l) -> "{" ^ String.concat "" (List.map to_string l) ^"}"

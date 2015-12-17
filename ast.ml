@@ -59,6 +59,7 @@ and occur =
 and type_def =
   (* Name of the type constructor. *)
   { tdef_name  : string
+  ; tdef_tex_name : string
   (* Arity of the constructor. *)
   ; tdef_arity : int
   (* Definition of the constructor. *)
@@ -117,6 +118,7 @@ and term' =
 and value_def =
   (* Name of the value. *)
   { name  : string
+  ; tex_name : string
   (* The corresponding term. *)
   ; value : term
   (* Raw version of the term (i.e. no anotations). *)

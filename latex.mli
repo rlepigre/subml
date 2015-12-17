@@ -20,3 +20,4 @@ type latex_output =
   | List of latex_output list
 
 val output : out_channel -> latex_output -> unit
+val to_string : latex_output -> string
