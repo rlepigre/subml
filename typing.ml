@@ -19,6 +19,12 @@ type subtype_ctxt =
 
 exception Induction_hypothesis
 
+let struct_eq k1 k2 =
+  match k1, k2 with
+  | FixM(_,f1) , FixM(_,f2)
+  | FixN(_,f1) , FixN(_,f2) -> eq_kind (subst f1 (TInt (-1))) (subst f2 (TInt (-1)))
+  | k1, k2 -> eq_kind k1 k2
+
 let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
   fun t ctxt a b ->
     let search k l =
@@ -29,6 +35,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
       in fn [] l
     in
 
+    (* Check left. *)
     begin match a with
       | FixM(o,f) ->
          begin
@@ -37,7 +44,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	     let (before, l, after) = search key ctxt.lfix in
              let check (o', k, used) =
                if less_ordinal o o' && lower_kind k b then
-		 (used (); raise Induction_hypothesis)
+		   (used (); raise Induction_hypothesis)
+	       else if struct_eq k b then
+		 subtype_error "loop"
              in
              List.iter check l
 	   with Not_found -> ()
@@ -55,6 +64,8 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
              let check (o', k, used) =
                if less_ordinal o o' && lower_kind a k then
                  (used (); raise Induction_hypothesis)
+	       else if struct_eq a k then
+		 subtype_error "loop"
              in
              List.iter check l;
 	   with Not_found -> ()
@@ -62,7 +73,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
       | _         -> ()
     end;
 
-    (* Check left. *)
+    (* add induction left *)
     let (ctxt, a, b) =
       match a with
       | FixM(o,f) ->
@@ -80,7 +91,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
       | _         -> (ctxt, a, b)
     in
 
-    (* Check right. *)
+    (* add induction right. *)
     match b with
     | FixN(o,f) ->
         begin
@@ -102,7 +113,6 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     let a = repr a in
     let b = repr b in
     (try
-    let (ctxt, a, b) = check_rec t ctxt a b in
     if a == b || lower_kind a b then () else
     begin match (a,b) with
     (* Handling of unification variables (immitation). *)
@@ -129,8 +139,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     | (_          , TDef(d,b)  ) ->
         subtype ctxt t a (msubst d.tdef_value b)
-
-
+    | _ ->
+    let (ctxt, a, b) = check_rec t ctxt a b in
+    begin match (a,b) with
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
         let f x = appl dummy_position (box t) x in
@@ -237,6 +248,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     end;
     (match a with FixM _ -> trace_pop () | _ -> ());
     (match b with FixN _ -> trace_pop () | _ -> ())
+    end;
     with Induction_hypothesis -> ());
     trace_pop ();
 
