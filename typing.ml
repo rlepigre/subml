@@ -42,13 +42,15 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	   try
 	     let key = FixM(ODumm,f) in
 	     let (before, l, after) = search key ctxt.lfix in
+	     let loop = ref false in
              let check (o', k, used) =
                if less_ordinal o o' && lower_kind k b then
 		   (used (); raise Induction_hypothesis)
 	       else if struct_eq k b then
-		 subtype_error "loop"
+		 loop := true
              in
-             List.iter check l
+             List.iter check (List.rev l); (* use oldest hypothesis in priority *)
+	     if !loop then subtype_error "loop"
 	   with Not_found -> ()
 	 end
       | _         -> ()
@@ -61,51 +63,68 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	   try
 	     let key = FixN(ODumm,f) in
 	     let (before, l, after) = search key ctxt.rfix in
+	     let loop = ref false in
              let check (o', k, used) =
                if less_ordinal o o' && lower_kind a k then
                  (used (); raise Induction_hypothesis)
 	       else if struct_eq a k then
-		 subtype_error "loop"
+		 loop := true
              in
-             List.iter check l;
+             List.iter check (List.rev l); (* use oldest hypothesis in priority *)
+	     if !loop then subtype_error "loop"
 	   with Not_found -> ()
 	 end
       | _         -> ()
     end;
 
-    (* add induction left *)
-    let (ctxt, a, b) =
-      match a with
-      | FixM(o,f) ->
-         begin
-           let o = OLEqu(o,t,In(binder_from_fun "a" 0 (fun o -> subst f (FixM(o,f))))) in
-           let key = FixM(ODumm,f) in
-           let a = FixM(o,f) in
-	   let (before, l, after) =
-	     try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
-	   in
-  	   let ptr = trace_subtyping ~ordinal:o t a b in
-           let lfix = List.rev_append before ((key, (o,b,ptr)::l) :: after) in
-           ({ ctxt with lfix }, a, b)
-         end
-      | _         -> (ctxt, a, b)
-    in
+    (* add induction  *)
+    match a, b with
+    | FixM(o,f), FixN(o',f')  ->
+       let o = OLEqu(o,t,In(binder_from_fun "a" 0 (fun o -> subst f (FixM(o,f))))) in
+       let o' = OLEqu(o',t,NotIn(binder_from_fun "a" 0 (fun o -> subst f' (FixN(o,f'))))) in
+       let key = FixM(ODumm,f) in
+       let key' = FixN(ODumm, f') in
+       let a0 = FixM(o,f) in
+       let b0 = FixN(o',f') in
+       let used = trace_subtyping ~ordinal:o t a0 b0 in
+       let lfix =
+	 let (before, l, after) =
+	   try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
+	 in
+	 List.rev_append before ((key, (o,b,used)::l) :: after)
+       in
+       let rfix =
+         let (before, l, after) =
+	   try search key' ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
+	 in
+	 List.rev_append before ((key', (o',a,used)::l) :: after)
+       in
+       ({ lfix; rfix }, a0, b0)
 
-    (* add induction right. *)
-    match b with
-    | FixN(o,f) ->
-        begin
-          let o = OLEqu(o,t,NotIn(binder_from_fun "a" 0 (fun o -> subst f (FixN(o,f))))) in
-          let key = FixN(ODumm, f) in
-          let b = FixN(o,f) in
-          let (before, l, after) =
-	    try search key ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
-	  in
-          let used = trace_subtyping ~ordinal:o t a b in
-          let rfix = List.rev_append before ((key, (o,a,used)::l) :: after) in
-          ({ ctxt with rfix }, a, b)
-        end
+    | FixM(o,f), _ ->
+       let o = OLEqu(o,t,In(binder_from_fun "a" 0 (fun o -> subst f (FixM(o,f))))) in
+       let key = FixM(ODumm,f) in
+       let a = FixM(o,f) in
+       let (before, l, after) =
+	 try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
+       in
+       let ptr = trace_subtyping ~ordinal:o t a b in
+       let lfix = List.rev_append before ((key, (o,b,ptr)::l) :: after) in
+       ({ ctxt with lfix }, a, b)
+    | _, FixN(o,f) ->
+       let o = OLEqu(o,t,NotIn(binder_from_fun "a" 0 (fun o -> subst f (FixN(o,f))))) in
+       let key = FixN(ODumm, f) in
+       let b = FixN(o,f) in
+       let (before, l, after) =
+	 try search key ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
+       in
+       let used = trace_subtyping ~ordinal:o t a b in
+       let rfix = List.rev_append before ((key, (o,a,used)::l) :: after) in
+       ({ ctxt with rfix }, a, b)
     | _         -> (ctxt, a , b)
+
+let is_mu b f = match subst f (Prod []) with FixM(o,_) -> if b then o = OConv else true | _ -> false
+let is_nu b f = match subst f (Prod []) with FixN(o,_) -> if b then o = OConv else true | _ -> false
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a b =
@@ -139,6 +158,46 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     | (_          , TDef(d,b)  ) ->
         subtype ctxt t a (msubst d.tdef_value b)
+    | (FixM(OConv,f)  , _        ) when is_mu true f ->
+       (* Compression of consecutive μs. *)
+       let aux x =
+         match subst f x with
+         | FixM(_,g) -> subst g x
+         | _       -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+       subtype ctxt t (FixM(OConv, f)) b
+
+    | (_, FixM(o,f)) when is_mu false f ->
+       (* Compression of consecutive μs. *)
+       let aux x =
+         match subst f x with
+         | FixM(_,g) -> subst g x
+         | _       -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+       subtype ctxt t a (FixM(OConv, f))
+
+    | (FixN(o,f), _) when is_nu false f ->
+       (* Compression of consecutive μs. *)
+       let aux x =
+         match subst f x with
+         | FixN(_,g) -> subst g x
+         | _       -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+       subtype ctxt t (FixN(OConv, f)) b
+
+    | (_, FixN(OConv,f)) when is_nu true f ->
+       (* Compression of consecutive μs. *)
+       let aux x =
+         match subst f x with
+         | FixN(_,g) -> subst g x
+         | _       -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+       subtype ctxt t a (FixN(OConv, f))
+
     | _ ->
     let (ctxt, a, b) = check_rec t ctxt a b in
     begin match (a,b) with
@@ -152,8 +211,6 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* Product type. *)
     | (Prod(fsa), Prod(fsb)) ->
-        let lseta = StrSet.of_list (List.map fst fsa) in
-        let lsetb = StrSet.of_list (List.map fst fsb) in
         let check_field (l,b) =
           let a = try List.assoc l fsa with Not_found -> subtype_error "Product fields clash." in
           subtype ctxt (dummy_pos (Proj(t,l))) a b
@@ -163,8 +220,6 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     (* Sum type. *)
     | (DSum([]), a)          -> ()
     | (DSum(csa), DSum(csb)) ->
-        let cseta = StrSet.of_list (List.map fst csa) in
-        let csetb = StrSet.of_list (List.map fst csb) in
         let check_variant (c,a) =
           let t = unbox
             (case dummy_position (box t) [(c, idt)])
@@ -201,53 +256,26 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* μ and ν - least and greatest fixpoint. *)
     | (_          , FixN(o,f)) ->
-        begin
-          (* Compression of consecutive νs. *)
-          match subst f (Prod []) with
-          | FixN(_,_) ->
-              let aux x =
-                match subst f x with
-                | FixN(_,g) -> subst g x
-                | _       -> assert false (* Unreachable. *)
-              in
-              let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-              subtype ctxt t a (FixN(OConv,f))
-          (* Only on consecutive μ. *)
-          | _       ->
-	     let o = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
-             let cst = FixN(o, f) in
-             subtype ctxt t a (subst f cst)
-        end
+       let o = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
+       let cst = FixN(o, f) in
+       subtype ctxt t a (subst f cst)
 
     | (FixM(o,f)  , _        ) ->
-        begin
-          (* Compression of consecutive μs. *)
-          match subst f (Prod []) with
-          | FixM(_,_) ->
-              let aux x =
-                match subst f x with
-                | FixM(_,g) -> subst g x
-                | _       -> assert false (* Unreachable. *)
-              in
-              let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-              subtype ctxt t (FixM(OConv, f)) b
-          (* Only on consecutive μ. *)
-          | _       ->
-	       let o = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
-               let cst = FixM(o, f) in
-               subtype ctxt t (subst f cst) b
-        end
+       let o = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
+       let cst = FixM(o, f) in
+       subtype ctxt t (subst f cst) b
 
-    | (_          , FixM(OConv,f)) -> subtype ctxt t a (subst f b)
+    | (_          , FixM(OConv,f)) ->
+       subtype ctxt t a (subst f b)
 
-    | (FixN(OConv,f)  , _        ) -> subtype ctxt t (subst f a) b
+    | (FixN(OConv,f)  , _        ) ->
+       subtype ctxt t (subst f a) b
 
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
     end;
-    (match a with FixM _ -> trace_pop () | _ -> ());
-    (match b with FixN _ -> trace_pop () | _ -> ())
+    (match a,b with FixM _, _ | _, FixN _ -> trace_pop () | _ -> ())
     end;
     with Induction_hypothesis -> ());
     trace_pop ();

@@ -498,10 +498,11 @@ let parser command =
 	    generic_subtype a b;
 	    let prf = collect_subtyping_proof () in
 	    if st.verbose || not n then print_subtyping_proof prf;
-	    ()
+	    Printf.eprintf "check: OK\n%!"
           with
             | e when n -> trace_backtrace (); raise e
-            | _        -> trace_state := [];
+            | _        -> trace_state := []; Printf.eprintf "check not: OK\n%!"
+
         end
   | latex_kw t:latex_text ->
      fun st -> Latex_trace.output !latex_ch (t st)
