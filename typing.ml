@@ -154,26 +154,26 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | (Prod(fsa), Prod(fsb)) ->
         let lseta = StrSet.of_list (List.map fst fsa) in
         let lsetb = StrSet.of_list (List.map fst fsb) in
-        if not (StrSet.subset lsetb lseta) then
-          subtype_error "Product fields clash.";
         let check_field (l,b) =
-          let a = List.assoc l fsa in
+          let a = try List.assoc l fsa with Not_found -> subtype_error "Product fields clash." in
           subtype ctxt (dummy_pos (Proj(t,l))) a b
         in
         List.iter check_field fsb
 
     (* Sum type. *)
+    | (DSum([]), a)          -> ()
     | (DSum(csa), DSum(csb)) ->
         let cseta = StrSet.of_list (List.map fst csa) in
         let csetb = StrSet.of_list (List.map fst csb) in
-        if not (StrSet.subset cseta csetb) then
-          subtype_error "Sum type constructor clash.";
         let check_variant (c,a) =
-          let b = List.assoc c csb in
           let t = unbox
             (case dummy_position (box t) [(c, idt)])
           in
-          subtype ctxt t a b
+	  try
+            let b = List.assoc c csb in
+            subtype ctxt t a b
+	  with
+	    Not_found -> subtype ctxt t a (DSum([]))
         in
         List.iter check_variant csa
 

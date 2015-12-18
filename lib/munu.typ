@@ -28,3 +28,6 @@ latex { we have $#!S1# \subset #!S2#$
 #? S1 ⊂ S2 #
 \end{prooftree}
 }
+
+check μX [ A of X] ⊂ μX []
+check μX [] ⊂ ∀X X
