@@ -1,4 +1,4 @@
-all: main.native main.byte
+all: main.byte main.native
 
 DESTDIR=/usr/local/bin
 MLFILES=util.ml ast.ml eval.ml print.ml multi_print.ml latex.ml \

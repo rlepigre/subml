@@ -15,3 +15,15 @@ let print_kind_def u ch = match !print_mode with
 let print_term u ch = match !print_mode with
   | Ascii -> Print.print_term u ch
   | Latex -> Latex.print_term u ch
+
+let print_ordinal ch =
+  match !print_mode with
+  | Ascii -> Print.print_ordinal ch
+  | Latex -> assert false
+
+let print_reset_ordinals ch =
+  match !print_mode with
+  | Ascii -> Print.print_reset_ordinals ch
+  | Latex -> assert false
+
+let reset_ordinals = Print.reset_ordinals

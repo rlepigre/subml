@@ -18,21 +18,50 @@ let ignored_ordinals = ref []
  *                           Printing of a type                             *
  ****************************************************************************)
 
-let print_ordinal ff o =
-  let rec print_ordinal ff = function
-    | ODumm        -> pp_print_string ff "?"
-    | OConv        -> pp_print_string ff "∞"
-    | OLess(o,t,k) -> if List.memq o !ignored_ordinals then print_ordinal ff o
-                      else fprintf ff "ε(< %a)" print_ordinal o
-    | OLEqu(o,t,k) -> if List.memq o !ignored_ordinals then print_ordinal ff o
-	              else fprintf ff "ε(≤ %a)" print_ordinal o
-    | OTag i       -> fprintf ff "?%i" i
-  in
-  match o with
-  | OConv -> ()
-  | _     -> print_ordinal ff o
+let ordinal_tbl = ref []
+let ordinal_count = ref 0
 
-let rec print_kind unfold wrap ff t =
+let rec print_ordinal unfold ff o =
+  match o with
+  | ODumm        -> pp_print_string ff "?"
+  | OConv        -> pp_print_string ff "∞"
+  | OTag i       -> fprintf ff "?%i" i
+(*  | OLess(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
+    | OLEqu(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o*)
+  | _ ->
+  if unfold then match o with
+  | OLess(o,t,k) ->
+    fprintf ff "ε(< %a, %a in %a)" (print_ordinal false) o (print_term unfold) t print_ord_cstr k
+  | OLEqu(o,t,k) ->
+    fprintf ff "ε(≤ %a, %a in %a)" (print_ordinal false) o (print_term unfold) t print_ord_cstr k
+  | _ -> assert false
+  else
+    let n =
+      try
+	List.assq o !ordinal_tbl
+      with
+	Not_found ->
+	  let n = !ordinal_count in incr ordinal_count;
+	  ordinal_tbl := (o,n)::!ordinal_tbl; n
+    in
+    fprintf ff "ε%d" n
+
+and print_reset_ordinals ff =
+  while !ordinal_tbl <> [] do
+    let (o,n) = match !ordinal_tbl with
+      | [] -> assert false
+      | x::os -> ordinal_tbl := os; x
+    in
+    fprintf ff "  ε%d = %a\n%!" n (print_ordinal true) o
+  done;
+  ordinal_count := 0
+
+and print_ord_cstr ff k =
+  match k with
+  | In k -> fprintf ff "∈ %a" (print_kind false false) (subst k ODumm)
+  | NotIn k -> fprintf ff "∉ %a" (print_kind false false) (subst k ODumm)
+
+and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pkindw = print_kind unfold true in
   match repr t with
@@ -57,11 +86,11 @@ let rec print_kind unfold wrap ff t =
   | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "μ%a%s %a" print_ordinal o (name_of x) pkindw a
+      fprintf ff "μ%a%s %a" (print_ordinal false) o (name_of x) pkindw a
   | FixN(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "ν%a%s %a" print_ordinal o (name_of x) pkindw a
+      fprintf ff "ν%a%s %a" (print_ordinal false) o (name_of x) pkindw a
   | TDef(td,args) ->
       if unfold then
         print_kind unfold wrap ff (msubst td.tdef_value args)
@@ -78,7 +107,7 @@ let rec print_kind unfold wrap ff t =
       fprintf ff "?%i" u.uvar_key
   | TInt(_) -> assert false
 
-let pkind_def unfold ff kd =
+and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;
   let names = mbinder_names kd.tdef_value in
   let xs = new_mvar mk_free_tvar names in
@@ -92,7 +121,7 @@ let pkind_def unfold ff kd =
  *                           Printing of a term                             *
  ****************************************************************************)
 
-let rec print_term unfold ff t =
+and print_term unfold ff t =
   let print_term = print_term unfold in
   let pkind = print_kind false false in
   match t.elt with
@@ -159,3 +188,15 @@ let print_kind unfold ch t =
 let print_kind_def unfold ch kd =
   let ff = formatter_of_out_channel ch in
   pkind_def unfold ff kd; pp_print_flush ff (); flush ch
+
+let print_ordinal ch o =
+  let ff = formatter_of_out_channel ch in
+  print_ordinal false ff o; pp_print_flush ff (); flush ch
+
+let print_reset_ordinals ch =
+  let ff = formatter_of_out_channel ch in
+  print_reset_ordinals ff; pp_print_flush ff (); flush ch
+
+let reset_ordinals () =
+  ordinal_count := 0;
+  ordinal_tbl := []

@@ -266,15 +266,15 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
             end
         end
     | PFAll(x,k) ->
-        let f xk = unsugar ((x,xk) :: env) k in
+        let f xk = unsugar ((x,box_of_var xk) :: env) k in
         fall x f
     | PExis(x,k) ->
-        let f xk = unsugar ((x,xk) :: env) k in
+        let f xk = unsugar ((x,box_of_var xk) :: env) k in
         exis x f
     | PMu(x,k) ->
-        fixm x (fun xk -> unsugar ((x,xk) :: env) k)
+        fixm x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
     | PNu(x,k) ->
-        fixn x (fun xk -> unsugar ((x,xk) :: env) k)
+        fixn x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
     | PProd(fs)  ->
         prod (List.map (fun (l,k) -> (l, unsugar env k)) fs)
     | PSum(cs)   ->
@@ -498,10 +498,14 @@ let parser command =
 	    generic_subtype a b;
 	    let prf = collect_subtyping_proof () in
 	    if st.verbose || not n then print_subtyping_proof prf;
+	    reset_ordinals ();
 	    Printf.eprintf "check: OK\n%!"
           with
             | e when n -> trace_backtrace (); raise e
-            | _        -> trace_state := []; Printf.eprintf "check not: OK\n%!"
+            | Subtype_error s -> trace_state := [];
+ 	      reset_ordinals ();
+	      Printf.eprintf "check not: OK %s\n%!" s
+            | e -> trace_backtrace (); raise e
 
         end
   | latex_kw t:latex_text ->

@@ -16,3 +16,5 @@ val print_kind : bool -> out_channel -> kind -> unit
 (* Pretty-printer for a kind definition. If the boolean is true, definitions
 are unfolded, otherwise the name of the defined type is used instead. *)
 val print_kind_def : bool -> out_channel -> type_def -> unit
+
+val reset_ordinals : unit -> unit

@@ -138,8 +138,8 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
     | (FAll(b1)   , FAll(b2)   ) -> eq_kbinder b1 b2
     | (Exis(b1)   , Exis(b2)   ) -> eq_kbinder b1 b2
-    | (FixM(o1,f1), FixM(o2,f2)) -> o1 = o2 && eq_kbinder f1 f2
-    | (FixN(o1,f1), FixN(o2,f2)) -> o1 = o2 && eq_kbinder f1 f2
+    | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
+    | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
     | (TDef(d1,a1), TDef(d2,a2)) ->
         let k1 = msubst d1.tdef_value a1 in
         let k2 = msubst d2.tdef_value a2 in
@@ -187,6 +187,7 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   let rec eq_ordinal o1 o2 =
     if o1 == o2 then true else
       match o1, o2 with
+      | ODumm, ODumm -> true
       | OConv, OConv -> true
       | OLEqu(o1,t1,c1), OLEqu(o2,t2,c2)
       | OLess(o1,t1,c1), OLess(o2,t2,c2) -> eq_ordinal o1 o2 && eq_term c t1 t2 && eq_ocst c1 c2
@@ -253,6 +254,8 @@ let initial_state : bool -> state = fun v ->
   ; verbose = v }
 
 (* Bindbox type shortcuts. *)
+type tvar = term variable
+type kvar = kind variable
 type tbox = term bindbox
 type kbox = kind bindbox
 
@@ -302,26 +305,26 @@ let dsum : (string * kbox) list -> kbox =
     let cs = List.map (fun (c,t) -> box_pair (box c) t) cs in
     box_apply (fun cs -> DSum(cs)) (box_list cs)
 
-let fall : string -> (kbox -> kbox) -> kbox =
+let fall : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> FAll(b)) (bind mk_free_tvar x f)
+    box_apply (fun b -> FAll(b)) (vbind mk_free_tvar x f)
 
-let exis : string -> (kbox -> kbox) -> kbox =
+let exis : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> Exis(b)) (bind mk_free_tvar x f)
+    box_apply (fun b -> Exis(b)) (vbind mk_free_tvar x f)
 
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
 
-let fixn : string -> (kbox -> kbox) -> kbox =
-  fun x f ->
-    let b = bind mk_free_tvar x f in
-    box_apply (fun b -> FixN(OConv,b)) b
+let fixn : string -> ?ordinal:ordinal -> (kvar -> kbox) -> kbox =
+  fun x ?(ordinal=OConv) f ->
+    let b = vbind mk_free_tvar x f in
+    box_apply (fun b -> FixN(ordinal,b)) b
 
-let fixm : string -> (kbox -> kbox) -> kbox =
-  fun x f ->
-    let b = bind mk_free_tvar x f in
-    box_apply (fun b -> FixM(OConv,b)) b
+let fixm : string -> ?ordinal:ordinal -> (kvar -> kbox) -> kbox =
+  fun x ?(ordinal=OConv) f ->
+    let b = vbind mk_free_tvar x f in
+    box_apply (fun b -> FixM(ordinal,b)) b
 
 (* Quantifier constant management. *)
 let (new_ucst, reset_ucst) =
@@ -361,13 +364,13 @@ let reset_all () =
  ****************************************************************************)
 
 let fix_kind : kind =
-  unbox (fall "X" (fun x -> func (func x x) x))
+  unbox (fall "X" (fun x -> func (func (box_of_var x) (box_of_var x)) (box_of_var x)))
 
 let bot : kind =
-  unbox (fall "X" (fun x -> x))
+  unbox (fall "X" (fun x -> box_of_var x))
 
 let top : kind =
-  unbox (exis "X" (fun x -> x))
+  unbox (exis "X" (fun x -> box_of_var x))
 
 (****************************************************************************
  *              Functional constructors with position for terms             *
@@ -526,23 +529,41 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
  ****************************************************************************)
 
 let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
-  let rec subst k =
+  let rec fn k =
     match repr k with
-    | TVar(_)   -> k
-    | Func(a,b) -> Func(subst a, subst b)
-    | Prod(fs)  -> Prod(List.map (fun (l,a) -> (l, subst a)) fs)
-    | DSum(cs)  -> DSum(List.map (fun (c,a) -> (c, subst a)) cs)
-    | FAll(f)   -> FAll(binder_compose_right f subst)
-    | Exis(f)   -> Exis(binder_compose_right f subst)
-    | FixM(o,f) -> FixM(o,binder_compose_right f subst)
-    | FixN(o,f) -> FixN(o,binder_compose_right f subst)
-    | TDef(d,a) -> TDef(d, Array.map subst a)
-    | UCst(_)   -> assert false (* TODO *)
-    | ECst(_)   -> assert false (* TODO *)
-    | UVar(u)   -> if u.uvar_key = i then x else k
-    | TInt(_)   -> assert false
+    | Func(a,b) -> func (fn a) (fn b)
+    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
+    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
+    | FAll(f)   -> fall (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | FixM(o,f) -> fixm (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
+    | FixN(o,f) -> fixn (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
+    | UVar(u)   -> box (if u.uvar_key = i then x else k)
+    | TVar x    -> box_of_var x
+    | t         -> box t
   in
-  subst k
+  unbox (fn k)
+
+(****************************************************************************
+ *                 Decompostiion type, ordinals                             *
+ ****************************************************************************)
+
+let decompose : kind -> kind * ordinal list = fun k ->
+  let res = ref [] in
+  let rec fn k =
+    match repr k with
+    | Func(a,b) -> func (fn a) (fn b)
+    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
+    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
+    | FAll(f)   -> fall (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | FixM(o,f) -> res := o :: !res; fixm (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | FixN(o,f) -> res := o :: !res; fixn (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | TVar x    -> box_of_var x
+    | t         -> box t
+  in
+  let k = unbox (fn k) in
+  k, (List.rev !res)
 
 (****************************************************************************
  *                                 Lower kind                               *
