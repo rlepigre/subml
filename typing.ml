@@ -182,10 +182,10 @@ let is_nu b f = match subst f (Prod []) with FixN(o,_) -> if b then o = OConv el
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a b =
-    if !debug then Printf.eprintf "%a < %a\n%!" (print_kind false) a (print_kind false) b;
     let _ = trace_subtyping t a b in
     let a = repr a in
     let b = repr b in
+    if !debug then Printf.eprintf "%a < %a (%a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
     if a == b || lower_kind a b then () else
     begin match (a,b) with
@@ -199,6 +199,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 	  | Pos -> FixM(OConv,bind_uvar ua b)
           | _   -> bot
         in
+	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
         set ua k
     | (_      , UVar ub) ->
         let k =
@@ -207,6 +208,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 	  | Pos -> FixM(OConv,bind_uvar ub a)
           | _   -> top
         in
+	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
         set ub k
 
     (* Type definition. *)
@@ -342,6 +344,7 @@ let generic_subtype : kind -> kind -> unit = fun a b ->
 let type_check : term -> kind -> unit = fun t c ->
   let c = repr c in
   let rec type_check t c =
+    if !debug then Printf.eprintf "%a : %a\n%!" (print_term false) t (print_kind false) c;
     trace_typing t c;
     (match t.elt with
     | Coer(t,a) ->
