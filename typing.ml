@@ -217,7 +217,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         subtype ctxt t a (msubst d.tdef_value b)
 
     | (FixM(OConv,f)  , _        ) when is_mu true f ->
-       (* Compression of consecutive μs. *)
+       (* Compression of consecutive μs on the left. *)
        let aux x =
          match subst f x with
          | FixM(_,g) -> subst g x
@@ -228,32 +228,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
        let ctxt = add_left_ind_hyp ctxt a' a in
        subtype ctxt t a' b
 
-(*    | (_, FixM(o,f)) when is_mu false f ->
-       (* Compression of consecutive μs. *)
-       let aux x =
-         match subst f x with
-         | FixM(_,g) -> subst g x
-         | _       -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       let b' = FixM(OConv, f) in
-       let ctxt = add_right_ind_hyp ctxt b' b in
-       subtype ctxt t a b'
-
-    | (FixN(o,f), _) when is_nu false f ->
-       (* Compression of consecutive μs. *)
-       let aux x =
-         match subst f x with
-         | FixN(_,g) -> subst g x
-         | _       -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       let a' = FixN(OConv, f) in
-       let ctxt = add_left_ind_hyp ctxt a' a in
-      subtype ctxt t a' b*)
-
     | (_, FixN(OConv,f)) when is_nu true f ->
-       (* Compression of consecutive μs. *)
+       (* Compression of consecutive νs on the right. *)
        let aux x =
          match subst f x with
          | FixN(_,g) -> subst g x
