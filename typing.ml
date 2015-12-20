@@ -47,6 +47,23 @@ let struct_eq k1 k2 =
   let k2, os2 = decompose k2 in
   eq_kind k1 k2
 
+let add_left_ind_hyp ctxt k1 k2 =
+(* if the is an induction hyp k2 < k3 and k1 < k2, add k1 < k3 as ind. hyp. *)
+  let add l =
+    List.fold_right (fun (o,k2',f as tpl) acc ->
+      if lower_kind k2 k2' then tpl::(o,k1,f)::acc else tpl::acc) l []
+  in
+  { ctxt with rfix = List.map (fun (k,l) -> (k, add l)) ctxt.rfix }
+
+let add_right_ind_hyp ctxt k1 k2 =
+  (* if the is an induction hyp k3 < k2 and k2 < k1, add k3 < k1 as ind. hyp. *)
+  let add l =
+    List.fold_right (fun (o,k2',f as tpl) acc ->
+      if lower_kind k2' k2 then tpl::(o,k1,f)::acc else tpl::acc) l []
+  in
+  { ctxt with lfix = List.map (fun (k,l) -> (k, add l)) ctxt.lfix }
+
+
 let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
   fun t ctxt a b ->
     let search k l =
@@ -95,6 +112,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
       | _         -> ()
     end;
 
+    (* check for loop *)
     let ctxt =
       match (a, b) with
       | (FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _) ->
@@ -124,38 +142,44 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	 let (before, l, after) =
 	   try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
 	 in
-	 List.rev_append before ((key, (o,b,used)::l) :: after)
+	 List.rev_append before ((key, (o,b0,used)::l) :: after)
        in
        let rfix =
          let (before, l, after) =
 	   try search key' ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
 	 in
-	 List.rev_append before ((key', (o',a,used)::l) :: after)
+	 List.rev_append before ((key', (o',a0,used)::l) :: after)
        in
+       let ctxt = add_left_ind_hyp ctxt a0 a in
+       let ctxt = add_right_ind_hyp ctxt b0 b in
        ({ ctxt with lfix; rfix }, a0, b0)
 
     | FixM(o0,f), _ ->
        let o = OLEqu(o0,t,In(binder_from_fun "a" 0 (fun o -> subst f (FixM(o,f))))) in
        if !debug then Printf.eprintf "creating %a <= %a\n%!" print_ordinal o print_ordinal o0;
        let key = FixM(ODumm,f) in
-       let a = FixM(o,f) in
+       let a' = FixM(o,f) in
        let (before, l, after) =
 	 try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
        in
-       let ptr = trace_subtyping ~ordinal:o t a b in
-       let lfix = List.rev_append before ((key, (o,b,ptr)::l) :: after) in
-       ({ ctxt with lfix }, a, b)
+       let used = trace_subtyping ~ordinal:o t a' b in
+       let lfix = List.rev_append before ((key, (o,b,used)::l) :: after) in
+       let ctxt = add_left_ind_hyp ctxt a' a in
+       ({ ctxt with lfix }, a', b)
+
     | _, FixN(o0,f) ->
        let o = OLEqu(o0,t,NotIn(binder_from_fun "a" 0 (fun o -> subst f (FixN(o,f))))) in
        if !debug then Printf.eprintf "creating %a <= %a\n%!" print_ordinal o print_ordinal o0;
        let key = FixN(ODumm, f) in
-       let b = FixN(o,f) in
+       let b' = FixN(o,f) in
        let (before, l, after) =
 	 try search key ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
        in
-       let used = trace_subtyping ~ordinal:o t a b in
+       let used = trace_subtyping ~ordinal:o t a b' in
        let rfix = List.rev_append before ((key, (o,a,used)::l) :: after) in
-       ({ ctxt with rfix }, a, b)
+       let ctxt = add_right_ind_hyp ctxt b' b in
+       ({ ctxt with rfix }, a, b')
+
     | _         -> (ctxt, a , b)
 
 let is_mu b f = match subst f (Prod []) with FixM(o,_) -> if b then o = OConv else true | _ -> false
@@ -194,6 +218,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     | (_          , TDef(d,b)  ) ->
         subtype ctxt t a (msubst d.tdef_value b)
+
     | (FixM(OConv,f)  , _        ) when is_mu true f ->
        (* Compression of consecutive μs. *)
        let aux x =
@@ -202,9 +227,11 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
          | _       -> assert false (* Unreachable. *)
        in
        let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       subtype ctxt t (FixM(OConv, f)) b
+       let a' = FixM(OConv, f) in
+       let ctxt = add_left_ind_hyp ctxt a' a in
+       subtype ctxt t a' b
 
-    | (_, FixM(o,f)) when is_mu false f ->
+(*    | (_, FixM(o,f)) when is_mu false f ->
        (* Compression of consecutive μs. *)
        let aux x =
          match subst f x with
@@ -212,7 +239,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
          | _       -> assert false (* Unreachable. *)
        in
        let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       subtype ctxt t a (FixM(OConv, f))
+       let b' = FixM(OConv, f) in
+       let ctxt = add_right_ind_hyp ctxt b' b in
+       subtype ctxt t a b'
 
     | (FixN(o,f), _) when is_nu false f ->
        (* Compression of consecutive μs. *)
@@ -222,7 +251,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
          | _       -> assert false (* Unreachable. *)
        in
        let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       subtype ctxt t (FixN(OConv, f)) b
+       let a' = FixN(OConv, f) in
+       let ctxt = add_left_ind_hyp ctxt a' a in
+      subtype ctxt t a' b*)
 
     | (_, FixN(OConv,f)) when is_nu true f ->
        (* Compression of consecutive μs. *)
@@ -232,7 +263,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
          | _       -> assert false (* Unreachable. *)
        in
        let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       subtype ctxt t a (FixN(OConv, f))
+       let b' = FixN(OConv, f) in
+       let ctxt = add_right_ind_hyp ctxt b' b in
+       subtype ctxt t a b'
 
     | _ ->
     let (ctxt, a, b) = check_rec t ctxt a b in
@@ -272,8 +305,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
-        let b = subst f (new_ucst t f) in
-        subtype ctxt t a b
+       let b' = subst f (new_ucst t f) in
+       let ctxt = add_right_ind_hyp ctxt b' b in
+       subtype ctxt t a b'
 
     | (FAll(f)  , _        ) ->
         let a = subst f (new_uvar ()) in
@@ -283,8 +317,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* Existantial quantifier. *)
     | (Exis(f)  , _        ) ->
-        let a = subst f (new_ecst t f) in
-        subtype ctxt t a b
+       let a' = subst f (new_ecst t f) in
+       let ctxt = add_left_ind_hyp ctxt a' a in
+       subtype ctxt t a' b
 
     | (_        , Exis(f)  ) ->
         let b = subst f (new_uvar ()) in
@@ -296,18 +331,26 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | (_          , FixN(o,f)) ->
        let o = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
        let cst = FixN(o, f) in
-       subtype ctxt t a (subst f cst)
+       let b' = subst f cst in
+       let ctxt = add_right_ind_hyp ctxt b' b in
+       subtype ctxt t a b'
 
     | (FixM(o,f)  , _        ) ->
        let o = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
        let cst = FixM(o, f) in
-       subtype ctxt t (subst f cst) b
+       let a' = subst f cst in
+       let ctxt = add_left_ind_hyp ctxt a' a in
+       subtype ctxt t a' b
 
     | (FixN(OConv,f)  , _        ) ->
-       subtype ctxt t (subst f a) b
+       let a' = subst f a in
+       let ctxt = add_left_ind_hyp ctxt a' a in
+       subtype ctxt t a' b
 
     | (_          , FixM(OConv,f)) ->
-       subtype ctxt t a (subst f b)
+       let b' = subst f b in
+       let ctxt = add_right_ind_hyp ctxt b' b in
+       subtype ctxt t a b'
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
