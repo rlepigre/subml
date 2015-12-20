@@ -42,11 +42,6 @@ let find_repetition a b branch =
 
 exception Induction_hypothesis
 
-let struct_eq k1 k2 =
-  let k1, os1 = decompose k1 in
-  let k2, os2 = decompose k2 in
-  eq_kind k1 k2
-
 let add_left_ind_hyp ctxt k1 k2 =
 (* if the is an induction hyp k2 < k3 and k1 < k2, add k1 < k3 as ind. hyp. *)
   let add l =
