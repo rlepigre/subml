@@ -1,19 +1,6 @@
 open Ast
 open Print
 
-type sub_proof =
-  { sterm : term;
-    left : kind;
-    right : kind;
-    unused : ordinal option ref;
-    mutable strees : sub_proof list }
-
-type typ_proof =
-  { tterm : term;
-    typ : kind;
-    mutable strees : sub_proof list;
-    mutable ttrees : typ_proof list;
-  }
 
 type trace_state =
   | Typing of typ_proof
@@ -87,8 +74,10 @@ let print_subtyping_proof, print_typing_proof =
       ignored_ordinals := o :: !ignored_ordinals;
       Printf.eprintf "ignored\n%!";
       List.iter (fn indent) p.strees;
+  and fnopt indent (p:sub_proof) =
+    if not (lower_kind p.left p.right) then fn indent p
   and gn indent (p:typ_proof) =
-    List.iter (fn (indent^"  ")) p.strees;
+    List.iter (fnopt (indent^"  ")) p.strees;
     List.iter (gn (indent^"  ")) p.ttrees;
     Printf.eprintf "%s%a : %a\n%!" indent
       (print_term false) p.tterm (print_kind false) p.typ

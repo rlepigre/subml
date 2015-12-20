@@ -225,9 +225,8 @@ exception Unsugar_error of Location.t * string
 let unsugar_error l s =
   raise (Unsugar_error (l,s))
 
-let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
-  fun st env pk ->
-  let tenv = st.tenv in
+let unsugar_kind : (string * kbox) list -> pkind -> kbox =
+  fun env pk ->
   let rec unsugar env pk =
     match pk.elt with
     | PFunc(a,b) ->
@@ -247,7 +246,7 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
               let ks = Array.of_list ks in
               try
                 let ks = Array.map (unsugar env) ks in
-                let td = Hashtbl.find tenv s in
+                let td = Hashtbl.find typ_env s in
                 if td.tdef_arity <> Array.length ks then
                   begin
                     let msg =
@@ -286,9 +285,9 @@ let unsugar_kind : state -> (string * kbox) list -> pkind -> kbox =
     | Some k -> unsugar env k
   in unsugar env pk
 
-let unsugar_term : state -> (string * tbox) list -> pterm ->
+let unsugar_term : (string * tbox) list -> pterm ->
                    tbox * (string * (term variable * pos list)) list =
-  fun st env pt ->
+  fun env pt ->
   let unbound = ref [] in
   let rec unsugar env pt =
     match pt.elt with
@@ -298,7 +297,7 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
               let ko =
                 match ko with
                 | None   -> None
-                | Some k -> Some (unsugar_kind st [] k)
+                | Some k -> Some (unsugar_kind [] k)
               in
               let f xt = aux ((x.elt,xt)::env) xs in
               labs pt.pos ko x f
@@ -306,14 +305,14 @@ let unsugar_term : state -> (string * tbox) list -> pterm ->
         in
         aux env vs
     | PCoer(t,k) ->
-        coer pt.pos (unsugar env t) (unsugar_kind st [] k)
+        coer pt.pos (unsugar env t) (unsugar_kind [] k)
     | PAppl(t,u) ->
         appl pt.pos (unsugar env t) (unsugar env u)
     | PLVar(x) ->
         begin
           try List.assoc x env with Not_found ->
           try
-            let vd = Hashtbl.find st.venv x in
+            let vd = Hashtbl.find val_env x in
             vdef pt.pos vd
           with Not_found ->
             begin
@@ -395,26 +394,31 @@ let open_latex fn =
   latex_ch := open_out fn
 
 let parser opt_flag =
-  | "verbose" b:enabled -> fun st -> st.verbose <- b
-  | "latex" b:enabled -> fun st -> Multi_print.print_mode := if b then Latex else Ascii
-  | "texfile" fn:string_lit -> fun st -> open_latex fn
+  | "verbose" b:enabled -> verbose := b
+  | "latex" b:enabled -> Multi_print.print_mode := if b then Latex else Ascii
+  | "texfile" fn:string_lit -> open_latex fn
 
-let read_file = ref (fun _ _ -> assert false)
+let read_file = ref (fun _ -> assert false)
 
 let parser latex_atom =
-  | "#" u:"!"? k:kind "#" -> fun st -> Latex_trace.Kind (u<>None, unbox (unsugar_kind st [] k))
-  | "@" u:"!"? t:term "@" -> fun st -> Latex_trace.Term (u<>None, unbox (fst (unsugar_term st [] t)))
-  | t:''[^}{@#]+''        -> fun st -> Latex_trace.Text t
+  | "#ORDINALS#" -> Latex_trace.Ordinals
+  | "#" u:"!"? k:kind "#" -> Latex_trace.Kind (u<>None, unbox (unsugar_kind [] k))
+  | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (fst (unsugar_term [] t)))
+  | t:''[^}{@#]+''        -> Latex_trace.Text t
   | l:latex_text          -> l
   | "#?" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
-      fun st ->
-        let a = unbox (unsugar_kind st [] a) in
-        let b = unbox (unsugar_kind st [] b) in
-	generic_subtype a b;
-	let prf = collect_subtyping_proof () in
-	Latex_trace.SProof prf
+     let a = unbox (unsugar_kind [] a) in
+     let b = unbox (unsugar_kind [] b) in
+     generic_subtype a b;
+     let prf = collect_subtyping_proof () in
+     Latex_trace.SProof prf
+  | "#:" id:lident "#"    -> let t = Hashtbl.find val_env id in
+			     Latex_trace.Kind (false, t.ttype)
+  | "##" id:lident "#"    -> let t = Hashtbl.find val_env id in
+			     Latex_trace.TProof t.proof
 
-and latex_text = "{" l:latex_atom* "}" -> fun st -> Latex_trace.List (List.map (fun x -> x st) l)
+
+and latex_text = "{" l:latex_atom* "}" -> Latex_trace.List l
 
 let parser latex_name_aux =
     | t:''[^{}]+''              -> Latex_trace.Text t
@@ -425,12 +429,11 @@ and latex_name = "{" t:latex_name_aux* "}" -> Latex_trace.to_string (Latex_trace
 let parser command =
   (* Type definition command. *)
   | type_kw tex:latex_name? (name,args,k):kind_def ->
-     fun st ->
         let arg_names = Array.of_list args in
         let f args =
           let env = ref [] in
           Array.iteri (fun i k -> env := (arg_names.(i), k) :: !env) args;
-          unsugar_kind st !env k
+          unsugar_kind !env k
         in
         let b = mbind mk_free_tvar arg_names f in
         let td =
@@ -440,64 +443,63 @@ let parser command =
           ; tdef_value = unbox b }
         in
         Printf.fprintf stdout "%a\n%!" (print_kind_def false) td;
-        Hashtbl.add st.tenv name td
+        Hashtbl.add typ_env name td
   (* Unfold a type definition. *)
   | unfold_kw k:kind ->
-      fun st ->
-        let k = unbox (unsugar_kind st [] k) in
+        let k = unbox (unsugar_kind [] k) in
         Printf.fprintf stdout "%a\n%!" (print_kind true) k
   (* Parse a term. *)
   | parse_kw t:term ->
-      fun st ->
-        let (t, unbs) = unsugar_term st [] t in
+        let (t, unbs) = unsugar_term [] t in
         let t = unbox t in
         Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | eval_kw t:term ->
-      fun st ->
-        let (t, unbs) = unsugar_term st [] t in
+        let (t, unbs) = unsugar_term [] t in
         let t = unbox t in
-        let t = eval st t in
+        let t = eval t in
         Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Typed value definition. *)
   | val_kw r:rec_kw? tex:latex_name? id:lident ":" k:kind "=" t:term ->
-     fun st ->
        let t =
 	 if r = None then t
 	 else in_pos _loc_t (PFixY(in_pos _loc_t (PLAbs([in_pos _loc_id id, None], t)))) in
-       let (t, unbs) = unsugar_term st [] t in
+       let (t, unbs) = unsugar_term [] t in
         if unbs <> [] then
           begin
             List.iter (fun (s,_) -> Printf.eprintf "Unbound: %s\n%!" s) unbs;
             failwith "Unbound variable."
           end;
         let t = unbox t in
-        let k = unbox (unsugar_kind st [] k) in
-        (try
-	  type_check t k;
-	  let prf = collect_typing_proof () in
-	  if st.verbose then print_typing_proof prf;
-	with
-	  e -> trace_backtrace (); raise e);
+        let k = unbox (unsugar_kind [] k) in
+        let prf =
+	  try
+	    type_check t k;
+	    let prf = collect_typing_proof () in
+	    if !verbose then print_typing_proof prf;
+	    prf
+	  with
+	    e -> trace_backtrace (); raise e
+	in
         reset_all ();
-        let t = eval st t in
-        Hashtbl.add st.venv id
+        let t = eval t in
+        Hashtbl.add val_env id
 	  { name = id
 	  ; tex_name = (match tex with None -> "\\hbox{"^id^"}" | Some s -> s)
 	  ; value = t
-	  ; ttype = Some k
+	  ; ttype = k
+	  ; proof = prf
 	  };
         Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
   (* Check subtyping. *)
   | check_kw n:{"not" -> false}?[true] a:kind {"⊂" | "⊆" | "<"} b:kind ->
-      fun st ->
-        let a = unbox (unsugar_kind st [] a) in
-        let b = unbox (unsugar_kind st [] b) in
+        let a = unbox (unsugar_kind [] a) in
+        let b = unbox (unsugar_kind [] b) in
         begin
           try
 	    generic_subtype a b;
 	    let prf = collect_subtyping_proof () in
-	    if st.verbose || not n then print_subtyping_proof prf;
+	    if !verbose || not n then print_subtyping_proof prf;
 	    reset_ordinals ();
 	    Printf.eprintf "check: OK\n%!"
           with
@@ -509,7 +511,7 @@ let parser command =
 
         end
   | latex_kw t:latex_text ->
-     fun st -> Latex_trace.output !latex_ch (t st)
+     Latex_trace.output !latex_ch t
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
       !read_file fn
@@ -521,25 +523,22 @@ let parser toplevel =
   | command
   (* Clear the screen. *)
   | clear_kw ->
-      fun _ -> ignore (Sys.command "clear")
+      ignore (Sys.command "clear")
   (* Exit the program. *)
   | {quit_kw | exit_kw} ->
-      fun _ -> raise Finish
+      raise Finish
 
-let toplevel_of_string : state -> string -> unit = fun st s ->
+let toplevel_of_string : string -> unit = fun s ->
   let parse = parse_string toplevel top_level_blank in
-  let action = Decap.handle_exception parse s in
-  action st
+  Decap.handle_exception parse s
 
 let parser file_contents =
-  | cs:command** -> fun st -> List.iter (fun c -> c st) cs
+  | cs:command** -> ()
 
-let eval_file fn st =
+let eval_file fn =
   Printf.printf "## Loading file %S\n%!" fn;
   let parse = parse_file file_contents file_blank in
-  let action = Decap.handle_exception parse fn in
-  let res = action st in
-  Printf.printf "## file Loaded %S\n%!" fn;
-  res
+  Decap.handle_exception parse fn;
+  Printf.printf "## file Loaded %S\n%!" fn
 
 let _ = read_file := eval_file

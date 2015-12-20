@@ -26,8 +26,8 @@ let rec print_ordinal unfold ff o =
   | ODumm        -> pp_print_string ff "?"
   | OConv        -> pp_print_string ff "∞"
   | OTag i       -> fprintf ff "?%i" i
-(*  | OLess(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
-    | OLEqu(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o*)
+  | OLess(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
+  | OLEqu(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
   | _ ->
   if unfold then match o with
   | OLess(o,t,k) ->
@@ -61,6 +61,10 @@ and print_ord_cstr ff k =
   | In k -> fprintf ff "∈ %a" (print_kind false false) (subst k ODumm)
   | NotIn k -> fprintf ff "∉ %a" (print_kind false false) (subst k ODumm)
 
+and print_index_ordinal ff = function
+  | OConv -> ()
+  | o -> fprintf ff "[%a]" (print_ordinal false) o
+
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pkindw = print_kind unfold true in
@@ -86,11 +90,11 @@ and print_kind unfold wrap ff t =
   | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "μ%a%s %a" (print_ordinal false) o (name_of x) pkindw a
+      fprintf ff "μ%a%s %a" print_index_ordinal o (name_of x) pkindw a
   | FixN(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "ν%a%s %a" (print_ordinal false) o (name_of x) pkindw a
+      fprintf ff "ν%a%s %a" print_index_ordinal o (name_of x) pkindw a
   | TDef(td,args) ->
       if unfold then
         print_kind unfold wrap ff (msubst td.tdef_value args)

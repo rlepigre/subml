@@ -24,3 +24,6 @@ val print_ordinal : out_channel -> ordinal -> unit
 val print_reset_ordinals : out_channel -> unit
 
 val reset_ordinals : unit -> unit
+
+val ordinal_tbl : (ordinal * int) list ref
+val ordinal_count : int ref

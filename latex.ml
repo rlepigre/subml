@@ -8,20 +8,51 @@ open Print
  *                           Printing of a type                             *
  ****************************************************************************)
 
-(*
-let print_ordinal ff o =
-  let rec print_ordinal ff = function
-    | ODumm      -> pp_print_string ff "?"
-    | OConv      -> pp_print_string ff "∞"
-    | OLess(n,o) -> fprintf ff "(%i < %a)" n print_ordinal o
-    | OLEqu(n,o) -> fprintf ff "(%i ≤ %a)" n print_ordinal o
-  in
+let rec print_ordinal unfold ff o =
   match o with
-  | OConv -> ()
-  | _     -> print_ordinal ff o
-*)
+  | ODumm        -> pp_print_string ff "\\alpha"
+  | OConv        -> pp_print_string ff "\\infty"
+  | OTag i       -> fprintf ff "?%i" i
+  | OLess(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
+  | OLEqu(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
+  | _ ->
+  if unfold then match o with
+  | OLess(o,t,k) ->
+    fprintf ff "\\epsilon_{\\alpha < %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
+  | OLEqu(o,t,k) ->
+    fprintf ff "\\epsilon_{\\alpha < %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
+  | _ -> assert false
+  else
+    let n =
+      try
+	List.assq o !ordinal_tbl
+      with
+	Not_found ->
+	  let n = !ordinal_count in incr ordinal_count;
+	  ordinal_tbl := (o,n)::!ordinal_tbl; n
+    in
+    fprintf ff "\\kappa_{%d}" n
 
-let rec print_kind unfold wrap ff t =
+and print_reset_ordinals ff =
+  while !ordinal_tbl <> [] do
+    let (o,n) = match !ordinal_tbl with
+      | [] -> assert false
+      | x::os -> ordinal_tbl := os; x
+    in
+    fprintf ff "  \\kappa_{%d} &= %a\\\\\n%!" n (print_ordinal true) o
+  done;
+  ordinal_count := 0
+
+and print_ord_cstr ff k =
+  match k with
+  | In k -> fprintf ff "\\in %a" (print_kind false false) (subst k ODumm)
+  | NotIn k -> fprintf ff "\\notin %a" (print_kind false false) (subst k ODumm)
+
+and print_index_ordinal ff = function
+  | OConv -> ()
+  | o -> fprintf ff "_{%a}" (print_ordinal false) o
+
+and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pkindw = print_kind unfold true in
   match repr t with
@@ -33,24 +64,36 @@ let rec print_kind unfold wrap ff t =
       if wrap then pp_print_string ff ")"
   | Prod(fs) ->
       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
-      fprintf ff "{%a}" (print_list pfield "; ") fs
+      fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
   | DSum(cs) ->
-      let pvariant ff (c,a) = fprintf ff "%s \\of %a" c pkind a in
+     let pvariant ff (c,a) =
+       match repr a with
+       | Prod [] -> fprintf ff "%s" c
+       | _ -> fprintf ff "%s \\of %a" c pkind a
+     in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
   | FAll(f)  ->
+      if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name f) in
-      fprintf ff "\\forall %s.%a" (name_of x) pkind (subst f (free_of x))
+      fprintf ff "\\forall %s.%a" (name_of x) pkind (subst f (free_of x));
+      if wrap then pp_print_string ff ")"
   | Exis(f)  ->
+      if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name f) in
-      fprintf ff "\\exists %s.%a" (name_of x) pkind (subst f (free_of x))
+      fprintf ff "\\exists %s.%a" (name_of x) pkind (subst f (free_of x));
+      if wrap then pp_print_string ff ")"
   | FixM(o,b) ->
+      if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\mu %s %a" (*print_ordinal o*) (name_of x) pkindw a
+      fprintf ff "\\mu%a %s %a" print_index_ordinal o (name_of x) pkindw a;
+      if wrap then pp_print_string ff ")"
   | FixN(o,b) ->
+      if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\nu %s %a" (*print_ordinal o*) (name_of x) pkindw a
+      fprintf ff "\\nu%a %s %a" print_index_ordinal o (name_of x) pkindw a;
+      if wrap then pp_print_string ff ")"
   | TDef(td,args) ->
       if unfold then
         print_kind false wrap ff (msubst td.tdef_value args)
@@ -68,7 +111,7 @@ let rec print_kind unfold wrap ff t =
   | TInt(_) -> assert false
 
 
-let pkind_def unfold ff kd =
+and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;
   let names = mbinder_names kd.tdef_value in
   let xs = new_mvar mk_free_tvar names in
@@ -81,7 +124,7 @@ let pkind_def unfold ff kd =
  *                           Printing of a term                             *
  ****************************************************************************)
 
-let rec print_term unfold lvl ff t =
+and print_term unfold lvl ff t =
   let nprint_term = print_term false in
   let print_term = print_term unfold in
   let pkind = print_kind false false in
@@ -112,7 +155,7 @@ let rec print_term unfold lvl ff t =
     if lvl > 1 then pp_print_string ff ")";
   | Reco(fs) ->
       let pfield ff (l,t) = fprintf ff "%s = %a" l (print_term 0) t in
-      fprintf ff "{%a}" (print_list pfield "; ") fs
+      fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
   | Proj(t,l) ->
       fprintf ff "%a.%s" (print_term 0) t l
   | Cons(c,t) ->
@@ -159,3 +202,11 @@ let print_kind unfold ch t =
 let print_kind_def unfold ch kd =
   let ff = formatter_of_out_channel ch in
   pkind_def unfold ff kd; pp_print_flush ff (); flush ch
+
+let print_ordinal ch o =
+  let ff = formatter_of_out_channel ch in
+  print_ordinal false ff o; pp_print_flush ff (); flush ch
+
+let print_reset_ordinals ch =
+  let ff = formatter_of_out_channel ch in
+  print_reset_ordinals ff; pp_print_flush ff (); flush ch

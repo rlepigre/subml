@@ -386,11 +386,7 @@ let type_check : term -> kind -> unit = fun t c ->
         in
         List.iter check l
     | VDef(v) ->
-        begin
-          match v.ttype with
-          | Some a -> subtype v.value a c
-          | None   -> type_check v.value c
-        end
+        subtype v.value v.ttype c
     | Prnt(_) ->
        subtype t (Prod []) c
     | FixY(t) ->

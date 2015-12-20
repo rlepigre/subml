@@ -122,8 +122,22 @@ and value_def =
   (* The corresponding term. *)
   ; value : term
   (* Raw version of the term (i.e. no anotations). *)
-  ; ttype : kind option }
+  ; ttype : kind
+  ; proof : typ_proof }
 
+and sub_proof =
+  { sterm : term;
+    left : kind;
+    right : kind;
+    unused : ordinal option ref;
+    mutable strees : sub_proof list }
+
+and typ_proof =
+  { tterm : term;
+    typ : kind;
+    mutable strees : sub_proof list;
+    mutable ttrees : typ_proof list;
+  }
 
 (****************************************************************************
  *                        Equality of types and terms                       *
@@ -242,16 +256,9 @@ let rec less_ordinal o1 o2 =
 type val_env = (string, value_def) Hashtbl.t
 type typ_env = (string, type_def ) Hashtbl.t
 
-(* State. *)
-type state =
-  { tenv : typ_env
-  ; venv : val_env
-  ; mutable verbose : bool }
-
-let initial_state : bool -> state = fun v ->
-  { tenv = Hashtbl.create 17
-  ; venv = Hashtbl.create 17
-  ; verbose = v }
+let typ_env : typ_env = Hashtbl.create 17
+let val_env : val_env = Hashtbl.create 17
+let verbose : bool ref = ref false
 
 (* Bindbox type shortcuts. *)
 type tvar = term variable
@@ -539,7 +546,7 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
       | FixM(o,f) -> fixm (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
       | FixN(o,f) -> fixn (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
-      | UVar(u)   -> if u.uvar_key = i then x else box k
+      | UVar(u)   -> assert(u.uvar_val = None); if u.uvar_key = i then x else box k
       | TVar x    -> box_of_var x
       | t         -> box t
     in

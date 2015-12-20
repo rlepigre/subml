@@ -10,6 +10,7 @@ type latex_output =
   | List of latex_output list
   | SProof of sub_proof
   | TProof of typ_proof
+  | Ordinals
 
 let rec to_string = function
   | Text t -> t
@@ -36,14 +37,17 @@ let print_subtyping_proof, print_typing_proof =
        ignored_ordinals := o :: !ignored_ordinals;
       List.iter (fn ch) p.strees;
   and gn ch (p:typ_proof) =
-       let cmd = match List.length p.strees + List.length p.ttrees with
-	 | 0 -> "\\AxiomC{}\n\\UnaryInfC"
-	 | 1 -> "\\UnaryInfC"
-	 | 2 -> "\\BinaryInfC"
-	 | 3 -> "\\TernaryInfC"
-	 | _ -> assert false
-       in
-    List.iter (fn ch) p.strees;
+    let subs =
+      List.filter (fun p -> not (lower_kind p.left p.right)) p.strees
+    in
+    let cmd = match List.length subs + List.length p.ttrees with
+      | 0 -> "\\AxiomC{}\n\\UnaryInfC"
+      | 1 -> "\\UnaryInfC"
+      | 2 -> "\\BinaryInfC"
+      | 3 -> "\\TernaryInfC"
+      | _ -> assert false
+    in
+    List.iter (fn ch) subs;
     List.iter (gn ch) p.ttrees;
     Printf.fprintf ch "%s{$%a : %a$}\n%!" cmd
       (print_term false) p.tterm (print_kind false) p.typ
@@ -58,3 +62,4 @@ let rec output ch = function
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof p       -> print_subtyping_proof ch p
   | TProof p       -> print_typing_proof ch p
+  | Ordinals       -> print_reset_ordinals ch

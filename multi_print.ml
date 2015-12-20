@@ -19,11 +19,11 @@ let print_term u ch = match !print_mode with
 let print_ordinal ch =
   match !print_mode with
   | Ascii -> Print.print_ordinal ch
-  | Latex -> assert false
+  | Latex -> Latex.print_ordinal ch
 
 let print_reset_ordinals ch =
   match !print_mode with
   | Ascii -> Print.print_reset_ordinals ch
-  | Latex -> assert false
+  | Latex -> Latex.print_reset_ordinals ch
 
 let reset_ordinals = Print.reset_ordinals
