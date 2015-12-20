@@ -201,6 +201,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         let k =
           match uvar_occur ua b with
           | Non -> b
+	  | Pos -> FixM(OConv,bind_uvar ua b)
           | _   -> bot
         in
         set ua k
@@ -208,6 +209,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         let k =
           match uvar_occur ub a with
           | Non -> a
+	  | Pos -> FixM(OConv,bind_uvar ub b)
           | _   -> top
         in
         set ub k

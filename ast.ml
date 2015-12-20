@@ -528,21 +528,22 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
  *                 Binding a unification variable in a type                 *
  ****************************************************************************)
 
-let bind_uvar : uvar -> kind -> kind -> kind = fun {uvar_key = i} k x ->
-  let rec fn k =
-    match repr k with
-    | Func(a,b) -> func (fn a) (fn b)
-    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
-    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
-    | FAll(f)   -> fall (binder_name f) (fun x -> fn (subst f (TVar x)))
-    | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
-    | FixM(o,f) -> fixm (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
-    | FixN(o,f) -> fixn (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
-    | UVar(u)   -> box (if u.uvar_key = i then x else k)
-    | TVar x    -> box_of_var x
-    | t         -> box t
-  in
-  unbox (fn k)
+let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
+  unbox (bind mk_free_tvar "X" (fun x ->
+    let rec fn k =
+      match repr k with
+      | Func(a,b) -> func (fn a) (fn b)
+      | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | FAll(f)   -> fall (binder_name f) (fun x -> fn (subst f (TVar x)))
+      | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
+      | FixM(o,f) -> fixm (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
+      | FixN(o,f) -> fixn (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
+      | UVar(u)   -> if u.uvar_key = i then x else box k
+      | TVar x    -> box_of_var x
+      | t         -> box t
+    in
+    fn k))
 
 (****************************************************************************
  *                 Decompostiion type, ordinals                             *
