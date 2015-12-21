@@ -86,13 +86,13 @@ and print_kind unfold wrap ff t =
       if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\mu%a %s %a" print_index_ordinal o (name_of x) pkindw a;
+      fprintf ff "\\mu%a %s %a" print_index_ordinal o (name_of x) pkind a;
       if wrap then pp_print_string ff ")"
   | FixN(o,b) ->
       if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\nu%a %s %a" print_index_ordinal o (name_of x) pkindw a;
+      fprintf ff "\\nu%a %s %a" print_index_ordinal o (name_of x) pkind a;
       if wrap then pp_print_string ff ")"
   | TDef(td,args) ->
       if unfold then
