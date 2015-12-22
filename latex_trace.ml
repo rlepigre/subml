@@ -20,7 +20,7 @@ let rec to_string = function
 let print_subtyping_proof, print_typing_proof =
   let rec fn ch (p:sub_proof) =
     match !(p.unused) with
-    | None ->
+      | None ->
        let cmd = match List.length p.strees with
 	 | 0 -> "\\AxiomC{}\n\\UnaryInfC"
 	 | 1 -> "\\UnaryInfC"

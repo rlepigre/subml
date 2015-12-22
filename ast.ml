@@ -576,12 +576,6 @@ let decompose : kind -> kind * ordinal list = fun k ->
 (****************************************************************************
  *                                 Lower kind                               *
  ****************************************************************************)
-let rec leq_level l1 l2 =
-  match (l1, l2) with
-  | (_    , []   ) -> true
-  | (x::l1, y::l2) when x = y -> leq_level l1 l2
-  | (_    , _    ) -> false
-
 let lower_kind k1 k2 =
   let i = ref 0 in
   let new_int () = incr i; TInt !i in

@@ -25,7 +25,11 @@ let rec print_ordinal unfold ff o =
   else
     let n =
       try
-	List.assq o !ordinal_tbl
+	let rec fn = function
+	  | [] -> raise Not_found
+	  | (o',n)::l -> if eq_ordinal o' o then n else fn l
+	in
+	fn !ordinal_tbl
       with
 	Not_found ->
 	  let n = !ordinal_count in incr ordinal_count;
@@ -34,14 +38,9 @@ let rec print_ordinal unfold ff o =
     fprintf ff "\\kappa_{%d}" n
 
 and print_reset_ordinals ff =
-  while !ordinal_tbl <> [] do
-    let (o,n) = match !ordinal_tbl with
-      | [] -> assert false
-      | x::os -> ordinal_tbl := os; x
-    in
-    fprintf ff "  \\kappa_{%d} &= %a\\\\\n%!" n (print_ordinal true) o
-  done;
-  ordinal_count := 0
+  List.iter (fun (o,n) ->
+    fprintf ff "  \\kappa_{%d} &= %a\\\\\n%!" n (print_ordinal true) o) !ordinal_tbl;
+  reset_ordinals ()
 
 and print_ord_cstr ff k =
   match k with
