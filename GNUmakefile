@@ -2,7 +2,7 @@ all: main.byte main.native
 
 DESTDIR=/usr/local/bin
 MLFILES=util.ml ast.ml eval.ml print.ml multi_print.ml latex.ml \
-	trace.ml latex_trace.ml typing.ml dparser.ml main.ml
+	trace.ml typing.ml print_trace.ml latex_trace.ml dparser.ml main.ml
 
 main.native: $(MLFILES)
 	ocamlbuild -quiet -use-ocamlfind $@

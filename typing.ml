@@ -42,25 +42,33 @@ let find_repetition a b branch =
 
 exception Induction_hypothesis
 
-let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
-  fun t ctxt a b ->
-    let search k l =
-      let rec fn acc = function
-        | []        -> raise Not_found
-        | (x,l)::xs when eq_kind k x -> (acc, l, xs)
-        | (x,l)::xs -> fn ((x,l)::acc) xs
-      in fn [] l
-    in
+(****************************************************************************
+ *                                 Lower kind                               *
+****************************************************************************)
 
-    (* Check left. *)
-    begin match a with
+let search k l =
+  let rec fn acc = function
+    | []        -> raise Not_found
+    | (x,l)::xs when eq_kind k x -> (acc, l, xs)
+    | (x,l)::xs -> fn ((x,l)::acc) xs
+  in fn [] l
+
+
+let lower_kind ctxt k1 k2 =
+  let i = ref 0 in
+  let new_int () = incr i; TInt !i in
+  let rec lower_kind k1 k2 =
+    if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;
+    try
+      (* Check left induction. *)
+      begin match k1 with
       | FixM(o,f) ->
-         begin
+	 begin
 	   try
 	     let key = FixM(ODumm,f) in
 	     let (before, l, after) = search key ctxt.lfix in
              let check (o', k, used) =
-               if less_ordinal o o' && lower_kind k b then
+               if less_ordinal o o' && lower_kind k k2 then
 		 (used ();
 		  if !debug then Printf.eprintf "Induction applies\n%!";
 		  raise Induction_hypothesis)
@@ -69,17 +77,16 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	   with Not_found -> ()
 	 end
       | _         -> ()
-    end;
-
-    (* Check right. *)
-    begin match b with
+      end;
+      (* Check right induction. *)
+      begin match k2 with
       | FixN(o,f) ->
 	 begin
 	   try
 	     let key = FixN(ODumm,f) in
 	     let (before, l, after) = search key ctxt.rfix in
              let check (o', k, used) =
-               if less_ordinal o o' && lower_kind a k then
+	       if less_ordinal o o' && lower_kind k1 k then
                  (used ();
 		  if !debug then Printf.eprintf "Induction applies\n%!";
 		  raise Induction_hypothesis)
@@ -88,8 +95,51 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	   with Not_found -> ()
 	 end
       | _         -> ()
-    end;
+      end;
+      match (repr k1, repr k2) with
+      | (k1          , k2          ) when k1 == k2 -> true
+      | (TVar(_)     , TVar(_)     ) -> assert false
+      | (Func(a1,b1) , Func(a2,b2) ) -> lower_kind a2 a1 && lower_kind b1 b2
+      | (DSum(fsa)   , DSum(fsb)   )
+      | (Prod(fsa)   , Prod(fsb)   ) ->
+         let cmp (k1,_) (k2,_) = compare k1 k2 in
+         let f (la,a) (lb,b) = la = lb && lower_kind a b in
+         List.length fsa = List.length fsb &&
+             List.for_all2 f (List.sort cmp fsa) (List.sort cmp fsb)
+      | (FAll(a)     , FAll(b)     ) ->
+         let i = new_int () in
+         lower_kind (subst a i) (subst b i)
+      | (Exis(a)     , FAll(b)     ) ->
+         let i = new_int () in
+         lower_kind (subst a i) (subst b i)
+      | (FixM(oa,fa) , FixM(ob,fb) ) ->
+         leq_ordinal oa ob && (fa == fb ||
+				 let i = new_int () in lower_kind (subst fa i) (subst fb i))
+      | (FixN(oa,fa) , FixN(ob,fb) ) ->
+         leq_ordinal ob oa && (fa == fb ||
+				 let i = new_int () in lower_kind (subst fa i) (subst fb i))
+      | (TDef(da,aa) , TDef(db,ab) ) ->
+         lower_kind (msubst da.tdef_value aa) (msubst db.tdef_value ab)
+      | (UCst(ca)    , UCst(cb)    ) ->
+         let i = new_int () in
+         let a = subst ca.qcst_wit_kind i in
+         let b = subst cb.qcst_wit_kind i in
+         lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
+    (* FIXME what of the bound ? *)
+      | (ECst(ca)    , ECst(cb)    ) ->
+         let i = new_int () in
+         let a = subst ca.qcst_wit_kind i in
+         let b = subst cb.qcst_wit_kind i in
+         lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
+    (* FIXME what of the bound ? *)
+      | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
+      | (TInt(ia)    , TInt(ib)    ) -> ia = ib
+      | (_           , _           ) -> false
+    with Induction_hypothesis -> true
+  in lower_kind k1 k2
 
+let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
+  fun t ctxt a b ->
     (* check for loop *)
     let ctxt =
       match (a, b) with
@@ -164,9 +214,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     let _ = trace_subtyping t a b in
     let a = repr a in
     let b = repr b in
-    if !debug then Printf.eprintf "%a < %a (%a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
+    if !debug then Printf.eprintf "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
-    if a == b || lower_kind a b then () else
+    if a == b || lower_kind ctxt a b then () else
     begin match (a,b) with
     (* Handling of unification variables (immitation). *)
     | (UVar ua, UVar ub) ->
@@ -273,12 +323,14 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* μ and ν - least and greatest fixpoint. *)
     | (_          , FixN(o,f)) ->
-       let o = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
-       subtype ctxt t a (subst f (FixN(o, f)))
+       let o' = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
+       if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
+       subtype ctxt t a (subst f (FixN(o', f)))
 
     | (FixM(o,f)  , _        ) ->
-       let o = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
-       subtype ctxt t (subst f (FixM(o, f))) b
+       let o' = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
+       if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
+       subtype ctxt t (subst f (FixM(o', f))) b
 
     | (FixN(OConv,f)  , _        ) ->
        subtype ctxt t (subst f a) b
@@ -303,6 +355,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
 let generic_subtype : kind -> kind -> unit = fun a b ->
   subtype (generic_cnst a b) a b
+
+let lower_kind = lower_kind { adone = [] ; lfix = [] ; rfix = [] }
 
 let type_check : term -> kind -> unit = fun t c ->
   let c = repr c in

@@ -38,7 +38,7 @@ let print_subtyping_proof, print_typing_proof =
       List.iter (fn ch) p.strees;
   and gn ch (p:typ_proof) =
     let subs =
-      List.filter (fun p -> not (lower_kind p.left p.right)) p.strees
+      (*List.filter (fun p -> not (lower_kind p.left p.right))*) p.strees
     in
     let cmd = match List.length subs + List.length p.ttrees with
       | 0 -> "\\AxiomC{}\n\\UnaryInfC"

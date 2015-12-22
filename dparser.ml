@@ -7,6 +7,7 @@ open Multi_print
 open Eval
 open Typing
 open Trace
+open Print_trace
 
 #define LOCATE locate
 

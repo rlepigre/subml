@@ -109,7 +109,8 @@ and print_kind unfold wrap ff t =
       pp_print_string ff "ε∃"
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
-  | TInt(_) -> assert false
+  | TInt(n) ->
+      fprintf ff "!%i" n
 
 and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;
