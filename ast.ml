@@ -553,12 +553,15 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
     fn k))
 
 (****************************************************************************
- *                 Decompostiion type, ordinals                             *
+ *                    Decompostiion type, ordinals                          *
+ *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
 
 let contract_mu = ref true
-let is_mu f = match subst f (Prod []) with FixM(o,_) -> o = OConv | _ -> false
-let is_nu f = match subst f (Prod []) with FixN(o,_) -> o = OConv | _ -> false
+let is_mu f = !contract_mu &&
+  match subst f (Prod []) with FixM(o,_) -> o = OConv | _ -> false
+let is_nu f = !contract_mu &&
+  match subst f (Prod []) with FixN(o,_) -> o = OConv | _ -> false
 
 let decompose : bool -> kind -> kind * ordinal list = fun pos k ->
   let res = ref [] in

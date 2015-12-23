@@ -98,6 +98,7 @@ let lower_kind k1 k2 =
     | (_           , _           ) -> false
   in lower_kind k1 k2
 
+(* counter for the function name in the sct ... FIXME: move to sct.ml ? *)
 let cr = ref 0
 
 let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * bool =
@@ -266,6 +267,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
   in
   let calls = ref [] in
+  cr := 0;
   subtype ([],calls) t a b;
   (*  print_calls Format.std_formatter !calls;*)
   if not (sct !calls)  then subtype_error "loop"
