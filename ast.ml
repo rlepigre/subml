@@ -556,19 +556,67 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
  *                 Decompostiion type, ordinals                             *
  ****************************************************************************)
 
-let decompose : kind -> kind * ordinal list = fun k ->
+let contract_mu = ref true
+let is_mu f = match subst f (Prod []) with FixM(o,_) -> o = OConv | _ -> false
+let is_nu f = match subst f (Prod []) with FixN(o,_) -> o = OConv | _ -> false
+
+let decompose : bool -> kind -> kind * ordinal list = fun pos k ->
   let res = ref [] in
-  let rec fn k =
+  let rec fn pos k =
     match repr k with
-    | Func(a,b) -> func (fn a) (fn b)
-    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
-    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
-    | FAll(f)   -> fall (binder_name f) (fun x -> fn (subst f (TVar x)))
-    | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
-    | FixM(o,f) -> res := o :: !res; fixm (binder_name f) (fun x -> fn (subst f (TVar x)))
-    | FixN(o,f) -> res := o :: !res; fixn (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | Func(a,b) -> func (fn (not pos) a) (fn pos b)
+    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn pos a)) fs)
+    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
+    | FAll(f)   -> fall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | Exis(f)   -> exis (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | FixM(OConv,f) when is_mu f ->
+       let aux x =
+         match subst f x with
+         | FixM(_,g) -> subst g x
+         | _       -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+       fn pos (FixM(OConv, f))
+    | FixN(OConv,f) when is_nu f ->
+       let aux x =
+         match subst f x with
+         | FixN(_,g) -> subst g x
+         | _       -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
+       fn pos (FixN(OConv, f))
+    | FixM(o,f) ->  if not pos then res := o :: !res else assert (o = OConv);
+                   fixm (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | FixN(o,f) -> if pos then res := o :: !res else assert (o = OConv);
+                   fixn (binder_name f) (fun x -> fn pos (subst f (TVar x)))
     | TVar x    -> box_of_var x
     | t         -> box t
   in
-  let k = unbox (fn k) in
+  let k = unbox (fn pos k) in
   k, (List.rev !res)
+
+let recompose : bool -> kind -> ordinal list -> kind = fun pos k os ->
+  let os = ref os in
+  let get () = match !os with
+      [] -> assert false
+    | x::l -> os := l; x
+  in
+  let rec fn pos k =
+    match repr k with
+    | Func(a,b) -> func (fn (not pos) a) (fn pos b)
+    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn pos a)) fs)
+    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
+    | FAll(f)   -> fall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | Exis(f)   -> exis (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | FixM(o,f) ->
+       let ordinal = if not pos then get () else o in
+       fixm (binder_name f) ~ordinal (fun x -> fn pos (subst f (TVar x)))
+    | FixN(o,f) ->
+       let ordinal = if pos then get () else o in
+       fixn (binder_name f) ~ordinal (fun x -> fn pos (subst f (TVar x)))
+    | TVar x    -> box_of_var x
+    | t         -> box t
+  in
+  let k = unbox (fn pos k) in
+  assert (!os = []);
+  k

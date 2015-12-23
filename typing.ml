@@ -3,6 +3,7 @@ open Util
 open Ast
 open Print
 open Trace
+open Sct
 
 let debug = ref false
 
@@ -21,24 +22,21 @@ type branch_element =
   | BProd of string
   | BArrow of bool
 
-type subtype_ctxt =
-  { lfix : (kind * (ordinal * kind * (unit -> unit)) list) list
-  ; rfix : (kind * (ordinal * kind * (unit -> unit)) list) list
-  ; adone : branch_element list }
+type subtype_ctxt = (kind * kind * int * ordinal array) list * calls ref
 
-let find_repetition a b branch =
-  let rec fn acc = function
-    | [] -> false
-    | Judgment(a',b')::l when eq_kind a a' && eq_kind b b' -> (gn (List.rev acc) l || fn acc l)
-    | Judgment _ :: l -> fn acc l
-    | x::l -> fn (x::acc) l
-  and gn l1 l2 = match l1, l2 with
-    | [], Judgment(a',b') :: _ when eq_kind a a' && eq_kind b b' -> true
-    | l1, Judgment _ :: l2 -> gn l1 l2
-    | Judgment _ :: l1, _ -> assert false
-    | (x::l1), (y::l2) when x = y -> gn l1 l2
-    | _ -> false
-  in fn [] branch
+exception Found of cmp * int
+
+let find_index a o =
+  try
+    Array.iteri (fun i o' -> if less_ordinal o o' then raise (Found(Less,i))
+      else if leq_ordinal o o' then raise (Found(Leq,i))) a;
+    assert false
+  with Found(c,i) -> (c, i)
+
+let find_indexes a b =
+  let indexes = Array.make (Array.length a) 0 in
+  let cmps = Array.mapi (fun i o -> let (c,j) = find_index b o in indexes.(i) <- j; c) a in
+  cmps, indexes
 
 exception Induction_hypothesis
 
@@ -54,160 +52,88 @@ let search k l =
   in fn [] l
 
 
-let lower_kind ctxt k1 k2 =
+let lower_kind k1 k2 =
   let i = ref 0 in
   let new_int () = incr i; TInt !i in
   let rec lower_kind k1 k2 =
     if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;
-    try
-      (* Check left induction. *)
-      begin match k1 with
-      | FixM(o,f) ->
-	 begin
-	   try
-	     let key = FixM(ODumm,f) in
-	     let (before, l, after) = search key ctxt.lfix in
-             let check (o', k, used) =
-               if less_ordinal o o' && lower_kind k k2 then
-		 (used ();
-		  if !debug then Printf.eprintf "Induction applies\n%!";
-		  raise Induction_hypothesis)
-             in
-             List.iter check (List.rev l); (* use oldest hypothesis in priority *)
-	   with Not_found -> ()
-	 end
-      | _         -> ()
-      end;
-      (* Check right induction. *)
-      begin match k2 with
-      | FixN(o,f) ->
-	 begin
-	   try
-	     let key = FixN(ODumm,f) in
-	     let (before, l, after) = search key ctxt.rfix in
-             let check (o', k, used) =
-	       if less_ordinal o o' && lower_kind k1 k then
-                 (used ();
-		  if !debug then Printf.eprintf "Induction applies\n%!";
-		  raise Induction_hypothesis)
-             in
-             List.iter check (List.rev l); (* use oldest hypothesis in priority *)
-	   with Not_found -> ()
-	 end
-      | _         -> ()
-      end;
-      match (repr k1, repr k2) with
-      | (k1          , k2          ) when k1 == k2 -> true
-      | (TVar(_)     , TVar(_)     ) -> assert false
-      | (Func(a1,b1) , Func(a2,b2) ) -> lower_kind a2 a1 && lower_kind b1 b2
-      | (DSum(fsa)   , DSum(fsb)   )
-      | (Prod(fsa)   , Prod(fsb)   ) ->
-         let cmp (k1,_) (k2,_) = compare k1 k2 in
-         let f (la,a) (lb,b) = la = lb && lower_kind a b in
-         List.length fsa = List.length fsb &&
-             List.for_all2 f (List.sort cmp fsa) (List.sort cmp fsb)
-      | (FAll(a)     , FAll(b)     ) ->
-         let i = new_int () in
-         lower_kind (subst a i) (subst b i)
-      | (Exis(a)     , FAll(b)     ) ->
-         let i = new_int () in
-         lower_kind (subst a i) (subst b i)
-      | (FixM(oa,fa) , FixM(ob,fb) ) ->
-         leq_ordinal oa ob && (fa == fb ||
-				 let i = new_int () in lower_kind (subst fa i) (subst fb i))
-      | (FixN(oa,fa) , FixN(ob,fb) ) ->
-         leq_ordinal ob oa && (fa == fb ||
-				 let i = new_int () in lower_kind (subst fa i) (subst fb i))
-      | (TDef(da,aa) , TDef(db,ab) ) ->
-         lower_kind (msubst da.tdef_value aa) (msubst db.tdef_value ab)
-      | (UCst(ca)    , UCst(cb)    ) ->
-         let i = new_int () in
-         let a = subst ca.qcst_wit_kind i in
-         let b = subst cb.qcst_wit_kind i in
-         lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
-    (* FIXME what of the bound ? *)
-      | (ECst(ca)    , ECst(cb)    ) ->
-         let i = new_int () in
-         let a = subst ca.qcst_wit_kind i in
-         let b = subst cb.qcst_wit_kind i in
-         lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
-    (* FIXME what of the bound ? *)
-      | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
-      | (TInt(ia)    , TInt(ib)    ) -> ia = ib
-      | (_           , _           ) -> false
-    with Induction_hypothesis -> true
+    match (repr k1, repr k2) with
+    | (k1          , k2          ) when k1 == k2 -> true
+    | (TVar(_)     , TVar(_)     ) -> assert false
+    | (Func(a1,b1) , Func(a2,b2) ) -> lower_kind a2 a1 && lower_kind b1 b2
+    | (DSum(fsa)   , DSum(fsb)   )
+    | (Prod(fsa)   , Prod(fsb)   ) ->
+       let cmp (k1,_) (k2,_) = compare k1 k2 in
+       let f (la,a) (lb,b) = la = lb && lower_kind a b in
+       List.length fsa = List.length fsb &&
+           List.for_all2 f (List.sort cmp fsa) (List.sort cmp fsb)
+    | (FAll(a)     , FAll(b)     ) ->
+       let i = new_int () in
+       lower_kind (subst a i) (subst b i)
+    | (Exis(a)     , FAll(b)     ) ->
+       let i = new_int () in
+       lower_kind (subst a i) (subst b i)
+    | (FixM(oa,fa) , FixM(ob,fb) ) ->
+       leq_ordinal oa ob && (fa == fb ||
+			       let i = new_int () in lower_kind (subst fa i) (subst fb i))
+    | (FixN(oa,fa) , FixN(ob,fb) ) ->
+       leq_ordinal ob oa && (fa == fb ||
+			       let i = new_int () in lower_kind (subst fa i) (subst fb i))
+    | (TDef(da,aa) , TDef(db,ab) ) ->
+       lower_kind (msubst da.tdef_value aa) (msubst db.tdef_value ab)
+    | (UCst(ca)    , UCst(cb)    ) ->
+       let i = new_int () in
+       let a = subst ca.qcst_wit_kind i in
+       let b = subst cb.qcst_wit_kind i in
+       lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
+      (* FIXME what of the bound ? *)
+    | (ECst(ca)    , ECst(cb)    ) ->
+       let i = new_int () in
+       let a = subst ca.qcst_wit_kind i in
+       let b = subst cb.qcst_wit_kind i in
+       lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
+      (* FIXME what of the bound ? *)
+    | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
+    | (TInt(ia)    , TInt(ib)    ) -> ia = ib
+    | (_           , _           ) -> false
   in lower_kind k1 k2
 
-let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind =
+let cr = ref 0
+
+let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * bool =
   fun t ctxt a b ->
-    (* check for loop *)
-    let ctxt =
-      match (a, b) with
-      | (FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _) ->
-	 let (a', _) = decompose a in
-	 let (b', _) = decompose b in
-	 if find_repetition a' b' ctxt.adone then begin
-	   if !debug then Printf.eprintf "LOOP\n%!";
-	   subtype_error "loop";
-	 end;
-	 { ctxt with adone = Judgment (a',b') :: ctxt.adone }
-      | _ -> ctxt
-    in
-
-    (* add induction  *)
-    match a, b with
-    | FixM(o0,f), FixN(o0',f')  ->
-       let o = OLEqu(o0,t,In(binder_from_fun "a" 0 (fun o -> subst f (FixM(o,f))))) in
-       if !debug then Printf.eprintf "creating %a <= %a\n%!" print_ordinal o print_ordinal o0;
-       let o' = OLEqu(o0',t,NotIn(binder_from_fun "a" 0 (fun o -> subst f' (FixN(o,f'))))) in
-       if !debug then Printf.eprintf "creating %a <= %a\n%!" print_ordinal o' print_ordinal o0';
-       let key = FixM(ODumm,f) in
-       let key' = FixN(ODumm, f') in
-       let a0 = FixM(o,f) in
-       let b0 = FixN(o',f') in
-       let used = trace_subtyping ~ordinal:o t a0 b0 in
-       let lfix =
-	 let (before, l, after) =
-	   try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
-	 in
-	 List.rev_append before ((key, (o,b0,used)::l) :: after)
-       in
-       let rfix =
-         let (before, l, after) =
-	   try search key' ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
-	 in
-	 List.rev_append before ((key', (o',a0,used)::l) :: after)
-       in
-       ({ ctxt with lfix; rfix }, a0, b0)
-
-    | FixM(o0,f), _ ->
-       let o = OLEqu(o0,t,In(binder_from_fun "a" 0 (fun o -> subst f (FixM(o,f))))) in
-       if !debug then Printf.eprintf "creating %a <= %a\n%!" print_ordinal o print_ordinal o0;
-       let key = FixM(ODumm,f) in
-       let a' = FixM(o,f) in
-       let (before, l, after) =
-	 try search key ctxt.lfix with Not_found -> ([], [], ctxt.lfix)
-       in
-       let used = trace_subtyping ~ordinal:o t a' b in
-       let lfix = List.rev_append before ((key, (o,b,used)::l) :: after) in
-       ({ ctxt with lfix }, a', b)
-
-    | _, FixN(o0,f) ->
-       let o = OLEqu(o0,t,NotIn(binder_from_fun "a" 0 (fun o -> subst f (FixN(o,f))))) in
-       if !debug then Printf.eprintf "creating %a <= %a\n%!" print_ordinal o print_ordinal o0;
-       let key = FixN(ODumm, f) in
-       let b' = FixN(o,f) in
-       let (before, l, after) =
-	 try search key ctxt.rfix with Not_found -> ([], [], ctxt.rfix)
-       in
-       let used = trace_subtyping ~ordinal:o t a b' in
-       let rfix = List.rev_append before ((key, (o,a,used)::l) :: after) in
-       ({ ctxt with rfix }, a, b')
-
-    | _         -> (ctxt, a , b)
-
-let is_mu b f = match subst f (Prod []) with FixM(o,_) -> if b then o = OConv else true | _ -> false
-let is_nu b f = match subst f (Prod []) with FixN(o,_) -> if b then o = OConv else true | _ -> false
+    match (a, b) with
+    | (FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _) ->
+       let (a', os1) = decompose false a in
+       let (b', os2) = decompose true b in
+       let os' = os1 @ os2 in
+       let os' = Array.of_list os' in
+       let os1 = List.map (fun o ->
+	 incr cr;
+	 OLEqu(o,dummy_pos (TagI !cr),In(binder_from_fun "a" 0 (fun o -> a')))) os1 in (* FIXME *)
+       let os2 = List.map (fun o ->
+	 incr cr;
+	 OLEqu(o,dummy_pos (TagI !cr),In(binder_from_fun "a" 0 (fun o -> b')))) os2 in (* FIXME *)
+       let os = Array.of_list (os1 @ os2) in
+       incr cr;
+       begin match ctxt with
+	 [], _ -> ()
+       | (_,_,cur,os0)::_ as up, calls  ->
+	  List.iter (fun (a,b,index,_) ->
+	    if eq_kind a a' && eq_kind b b' then (
+	      let cmp, ind = find_indexes os' os0 in
+	      calls := (index, cur, cmp, ind) :: !calls;
+	      raise Induction_hypothesis)) up;
+	 let cmp, ind = find_indexes os os0 in
+	 calls := (!cr, cur, cmp, ind)::!calls;
+       end;
+       let a = recompose false a' os1 in
+       let b = recompose true b' os2 in
+       let ctxt = (a', b', !cr, os)::fst ctxt, snd ctxt in
+       let _ = trace_subtyping t a b in
+       (ctxt, a, b, true)
+    | _ ->
+       (ctxt, a, b, false)
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a b =
@@ -216,7 +142,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     let b = repr b in
     if !debug then Printf.eprintf "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
-    if a == b || lower_kind ctxt a b then () else
+    if a == b || lower_kind a b then () else
     begin match (a,b) with
     (* Handling of unification variables (immitation). *)
     | (UVar ua, UVar ub) ->
@@ -247,42 +173,21 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | (_          , TDef(d,b)  ) ->
         subtype ctxt t a (msubst d.tdef_value b)
 
-    | (FixM(OConv,f)  , _        ) when is_mu true f ->
-       (* Compression of consecutive μs on the left. *)
-       let aux x =
-         match subst f x with
-         | FixM(_,g) -> subst g x
-         | _       -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       subtype ctxt t (FixM(OConv, f)) b
-
-    | (_, FixN(OConv,f)) when is_nu true f ->
-       (* Compression of consecutive νs on the right. *)
-       let aux x =
-         match subst f x with
-         | FixN(_,g) -> subst g x
-         | _       -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       subtype ctxt t a (FixN(OConv, f))
-
     | _ ->
-    let (ctxt, a, b) = check_rec t ctxt a b in
+    let (ctxt, a, b, cmps) = check_rec t ctxt a b in
     begin match (a,b) with
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
         let f x = appl dummy_position (box t) x in
         let bnd = unbox (bind (lvar_p dummy_position) "x" f) in
         let wit = cnst bnd a2 b2 in
-        subtype {ctxt with adone = BArrow true:: ctxt.adone } (dummy_pos (Appl(t,wit))) b1 b2;
-        subtype {ctxt with adone = BArrow false:: ctxt.adone } wit a2 a1
+        subtype ctxt (dummy_pos (Appl(t,wit))) b1 b2;
+        subtype ctxt wit a2 a1
 
     (* Product type. *)
     | (Prod(fsa), Prod(fsb)) ->
         let check_field (l,b) =
           let a = try List.assoc l fsa with Not_found -> subtype_error "Product fields clash." in
-	  let ctxt = { ctxt with adone = BProd l::ctxt.adone } in
           subtype ctxt (dummy_pos (Proj(t,l))) a b
         in
         List.iter check_field fsb
@@ -294,7 +199,6 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
           let t = unbox
             (case dummy_position (box t) [(c, idt)])
           in
-	  let ctxt = { ctxt with adone = BSum c::ctxt.adone } in
 	  try
             let b = List.assoc c csb in
             subtype ctxt t a b
@@ -305,7 +209,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
-       subtype ctxt t a (subst f (new_ucst t f))
+       let b' = subst f (new_ucst t f) in
+       subtype ctxt t a b'
 
     | (FAll(f)  , _        ) ->
         subtype ctxt t (subst f (new_uvar ())) b;
@@ -314,7 +219,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* Existantial quantifier. *)
     | (Exis(f)  , _        ) ->
-       subtype ctxt t (subst f (new_ecst t f)) b
+       let a' = subst f (new_ecst t f) in
+       subtype ctxt t a' b
 
     | (_        , Exis(f)  ) ->
         subtype ctxt t a (subst f (new_uvar ()));
@@ -325,38 +231,47 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | (_          , FixN(o,f)) ->
        let o' = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
-       subtype ctxt t a (subst f (FixN(o', f)))
+       let cst = FixN(o', f) in
+       let b' = subst f cst in
+       subtype ctxt t a b'
 
     | (FixM(o,f)  , _        ) ->
        let o' = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
-       subtype ctxt t (subst f (FixM(o', f))) b
+       let cst = FixM(o', f) in
+       let a' = subst f cst in
+       subtype ctxt t a' b
 
     | (FixN(OConv,f)  , _        ) ->
-       subtype ctxt t (subst f a) b
+       let a' = subst f a in
+       subtype ctxt t a' b
 
     | (FixN(o,f)  , _        ) -> assert false
 
     | (_          , FixM(OConv,f)) ->
-       subtype ctxt t a (subst f b)
+       let b' = subst f b in
+       subtype ctxt t a b'
 
    | (_          , FixM(o,f)) -> assert false
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
     end;
-    (match a,b with FixM _, _ | _, FixN _ -> trace_pop () | _ -> ())
+    (match cmps with
+    | false -> ()
+    | true -> trace_pop ());
     end;
     with Induction_hypothesis -> ());
     trace_pop ();
 
   in
-  subtype { adone = [] ; lfix = [] ; rfix = [] } t a b
+  let calls = ref [] in
+  subtype ([],calls) t a b;
+  (*  print_calls Format.std_formatter !calls;*)
+  if not (sct !calls)  then subtype_error "loop"
 
 let generic_subtype : kind -> kind -> unit = fun a b ->
   subtype (generic_cnst a b) a b
-
-let lower_kind = lower_kind { adone = [] ; lfix = [] ; rfix = [] }
 
 let type_check : term -> kind -> unit = fun t c ->
   let c = repr c in

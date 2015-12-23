@@ -500,15 +500,23 @@ let parser command =
           try
 	    generic_subtype a b;
 	    let prf = collect_subtyping_proof () in
-	    if !verbose || not n then print_subtyping_proof prf;
+	    if !verbose || not n then (
+	      Printf.eprintf "MUST FAIL\n%!";
+	      print_subtyping_proof prf);
 	    reset_ordinals ();
 	    Printf.eprintf "check: OK\n%!"
           with
-            | e when n -> trace_backtrace (); raise e
-            | Subtype_error s -> trace_state := [];
- 	      reset_ordinals ();
-	      Printf.eprintf "check not: OK %s\n%!" s
-            | e -> trace_backtrace (); raise e
+          | Subtype_error s when n ->
+	     Printf.eprintf "CHECK FAILED: OK %s\n%!" s;
+	     trace_backtrace ();
+          | Subtype_error s ->
+	     Printf.eprintf "check not: OK %s\n%!" s;
+	     trace_state := [];
+ 	     reset_ordinals ();
+          | e ->
+	     Printf.eprintf "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+	     trace_backtrace ();
+	     raise e
 
         end
   | latex_kw t:latex_text ->

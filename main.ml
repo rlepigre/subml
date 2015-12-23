@@ -12,6 +12,7 @@ let spec =
   [ ("--latex", Arg.Unit (fun _ -> print_mode := Latex), "Activate latex mode");
     ("--verbose", Arg.Set verbose, "Activate verbose mode");
     ("--debug", Arg.Set Typing.debug, "Activate verbose mode");
+    ("--debug-sct", Arg.Set Sct.debug_sct, "Activate sct verbose mode");
     ("--tex-file", Arg.String (fun s -> open_latex s), "Choose tex file output");
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
