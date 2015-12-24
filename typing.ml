@@ -38,6 +38,21 @@ let find_indexes a b =
   let cmps = Array.mapi (fun i o -> let (c,j) = find_index b o in indexes.(i) <- j; c) a in
   cmps, indexes
 
+let try_inline ctxt num =
+  let calls = snd ctxt in
+  let count, call = List.fold_left (
+    fun (n,_ as acc) (i,j,c,a as call) ->
+      if i = num then (n + 1, Some call) else acc) (0,None) !calls in
+  match count, call with
+  | 1, Some(_,j,c,a) -> (* one use: do inlining *)
+     calls := List.filter (fun (i,_,_,_) -> i <> num) !calls;
+     calls := List.map (fun (i,k,c',a' as call) ->
+       if k = num then
+	 let c'',a'' = compose c' a' c a in
+	 (i,j,c'',a'') else call) !calls
+  | _ -> ()
+
+
 exception Induction_hypothesis
 
 (****************************************************************************
@@ -101,7 +116,7 @@ let lower_kind k1 k2 =
 (* counter for the function name in the sct ... FIXME: move to sct.ml ? *)
 let cr = ref 0
 
-let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * bool =
+let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * int option =
   fun t ctxt a b ->
     match (a, b) with
     | (FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _) ->
@@ -132,9 +147,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
        let b = recompose true b' os2 in
        let ctxt = (a', b', !cr, os)::fst ctxt, snd ctxt in
        let _ = trace_subtyping t a b in
-       (ctxt, a, b, true)
+       (ctxt, a, b, Some !cr)
     | _ ->
-       (ctxt, a, b, false)
+       (ctxt, a, b, None)
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a b =
@@ -259,8 +274,10 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
     end;
     (match cmps with
-    | false -> ()
-    | true -> trace_pop ());
+    | None -> ()
+    | Some call_num ->
+       try_inline ctxt call_num;
+       trace_pop ());
     end;
     with Induction_hypothesis -> ());
     trace_pop ();
