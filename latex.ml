@@ -8,6 +8,7 @@ open Print
  *                           Printing of a type                             *
  ****************************************************************************)
 
+
 let rec print_ordinal unfold ff o =
   let o = onorm o in
   match o with
@@ -15,11 +16,9 @@ let rec print_ordinal unfold ff o =
   | OConv        -> pp_print_string ff "\\infty"
   | OTag i       -> fprintf ff "?%i" i
   | _ ->
-  if unfold then match o with
+  if unfold && not (is_OInd o) then match o with
   | OLess(o,t,k) ->
     fprintf ff "\\epsilon_{\\alpha < %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
-  | OLEqu(o,t,k) ->
-    fprintf ff "\\epsilon_{\\alpha \\leq %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
   | _ -> assert false
   else
     let n =
@@ -38,7 +37,8 @@ let rec print_ordinal unfold ff o =
 
 and print_reset_ordinals ff =
   List.iter (fun (o,n) ->
-    fprintf ff "  \\kappa_{%d} &= %a\\\\\n%!" n (print_ordinal true) o) !ordinal_tbl;
+    if not (is_OInd o) then
+      fprintf ff "  \\kappa_{%d} &= %a\\\\\n%!" n (print_ordinal true) o) !ordinal_tbl;
   reset_ordinals ()
 
 and print_ord_cstr ff k =

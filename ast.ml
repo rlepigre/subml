@@ -35,9 +35,15 @@ type kind =
   | TInt of int
 
 and ordinal =
+  (* ordinal large enough to ensure convergence of all fixpoint *)
   | OConv
+  (* ordinal created by the mu left and nu right rule *)
   | OLess of ordinal * term * ord_constraint
-  | OLEqu of ordinal * term * ord_constraint
+  (* ordinal created by induction, they are not witness and have
+     no relation with others, except OConv. The ordinal inside
+     is only used to simplify proof when an induction hypothesis
+     is unused, in this case OInd(n,o) = o *)
+  | OInd of int * ordinal
   (* integer tag for comparing ordinals *)
   | OTag of int
   (* *)
@@ -144,6 +150,11 @@ and typ_proof =
     mutable ttrees : typ_proof list;
   }
 
+let new_OInd, reset_OInd =
+  let count = ref 0 in
+  (fun o -> let n = !count in incr count; OInd(n,o)),
+  (fun () -> count := 0)
+
 (****************************************************************************
  *                        Equality of types and terms                       *
  ****************************************************************************)
@@ -208,7 +219,7 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
       match o1, o2 with
       | ODumm, ODumm -> true
       | OConv, OConv -> true
-      | OLEqu(o1,t1,c1), OLEqu(o2,t2,c2)
+      | OInd(n1,_), OInd(n2,_) -> n1 = n2
       | OLess(o1,t1,c1), OLess(o2,t2,c2) -> eq_ordinal o1 o2 && eq_term c t1 t2 && eq_ocst c1 c2
       | OTag n1, OTag n2 -> n1 = n2
       | _ -> false
@@ -242,15 +253,14 @@ let rec leq_ordinal o1 o2 =
   match (o1, o2) with
   | (_            , ODumm       ) -> assert false
   | (_            , OConv       ) -> true
-  | (OLess(o1,_,_), o2          )
-  | (OLEqu(o1,_,_), o2          ) -> leq_ordinal o1 o2
+  | (OLess(o1,_,_), o2          ) -> leq_ordinal o1 o2
+  | (OInd(n1,_)   , OInd(n2,_)  ) -> n1 = n2
   | (_            , _           ) -> false
 
 let rec less_ordinal o1 o2 =
   match o1 with
   | ODumm        -> assert false
   | OLess(o,_,_) -> leq_ordinal  o o2
-  | OLEqu(o,_,_) -> less_ordinal o o2
   | _            -> false
 
 (****************************************************************************

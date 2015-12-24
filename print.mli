@@ -28,3 +28,5 @@ val reset_ordinals : unit -> unit
 
 val ordinal_tbl : (ordinal * int) list ref
 val ordinal_count : int ref
+
+val is_OInd : ordinal -> bool

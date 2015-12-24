@@ -16,18 +16,23 @@ let rec print_array pelem sep ff ls =
 let ignored_ordinals = ref []
 
 let rec onorm o =
-  match o with
-  | OLess(o',t,k) when List.memq o !ignored_ordinals -> onorm o'
-  | OLEqu(o',t,k) when List.memq o !ignored_ordinals -> onorm o'
-  | _ -> o
+  if List.memq o !ignored_ordinals then
+    match o with OLess(o',_,_) | OInd(_,o') -> onorm o' | _ -> assert false
+  else o
 
+let is_OInd = function OInd _ -> true | _ -> false
+
+(* managment of a table to name ordinals when printing *)
+let ordinal_tbl = ref []
+let ordinal_count = ref 0
+
+let reset_ordinals () =
+  ordinal_count := 0;
+  ordinal_tbl := []
 
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
-
-let ordinal_tbl = ref []
-let ordinal_count = ref 0
 
 let rec print_ordinal unfold ff o =
   let o = onorm o in
@@ -36,11 +41,9 @@ let rec print_ordinal unfold ff o =
   | OConv        -> pp_print_string ff "∞"
   | OTag i       -> fprintf ff "?%i" i
   | _ ->
-  if unfold then match o with
+  if unfold  && not (is_OInd o) then match o with
   | OLess(o,t,k) ->
     fprintf ff "ε(< %a, %a in %a)" (print_ordinal false) o (print_term unfold) t print_ord_cstr k
-  | OLEqu(o,t,k) ->
-    fprintf ff "ε(≤ %a, %a in %a)" (print_ordinal false) o (print_term unfold) t print_ord_cstr k
   | _ -> assert false
   else
     let n =
@@ -54,14 +57,10 @@ let rec print_ordinal unfold ff o =
     fprintf ff "ε%d" n
 
 and print_reset_ordinals ff =
-  while !ordinal_tbl <> [] do
-    let (o,n) = match !ordinal_tbl with
-      | [] -> assert false
-      | x::os -> ordinal_tbl := os; x
-    in
-    fprintf ff "  ε%d = %a\n%!" n (print_ordinal true) o
-  done;
-  ordinal_count := 0
+  List.iter (fun (o,n) ->
+    if not (is_OInd o) then
+      fprintf ff "  ε%d = %a\n%!" n (print_ordinal true) o) !ordinal_tbl;
+  reset_ordinals ()
 
 and print_ord_cstr ff k =
   match k with
@@ -208,7 +207,3 @@ let print_ordinal ch o =
 let print_reset_ordinals ch =
   let ff = formatter_of_out_channel ch in
   print_reset_ordinals ff; pp_print_flush ff (); flush ch
-
-let reset_ordinals () =
-  ordinal_count := 0;
-  ordinal_tbl := []

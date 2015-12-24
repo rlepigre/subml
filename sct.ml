@@ -101,7 +101,7 @@ end
 module IAMap = Map.Make(IntArray)
 
 (* the main function *)
-let sct:call list -> bool = fun ls ->
+let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
   if !debug_sct then eprintf "sct start ... %!";
   let num_fun, arities = reset_function () in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun IAMap.empty) in
@@ -161,9 +161,11 @@ let sct:call list -> bool = fun ls ->
 	fn ()
     in
     fn ();
-    eprintf "sct passed (%5d edges added, %6d tested)\t%!" !added !tested;
+    if !debug_sct || summary then
+      eprintf "sct passed (%5d edges added, %6d tested)\t%!" !added !tested;
     true
   with Exit ->
     if !debug_sct then eprintf "looping idempotent call!\n%!";
-    eprintf "sct failed (%5d edges added, %6d tested)\t%!" !added !tested;
+    if !debug_sct || summary then
+      eprintf "sct failed (%5d edges added, %6d tested)\t%!" !added !tested;
     false

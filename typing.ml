@@ -123,12 +123,8 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
        let (b', os2) = decompose true b in
        let os' = os1 @ os2 in
        let os' = Array.of_list os' in
-       let os1 = List.map (fun o ->
-	 incr cr;
-	 OLEqu(o,dummy_pos (TagI !cr),In(binder_from_fun "a" 0 (fun o -> a')))) os1 in (* FIXME *)
-       let os2 = List.map (fun o ->
-	 incr cr;
-	 OLEqu(o,dummy_pos (TagI !cr),In(binder_from_fun "a" 0 (fun o -> b')))) os2 in (* FIXME *)
+       let os1 = List.map new_OInd os1 in
+       let os2 = List.map new_OInd os2 in
        let los = os1 @ os2 in
        let os = Array.of_list los in
        let fnum = new_function (Array.length os) in
@@ -143,7 +139,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	      let _ = trace_subtyping t a b in
 	      trace_sub_pop (NUseInd index);
 	      raise Induction_hypothesis)) up;
-	 let cmp, ind = find_indexes os os0 in
+	 let cmp, ind = find_indexes os' os0 in
 	 calls := (fnum, cur, cmp, ind)::!calls;
        end;
        let use = trace_subtyping ~ordinal:los t a b in
