@@ -1,6 +1,6 @@
 open Bindlib
 open Util
-
+open Timed_ref
 
 (****************************************************************************
  *                         AST for kinds (or types)                         *
@@ -82,7 +82,7 @@ and uvar =
   (* Unique key identifying the variable. *)
   { uvar_key         : int
   (* Value of the variable managed as in a union-find algorithm. *)
-  ; mutable uvar_val : kind option }
+  ; uvar_val : kind option ref }
 
 (****************************************************************************
  *                     AST for expressions (or terms)                       *
@@ -300,12 +300,18 @@ let new_lvar' : string -> term variable =
 
 (* Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function
-  | UVar { uvar_val = Some k} -> repr k
+  | UVar { uvar_val = { contents = Some k} } -> repr k
+  | k      -> k
+
+(* Unfolding unification variable indirections and definitions *)
+let rec full_repr : kind -> kind = function
+  | UVar { uvar_val = { contents = Some k} } -> full_repr k
+  | TDef(d,a) -> full_repr (msubst d.tdef_value a)
   | k      -> k
 
 let set v k =
-  assert (v.uvar_val = None);
-  v.uvar_val <- Some k
+  assert (!(v.uvar_val) = None);
+  v.uvar_val <:- Some k
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
@@ -372,7 +378,7 @@ let (new_ecst, reset_ecst) =
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
-  let new_uvar () = UVar {uvar_key = (incr c; !c); uvar_val = None} in
+  let new_uvar () = UVar {uvar_key = (incr c; !c); uvar_val = ref None} in
   let reset_uvar () = c := 0 in
   (new_uvar, reset_uvar)
 
@@ -561,8 +567,9 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
       | FixM(o,f) -> fixm (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
       | FixN(o,f) -> fixn (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
-      | UVar(u)   -> assert(u.uvar_val = None); if u.uvar_key = i then x else box k
+      | UVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
       | TVar x    -> box_of_var x
+      | TDef(d,a) -> tdef d (Array.map fn a)
       | t         -> box t
     in
     fn k))
@@ -607,6 +614,7 @@ let decompose : bool -> kind -> kind * ordinal list = fun pos k ->
                    fixm (binder_name f) (fun x -> fn pos (subst f (TVar x)))
     | FixN(o,f) -> if pos then res := o :: !res else assert (o = OConv);
                    fixn (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | TDef(d,a) -> fn pos (msubst d.tdef_value a)
     | TVar x    -> box_of_var x
     | t         -> box t
   in
@@ -633,6 +641,7 @@ let recompose : bool -> kind -> ordinal list -> kind = fun pos k os ->
        let ordinal = if pos then get () else o in
        fixn (binder_name f) ~ordinal (fun x -> fn pos (subst f (TVar x)))
     | TVar x    -> box_of_var x
+    | TDef(d,a) -> fn pos (msubst d.tdef_value a)
     | t         -> box t
   in
   let k = unbox (fn pos k) in

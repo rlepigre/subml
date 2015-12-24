@@ -101,17 +101,39 @@ let lower_kind k1 k2 =
        let a = subst ca.qcst_wit_kind i in
        let b = subst cb.qcst_wit_kind i in
        lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
-      (* FIXME what of the bound ? *)
     | (ECst(ca)    , ECst(cb)    ) ->
        let i = new_int () in
        let a = subst ca.qcst_wit_kind i in
        let b = subst cb.qcst_wit_kind i in
        lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
-      (* FIXME what of the bound ? *)
+    (* Handling of unification variables (immitation). *)
     | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
+    | (UVar ua     ,(UVar _ as b)) -> set ua b; true
+    | (UVar ua as a, b           ) ->
+        let k =
+          match uvar_occur ua b with
+          | Non -> b
+	  | Pos -> FixM(OConv,bind_uvar ua b)
+          | _   -> bot
+        in
+	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
+        set ua k; true
+    | (a           ,(UVar ub as b)) ->
+        let k =
+          match uvar_occur ub a with
+          | Non -> a
+	  | Pos -> FixM(OConv,bind_uvar ub a)
+          | _   -> top
+        in
+	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
+        set ub k; true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false
-  in lower_kind k1 k2
+  in
+  let time = Timed_ref.save_time () in
+  let res = lower_kind k1 k2 in
+  if not res then Timed_ref.undo time;
+  res
 
 let cr = ref 0
 
@@ -156,48 +178,11 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     let b = repr b in
     if !debug then Printf.eprintf "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
-       if a == b || lower_kind a b then
-         let _ = trace_subtyping t a b in
-	 trace_sub_pop NRefl
-       else
-    begin match (a,b) with
-    (* Handling of unification variables (immitation). *)
-    | (UVar ua, UVar ub) ->
+     if a == b || lower_kind a b then
        let _ = trace_subtyping t a b in
-       trace_sub_pop NRefl;
-       if ua == ub then () else set ua b;
-    | (UVar ua, _      ) ->
-        let k =
-          match uvar_occur ua b with
-          | Non -> b
-	  | Pos -> FixM(OConv,bind_uvar ua b)
-          | _   -> bot
-        in
-	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
-	let _ = trace_subtyping t a b in
-	trace_sub_pop NRefl;
-        set ua k
-    | (_      , UVar ub) ->
-        let k =
-          match uvar_occur ub a with
-          | Non -> a
-	  | Pos -> FixM(OConv,bind_uvar ub a)
-          | _   -> top
-        in
-	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
-	let _ = trace_subtyping t a b in
-	trace_sub_pop NRefl;
-        set ub k
-
-    (* Type definition. *)
-    | (TDef(d,a)  , _          ) ->
-        subtype ctxt t (msubst d.tdef_value a) b
-
-    | (_          , TDef(d,b)  ) ->
-        subtype ctxt t a (msubst d.tdef_value b)
-
-    | _ ->
-    let (ctxt, a, b, cmps) = check_rec t ctxt a b in
+       trace_sub_pop NRefl
+    else begin
+    let (ctxt, a, b, cmps) = check_rec t ctxt (full_repr a) (full_repr b) in
     let _ = trace_subtyping t a b in
     begin match (a,b) with
     (* Arrow type. *)
