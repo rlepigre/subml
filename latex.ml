@@ -9,18 +9,17 @@ open Print
  ****************************************************************************)
 
 let rec print_ordinal unfold ff o =
+  let o = onorm o in
   match o with
   | ODumm        -> pp_print_string ff "\\alpha"
   | OConv        -> pp_print_string ff "\\infty"
   | OTag i       -> fprintf ff "?%i" i
-  | OLess(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
-  | OLEqu(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
   | _ ->
   if unfold then match o with
   | OLess(o,t,k) ->
     fprintf ff "\\epsilon_{\\alpha < %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
   | OLEqu(o,t,k) ->
-    fprintf ff "\\epsilon_{\\alpha < %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
+    fprintf ff "\\epsilon_{\\alpha \\leq %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
   | _ -> assert false
   else
     let n =
@@ -47,7 +46,7 @@ and print_ord_cstr ff k =
   | In k -> fprintf ff "\\in %a" (print_kind false false) (subst k ODumm)
   | NotIn k -> fprintf ff "\\notin %a" (print_kind false false) (subst k ODumm)
 
-and print_index_ordinal ff = function
+and print_index_ordinal ff o = match onorm o with
   | OConv -> ()
   | o -> fprintf ff "_{%a}" (print_ordinal false) o
 

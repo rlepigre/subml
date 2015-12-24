@@ -125,12 +125,17 @@ and value_def =
   ; ttype : kind
   ; proof : typ_proof }
 
+and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
+		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuRight
+		 | NNuLeft | NNuRight | NUnknown
+
 and sub_proof =
   { sterm : term;
     left : kind;
     right : kind;
-    unused : ordinal option ref;
-    mutable strees : sub_proof list }
+    mutable unused : ordinal list;
+    mutable strees : sub_proof list;
+    mutable rule_name : srule_name }
 
 and typ_proof =
   { tterm : term;

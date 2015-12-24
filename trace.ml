@@ -25,14 +25,14 @@ let trace_typing t k =
      trace_state := Typing prf :: []
   | _ -> assert false
 
-let trace_subtyping ?ordinal t k1 k2 =
-  let unused = ref ordinal in
+let trace_subtyping ?(ordinal=[]) t k1 k2 =
   let prf = {
     sterm = t;
     left = k1;
     right = k2;
-    unused;
+    unused = ordinal;
     strees = [];
+    rule_name = NUnknown;
   } in
   (match !trace_state with
   | Typing (p)::_ as l ->
@@ -44,14 +44,19 @@ let trace_subtyping ?ordinal t k1 k2 =
   | [] ->
      trace_state := SubTyping prf :: []
   | _ -> assert false);
-  (fun () -> unused := None)
+  (fun () -> prf.unused <- [])
 
-let trace_pop () =
+let trace_sub_pop rn =
+  match !trace_state with
+  | [SubTyping prf] -> prf.rule_name <- rn; trace_state := [EndSubTyping prf]
+  | SubTyping prf::s -> prf.rule_name <- rn;  trace_state := s
+  | _ -> assert false
+
+let trace_typ_pop () =
   match !trace_state with
   | [Typing prf] -> trace_state := [EndTyping prf]
-  | [SubTyping prf] -> trace_state := [EndSubTyping prf]
-  | _::s -> trace_state := s
-  | [] -> assert false
+  | Typing prf::s -> trace_state := s
+  | _ -> assert false
 
 let collect_typing_proof () =
   match !trace_state with
@@ -75,5 +80,4 @@ let trace_backtrace () =
       fn l
     | [] -> ()
   in
-  ignored_ordinals := [];
   fn !trace_state; print_reset_ordinals stderr; trace_state := []

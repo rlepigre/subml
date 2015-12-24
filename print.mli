@@ -6,6 +6,7 @@ val print_list : (formatter -> 'a -> unit) -> string -> formatter -> 'a list -> 
 val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -> unit
 
 val ignored_ordinals : ordinal list ref
+val onorm : ordinal -> ordinal
 
 (* Pretty-printer for terms. If the boolean is true, definitions are unfolded,
 otherwise the name of the defined type is used instead. *)

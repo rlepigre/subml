@@ -22,7 +22,7 @@ type branch_element =
   | BProd of string
   | BArrow of bool
 
-type subtype_ctxt = (kind * kind * int * ordinal array) list * calls ref
+type subtype_ctxt = (kind * kind * int * ordinal array * (unit -> unit)) list * calls ref
 
 exception Found of cmp * int
 
@@ -129,39 +129,47 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
        let os2 = List.map (fun o ->
 	 incr cr;
 	 OLEqu(o,dummy_pos (TagI !cr),In(binder_from_fun "a" 0 (fun o -> b')))) os2 in (* FIXME *)
-       let os = Array.of_list (os1 @ os2) in
+       let los = os1 @ os2 in
+       let os = Array.of_list los in
        let fnum = new_function (Array.length os) in
        begin match ctxt with
 	 [], _ -> ()
-       | (_,_,cur,os0)::_ as up, calls  ->
-	  List.iter (fun (a,b,index,_) ->
-	    if eq_kind a a' && eq_kind b b' then (
+       | (_,_,cur,os0,_)::_ as up, calls  ->
+	  List.iter (fun (a0,b0,index,_,use) ->
+	    if eq_kind a0 a' && eq_kind b0 b' then (
 	      let cmp, ind = find_indexes os' os0 in
 	      calls := (index, cur, cmp, ind) :: !calls;
+	      use ();
+	      let _ = trace_subtyping t a b in
+	      trace_sub_pop (NUseInd index);
 	      raise Induction_hypothesis)) up;
 	 let cmp, ind = find_indexes os os0 in
 	 calls := (fnum, cur, cmp, ind)::!calls;
        end;
+       let use = trace_subtyping ~ordinal:los t a b in
        let a = recompose false a' os1 in
        let b = recompose true b' os2 in
-       let ctxt = (a', b', fnum, os)::fst ctxt, snd ctxt in
-       let _ = trace_subtyping t a b in
+       let ctxt = (a', b', fnum, os,use)::fst ctxt, snd ctxt in
        (ctxt, a, b, Some fnum)
     | _ ->
        (ctxt, a, b, None)
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a b =
-    let _ = trace_subtyping t a b in
     let a = repr a in
     let b = repr b in
     if !debug then Printf.eprintf "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
-    if a == b || lower_kind a b then () else
+       if a == b || lower_kind a b then
+         let _ = trace_subtyping t a b in
+	 trace_sub_pop NRefl
+       else
     begin match (a,b) with
     (* Handling of unification variables (immitation). *)
     | (UVar ua, UVar ub) ->
-       if ua == ub then () else set ua b
+       let _ = trace_subtyping t a b in
+       trace_sub_pop NRefl;
+       if ua == ub then () else set ua b;
     | (UVar ua, _      ) ->
         let k =
           match uvar_occur ua b with
@@ -170,6 +178,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
           | _   -> bot
         in
 	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
+	let _ = trace_subtyping t a b in
+	trace_sub_pop NRefl;
         set ua k
     | (_      , UVar ub) ->
         let k =
@@ -179,6 +189,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
           | _   -> top
         in
 	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
+	let _ = trace_subtyping t a b in
+	trace_sub_pop NRefl;
         set ub k
 
     (* Type definition. *)
@@ -190,6 +202,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
     | _ ->
     let (ctxt, a, b, cmps) = check_rec t ctxt a b in
+    let _ = trace_subtyping t a b in
     begin match (a,b) with
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
@@ -197,7 +210,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         let bnd = unbox (bind (lvar_p dummy_position) "x" f) in
         let wit = cnst bnd a2 b2 in
         subtype ctxt (dummy_pos (Appl(t,wit))) b1 b2;
-        subtype ctxt wit a2 a1
+        subtype ctxt wit a2 a1;
+	trace_sub_pop NArrow
 
     (* Product type. *)
     | (Prod(fsa), Prod(fsb)) ->
@@ -205,10 +219,12 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
           let a = try List.assoc l fsa with Not_found -> subtype_error "Product fields clash." in
           subtype ctxt (dummy_pos (Proj(t,l))) a b
         in
-        List.iter check_field fsb
+        List.iter check_field fsb;
+	trace_sub_pop NProd
 
     (* Sum type. *)
-    | (DSum([]), a)          -> ()
+    | (DSum([]), a)          -> trace_sub_pop NSum
+
     | (DSum(csa), DSum(csb)) ->
         let check_variant (c,a) =
           let t = unbox
@@ -220,54 +236,51 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 	  with
 	    Not_found -> subtype ctxt t a (DSum([]))
         in
-        List.iter check_variant csa
+        List.iter check_variant csa;
+	trace_sub_pop NSum
 
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
        let b' = subst f (new_ucst t f) in
-       subtype ctxt t a b'
+       subtype ctxt t a b';
+       trace_sub_pop NAllRight
 
     | (FAll(f)  , _        ) ->
         subtype ctxt t (subst f (new_uvar ())) b;
-
-    | (UCst(ca)         , UCst(cb)        ) when ca == cb -> ()
+      trace_sub_pop NAllLeft
 
     (* Existantial quantifier. *)
     | (Exis(f)  , _        ) ->
        let a' = subst f (new_ecst t f) in
-       subtype ctxt t a' b
+       subtype ctxt t a' b;
+       trace_sub_pop NExistsLeft
 
     | (_        , Exis(f)  ) ->
-        subtype ctxt t a (subst f (new_uvar ()));
+       subtype ctxt t a (subst f (new_uvar ()));
+       trace_sub_pop NExistsRight
 
-    | (ECst(ca) , ECst(cb)   ) when ca == cb -> ()
-
-    (* μ and ν - least and greatest fixpoint. *)
+     (* μ and ν - least and greatest fixpoint. *)
     | (_          , FixN(o,f)) ->
        let o' = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixN(o', f) in
-       let b' = subst f cst in
-       subtype ctxt t a b'
+       subtype ctxt t a (subst f cst);
+       trace_sub_pop NNuRight
 
     | (FixM(o,f)  , _        ) ->
        let o' = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixM(o', f) in
-       let a' = subst f cst in
-       subtype ctxt t a' b
+       subtype ctxt t (subst f cst) b;
+       trace_sub_pop NMuLeft
 
     | (FixN(OConv,f)  , _        ) ->
-       let a' = subst f a in
-       subtype ctxt t a' b
-
-    | (FixN(o,f)  , _        ) -> assert false
+       subtype ctxt t (subst f a) b;
+       trace_sub_pop NNuLeft
 
     | (_          , FixM(OConv,f)) ->
-       let b' = subst f b in
-       subtype ctxt t a b'
-
-   | (_          , FixM(o,f)) -> assert false
+       subtype ctxt t a (subst f b);
+      trace_sub_pop NMuRight
 
     (* Subtype clash. *)
     | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
@@ -276,11 +289,9 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     | None -> ()
     | Some call_num ->
        try_inline ctxt call_num;
-       trace_pop ());
+       trace_sub_pop (NInd call_num));
     end;
     with Induction_hypothesis -> ());
-    trace_pop ();
-
   in
   let calls = ref [] in
   subtype ([],calls) t a b;
@@ -345,6 +356,6 @@ let type_check : term -> kind -> unit = fun t c ->
         subtype t a c
     | TagI(_) ->
        assert false (* Cannot happen. *));
-    trace_pop ();
+    trace_typ_pop ();
   in
   type_check t c

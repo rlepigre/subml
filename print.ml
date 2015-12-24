@@ -11,8 +11,16 @@ let rec print_list pelem sep ff = function
 let rec print_array pelem sep ff ls =
   print_list pelem sep ff (Array.to_list ls)
 
-(* ordinals in this list are not printed *)
+(* ordinals in this list are not printed, used
+   to remove unused induction rule from printing *)
 let ignored_ordinals = ref []
+
+let rec onorm o =
+  match o with
+  | OLess(o',t,k) when List.memq o !ignored_ordinals -> onorm o'
+  | OLEqu(o',t,k) when List.memq o !ignored_ordinals -> onorm o'
+  | _ -> o
+
 
 (****************************************************************************
  *                           Printing of a type                             *
@@ -22,12 +30,11 @@ let ordinal_tbl = ref []
 let ordinal_count = ref 0
 
 let rec print_ordinal unfold ff o =
+  let o = onorm o in
   match o with
   | ODumm        -> pp_print_string ff "?"
   | OConv        -> pp_print_string ff "∞"
   | OTag i       -> fprintf ff "?%i" i
-  | OLess(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
-  | OLEqu(o,t,k) when List.memq o !ignored_ordinals -> print_ordinal unfold ff o
   | _ ->
   if unfold then match o with
   | OLess(o,t,k) ->
