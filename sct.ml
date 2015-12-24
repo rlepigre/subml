@@ -35,13 +35,20 @@ let print_cmp ff c =
   | Less -> fprintf ff "<"
   | Leq  -> fprintf ff "="
 
-let print_call ff (i,j,c,a) =
-  fprintf ff "%d <- %d(" i j;
-  Array.iteri (fun i c -> fprintf ff "%a%d," print_cmp c a.(i)) c;
+let print_call tbl ff (i,j,c,a) =
+  let print_args ff i =
+    let a = try List.assoc i tbl with Not_found -> assert false in
+    for i = 0 to a - 1 do
+      fprintf ff "%sX%d" (if i = 0 then "" else ",") i
+    done
+  in
+  fprintf ff "F%d(%a) <- F%d(" j print_args j i;
+  Array.iteri (fun i c ->
+    fprintf ff "%s%aX%d" (if i = 0 then "" else ",") print_cmp c a.(i)) c;
   fprintf ff ")%!"
 
-let print_calls ff (l:calls) =
-  List.iter (print_call ff) l
+let print_calls tbl ff (l:calls) =
+  List.iter (print_call tbl ff) l
 
 let decr c a =
   try
@@ -53,31 +60,52 @@ let decr c a =
   with
     Exit -> true
 
+let (new_function : int -> int), reset_function =
+  let count = ref 0 in
+  let fun_table = ref [] in (* the table is only used for debugging messages *)
+  (fun arity ->
+    let n = !count in
+    incr count;
+    fun_table := (n, arity)::!fun_table;
+    n),
+  (fun () ->
+    let res = (!count, !fun_table) in
+    count := 0;
+    fun_table := [];
+    res)
+
+module IntArray = struct
+  type t = int array
+  let compare = compare
+end
+
+module IAMap = Map.Make(IntArray)
+
 let sct ls =
   if !debug_sct then eprintf "sct start ... %!";
-  let tbl = Hashtbl.create 31 in
+  let num_fun, arities = reset_function () in
+  let tbl = Array.init num_fun (fun _ -> Array.make num_fun IAMap.empty) in
+  let print_call = print_call arities in
   let count = ref 0 in
   let add_edge i j c a =
-    let old = try Hashtbl.find tbl i with Not_found ->
-      let t = Hashtbl.create 7 in
-      Hashtbl.add tbl i t; t
-    in
+    let ti = tbl.(i) in
     try
-      let c' = Hashtbl.find old (j,a) in
+      let c' = IAMap.find a ti.(j) in
       let changed, c'' = max c' c in
-      Hashtbl.replace old (j, a) c'';
+      ti.(j) <- IAMap.add a c'' ti.(j);
       changed
     with Not_found ->
-      Hashtbl.add old (j, a) c;
+      ti.(j) <- IAMap.add a c ti.(j);
       true
   in
   List.iter (fun (i,j,c,a) ->
-    if !debug_sct then eprintf "init: %a\n%!" print_call (i,j,c,a);
+    if !debug_sct then eprintf "\tinit: %a\n%!" print_call (i,j,c,a);
     ignore (add_edge i j c a)) ls;
-  let new_edges = ref
-    (Hashtbl.fold (fun i t acc ->
-      Hashtbl.fold (fun (j,a) c acc -> (i,j,c,a)::acc) t acc) tbl [])
-  in
+  let new_edges = ref [] in
+  Array.iteri (fun i t ->
+    Array.iteri (fun j t ->
+      IAMap.iter (fun a c ->
+	new_edges := (i,j,c,a)::!new_edges) t) t) tbl;
   try
     while !new_edges <> [] do
       if !debug_sct then eprintf "start completion\n%!";
@@ -85,11 +113,11 @@ let sct ls =
       new_edges := [];
       List.iter (fun (i,j,c,a) ->
 	try
-	  let t' = Hashtbl.find tbl j in
-	  Hashtbl.iter (fun (k, a') c' ->
+	  let t' = tbl.(j) in
+	  Array.iteri (fun k t -> IAMap.iter (fun a' c' ->
 	    let (c'',a'') = compose c a c' a' in
 	    if !debug_sct then
-	      eprintf "compose: %a %a -> %a "
+	      eprintf "\tcompose: %a * %a = %a "
 		print_call (i,j,c,a)
 		print_call (j,k,c',a')
 		print_call (i,k,c'',a'');
@@ -100,11 +128,12 @@ let sct ls =
 	      new_edges := (i,k,c'',a'') :: !new_edges)
 	    else
 	      if !debug_sct then eprintf "(old)\n%!";
-	  ) t'
+	  ) t) t'
 	  with Not_found -> ()) l
     done;
     eprintf "sct passed (%5d edges)\t%!" !count;
     true
   with Exit ->
+    if !debug_sct then eprintf "looping idempotent call!\n%!";
     eprintf "sct failed (%5d edges)\t%!" !count;
     false

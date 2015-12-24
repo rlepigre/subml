@@ -113,7 +113,6 @@ let lower_kind k1 k2 =
     | (_           , _           ) -> false
   in lower_kind k1 k2
 
-(* counter for the function name in the sct ... FIXME: move to sct.ml ? *)
 let cr = ref 0
 
 let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * int option =
@@ -131,7 +130,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	 incr cr;
 	 OLEqu(o,dummy_pos (TagI !cr),In(binder_from_fun "a" 0 (fun o -> b')))) os2 in (* FIXME *)
        let os = Array.of_list (os1 @ os2) in
-       incr cr;
+       let fnum = new_function (Array.length os) in
        begin match ctxt with
 	 [], _ -> ()
        | (_,_,cur,os0)::_ as up, calls  ->
@@ -141,13 +140,13 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
 	      calls := (index, cur, cmp, ind) :: !calls;
 	      raise Induction_hypothesis)) up;
 	 let cmp, ind = find_indexes os os0 in
-	 calls := (!cr, cur, cmp, ind)::!calls;
+	 calls := (fnum, cur, cmp, ind)::!calls;
        end;
        let a = recompose false a' os1 in
        let b = recompose true b' os2 in
-       let ctxt = (a', b', !cr, os)::fst ctxt, snd ctxt in
+       let ctxt = (a', b', fnum, os)::fst ctxt, snd ctxt in
        let _ = trace_subtyping t a b in
-       (ctxt, a, b, Some !cr)
+       (ctxt, a, b, Some fnum)
     | _ ->
        (ctxt, a, b, None)
 
@@ -284,7 +283,6 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
   in
   let calls = ref [] in
-  cr := 0;
   subtype ([],calls) t a b;
   (*  print_calls Format.std_formatter !calls;*)
   if not (sct !calls)  then subtype_error "loop"
