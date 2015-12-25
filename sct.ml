@@ -106,8 +106,8 @@ let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
   let num_fun, arities = reset_function () in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun IAMap.empty) in
   let print_call = print_call arities in
-  (* counters to count added and tested edges *)
-  let added = ref 0 and tested = ref 0 in
+  (* counters to count added and composed edges *)
+  let added = ref 0 and composed = ref 0 in
   (* function adding an edge, return a boolean indicating
      if the edge is new or not *)
   let add_edge i j c a =
@@ -125,47 +125,38 @@ let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
   in
   (* adding initial edges *)
   try
-    List.iter (fun (i,j,c,a) ->
-      if !debug_sct then eprintf "\tinit: %a\n%!" print_call (i,j,c,a);
-      ignore (add_edge i j c a)) ls;
-    (* collecting all edges (there may be less that initially
-       because of subsumption *)
-    let new_edges = ref [] in
-    Array.iteri (fun i t ->
-      Array.iteri (fun j t ->
-	IAMap.iter (fun a c ->
-	  new_edges := (i,j,c,a)::!new_edges) t) t) tbl;
+    let new_edges = ref ls in
     (* compute the transitive closure of the call graph *)
     if !debug_sct then eprintf "start completion\n%!";
     let rec fn () =
       match !new_edges with
 	[] -> ()
       | (i,j,c,a)::l ->
-	 new_edges := l;
-	let t' = tbl.(j) in
-	Array.iteri (fun k t -> IAMap.iter (fun a' c' ->
-	  let (c'',a'') = compose c a c' a' in
-	  incr tested;
-	  if !debug_sct then
-	    eprintf "\tcompose: %a * %a = %a "
-	      print_call (i,j,c,a)
-	      print_call (j,k,c',a')
-	      print_call (i,k,c'',a'');
-	  if add_edge i k c'' a'' then (
-	    if !debug_sct then eprintf "(new)\n%!";
-	    incr added;
-	    new_edges := (i,k,c'',a'') :: !new_edges)
-	  else
-	    if !debug_sct then eprintf "(old)\n%!";
-	) t) t';
+	new_edges := l;
+	if add_edge i j c a then begin
+	  if !debug_sct then eprintf "\tedge %a added\n%!" print_call (i,j,c,a);
+	  incr added;
+	  let t' = tbl.(j) in
+	  Array.iteri (fun k t -> IAMap.iter (fun a' c' ->
+	    let (c'',a'') = compose c a c' a' in
+	    incr composed;
+	    new_edges := (i,k,c'',a'') :: !new_edges;
+	    if !debug_sct then
+	      eprintf "\tcompose: %a * %a = %a "
+		print_call (i,j,c,a)
+		print_call (j,k,c',a')
+		print_call (i,k,c'',a'');
+	  ) t) t'
+	end else
+	  if !debug_sct then eprintf "\tedge %a is old\n%!" print_call (i,j,c,a);
 	fn ()
     in
     fn ();
     if !debug_sct || summary then
-      eprintf "sct passed (%5d edges added, %6d tested)\t%!" !added !tested;
+      eprintf "sct passed (%5d edges added, %6d composed)\t%!" !added !composed;
     true
   with Exit ->
     if !debug_sct then eprintf "looping idempotent call!\n%!";
     if !debug_sct || summary then
-      eprintf "sct failed (%5d edges added, %6d tested)\t%!" !added !tested;
+      eprintf "sct failed (%5d edges added, %6d composed)\t%!" !added !composed;
     false
