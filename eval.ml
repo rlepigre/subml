@@ -10,11 +10,13 @@ let rec eval : term -> term = fun t0 ->
   | Appl(t,u) ->
       begin
         let u' = eval u in
-        let t' = eval t in
-        match t'.elt with
-        | LAbs(_,b) -> eval (subst b u')
-        | FixY(f)   -> eval (dummy_pos (Appl(f, dummy_pos (Appl(t',u')))))
-        | t         -> dummy_pos (Appl(t',u'))
+        let rec fn t =
+	  let t' = eval t in
+	  match t'.elt with
+          | LAbs(_,b) -> eval (subst b u')
+          | FixY(_,f) -> fn (subst f t')
+          | t         -> dummy_pos (Appl(t',u'))
+	in fn t
       end
   | Reco(l)   -> in_pos t0.pos (Reco (List.map (fun (s,t) -> (s, eval t)) l))
   | Proj(t,l) ->

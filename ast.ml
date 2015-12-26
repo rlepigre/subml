@@ -113,7 +113,7 @@ and term' =
   (* Print a string (side effect) and behave like the term. *)
   | Prnt of string
   (* Fixpoint combinator. *)
-  | FixY of term
+  | FixY of kind option * (term,term) binder
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
@@ -218,7 +218,8 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     match (t1.elt, t2.elt) with
     | (Coer(t1,_) , Coer(t2,_) ) -> eq_term t1 t2
     | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
-    | (LAbs(_,f1) , LAbs(_,f2) ) -> eq_tbinder f1 f2
+    | (LAbs(_,f1) , LAbs(_,f2) )
+    | (FixY(_,f1) , FixY(_,f2) ) -> eq_tbinder f1 f2
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_term t1 t2 && eq_term u1 u2
     | (Reco(fs1)  , Reco(fs2)  ) -> eq_assoc eq_term fs1 fs2
     | (Proj(t1,l1), Proj(t2,l2)) -> l1 = l2 && eq_term t1 t2
@@ -226,7 +227,6 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
     | (VDef(d1)   , VDef(d2)   ) -> eq_term d1.value d2.value
     | (Prnt(s1)   , Prnt(s2)   ) -> s1 = s2
-    | (FixY(t1)   , FixY(t2)   ) -> eq_term t1 t2
     | (Cnst(c1)   , Cnst(c2)   ) ->
         let (f1,a1,b1) = c1 and (f2,a2,b2) = c2 in
         eq_tbinder f1 f2 && eq_kind c a1 a2 && eq_kind c b1 b2
@@ -422,8 +422,8 @@ let vdef_p : pos -> value_def -> term =
 let prnt_p : pos -> string -> term =
   fun p s -> in_pos p (Prnt(s))
 
-let fixy_p : pos -> term -> term =
-  fun p t -> in_pos p (FixY(t))
+let fixy_p : pos -> kind option -> (term, term) binder -> term =
+  fun p ko t -> in_pos p (FixY(ko,t))
 
 let cnst_p : pos -> ((term, term) binder * kind * kind) -> term =
   fun p c -> in_pos p (Cnst(c))
@@ -470,8 +470,8 @@ let vdef : pos -> value_def -> tbox =
 let prnt : pos -> string -> tbox =
   fun p s -> box (prnt_p p s)
 
-let fixy : pos -> tbox -> tbox =
-  fun p t -> box_apply (fixy_p p) t
+let fixy : pos -> kbox option -> strpos -> (tbox -> tbox) -> tbox =
+  fun p ko x f -> box_apply2 (fixy_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
 
 (* Build a constant. Useful during typing. *)
 let cnst : (term, term) binder -> kind -> kind -> term =
@@ -531,8 +531,8 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Cnst(t,k1,k2) -> aux2 (aux InEps (aux InEps acc k1) k2) (subst t (dummy_pos (Reco [])))
     | Coer(t,_)
     | Proj(t,_)
-    | Cons(_,t)
-    | FixY(t)       -> aux2 acc t
+    | Cons(_,t)     -> aux2 acc t
+    | FixY(_,f)
     | LAbs(_,f)     -> aux2 acc (subst f (dummy_pos (Reco [])))
     | Appl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | Reco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l

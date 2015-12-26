@@ -88,7 +88,7 @@ and pterm' =
   | PProj of pterm * string
   | PCase of pterm * (string * (strpos * pkind option) option * pterm) list
   | PReco of (string * pterm) list
-  | PFixY of pterm
+  | PFixY of (strpos * pkind option) * pterm
 
 (* t ; u => (fun (x : unit) -> u) t *)
 let sequence pos t u =
@@ -205,8 +205,8 @@ let parser term p =
       in_pos _loc (PCoer(t,k))
   | id:lident when p = TAtom ->
       in_pos _loc (PLVar(id))
-  | fix_kw u:(term TFunc) when p = TFunc ->
-      in_pos _loc (PFixY(u))
+  | fix_kw x:var dot u:(term TFunc) when p = TFunc ->
+      in_pos _loc (PFixY(x,u))
 
   | "(" t:(term TFunc) ")" when p = TAtom
   | t:(term TAtom) when p = TAppl
@@ -350,8 +350,14 @@ let unsugar_term : (string * tbox) list -> pterm ->
         case pt.pos (unsugar env t) (List.map f cs)
     | PReco(fs) ->
         reco pt.pos (List.map (fun (l,t) -> (l, unsugar env t)) fs)
-    | PFixY(t) ->
-        fixy pt.pos (unsugar env t)
+    | PFixY((x,ko),t) ->
+       let ko =
+         match ko with
+         | None   -> None
+         | Some k -> Some (unsugar_kind [] k)
+       in
+       let f xt = unsugar ((x.elt,xt)::env) t in
+       fixy pt.pos ko x f
   in
   let t = unsugar env pt in
   (t, !unbound)
@@ -465,7 +471,7 @@ let parser command =
   | val_kw r:rec_kw? tex:latex_name? id:lident ":" k:kind "=" t:term ->
        let t =
 	 if r = None then t
-	 else in_pos _loc_t (PFixY(in_pos _loc_t (PLAbs([in_pos _loc_id id, None], t)))) in
+	 else in_pos _loc_t (PFixY((in_pos _loc_id id, Some k), t)) in
        let (t, unbs) = unsugar_term [] t in
         if unbs <> [] then
           begin

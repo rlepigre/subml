@@ -183,8 +183,16 @@ and print_term unfold lvl ff t =
       pp_print_string ff v.tex_name
   | Prnt(s) ->
       fprintf ff "print(%S)" s
-  | FixY(t) ->
-     fprintf ff "Y %a" (print_term 2) t
+  | FixY(ko,f) ->
+     if lvl > 0 then pp_print_string ff "(";
+      let x = binder_name f in
+      let t = subst f (free_of (new_lvar' x)) in
+      begin
+        match ko with
+        | None   -> fprintf ff "Y %s . %a" x (print_term 0) t
+        | Some a -> fprintf ff "Y(%s : %a) . %a" x pkind a (print_term 0) t
+      end;
+     if lvl > 0 then pp_print_string ff ")";
   | Cnst(f,a,b) ->
      let name, index =
        try

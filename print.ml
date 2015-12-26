@@ -175,8 +175,14 @@ and print_term unfold ff t =
        pp_print_string ff v.name
   | Prnt(s) ->
       fprintf ff "print(%S)" s
-  | FixY(t) ->
-      fprintf ff "fix %a" print_term t
+  | FixY(ko,f) ->
+      let x = binder_name f in
+      let t = subst f (free_of (new_lvar' x)) in
+      begin
+        match ko with
+        | None   -> fprintf ff "fix %s → %a" x print_term t
+        | Some a -> fprintf ff "fix(%s : %a) → %a" x pkind a print_term t
+      end
   | Cnst(f,a,b) ->
      let name, index =
        try
