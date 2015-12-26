@@ -10,7 +10,6 @@ type latex_output =
   | List of latex_output list
   | SProof of sub_proof
   | TProof of typ_proof
-  | Ordinals
 
 let rec to_string = function
   | Text t -> t
@@ -78,4 +77,3 @@ let rec output ch = function
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof p       -> print_subtyping_proof ch p
   | TProof p       -> print_typing_proof ch p
-  | Ordinals       -> print_reset_ordinals ch

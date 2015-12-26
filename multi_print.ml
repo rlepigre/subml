@@ -21,9 +21,4 @@ let print_ordinal ch =
   | Ascii -> Print.print_ordinal ch
   | Latex -> Latex.print_ordinal ch
 
-let print_reset_ordinals ch =
-  match !print_mode with
-  | Ascii -> Print.print_reset_ordinals ch
-  | Latex -> Latex.print_reset_ordinals ch
-
 let reset_ordinals = Print.reset_ordinals

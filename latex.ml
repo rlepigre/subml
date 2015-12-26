@@ -8,52 +8,54 @@ open Print
  *                           Printing of a type                             *
  ****************************************************************************)
 
-
 let rec print_ordinal unfold ff o =
   let o = onorm o in
   match o with
-  | ODumm        -> pp_print_string ff "\\alpha"
-  | OConv        -> pp_print_string ff "\\infty"
-  | OTag i       -> fprintf ff "?%i" i
+  | ODumm      -> pp_print_string ff "\\alpha"
+  | OConv      -> pp_print_string ff "\\infty"
+  | OTag i     -> fprintf ff "?%i" i
   | _ ->
-  if unfold && not (is_OInd o) then match o with
-  | OLess(o,t,k) ->
-    fprintf ff "\\epsilon_{\\alpha < %a}(%a %a)" (print_ordinal false) o (print_term unfold 0) t print_ord_cstr k
-  | _ -> assert false
-  else
-    let n =
-      try
-	let rec fn = function
-	  | [] -> raise Not_found
-	  | (o',n)::l -> if eq_ordinal o' o then n else fn l
-	in
-	fn !ordinal_tbl
-      with
-	Not_found ->
-	  let n = !ordinal_count in incr ordinal_count;
-	  ordinal_tbl := (o,n)::!ordinal_tbl; n
-    in
-    fprintf ff "\\kappa_{%d}" n
-
-and print_reset_ordinals ff =
-  List.iter (fun (o,n) ->
-    if not (is_OInd o) then
-      fprintf ff "  \\kappa_{%d} &= %a\\\\\n%!" n (print_ordinal true) o) !ordinal_tbl;
-  reset_ordinals ()
-
-and print_ord_cstr ff k =
-  match k with
-  | In k -> fprintf ff "\\in %a" (print_kind false false) (subst k ODumm)
-  | NotIn k -> fprintf ff "\\notin %a" (print_kind false false) (subst k ODumm)
+     let n =
+       try
+	 let rec fn = function
+	   | [] -> raise Not_found
+	   | (o',n)::l -> if eq_ordinal o' o then n else fn l
+	 in
+	 fn !ordinal_tbl
+       with
+	 Not_found ->
+	   let n = !ordinal_count in incr ordinal_count;
+	   ordinal_tbl := (o,n)::!ordinal_tbl; n
+     in
+     match o with
+     | OLess(_,o,_) when unfold ->
+	fprintf ff "\\alpha_{%d{<}%a}" n (print_ordinal false) o
+     | OInd(_,o,_) when unfold && !show_leq ->
+	fprintf ff "\\alpha_{%d{\\leq}%a}" n (print_ordinal false) o
+     | OInd(_,o,_) | OLess(_,o,_) -> fprintf ff "\\alpha_{%d}" n
+     | _ -> assert false
 
 and print_index_ordinal ff o = match onorm o with
   | OConv -> ()
-  | o -> fprintf ff "_{%a}" (print_ordinal false) o
+  | o -> fprintf ff "_{%a}" (print_ordinal true) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pkindw = print_kind unfold true in
-  match repr t with
+  let t = repr t in
+  let key, ords = decompose Both t in
+  try
+    if unfold then raise Not_found;
+    let d = find_tdef key in
+    if msubst d.tdef_value [||] == t then raise Not_found;
+    let ords = List.filter (fun o -> onorm o <> OConv) ords in
+    match ords with
+      [] -> fprintf ff "%s" d.tdef_name
+    | _ -> fprintf ff "%s_{%a}" d.tdef_name
+       (fun ff l -> List.iteri (fun i o -> fprintf ff "%s%a" (if i <> 0 then "," else "")
+	 (print_ordinal true) o) l) ords
+  with Not_found ->
+  match t with
   | TVar(x) ->
       pp_print_string ff (name_of x)
   | Func(a,b) ->
@@ -203,8 +205,4 @@ let print_kind_def unfold ch kd =
 
 let print_ordinal ch o =
   let ff = formatter_of_out_channel ch in
-  print_ordinal false ff o; pp_print_flush ff (); flush ch
-
-let print_reset_ordinals ch =
-  let ff = formatter_of_out_channel ch in
-  print_reset_ordinals ff; pp_print_flush ff (); flush ch
+  print_ordinal true ff o; pp_print_flush ff (); flush ch

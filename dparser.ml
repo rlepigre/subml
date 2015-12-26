@@ -402,7 +402,6 @@ let parser opt_flag =
 let read_file = ref (fun _ -> assert false)
 
 let parser latex_atom =
-  | "#ORDINALS#" -> Latex_trace.Ordinals
   | "#" u:"!"? k:kind "#" -> Latex_trace.Kind (u<>None, unbox (unsugar_kind [] k))
   | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (fst (unsugar_term [] t)))
   | t:''[^}{@#]+''        -> Latex_trace.Text t

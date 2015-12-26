@@ -17,10 +17,8 @@ let ignored_ordinals = ref []
 
 let rec onorm o =
   if List.memq o !ignored_ordinals then
-    match o with OLess(o',_,_) | OInd(_,o') -> onorm o' | _ -> assert false
+    match o with OLess(_,o',_) | OInd(_,o',_) -> onorm o' | _ -> assert false
   else o
-
-let is_OInd = function OInd _ -> true | _ -> false
 
 (* managment of a table to name ordinals when printing *)
 let ordinal_tbl = ref []
@@ -33,6 +31,7 @@ let reset_ordinals () =
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
+let show_leq = ref false
 
 let rec print_ordinal unfold ff o =
   let o = onorm o in
@@ -41,11 +40,6 @@ let rec print_ordinal unfold ff o =
   | OConv        -> pp_print_string ff "∞"
   | OTag i       -> fprintf ff "?%i" i
   | _ ->
-  if unfold  && not (is_OInd o) then match o with
-  | OLess(o,t,k) ->
-    fprintf ff "ε(< %a, %a in %a)" (print_ordinal false) o (print_term unfold) t print_ord_cstr k
-  | _ -> assert false
-  else
     let n =
       try
 	List.assq o !ordinal_tbl
@@ -54,22 +48,17 @@ let rec print_ordinal unfold ff o =
 	  let n = !ordinal_count in incr ordinal_count;
 	  ordinal_tbl := (o,n)::!ordinal_tbl; n
     in
-    fprintf ff "ε%d" n
-
-and print_reset_ordinals ff =
-  List.iter (fun (o,n) ->
-    if not (is_OInd o) then
-      fprintf ff "  ε%d = %a\n%!" n (print_ordinal true) o) !ordinal_tbl;
-  reset_ordinals ()
-
-and print_ord_cstr ff k =
-  match k with
-  | In k -> fprintf ff "∈ %a" (print_kind false false) (subst k ODumm)
-  | NotIn k -> fprintf ff "∉ %a" (print_kind false false) (subst k ODumm)
+    match o with
+    | OLess(_,o,_) when unfold ->
+       fprintf ff "α(%d<%a)" n (print_ordinal false) o
+    | OInd(_,o,_) when unfold && !show_leq && onorm o <> OConv ->
+       fprintf ff "α(%d≤%a)" n (print_ordinal false) o
+    | OInd(_,o,_) | OLess(_,o,_) -> fprintf ff "α%d" n
+    | _ -> assert false
 
 and print_index_ordinal ff = function
   | OConv -> ()
-  | o -> fprintf ff "[%a]" (print_ordinal false) o
+  | o -> fprintf ff "[%a]" (print_ordinal true) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
@@ -202,8 +191,4 @@ let print_kind_def unfold ch kd =
 
 let print_ordinal ch o =
   let ff = formatter_of_out_channel ch in
-  print_ordinal false ff o; pp_print_flush ff (); flush ch
-
-let print_reset_ordinals ch =
-  let ff = formatter_of_out_channel ch in
-  print_reset_ordinals ff; pp_print_flush ff (); flush ch
+  print_ordinal true ff o; pp_print_flush ff (); flush ch

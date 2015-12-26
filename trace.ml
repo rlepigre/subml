@@ -80,4 +80,4 @@ let trace_backtrace () =
       fn l
     | [] -> ()
   in
-  fn !trace_state; print_reset_ordinals stderr; trace_state := []
+  fn !trace_state; reset_ordinals (); trace_state := []

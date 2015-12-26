@@ -141,12 +141,13 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
   fun t ctxt a b ->
     match (a, b) with
     | (FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _) ->
-       let (a', os1) = decompose false a in
-       let (b', os2) = decompose true b in
+       let (a', os1) = decompose Neg a in
+       let (b', os2) = decompose Pos b in
        let os' = os1 @ os2 in
        let os' = Array.of_list os' in
-       let os1 = List.map new_OInd os1 in
-       let os2 = List.map new_OInd os2 in
+       let j = (t,a,b) in
+       let os1 = List.map (new_OInd j) os1 in
+       let os2 = List.map (new_OInd j) os2 in
        let los = os1 @ os2 in
        let os = Array.of_list los in
        let fnum = new_function (Array.length os) in
@@ -242,14 +243,14 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
 
      (* μ and ν - least and greatest fixpoint. *)
     | (_          , FixN(o,f)) ->
-       let o' = OLess(o, t, NotIn(binder_from_fun "a" 0 (fun o -> FixN(o, f)))) in
+       let o' = new_OLess (t,a,b) o in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixN(o', f) in
        subtype ctxt t a (subst f cst);
        trace_sub_pop NNuRight
 
     | (FixM(o,f)  , _        ) ->
-       let o' = OLess(o, t, In(binder_from_fun "a" 0 (fun o -> FixM(o, f)))) in
+       let o' = new_OLess (t,a,b) o in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixM(o', f) in
        subtype ctxt t (subst f cst) b;

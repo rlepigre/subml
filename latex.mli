@@ -14,5 +14,3 @@ are unfolded, otherwise the name of the defined type is used instead. *)
 val print_kind_def : bool -> out_channel -> type_def -> unit
 
 val print_ordinal : out_channel -> ordinal -> unit
-
-val print_reset_ordinals : out_channel -> unit

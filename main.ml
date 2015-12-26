@@ -14,6 +14,7 @@ let spec =
     ("--debug", Arg.Set Typing.debug, "Activate verbose mode");
     ("--no-contraction", Arg.Clear Ast.contract_mu, "Activate verbose mode");
     ("--debug-sct", Arg.Set Sct.debug_sct, "Activate sct verbose mode");
+    ("--show-leq", Arg.Set Print.show_leq, "Print inductive ordinals with <= constraints");
     ("--tex-file", Arg.String (fun s -> open_latex s), "Choose tex file output");
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
