@@ -49,8 +49,8 @@ and print_kind unfold wrap ff t =
     let d = find_tdef key in
     let ords = List.filter (fun o -> onorm o <> OConv) ords in
     match ords with
-      [] -> fprintf ff "%s" d.tdef_tex_name
-    | _ -> fprintf ff "%s_{%a}" d.tdef_tex_name
+    | [] -> fprintf ff "%s" d.tdef_tex_name
+    | _  -> fprintf ff "%s_{%a}" d.tdef_tex_name
        (fun ff l -> List.iteri (fun i o -> fprintf ff "%s%a" (if i <> 0 then "," else "")
 	 (print_ordinal true) o) l) ords
   with Not_found ->

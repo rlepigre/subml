@@ -72,7 +72,7 @@ let lower_kind k1 k2 =
   let new_int () = incr i; TInt !i in
   let rec lower_kind k1 k2 =
     if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;
-    match (repr k1, repr k2) with
+    match (full_repr k1, full_repr k2) with
     | (k1          , k2          ) when k1 == k2 -> true
     | (TVar(_)     , TVar(_)     ) -> assert false
     | (Func(a1,b1) , Func(a2,b2) ) -> lower_kind a2 a1 && lower_kind b1 b2
@@ -94,8 +94,6 @@ let lower_kind k1 k2 =
     | (FixN(oa,fa) , FixN(ob,fb) ) ->
        leq_ordinal ob oa && (fa == fb ||
 			       let i = new_int () in lower_kind (subst fa i) (subst fb i))
-    | (TDef(da,aa) , TDef(db,ab) ) ->
-       lower_kind (msubst da.tdef_value aa) (msubst db.tdef_value ab)
     | (UCst(ca)    , UCst(cb)    ) ->
        let i = new_int () in
        let a = subst ca.qcst_wit_kind i in
@@ -184,7 +182,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
        trace_sub_pop NRefl
     else begin
     let (ctxt, a, b, cmps) = check_rec t ctxt (full_repr a) (full_repr b) in
-    let _ = trace_subtyping t a0 b0 in
+    let _ = trace_subtyping t a b in
     begin match (a,b) with
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->

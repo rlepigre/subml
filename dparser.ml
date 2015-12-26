@@ -434,6 +434,8 @@ let parser latex_name_aux =
 
 and latex_name = "{" t:latex_name_aux* "}" -> Latex_trace.to_string (Latex_trace.List t)
 
+let ignore_latex = ref false
+
 let parser command =
   (* Type definition command. *)
   | type_kw tex:latex_name? (name,args,k):kind_def ->
@@ -530,10 +532,13 @@ let parser command =
 
         end
   | latex_kw t:latex_text ->
-     Latex_trace.output !latex_ch t
+     if not !ignore_latex then Latex_trace.output !latex_ch t
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
-      !read_file fn
+     let save = !ignore_latex in
+     ignore_latex := true;
+     !read_file fn;
+     ignore_latex := save
   (* Set a flag. *)
   | _:set_kw f:opt_flag
 
