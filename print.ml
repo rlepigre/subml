@@ -20,9 +20,14 @@ let rec onorm o =
     match o with OLess(_,o',_) | OInd(_,o',_) -> onorm o' | _ -> assert false
   else o
 
-(* managment of a table to name ordinals when printing *)
+(* managment of a table to name ordinals and epsilon when printing *)
 let ordinal_tbl = ref []
 let ordinal_count = ref 0
+
+let epsilon_term_table = ref[]
+let epsilon_term_count = ref 0
+
+let print_term_in_subtyping = ref false
 
 let reset_ordinals () =
   ordinal_count := 0;
@@ -81,7 +86,7 @@ and print_kind unfold wrap ff t =
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
   | Exis(f)  ->
       let x = new_tvar (binder_name f) in
-      fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
+      fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
   | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
@@ -98,10 +103,14 @@ and print_kind unfold wrap ff t =
           pp_print_string ff td.tdef_name
         else
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
-  | UCst(_) ->
-      pp_print_string ff "ε∀"
-  | ECst(_) ->
-      pp_print_string ff "ε∃"
+  | UCst(f) ->
+     let x = new_tvar (binder_name f.qcst_wit_kind) in
+     let a = subst f.qcst_wit_kind (free_of x) in
+     fprintf ff "ϵ_%s(%a ∉ %a)" (name_of x) (print_term false) f.qcst_wit_term pkind a
+  | ECst(f) ->
+     let x = new_tvar (binder_name f.qcst_wit_kind) in
+     let a = subst f.qcst_wit_kind (free_of x) in
+     fprintf ff "ϵ_%s(%a ∈ %a)" (name_of x) (print_term false) f.qcst_wit_term pkind a
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(n) ->
@@ -168,8 +177,23 @@ and print_term unfold ff t =
       fprintf ff "print(%S)" s
   | FixY(t) ->
       fprintf ff "fix %a" print_term t
-  | Cnst(_) ->
-      pp_print_string ff "ε"
+  | Cnst(f,a,b) ->
+     let name, index =
+       try
+	 let (name,index,_,_) = List.assq f !epsilon_term_table in
+	 (name, index)
+       with not_found ->
+	 let base = binder_name f in
+	 let max = List.fold_left
+	   (fun acc (_,(base',i,a,b)) -> if base = base' then max acc i else acc) (-1) !epsilon_term_table
+	 in
+	 let index = max + 1 in
+	 epsilon_term_table := (f,(base,index,a,b)) :: !epsilon_term_table;
+	 (base, index)
+     in
+     fprintf ff "%s_%d" name index
+
+
   | TagI(i) ->
       fprintf ff "TAG(%i)" i
 
@@ -193,14 +217,20 @@ let print_ordinal ch o =
   let ff = formatter_of_out_channel ch in
   print_ordinal true ff o; pp_print_flush ff (); flush ch
 
+let print_witnesses ch =
+  List.iter (fun (f,(name,index,a,b)) ->
+    let x = new_lvar dummy_position (binder_name f) in
+    let t = subst f (free_of x) in
+    Printf.fprintf ch "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)" name index
+      (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_table
+
 exception Find_tdef of type_def
 
 let find_tdef : kind -> type_def = fun t ->
   try
     Hashtbl.iter (fun _ d ->
-      Printf.eprintf "testing %a = %a\n%!" (print_kind false) (msubst d.tdef_value [||]) (print_kind false) t;
       if d.tdef_arity = 0 && eq_kind (msubst d.tdef_value [||]) t then
-	(Printf.eprintf "OK\n%!"; raise (Find_tdef d))) typ_env;
+	raise (Find_tdef d)) typ_env;
     raise Not_found
   with
     Find_tdef(t) -> t

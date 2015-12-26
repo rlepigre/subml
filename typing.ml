@@ -85,7 +85,7 @@ let lower_kind k1 k2 =
     | (FAll(a)     , FAll(b)     ) ->
        let i = new_int () in
        lower_kind (subst a i) (subst b i)
-    | (Exis(a)     , FAll(b)     ) ->
+    | (Exis(a)     , Exis(b)     ) ->
        let i = new_int () in
        lower_kind (subst a i) (subst b i)
     | (FixM(oa,fa) , FixM(ob,fb) ) ->
@@ -174,9 +174,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
        (ctxt, a, b, None)
 
 let subtype : term -> kind -> kind -> unit = fun t a b ->
-  let rec subtype ctxt t a b =
-    let a = repr a in
-    let b = repr b in
+  let rec subtype ctxt t a0 b0 =
+    let a = repr a0 in
+    let b = repr b0 in
     if !debug then Printf.eprintf "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
      if a == b || lower_kind a b then
@@ -184,7 +184,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
        trace_sub_pop NRefl
     else begin
     let (ctxt, a, b, cmps) = check_rec t ctxt (full_repr a) (full_repr b) in
-    let _ = trace_subtyping t a b in
+    let _ = trace_subtyping t a0 b0 in
     begin match (a,b) with
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
@@ -224,12 +224,14 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
        let b' = subst f (new_ucst t f) in
-       subtype ctxt t a b';
+       let a' = if eq_kind a a0 then a0 else a in
+       subtype ctxt t a' b';
        trace_sub_pop NAllRight
 
     | (FAll(f)  , _        ) ->
-        subtype ctxt t (subst f (new_uvar ())) b;
-      trace_sub_pop NAllLeft
+       let b' = if eq_kind b b0 then b0 else b in
+       subtype ctxt t (subst f (new_uvar ())) b';
+       trace_sub_pop NAllLeft
 
     (* Existantial quantifier. *)
     | (Exis(f)  , _        ) ->

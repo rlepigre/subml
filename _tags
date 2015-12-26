@@ -1,3 +1,4 @@
 <*.ml>        : package(compiler-libs,bindlib,decap,decap.ocaml)
+<*.mli>       : package(compiler-libs,bindlib,decap,decap.ocaml)
 "dparser.ml"  : pp(pa_ocaml)
 "main.byte" or "main.native" : package(compiler-libs,bindlib,decap,decap.ocaml)

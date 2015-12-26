@@ -40,8 +40,8 @@ and print_index_ordinal ff o = match onorm o with
   | o -> fprintf ff "_{%a}" (print_ordinal true) o
 
 and print_kind unfold wrap ff t =
-  let pkind = print_kind unfold false in
-  let pkindw = print_kind unfold true in
+  let pkind = print_kind false false in
+  let pkindw = print_kind false true in
   let t = repr t in
   let key, ords = decompose Both t in
   try
@@ -95,16 +95,20 @@ and print_kind unfold wrap ff t =
       if wrap then pp_print_string ff ")"
   | TDef(td,args) ->
       if unfold then
-        print_kind false wrap ff (msubst td.tdef_value args)
+        print_kind unfold wrap ff (msubst td.tdef_value args)
       else
         if Array.length args = 0 then
           pp_print_string ff td.tdef_tex_name
         else
           fprintf ff "%s(%a)" td.tdef_tex_name (print_array pkind ", ") args
-  | UCst(_) ->
-      pp_print_string ff "\\vapepsilon_\\forall"
-  | ECst(_) ->
-      pp_print_string ff "\\vapepsilon_\\exists"
+  | UCst(f) ->
+     let x = new_tvar (binder_name f.qcst_wit_kind) in
+     let a = subst f.qcst_wit_kind (free_of x) in
+     fprintf ff "\\epsilon_%s(%a \\notin %a)" (name_of x) (print_term false 0) f.qcst_wit_term pkind a
+  | ECst(f) ->
+     let x = new_tvar (binder_name f.qcst_wit_kind) in
+     let a = subst f.qcst_wit_kind (free_of x) in
+     fprintf ff "\\epsilon_%s(%a \\notin %a)" (name_of x) (print_term false 0) f.qcst_wit_term pkind a
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(_) -> assert false
@@ -181,8 +185,21 @@ and print_term unfold lvl ff t =
       fprintf ff "print(%S)" s
   | FixY(t) ->
      fprintf ff "Y %a" (print_term 2) t
-  | Cnst(_) ->
-      pp_print_string ff "\\varepsilon"
+  | Cnst(f,a,b) ->
+     let name, index =
+       try
+	 let (name,index,_,_) = List.assq f !epsilon_term_table in
+	 (name, index)
+       with not_found ->
+	 let base = binder_name f in
+	 let max = List.fold_left
+	   (fun acc (_,(base',i,_,_)) -> if base = base' then max acc i else acc) (-1) !epsilon_term_table
+	 in
+	 let index = max + 1 in
+	 epsilon_term_table := (f,(base,index,a,b)) :: !epsilon_term_table;
+	 (base, index)
+     in
+     fprintf ff "%s_{%d}" name index
   | TagI(i) ->
       fprintf ff "TAG(%i)" i
 
@@ -205,3 +222,10 @@ let print_kind_def unfold ch kd =
 let print_ordinal ch o =
   let ff = formatter_of_out_channel ch in
   print_ordinal true ff o; pp_print_flush ff (); flush ch
+
+let print_witnesses ch =
+  List.iter (fun (f,(name,index,a,b)) ->
+    let x = new_lvar dummy_position (binder_name f) in
+    let t = subst f (free_of x) in
+    Printf.fprintf ch "%s_%d &= \\epsilon_{%s \\in %a}( %a \\notin %a)\\\\" name index
+      (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_table

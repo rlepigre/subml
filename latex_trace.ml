@@ -10,6 +10,7 @@ type latex_output =
   | List of latex_output list
   | SProof of sub_proof
   | TProof of typ_proof
+  | Witnesses
 
 let rec to_string = function
   | Text t -> t
@@ -52,8 +53,12 @@ let print_subtyping_proof, print_typing_proof =
       | 3 -> "\\TernaryInfC"
       | _ -> assert false
     in
-    Printf.fprintf ch "\\RightLabel{$%a$}%s{$%a \\subset %a$}\n%!" print_rule_name rn cmd
-      (print_kind false) p.left (print_kind false) p.right
+    if !print_term_in_subtyping then
+      Printf.fprintf ch "\\RightLabel{$%a$}%s{$%a \\in %a \\subset %a$}\n%!" print_rule_name rn cmd
+	(print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right
+    else
+      Printf.fprintf ch "\\RightLabel{$%a$}%s{$%a \\subset %a$}\n%!" print_rule_name rn cmd
+	(print_kind false) p.left (print_kind false) p.right
             (*Printf.fprintf ch "%s{$%a \\in %a \\subset %a$}\n%!" cmd
 	      (print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right*)
 
@@ -81,3 +86,4 @@ let rec output ch = function
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof p       -> print_subtyping_proof ch p
   | TProof p       -> print_typing_proof ch p
+  | Witnesses      -> print_witnesses ch; Print.epsilon_term_table := []

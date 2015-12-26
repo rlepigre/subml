@@ -157,7 +157,7 @@ let parser kind p =
   | hole when p = KAtom
       -> in_pos _loc PHole
 
-  | "(" a:(kind KFunc) ")" when p = KAtom
+  | "(" a:(kind KQuant) ")" when p = KAtom
   | a:(kind KAtom) when p = KFunc
   | a:(kind KFunc)  when p = KQuant
 
@@ -266,19 +266,19 @@ let unsugar_kind : (string * kbox) list -> pkind -> kbox =
             end
         end
     | PFAll(x,k) ->
-        let f xk = unsugar ((x,box_of_var xk) :: env) k in
-        fall x f
+       let f xk = unsugar ((x,box_of_var xk) :: env) k in
+       fall x f
     | PExis(x,k) ->
-        let f xk = unsugar ((x,box_of_var xk) :: env) k in
-        exis x f
+       let f xk = unsugar ((x,box_of_var xk) :: env) k in
+       exis x f
     | PMu(x,k) ->
-        fixm x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
+       fixm x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
     | PNu(x,k) ->
-        fixn x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
+       fixn x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
     | PProd(fs)  ->
-        prod (List.map (fun (l,k) -> (l, unsugar env k)) fs)
+       prod (List.map (fun (l,k) -> (l, unsugar env k)) fs)
     | PSum(cs)   ->
-        dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
+       dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
     | PHole      -> box (new_uvar ())
   and unsugar_top env ko =
     match ko with
@@ -398,10 +398,12 @@ let parser opt_flag =
   | "verbose" b:enabled -> verbose := b
   | "latex" b:enabled -> Multi_print.print_mode := if b then Latex else Ascii
   | "texfile" fn:string_lit -> open_latex fn
+  | "print_term_in_subtyping" b:enabled -> Print.print_term_in_subtyping := b
 
 let read_file = ref (fun _ -> assert false)
 
 let parser latex_atom =
+  | "#" "witnesses" "#"     -> Latex_trace.Witnesses
   | "#" u:"!"? k:kind "#" -> Latex_trace.Kind (u<>None, unbox (unsugar_kind [] k))
   | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (fst (unsugar_term [] t)))
   | t:''[^}{@#]+''        -> Latex_trace.Text t
@@ -438,7 +440,7 @@ let parser command =
         let b = mbind mk_free_tvar arg_names f in
         let td =
           { tdef_name  = name
-	  ; tdef_tex_name = (match tex with None -> "\\hbox{"^name^"}" | Some s -> s)
+	  ; tdef_tex_name = (match tex with None -> "\\mathrm{"^name^"}" | Some s -> s)
           ; tdef_arity = Array.length arg_names
           ; tdef_value = unbox b }
         in
@@ -485,7 +487,7 @@ let parser command =
         let t = eval t in
         Hashtbl.add val_env id
 	  { name = id
-	  ; tex_name = (match tex with None -> "\\hbox{"^id^"}" | Some s -> s)
+	  ; tex_name = (match tex with None -> "\\mathrm{"^id^"}" | Some s -> s)
 	  ; value = t
 	  ; ttype = k
 	  ; proof = prf
