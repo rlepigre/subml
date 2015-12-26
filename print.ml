@@ -192,3 +192,15 @@ let print_kind_def unfold ch kd =
 let print_ordinal ch o =
   let ff = formatter_of_out_channel ch in
   print_ordinal true ff o; pp_print_flush ff (); flush ch
+
+exception Find_tdef of type_def
+
+let find_tdef : kind -> type_def = fun t ->
+  try
+    Hashtbl.iter (fun _ d ->
+      Printf.eprintf "testing %a = %a\n%!" (print_kind false) (msubst d.tdef_value [||]) (print_kind false) t;
+      if d.tdef_arity = 0 && eq_kind (msubst d.tdef_value [||]) t then
+	(Printf.eprintf "OK\n%!"; raise (Find_tdef d))) typ_env;
+    raise Not_found
+  with
+    Find_tdef(t) -> t

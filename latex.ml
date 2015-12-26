@@ -47,11 +47,10 @@ and print_kind unfold wrap ff t =
   try
     if unfold then raise Not_found;
     let d = find_tdef key in
-    if msubst d.tdef_value [||] == t then raise Not_found;
     let ords = List.filter (fun o -> onorm o <> OConv) ords in
     match ords with
-      [] -> fprintf ff "%s" d.tdef_name
-    | _ -> fprintf ff "%s_{%a}" d.tdef_name
+      [] -> fprintf ff "%s" d.tdef_tex_name
+    | _ -> fprintf ff "%s_{%a}" d.tdef_tex_name
        (fun ff l -> List.iteri (fun i o -> fprintf ff "%s%a" (if i <> 0 then "," else "")
 	 (print_ordinal true) o) l) ords
   with Not_found ->
@@ -112,7 +111,7 @@ and print_kind unfold wrap ff t =
 
 
 and pkind_def unfold ff kd =
-  pp_print_string ff kd.tdef_name;
+  pp_print_string ff kd.tdef_tex_name;
   let names = mbinder_names kd.tdef_value in
   let xs = new_mvar mk_free_tvar names in
   let k = msubst kd.tdef_value (Array.map free_of xs) in

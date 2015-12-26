@@ -30,14 +30,20 @@ let print_rule_name ff rn =
   | NExistsLeft -> fprintf ff "\\exists_l"
   | NExistsRight -> fprintf ff "\\exists_r"
   | NMuLeft -> fprintf ff "\\mu_l"
-  | NMuRight -> fprintf ff "\\mu_r"
-  | NNuLeft -> fprintf ff "\\nu_l"
+  | NMuLeftInf -> fprintf ff "\\mu_l^\\infty"
+  | NMuRightInf -> fprintf ff "\\mu_r^\\infty"
+  | NNuLeftInf -> fprintf ff "\\nu_l^\\infty"
   | NNuRight -> fprintf ff "\\nu_r"
+  | NNuRightInf -> fprintf ff "\\nu_r^\\infty"
   | NUnknown -> fprintf ff "?"
 
 let print_subtyping_proof, print_typing_proof =
   let rec fn ch (p:sub_proof) =
     let rn, strees = Print_trace.filter_rule p in
+    let strees =
+      let r = List.filter (fun p -> not (eq_kind p.left p.right)) strees in
+      if r = [] then strees else r
+    in
     List.iter (fn ch) strees;
     let cmd = match List.length strees with
       | 0 -> "\\AxiomC{}\n\\UnaryInfC"
@@ -52,17 +58,15 @@ let print_subtyping_proof, print_typing_proof =
 	      (print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right*)
 
   and gn ch (p:typ_proof) =
-    let subs =
-      (*List.filter (fun p -> not (lower_kind p.left p.right))*) p.strees
-    in
-    let cmd = match List.length subs + List.length p.ttrees with
+    let strees = List.filter (fun p -> not (eq_kind p.left p.right)) p.strees in
+    let cmd = match List.length strees + List.length p.ttrees with
       | 0 -> "\\AxiomC{}\n\\UnaryInfC"
       | 1 -> "\\UnaryInfC"
       | 2 -> "\\BinaryInfC"
       | 3 -> "\\TernaryInfC"
       | _ -> assert false
     in
-    List.iter (fn ch) subs;
+    List.iter (fn ch) strees;
     List.iter (gn ch) p.ttrees;
     Printf.fprintf ch "%s{$%a : %a$}\n%!" cmd
       (print_term false) p.tterm (print_kind false) p.typ

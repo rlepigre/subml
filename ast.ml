@@ -132,8 +132,8 @@ and value_def =
   ; proof : typ_proof }
 
 and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
-		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuRight
-		 | NNuLeft | NNuRight | NUnknown
+		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf | NMuRightInf
+		 | NNuLeftInf | NNuRight | NNuRightInf | NUnknown
 
 and sub_proof =
   { sterm : term;
@@ -168,6 +168,20 @@ let rec eq_ordinal : ordinal -> ordinal -> bool = fun o1 o2 ->
       | _ -> false
   in eq_ordinal o1 o2
 
+(* Unfolding unification variable indirections. *)
+let rec repr : kind -> kind = function
+  | UVar { uvar_val = { contents = Some k} } -> repr k
+  | k      -> k
+
+(* Unfolding unification variable indirections and definitions *)
+let rec full_repr : kind -> kind = function
+  | UVar { uvar_val = { contents = Some k} } -> full_repr k
+  | TDef(d,a) -> full_repr (msubst d.tdef_value a)
+  | k      -> k
+
+let set v k =
+  assert (!(v.uvar_val) = None);
+  v.uvar_val <:- Some k
 
 (****************************************************************************
  *                        Equality of types and terms                       *
@@ -175,7 +189,7 @@ let rec eq_ordinal : ordinal -> ordinal -> bool = fun o1 o2 ->
 
 let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
   let rec eq_kind k1 k2 = k1 == k2 ||
-    match (k1,k2) with
+    match (full_repr k1, full_repr k2) with
     | (TVar(x1)   , TVar(x2)   ) -> eq_variables x1 x2
     | (Func(a1,b1), Func(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
     | (Prod(fs1)  , Prod(fs2)  ) -> eq_assoc eq_kind fs1 fs2
@@ -184,10 +198,6 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (Exis(b1)   , Exis(b2)   ) -> eq_kbinder b1 b2
     | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal o1 o2 && eq_kbinder f1 f2
     | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal o1 o2 && eq_kbinder f1 f2
-    | (TDef(d1,a1), TDef(d2,a2)) ->
-        let k1 = msubst d1.tdef_value a1 in
-        let k2 = msubst d2.tdef_value a2 in
-        eq_kind k1 k2
     | (UCst(c1)   , UCst(c2)   ) ->
         eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
         eq_term c c1.qcst_wit_term c2.qcst_wit_term
@@ -268,17 +278,6 @@ let typ_env : typ_env = Hashtbl.create 17
 let val_env : val_env = Hashtbl.create 17
 let verbose : bool ref = ref false
 
-exception Find_tdef of type_def
-
-let find_tdef : kind -> type_def = fun t ->
-  try
-    Hashtbl.iter (fun _ d ->
-      if d.tdef_arity = 0 && eq_kind (msubst d.tdef_value [||]) t then
-	raise (Find_tdef d)) typ_env;
-    raise Not_found
-  with
-    Find_tdef(t) -> t
-
 (* Bindbox type shortcuts. *)
 type tvar = term variable
 type kvar = kind variable
@@ -301,21 +300,6 @@ let new_lvar : pos -> string -> term variable =
 
 let new_lvar' : string -> term variable =
   new_lvar dummy_position
-
-(* Unfolding unification variable indirections. *)
-let rec repr : kind -> kind = function
-  | UVar { uvar_val = { contents = Some k} } -> repr k
-  | k      -> k
-
-(* Unfolding unification variable indirections and definitions *)
-let rec full_repr : kind -> kind = function
-  | UVar { uvar_val = { contents = Some k} } -> full_repr k
-  | TDef(d,a) -> full_repr (msubst d.tdef_value a)
-  | k      -> k
-
-let set v k =
-  assert (!(v.uvar_val) = None);
-  v.uvar_val <:- Some k
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
@@ -584,6 +568,25 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | t         -> box t
     in
     fn k))
+
+let has_uvar : kind -> bool = fun k ->
+  let rec fn k =
+    match repr k with
+    | Func(a,b) -> fn a; fn b
+    | Prod(ls)
+    | DSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
+    | FAll(f)
+    | Exis(f)
+    | FixM(_,f)
+    | FixN(_,f) -> fn (subst f (Prod []))
+    | UVar(u)   -> raise Exit
+    | TDef(d,a) -> Array.iter fn a
+    | t         -> ()
+  in
+  try
+    fn k; false
+  with
+    Exit -> true
 
 (****************************************************************************
  *                    Decompostiion type, ordinals                          *

@@ -28,3 +28,5 @@ val ordinal_tbl : (ordinal * int) list ref
 val ordinal_count : int ref
 
 val show_leq : bool ref
+
+val find_tdef : kind -> type_def
