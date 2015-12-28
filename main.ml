@@ -3,6 +3,7 @@ open Util
 open Ast
 open Multi_print
 open Dparser
+open Raw
 
 let _ = handle_stop true
 
