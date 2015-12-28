@@ -6,7 +6,7 @@ open Ast
 open Multi_print
 open Eval
 open Typing
-open Trace
+open Proof_trace
 open Print_trace
 open Raw
 

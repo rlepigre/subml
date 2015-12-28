@@ -1,20 +1,20 @@
-all: main.byte main.native
+all: subml.byte subml.native
 
 DESTDIR=/usr/local/bin
 MLFILES=util.ml timed_ref.ml ast.ml eval.ml print.ml multi_print.ml latex.ml sct.ml \
-	trace.ml raw.ml typing.ml print_trace.ml latex_trace.ml dparser.ml main.ml
+	proof_trace.ml raw.ml typing.ml print_trace.ml latex_trace.ml dparser.ml subml.ml
 
-main.native: $(MLFILES)
-	ocamlbuild -quiet -use-ocamlfind $@
+subml.native: $(MLFILES)
+	ocamlbuild -cflags -w,-30 -use-ocamlfind $@
 
-main.byte: $(MLFILES)
-	ocamlbuild -quiet -use-ocamlfind $@
+subml.byte: $(MLFILES)
+	ocamlbuild -cflags -w,-30 -use-ocamlfind $@
 
 run: all
-	ledit ./main.native
+	ledit ./subml.native
 
 test: all
-	ledit ./main.native lib/all.typ
+	ledit ./subml.native lib/all.typ
 
 clean:
 	ocamlbuild -clean
@@ -23,4 +23,4 @@ distclean: clean
 	rm -f *~ lib/*~
 
 install: all
-	install ./main.byte $(DESTDIR)/proto.byt
+	install ./subml.native $(DESTDIR)/subml

@@ -2,7 +2,7 @@ open Bindlib
 open Util
 open Ast
 open Print
-open Trace
+open Proof_trace
 open Sct
 
 let debug = ref false

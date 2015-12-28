@@ -1,7 +1,7 @@
 open Ast
 open Print
 open Latex
-open Trace
+open Proof_trace
 
 type latex_output =
   | Kind of (bool * kind)
