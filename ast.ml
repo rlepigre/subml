@@ -37,20 +37,25 @@ type kind =
 and ordinal =
   (* ordinal large enough to ensure convergence of all fixpoint *)
   | OConv
+
   (* ordinal created by the mu left and nu right rule *)
   | OLess of ordinal * ord_witness
+
   (* ordinal created by induction, they are not witness and have
      no relation with others, except OConv. The ordinal inside
      is only used to simplify proof when an induction hypothesis
-     is unused, in this case OInd(n,o) = o *)
-  | OInd of int * ordinal * ord_constraint
+     is unused, in this case OInd(n,o) = o
+
+     These ordinal should have an occur-check constraint. Instead,
+     it seems better to forbid the presence of unifcation variable
+     when we apply the induction rule.
+  *)
+  | OInd of int * ordinal
   (* integer tag for comparing ordinals *)
   | OTag of int
   (* *)
   | ODumm
 
-(* only used for occur check in ordinal rules, no
-   smantical meaning *)
 and ord_constraint = term * kind * kind
 
 and ord_witness =
@@ -158,7 +163,7 @@ let fprint_kind : (bool -> out_channel -> kind -> unit) ref = ref (fun _ -> asse
 
 let new_OInd, reset_O =
   let count = ref 0 in
-  (fun c o -> let n = !count in incr count; OInd(n,o,c)),
+  (fun o -> let n = !count in incr count; OInd(n,o)),
   (fun () -> count := 0)
 
 (* Unfolding unification variable indirections. *)
@@ -236,7 +241,7 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
       match o1, o2 with
       | ODumm, ODumm -> assert false
       | OConv, OConv -> true
-      | OInd(n1,_,_), OInd(n2,_,_) -> n1 = n2
+      | OInd(n1,_), OInd(n2,_) -> n1 = n2
       | OLess(o1,In(t1,a1)), OLess(o2,In(t2,a2))
       | OLess(o1,NotIn(t1,a1)), OLess(o2,NotIn(t2,a2)) ->
 	 eq_ordinal o1 o2 && eq_term c t1 t2 && eq_kind c a1 a2
@@ -266,7 +271,7 @@ let rec leq_ordinal o1 o2 =
   match (o1, o2) with
   | (_            , ODumm       ) -> assert false
   | (_            , OConv       ) -> true
-  | (OInd(n1,_,_) , OInd(n2,_,_)) -> n1 = n2
+  | (OInd(n1,_) , OInd(n2,_)    ) -> n1 = n2
   | (OLess(o1,_)  , o2          ) -> leq_ordinal o1 o2
   | (_            , _           ) -> false
 
@@ -553,7 +558,9 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | TagI _        -> acc
   and aux3 acc = function
     | OLess(o,(In(t,a)|NotIn(t,a))) -> aux InEps (aux2 (aux3 acc o) t) a
-    | OInd(_,o,(t,a,b))  -> aux InEps (aux InEps (aux2 acc t) a) b
+    (* we keep this to ensure valid proof when simplifying useless induction
+       needed because has_uvar below does no check ordinals *)
+    | OInd(_,o)                     -> aux3 acc o
     | _             -> acc
   in aux Pos Non k
 

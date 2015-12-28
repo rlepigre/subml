@@ -17,7 +17,7 @@ let ignored_ordinals = ref []
 
 let rec onorm o =
   if List.memq o !ignored_ordinals then
-    match o with OLess(o',_) | OInd(_,o',_) -> onorm o' | _ -> assert false
+    match o with OLess(o',_) | OInd(_,o') -> onorm o' | _ -> assert false
   else o
 
 (* managment of a table to name ordinals and epsilon when printing *)
@@ -60,9 +60,9 @@ let rec print_ordinal unfold ff o =
     | OLess(o,NotIn(t,a)) when unfold ->
        fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
 	 (print_term false) t (print_kind false false) a
-    | OInd(_,o,_) when unfold && !show_leq && onorm o <> OConv ->
+    | OInd(_,o) when unfold && !show_leq && onorm o <> OConv ->
        fprintf ff "α(%d≤%a)" n (print_ordinal false) o
-    | OInd(_,o,_) -> fprintf ff "α%d" n
+    | OInd(_,o) -> fprintf ff "α%d" n
     | OLess(o,_) -> fprintf ff "κ%d" n
     | _ -> assert false
 

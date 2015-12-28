@@ -32,7 +32,7 @@ let rec print_ordinal unfold ff o =
 	fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) a
      | OLess(o,NotIn(t,a)) when unfold ->
 	fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) a
-     | OInd(_,o,_) when unfold && !show_leq ->
+     | OInd(_,o) when unfold && !show_leq ->
 	fprintf ff "\\alpha_{%d{\\leq}%a}" n (print_ordinal false) o
      | OLess(_) -> fprintf ff "\\kappa_{%d}" n
      | OInd(_) -> fprintf ff "\\alpha_{%d}" n

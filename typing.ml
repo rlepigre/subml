@@ -137,15 +137,18 @@ let cr = ref 0
 
 let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * int option =
   fun t ctxt a b ->
+    (* the test (has_uvar a || has_uvar b) is importanat to
+       - avoid occur chek for induction variable
+       - to keep the invariant that no ordinal <> OConv occur in
+       positive mus and negative nus *)
     match (a, b), (has_uvar a || has_uvar b) with
     | ((FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _)), false ->
        let (a', os1) = decompose Neg a in
        let (b', os2) = decompose Pos b in
        let os' = os1 @ os2 in
        let os' = Array.of_list os' in
-       let j = (t,a,b) in
-       let os1 = List.map (new_OInd j) os1 in
-       let os2 = List.map (new_OInd j) os2 in
+       let os1 = List.map new_OInd os1 in
+       let os2 = List.map new_OInd os2 in
        let los = os1 @ os2 in
        let os = Array.of_list los in
        let fnum = new_function (Array.length os) in
