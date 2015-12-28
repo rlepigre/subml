@@ -214,7 +214,10 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
 and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
   let rec eq_term t1 t2 = t1.elt == t2.elt ||
     match (t1.elt, t2.elt) with
-    | (Coer(t1,_) , Coer(t2,_) ) -> eq_term t1 t2
+    | (Coer(t1,_) , _          ) -> eq_term t1 t2
+    | (_          , Coer(t2,_) ) -> eq_term t1 t2
+    | (VDef(d1)   , _          ) -> eq_term d1.value t2
+    | (_          , VDef(d2)   ) -> eq_term t1 d2.value
     | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
     | (LAbs(_,f1) , LAbs(_,f2) )
     | (FixY(_,f1) , FixY(_,f2) ) -> eq_tbinder f1 f2
@@ -223,7 +226,6 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (Proj(t1,l1), Proj(t2,l2)) -> l1 = l2 && eq_term t1 t2
     | (Cons(c1,t1), Cons(c2,t2)) -> c1 = c2 && eq_term t1 t2
     | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
-    | (VDef(d1)   , VDef(d2)   ) -> eq_term d1.value d2.value
     | (Prnt(s1)   , Prnt(s2)   ) -> s1 = s2
     | (Cnst(c1)   , Cnst(c2)   ) ->
         let (f1,a1,b1) = c1 and (f2,a2,b2) = c2 in

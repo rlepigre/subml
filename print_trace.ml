@@ -1,5 +1,5 @@
 open Ast
-open Trace
+open Proof_trace
 open Typing
 open Print
 
