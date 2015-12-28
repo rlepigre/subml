@@ -38,7 +38,7 @@ and ordinal =
   (* ordinal large enough to ensure convergence of all fixpoint *)
   | OConv
   (* ordinal created by the mu left and nu right rule *)
-  | OLess of int * ordinal * ord_constraint
+  | OLess of ordinal * ord_witness
   (* ordinal created by induction, they are not witness and have
      no relation with others, except OConv. The ordinal inside
      is only used to simplify proof when an induction hypothesis
@@ -52,6 +52,10 @@ and ordinal =
 (* only used for occur check in ordinal rules, no
    smantical meaning *)
 and ord_constraint = term * kind * kind
+
+and ord_witness =
+    In of term * kind
+  | NotIn of term * kind
 
 (* Occurence markers for variables. *)
 and occur =
@@ -150,23 +154,12 @@ and typ_proof =
     mutable ttrees : typ_proof list;
   }
 
-let new_OInd, new_OLess, reset_O =
+let fprint_kind : (bool -> out_channel -> kind -> unit) ref = ref (fun _ -> assert false)
+
+let new_OInd, reset_O =
   let count = ref 0 in
   (fun c o -> let n = !count in incr count; OInd(n,o,c)),
-  (fun c o -> let n = !count in incr count; OLess(n,o,c)),
   (fun () -> count := 0)
-
-let rec eq_ordinal : ordinal -> ordinal -> bool = fun o1 o2 ->
-  let rec eq_ordinal o1 o2 =
-    if o1 == o2 then true else
-      match o1, o2 with
-      | ODumm, ODumm -> true
-      | OConv, OConv -> true
-      | OInd(n1,_,_), OInd(n2,_,_)
-      | OLess(n1,_,_), OLess(n2,_,_) -> n1 = n2
-      | OTag n1, OTag n2 -> n1 = n2
-      | _ -> false
-  in eq_ordinal o1 o2
 
 (* Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function
@@ -196,8 +189,8 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
     | (FAll(b1)   , FAll(b2)   ) -> eq_kbinder b1 b2
     | (Exis(b1)   , Exis(b2)   ) -> eq_kbinder b1 b2
-    | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal o1 o2 && eq_kbinder f1 f2
-    | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal o1 o2 && eq_kbinder f1 f2
+    | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
+    | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
     | (UCst(c1)   , UCst(c2)   ) ->
         eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
         eq_term c c1.qcst_wit_term c2.qcst_wit_term
@@ -237,6 +230,21 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
   in
   eq_term t1 t2
 
+and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
+  let rec eq_ordinal o1 o2 =
+    if o1 == o2 then true else
+      match o1, o2 with
+      | ODumm, ODumm -> assert false
+      | OConv, OConv -> true
+      | OInd(n1,_,_), OInd(n2,_,_) -> n1 = n2
+      | OLess(o1,In(t1,a1)), OLess(o2,In(t2,a2))
+      | OLess(o1,NotIn(t1,a1)), OLess(o2,NotIn(t2,a2)) ->
+	 eq_ordinal o1 o2 && eq_term c t1 t2 && eq_kind c a1 a2
+      | OTag n1, OTag n2 -> n1 = n2
+      | _ -> false
+  in eq_ordinal o1 o2
+
+
 let eq_kind : kind -> kind -> bool = fun k1 k2 ->
   let c = ref 0 in
   eq_kind c k1 k2
@@ -245,26 +253,28 @@ let eq_term : term -> term -> bool = fun t1 t2 ->
   let c = ref 0 in
   eq_term c t1 t2
 
+let eq_ordinal : ordinal -> ordinal -> bool = fun t1 t2 ->
+  let c = ref 0 in
+  eq_ordinal c t1 t2
+
 (****************************************************************************
  *                                 Ordinals                                 *
  ****************************************************************************)
 
 let rec leq_ordinal o1 o2 =
   if o1 == o2 then true else
-
   match (o1, o2) with
-  | (_             , ODumm       ) -> assert false
-  | (_             , OConv       ) -> true
-  | (OLess(n1,_,_) , OLess(n2,_,_) )
-  | (OInd(n1,_,_)  , OInd(n2,_,_)  ) -> n1 = n2
-  | (OLess(_,o1,_) , o2          ) -> leq_ordinal o1 o2
-  | (_             , _           ) -> false
+  | (_            , ODumm       ) -> assert false
+  | (_            , OConv       ) -> true
+  | (OInd(n1,_,_) , OInd(n2,_,_)) -> n1 = n2
+  | (OLess(o1,_)  , o2          ) -> leq_ordinal o1 o2
+  | (_            , _           ) -> false
 
 let rec less_ordinal o1 o2 =
   match o1 with
-  | ODumm        -> assert false
-  | OLess(_,o,_) -> leq_ordinal o o2
-  | _            -> false
+  | ODumm      -> assert false
+  | OLess(o,_) -> leq_ordinal o o2
+  | _          -> false
 
 (****************************************************************************
  *                   Frequently used types and functions                    *
@@ -542,9 +552,9 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Prnt _
     | TagI _        -> acc
   and aux3 acc = function
-    | OLess(_,o,(t,a,b))
-    | OInd(_,o,(t,a,b)) -> aux InEps (aux InEps (aux2 (aux3 acc o) t) a) b
-    | _             -> Non
+    | OLess(o,(In(t,a)|NotIn(t,a))) -> aux InEps (aux2 (aux3 acc o) t) a
+    | OInd(_,o,(t,a,b))  -> aux InEps (aux InEps (aux2 acc t) a) b
+    | _             -> acc
   in aux Pos Non k
 
 (****************************************************************************

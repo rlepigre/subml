@@ -137,8 +137,8 @@ let cr = ref 0
 
 let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * int option =
   fun t ctxt a b ->
-    match (a, b), (has_uvar a, has_uvar b) with
-    | ((FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _)), (false, false) ->
+    match (a, b), (has_uvar a || has_uvar b) with
+    | ((FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _)), false ->
        let (a', os1) = decompose Neg a in
        let (b', os2) = decompose Pos b in
        let os' = os1 @ os2 in
@@ -251,14 +251,14 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
       trace_sub_pop NNuRightInf
 
     | (_          , FixN(o,f)) ->
-       let o' = new_OLess (t,a,b) o in
+       let o' = OLess (o,NotIn(t,b)) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixN(o', f) in
        subtype ctxt t a (subst f cst);
        trace_sub_pop NNuRight
 
     | (FixM(o,f)  , _        ) ->
-       let o' = new_OLess (t,a,b) o in
+       let o' = OLess (o,In(t,a)) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixM(o', f) in
        subtype ctxt t (subst f cst) b;

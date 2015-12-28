@@ -17,7 +17,7 @@ let ignored_ordinals = ref []
 
 let rec onorm o =
   if List.memq o !ignored_ordinals then
-    match o with OLess(_,o',_) | OInd(_,o',_) -> onorm o' | _ -> assert false
+    match o with OLess(o',_) | OInd(_,o',_) -> onorm o' | _ -> assert false
   else o
 
 (* managment of a table to name ordinals and epsilon when printing *)
@@ -54,11 +54,16 @@ let rec print_ordinal unfold ff o =
 	  ordinal_tbl := (o,n)::!ordinal_tbl; n
     in
     match o with
-    | OLess(_,o,_) when unfold ->
-       fprintf ff "α(%d<%a)" n (print_ordinal false) o
+    | OLess(o,In(t,a)) when unfold ->
+       fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
+	 (print_term false) t (print_kind false false) a
+    | OLess(o,NotIn(t,a)) when unfold ->
+       fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
+	 (print_term false) t (print_kind false false) a
     | OInd(_,o,_) when unfold && !show_leq && onorm o <> OConv ->
        fprintf ff "α(%d≤%a)" n (print_ordinal false) o
-    | OInd(_,o,_) | OLess(_,o,_) -> fprintf ff "α%d" n
+    | OInd(_,o,_) -> fprintf ff "α%d" n
+    | OLess(o,_) -> fprintf ff "κ%d" n
     | _ -> assert false
 
 and print_index_ordinal ff = function
@@ -214,6 +219,8 @@ let print_term unfold ch t =
 let print_kind unfold ch t =
   let ff = formatter_of_out_channel ch in
   print_kind unfold false ff t; pp_print_flush ff (); flush ch
+
+let _ = fprint_kind := print_kind
 
 let print_kind_def unfold ch kd =
   let ff = formatter_of_out_channel ch in
