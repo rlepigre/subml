@@ -101,7 +101,10 @@ and print_kind unfold wrap ff t =
        fprintf ff "{%a}" (print_list pfield "; ") fs
      end
   | DSum(cs) ->
-      let pvariant ff (c,a) = fprintf ff "%s of %a" c pkind a in
+      let pvariant ff (c,a) =
+        if a = Prod [] then pp_print_string ff c
+        else fprintf ff "%s of %a" c pkind a
+      in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
   | FAll(f)  ->
       let x = new_tvar (binder_name f) in

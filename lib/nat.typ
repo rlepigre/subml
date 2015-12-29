@@ -33,7 +33,7 @@ val pred : Nat → Nat = fun n ↦
   n (fun p x y ↦ p (s x) x) (fun x y ↦ y) z z
 
 (* Maurey's inferior function. *)
-include "lib/bool.typ"
+include "lib/church_bool.typ"
 val leq : Nat → Nat → Bool = fun n m ↦
   n (fun f g ↦ g f) (fun i ↦ tru)
   (m (fun f g ↦ g f) (fun i ↦ fls))

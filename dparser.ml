@@ -85,6 +85,9 @@ let of_kw   = new_keyword "of"
 let in_kw   = new_keyword "in"
 let fix_kw  = new_keyword "fix"
 let fun_kw  = new_keyword "fun"
+let if_kw   = new_keyword "if"
+let then_kw = new_keyword "then"
+let else_kw = new_keyword "else"
 
 let unfold_kw  = new_keyword "unfold"
 let clear_kw   = new_keyword "clear"
@@ -211,6 +214,8 @@ and term p =
 	 else in_pos _loc_t (PFixY(id, t)) in
        in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
   | "(" t:(term TFunc) ")" when p = TAtom
+  | if_kw c:(term TFunc) then_kw t:(term TFunc) else_kw e:(term TFunc) ->
+      in_pos _loc (PCase(c, [("True", None, t); ("False", None, e)]))
   | t:(term TAtom) when p = TColo
   | t:(term TColo) when p = TAppl
   | t:(term TAppl) when p = TSeq
