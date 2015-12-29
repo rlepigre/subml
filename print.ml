@@ -11,6 +11,16 @@ let rec print_list pelem sep ff = function
 let rec print_array pelem sep ff ls =
   print_list pelem sep ff (Array.to_list ls)
 
+let is_tuple ls =
+  let n = List.length ls in
+  try
+    for i = 1 to n do
+      if not (List.mem_assoc (string_of_int i) ls) then raise Exit;
+    done;
+    true
+  with
+    Exit -> false
+
 (* ordinals in this list are not printed, used
    to remove unused induction rule from printing *)
 let ignored_ordinals = ref []
@@ -25,7 +35,7 @@ let ordinal_tbl = ref []
 let ordinal_count = ref 0
 
 let epsilon_term_table = ref[]
-let epsilon_term_count = ref 0
+let epsilon_type_table = ref[]
 
 let print_term_in_subtyping = ref false
 
@@ -81,8 +91,15 @@ and print_kind unfold wrap ff t =
       fprintf ff "%a → %a" pkindw a pkind b;
       if wrap then pp_print_string ff ")"
   | Prod(fs) ->
-      let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
-      fprintf ff "{%a}" (print_list pfield "; ") fs
+     if is_tuple fs then begin
+       for i = 1 to List.length fs do
+	 if i = 2 then fprintf ff "×";
+	 fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
+       done
+     end else begin
+       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
+       fprintf ff "{%a}" (print_list pfield "; ") fs
+     end
   | DSum(cs) ->
       let pvariant ff (c,a) = fprintf ff "%s of %a" c pkind a in
       fprintf ff "[%a]" (print_list pvariant " | ") cs

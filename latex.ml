@@ -40,7 +40,7 @@ let rec print_ordinal unfold ff o =
 
 and print_index_ordinal ff o = match onorm o with
   | OConv -> ()
-  | o -> fprintf ff "_{%a}" (print_ordinal true) o
+  | o -> fprintf ff "_{%a}" (print_ordinal false) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
@@ -55,7 +55,7 @@ and print_kind unfold wrap ff t =
     | [] -> fprintf ff "%s" d.tdef_tex_name
     | _  -> fprintf ff "%s_{%a}" d.tdef_tex_name
        (fun ff l -> List.iteri (fun i o -> fprintf ff "%s%a" (if i <> 0 then "," else "")
-	 (print_ordinal true) o) l) ords
+	 (print_ordinal false) o) l) ords
   with Not_found ->
   match t with
   | TVar(x) ->
@@ -65,8 +65,15 @@ and print_kind unfold wrap ff t =
       fprintf ff "%a \\rightarrow %a" pkindw a pkind b;
       if wrap then pp_print_string ff ")"
   | Prod(fs) ->
+     if is_tuple fs then begin
+       for i = 1 to List.length fs do
+	 if i = 2 then fprintf ff "\\times ";
+	 fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
+       done
+     end else begin
       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
       fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
+     end
   | DSum(cs) ->
      let pvariant ff (c,a) =
        match repr a with
@@ -168,8 +175,17 @@ and print_term unfold lvl ff t =
     fprintf ff "%a\\,%a" (print_term 1) t (print_term 2) u;
     if lvl > 1 then pp_print_string ff ")";
   | Reco(fs) ->
-      let pfield ff (l,t) = fprintf ff "%s = %a" l (print_term 0) t in
-      fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
+     if is_tuple fs then begin
+       pp_print_string ff "(";
+       for i = 1 to List.length fs do
+	 if i = 2 then fprintf ff ", ";
+	 fprintf ff "%a" (print_term 0) (List.assoc (string_of_int i) fs)
+       done;
+       pp_print_string ff ")";
+     end else begin
+       let pfield ff (l,t) = fprintf ff "%s = %a" l (print_term 0) t in
+       fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
+     end
   | Proj(t,l) ->
       fprintf ff "%a.%s" (print_term 0) t l
   | Cons(c,t) ->

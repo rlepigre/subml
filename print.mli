@@ -27,7 +27,7 @@ val reset_ordinals : unit -> unit
 val ordinal_tbl : (ordinal * int) list ref
 val ordinal_count : int ref
 val epsilon_term_table : ((term, term) Bindlib.binder * (string * int * kind * kind)) list ref
-val epsilon_term_count : int ref
+val epsilon_type_table : ((term, term) Bindlib.binder * (string * int * kind * kind)) list ref
 val print_term_in_subtyping : bool ref
 
 val show_leq : bool ref
@@ -35,3 +35,5 @@ val show_leq : bool ref
 val find_tdef : kind -> type_def
 
 val print_witnesses : out_channel -> unit
+
+val is_tuple : (string * 'a) list -> bool
