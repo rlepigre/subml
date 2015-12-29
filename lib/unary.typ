@@ -15,7 +15,13 @@ val rec mul : UNat → UNat → UNat = fun n m ↦
   | Z → Z
   | S x → add m (mul x m)
 
-val rec leq : UNat → UNat → [True | False] = fun n m ↦
+val rec compare : UNat → UNat → [Ls | Eq | Gt] = fun n m ↦
   case n of
-  | Z   -> True
-  | S n -> (case m of Z -> False | S m -> leq n m)
+  | Z   → (case m of Z → Eq | S m → Ls)
+  | S n → (case m of Z → Gt | S m → compare n m)
+
+val rec eq : UNat → UNat → [True | False] = fun n m ↦
+  case compare n m of Eq → True | Ls → False | Gt → False
+
+val rec leq : UNat → UNat → [True | False] = fun n m ↦
+  case compare n m of Eq → True | Ls → True | Gt → False
