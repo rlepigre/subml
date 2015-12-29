@@ -92,7 +92,7 @@ let rec output ch = function
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_witnesses ch; Print.epsilon_term_table := []
   | KindDef(t)     ->
-     let name = t.tdef_name in
+     let name = t.tdef_tex_name in
      let f = t.tdef_value in
      let args = mbinder_names f in
      let params = Array.map (fun s -> free_of (new_tvar s)) args in

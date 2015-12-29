@@ -97,16 +97,16 @@ and print_kind unfold wrap ff t =
       fprintf ff "\\nu%a %s %a" print_index_ordinal o (name_of x) pkind a;
       if wrap then pp_print_string ff ")"
   | TDef(td,args) ->
-      if unfold then
-        print_kind unfold wrap ff (msubst td.tdef_value args)
-      else
-        if Array.length args = 0 then
-          pp_print_string ff td.tdef_tex_name
-        else
-          fprintf ff "%s(%a)" td.tdef_tex_name (print_array pkind ", ") args
-    | DPrj(t,s) ->
+     if unfold then
+       print_kind unfold wrap ff (msubst td.tdef_value args)
+     else
+       if Array.length args = 0 then
+         pp_print_string ff td.tdef_tex_name
+       else
+         fprintf ff "%s(%a)" td.tdef_tex_name (print_array pkind ", ") args
+  | DPrj(t,s) ->
      fprintf ff "%a.%s" (print_term false 2) t s
-    | UCst(t,f) ->
+  | UCst(t,f) ->
      let x = new_tvar (binder_name f) in
      let a = subst f (free_of x) in
      fprintf ff "\\epsilon_%s(%a \\notin %a)" (name_of x) (print_term false 0) t pkind a
