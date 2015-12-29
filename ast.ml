@@ -25,10 +25,12 @@ type kind =
   | FixN of ordinal * (kind, kind) binder
   (* User-defined type applied to arguments: T(A1,...,An). *)
   | TDef of type_def * kind array
+  (* dot projection *)
+  | DPrj of term * string
   (**** Special constructors (not accessible to user) ****)
   (* Constants (a.k.a. epsilon) - used for subtyping. *)
-  | UCst of qcst
-  | ECst of qcst
+  | UCst of term * (kind, kind) binder
+  | ECst of term * (kind, kind) binder
   (* Unification variables - used for typechecking. *)
   | UVar of uvar
   (* Integer tag for comparing kinds. *)
@@ -79,12 +81,6 @@ and type_def =
   ; tdef_arity : int
   (* Definition of the constructor. *)
   ; tdef_value : (kind, kind) mbinder }
-
-(* Quantifier constant. *)
-and qcst =
-  { qcst_key      : int (* NOTE Not sure if useful. *)
-  ; qcst_wit_term : term
-  ; qcst_wit_kind : (kind, kind) binder }
 
 (* Unification variable identified by a key and possibly a value. *)
 and uvar =
@@ -142,7 +138,7 @@ and value_def =
 
 and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
 		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf | NMuRightInf
-		 | NNuLeftInf | NNuRight | NNuRightInf | NUnknown
+		 | NNuLeftInf | NNuRight | NNuRightInf | NUnknown | NProjLeft | NProjRight
 
 and sub_proof =
   { sterm : term;
@@ -196,12 +192,9 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (Exis(b1)   , Exis(b2)   ) -> eq_kbinder b1 b2
     | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
     | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
-    | (UCst(c1)   , UCst(c2)   ) ->
-        eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
-        eq_term c c1.qcst_wit_term c2.qcst_wit_term
-    | (ECst(c1)   , ECst(c2)   ) ->
-        eq_kbinder c1.qcst_wit_kind c2.qcst_wit_kind &&
-        eq_term c c1.qcst_wit_term c2.qcst_wit_term
+    | (DPrj(t1,s1), DPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
+    | (UCst(t1,f1), UCst(t2,f2))
+    | (ECst(t1,f1), ECst(t2,f2)) -> eq_kbinder f1 f2 && eq_term c t1 t2
     | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
     | (TInt(i1)   , TInt(i2)   ) -> i1 = i2
     | (_          , _          ) -> false
@@ -346,6 +339,10 @@ let exis : string -> (kvar -> kbox) -> kbox =
   fun x f ->
     box_apply (fun b -> Exis(b)) (vbind mk_free_tvar x f)
 
+let dprj : tbox -> string -> kbox =
+  fun t s ->
+    box_apply (fun t -> DPrj(t,s)) t
+
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
 
@@ -359,27 +356,6 @@ let fixm : string -> ?ordinal:ordinal -> (kvar -> kbox) -> kbox =
     let b = vbind mk_free_tvar x f in
     box_apply (fun b -> FixM(ordinal,b)) b
 
-(* Quantifier constant management. *)
-let (new_ucst, reset_ucst) =
-  let c = ref 0 in
-  let new_ucst t f = UCst
-    { qcst_key      = (incr c; !c)
-    ; qcst_wit_term = t
-    ; qcst_wit_kind = f }
-  in
-  let reset_ucst () = c := 0 in
-  (new_ucst, reset_ucst)
-
-let (new_ecst, reset_ecst) =
-  let c = ref 0 in
-  let new_ecst t f = ECst
-    { qcst_key      = (incr c; !c)
-    ; qcst_wit_term = t
-    ; qcst_wit_kind = f }
-  in
-  let reset_ecst () = c := 0 in
-  (new_ecst, reset_ecst)
-
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
@@ -389,7 +365,7 @@ let (new_uvar, reset_uvar) =
 
 (* Resset all counters. *)
 let reset_all () =
-  let reset = [reset_ucst; reset_ecst; reset_uvar] in
+  let reset = [reset_uvar] in
   List.iter (fun x -> x ()) reset
 
 (****************************************************************************
@@ -537,11 +513,10 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Exis(f)   -> aux occ acc (subst f dummy)
     | FixM(o,f)
     | FixN(o,f) -> aux occ (aux3 acc o) (subst f dummy)
+    | DPrj(t,_) -> aux2 acc t
     | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
-    | UCst(c)   -> let a = subst c.qcst_wit_kind dummy in
-                   aux2 (aux InEps acc a) c.qcst_wit_term
-    | ECst(c)   -> let a = subst c.qcst_wit_kind dummy in
-                   aux2 (aux InEps acc a) c.qcst_wit_term
+    | UCst(t,f)
+    | ECst(t,f) -> let a = subst f dummy in aux2 (aux InEps acc a) t
     | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | TInt(_)   -> assert false
   and aux2 acc t = match t.elt with

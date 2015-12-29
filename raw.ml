@@ -11,11 +11,12 @@ and pkind' =
   | PExis of string * pkind
   | PMu   of string * pkind
   | PNu   of string * pkind
+  | PDPrj of pterm  * string
   | PProd of (string * pkind) list
   | PSum  of (string * pkind option) list
   | PHole
 
-type pterm = pterm' position
+and pterm = pterm' position
 and pterm' =
   | PLAbs of (strpos * pkind option) list * pterm
   | PCoer of pterm * pkind
@@ -36,8 +37,8 @@ exception Unsugar_error of Location.t * string
 let unsugar_error l s =
   raise (Unsugar_error (l,s))
 
-let unsugar_kind : (string * kbox) list -> pkind -> kbox =
-  fun env pk ->
+let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> kbox =
+  fun lenv env pk ->
   let rec unsugar env pk =
     match pk.elt with
     | PFunc(a,b) ->
@@ -71,7 +72,7 @@ let unsugar_kind : (string * kbox) list -> pkind -> kbox =
               with Not_found ->
                 begin
                   let msg = Printf.sprintf "Unboud variable %s." s in
-                  unsugar_error pk.pos msg
+                  Decap.give_up msg
                 end
             end
         end
@@ -89,6 +90,8 @@ let unsugar_kind : (string * kbox) list -> pkind -> kbox =
        prod (List.map (fun (l,k) -> (l, unsugar env k)) fs)
     | PSum(cs)   ->
        dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
+    | PDPrj(t,s) ->
+       dprj (unsugar_term lenv t) s
     | PHole      -> box (new_uvar ())
   and unsugar_top env ko =
     match ko with
@@ -96,10 +99,8 @@ let unsugar_kind : (string * kbox) list -> pkind -> kbox =
     | Some k -> unsugar env k
   in unsugar env pk
 
-let unsugar_term : (string * tbox) list -> pterm ->
-                   tbox * (string * (term variable * pos list)) list =
+and unsugar_term : (string * tbox) list -> pterm -> tbox =
   fun env pt ->
-  let unbound = ref [] in
   let rec unsugar env pt =
     match pt.elt with
     | PLAbs(vs,t) ->
@@ -108,7 +109,7 @@ let unsugar_term : (string * tbox) list -> pterm ->
               let ko =
                 match ko with
                 | None   -> None
-                | Some k -> Some (unsugar_kind [] k)
+                | Some k -> Some (unsugar_kind env [] k)
               in
               let f xt = aux ((x.elt,xt)::env) xs in
               labs pt.pos ko x f
@@ -116,7 +117,7 @@ let unsugar_term : (string * tbox) list -> pterm ->
         in
         aux env vs
     | PCoer(t,k) ->
-        coer pt.pos (unsugar env t) (unsugar_kind [] k)
+        coer pt.pos (unsugar env t) (unsugar_kind env [] k)
     | PAppl(t,u) ->
         appl pt.pos (unsugar env t) (unsugar env u)
     | PLVar(x) ->
@@ -126,19 +127,8 @@ let unsugar_term : (string * tbox) list -> pterm ->
             let vd = Hashtbl.find val_env x in
             vdef pt.pos vd
           with Not_found ->
-            begin
-              try
-                let (v, ps) = List.assoc x !unbound in
-                unbound := List.remove_assoc x !unbound;
-                unbound := (x, (v, pt.pos :: ps)) :: !unbound;
-                lvar pt.pos v
-              with Not_found ->
-                begin
-                  let v = new_lvar' x in
-                  unbound := (x, (v, [pt.pos])) :: !unbound;
-                  lvar pt.pos v
-                end
-            end
+	    let msg = Printf.sprintf "Unboud variable %s." x in
+            Decap.give_up msg
         end
     | PPrnt(s) ->
         prnt pt.pos s
@@ -164,10 +154,9 @@ let unsugar_term : (string * tbox) list -> pterm ->
        let ko =
          match ko with
          | None   -> None
-         | Some k -> Some (unsugar_kind [] k)
+         | Some k -> Some (unsugar_kind env [] k)
        in
        let f xt = unsugar ((x.elt,xt)::env) t in
        fixy pt.pos ko x f
   in
-  let t = unsugar env pt in
-  (t, !unbound)
+  unsugar env pt

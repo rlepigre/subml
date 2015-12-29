@@ -21,6 +21,8 @@ let trace_typing t k =
   | Typing (p)::_ as l ->
      p.ttrees <- prf :: p.ttrees;
      trace_state := Typing prf :: l
+  | SubTyping (p)::_ as l ->
+     trace_state := Typing prf :: l
   | [] ->
      trace_state := Typing prf :: []
   | _ -> assert false
@@ -56,6 +58,7 @@ let trace_typ_pop () =
   match !trace_state with
   | [Typing prf] -> trace_state := [EndTyping prf]
   | Typing prf::s -> trace_state := s
+  | SubTyping prf::s -> trace_state := s
   | _ -> assert false
 
 let collect_typing_proof () =

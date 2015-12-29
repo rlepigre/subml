@@ -20,6 +20,9 @@ let list_sep elt sep = parser
 let list_sep' elt sep = parser
   | e:elt es:{_:STR(sep) e:elt}* -> e::es
 
+let list_sep'' elt sep = parser
+  | e:elt es:{_:STR(sep) e:elt}+ -> e::es
+
 let parser string_char =
   | "\\\"" -> "\""
   | "\\\\" -> "\\"
@@ -104,6 +107,7 @@ let parser dot    : unit grammar = "." | "->" | "→" | "↦"
 let parser hole   : unit grammar = "?"
 
 let parser ident = id:''[a-zA-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
+let parser pident = id:''[a-zA-Z0-9][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 let parser lident = id:''[a-z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 let parser uident = id:''[A-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 
@@ -111,55 +115,60 @@ let parser uident = id:''[A-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
  *                         A parser for kinds (types)                       *
  ****************************************************************************)
 
-type pkind_prio = KQuant | KFunc | KAtom
+type pkind_prio = KQuant | KFunc | KProd | KAtom
 
-let parser kind p =
-  | a:(kind KAtom) arrow b:(kind KFunc) when p = KFunc
+type pterm_prio = TFunc | TColo | TAppl | TAtom
+
+let parser pkind p =
+  | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFunc(a,b))
   | id:ident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
       -> in_pos _loc (PTVar(id,l))
-  | forall id:ident a:(kind KQuant) when p = KQuant
+  | forall id:ident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PFAll(id,a))
-  | exists id:ident a:(kind KQuant) when p = KQuant
+  | exists id:ident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PExis(id,a))
-  | mu id:ident a:(kind KQuant) when p = KQuant
+  | mu id:ident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PMu(id,a))
-  | nu id:ident a:(kind KQuant) when p = KQuant
+  | nu id:ident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PNu(id,a))
   | "{" fs:prod_items "}" when p = KAtom
       -> in_pos _loc (PProd(fs))
+  | fs : kind_prod when p = KProd
+      -> in_pos _loc (PProd(fs))
   | "[" fs:sum_items "]" when p = KAtom
-      -> in_pos _loc (PSum(fs))
+			 -> in_pos _loc (PSum(fs))
+  | t:(term TAtom) "." s:pident -> in_pos _loc (PDPrj(t,s))
   | hole when p = KAtom
       -> in_pos _loc PHole
 
-  | "(" a:(kind KQuant) ")" when p = KAtom
-  | a:(kind KAtom) when p = KFunc
-  | a:(kind KFunc)  when p = KQuant
+  | "(" a:(pkind KQuant) ")" when p = KAtom
+  | a:(pkind KAtom) when p = KProd
+  | a:(pkind KProd) when p = KFunc
+  | a:(pkind KFunc)  when p = KQuant
 
-and kind_list  = l:(list_sep (kind KQuant) ",")
-and sum_item   = id:ident a:{_:of_kw a:(kind KQuant)}?
+and kind_list  = l:(list_sep (pkind KQuant) ",")
+and kind_prod  = l:(list_sep'' (pkind KAtom) "*") -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and sum_item   = id:ident a:{_:of_kw a:(pkind KQuant)}?
 and sum_items  = l:(list_sep sum_item "|")
-and prod_item  = id:ident ":" a:(kind KQuant)
+and prod_item  = id:pident ":" a:(pkind KQuant)
 and prod_items = l:(list_sep prod_item ";")
 
-let kind = kind KQuant
+and kind = (pkind KQuant)
 
-let parser kind_def =
+and kind_def =
   | id:ident args:{"(" ids:(list_sep' ident ",") ")"}?[[]] "=" k:kind
-
 
 (****************************************************************************
  *                          A parser for expressions                        *
  ****************************************************************************)
 
-type pterm_prio = TFunc | TColo | TAppl | TAtom
-
-let parser var =
+and var =
   | id:lident                    -> (in_pos _loc_id id, None)
   | "(" id:lident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
 
-let parser term p =
+
+and term p =
   | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
   | t:(term TAppl) u:(term TAtom) when p = TAppl ->
@@ -170,13 +179,15 @@ let parser term p =
       in_pos _loc (PPrnt(s))
   | c:uident uo:(term TAtom)? when p = TAtom ->
       in_pos _loc (PCstr(c,uo))
-  | t:(term TAtom) "." l:ident when p = TAtom ->
+  | t:(term TAtom) "." l:pident when p = TAtom ->
       in_pos _loc (PProj(t,l))
   | case_kw t:(term TFunc) of_kw "|"?
     ps:(list_sep pattern "|") when p = TFunc ->
       in_pos _loc (PCase(t,ps))
   | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
-      in_pos _loc (PReco(fs))
+     in_pos _loc (PReco(fs))
+  | "(" fs:tuple ")" when p = TAtom ->
+     in_pos _loc (PReco(fs))
   | t:(term TAtom) ":" k:kind when p = TAtom ->
       in_pos _loc (PCoer(t,k))
   | id:lident when p = TAtom ->
@@ -189,8 +200,10 @@ let parser term p =
   | t:(term TAppl) when p = TColo
   | t:(term TColo) when p = TFunc
 
-and pattern  = c:uident x:var? _:arrow t:(term TFunc) -> (c, x, t)
-and field    = l:ident "=" t:(term TFunc)
+and pattern = c:uident x:var? _:arrow t:(term TFunc) -> (c, x, t)
+and field   = l:pident k:{ ":" kind }? "=" t:(term TFunc) ->
+    (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
+and tuple   = l:(list_sep'' (term TFunc) ",") -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 
 let term = term TFunc
 
@@ -242,13 +255,13 @@ let read_file = ref (fun _ -> assert false)
 
 let parser latex_atom =
   | "#" "witnesses" "#"     -> Latex_trace.Witnesses
-  | "#" u:"!"? k:kind "#" -> Latex_trace.Kind (u<>None, unbox (unsugar_kind [] k))
-  | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (fst (unsugar_term [] t)))
+  | "#" u:"!"? k:kind "#" -> Latex_trace.Kind (u<>None, unbox (unsugar_kind [] [] k))
+  | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (unsugar_term [] t))
   | t:''[^}{@#]+''        -> Latex_trace.Text t
   | l:latex_text          -> l
   | "#?" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
-     let a = unbox (unsugar_kind [] a) in
-     let b = unbox (unsugar_kind [] b) in
+     let a = unbox (unsugar_kind [] [] a) in
+     let b = unbox (unsugar_kind [] [] b) in
      generic_subtype a b;
      let prf = collect_subtyping_proof () in
      Latex_trace.SProof prf
@@ -275,7 +288,7 @@ let parser command =
         let f args =
           let env = ref [] in
           Array.iteri (fun i k -> env := (arg_names.(i), k) :: !env) args;
-          unsugar_kind !env k
+          unsugar_kind [] !env k
         in
         let b = mbind mk_free_tvar arg_names f in
         let td =
@@ -288,17 +301,15 @@ let parser command =
         Hashtbl.add typ_env name td
   (* Unfold a type definition. *)
   | unfold_kw k:kind ->
-        let k = unbox (unsugar_kind [] k) in
+        let k = unbox (unsugar_kind [] [] k) in
         Printf.fprintf stdout "%a\n%!" (print_kind true) k
   (* Parse a term. *)
   | parse_kw t:term ->
-        let (t, unbs) = unsugar_term [] t in
-        let t = unbox t in
+        let t = unbox (unsugar_term [] t) in
         Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | eval_kw t:term ->
-        let (t, unbs) = unsugar_term [] t in
-        let t = unbox t in
+        let t = unbox (unsugar_term [] t) in
         let t = eval t in
         Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Typed value definition. *)
@@ -306,15 +317,9 @@ let parser command =
        let t =
 	 if r = None then t
 	 else in_pos _loc_t (PFixY((in_pos _loc_id id, Some k), t)) in
-       let (t, unbs) = unsugar_term [] t in
-        if unbs <> [] then
-          begin
-            List.iter (fun (s,_) -> Printf.eprintf "Unbound: %s\n%!" s) unbs;
-            failwith "Unbound variable."
-          end;
-        let t = unbox t in
-        let k = unbox (unsugar_kind [] k) in
-        let prf =
+       let t = unbox (unsugar_term [] t) in
+       let k = unbox (unsugar_kind [] [] k) in
+       let prf =
 	  try
 	    type_check t k;
 	    let prf = collect_typing_proof () in
@@ -335,8 +340,8 @@ let parser command =
         Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
   (* Check subtyping. *)
   | check_kw n:{"not" -> false}?[true] a:kind {"⊂" | "⊆" | "<"} b:kind ->
-        let a = unbox (unsugar_kind [] a) in
-        let b = unbox (unsugar_kind [] b) in
+        let a = unbox (unsugar_kind [] [] a) in
+        let b = unbox (unsugar_kind [] [] b) in
         begin
           try
 	    generic_subtype a b;

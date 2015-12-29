@@ -59,14 +59,6 @@ exception Induction_hypothesis
  *                                 Lower kind                               *
 ****************************************************************************)
 
-let search k l =
-  let rec fn acc = function
-    | []        -> raise Not_found
-    | (x,l)::xs when eq_kind k x -> (acc, l, xs)
-    | (x,l)::xs -> fn ((x,l)::acc) xs
-  in fn [] l
-
-
 let lower_kind k1 k2 =
   let i = ref 0 in
   let new_int () = incr i; TInt !i in
@@ -94,16 +86,11 @@ let lower_kind k1 k2 =
     | (FixN(oa,fa) , FixN(ob,fb) ) ->
        leq_ordinal ob oa && (fa == fb ||
 			       let i = new_int () in lower_kind (subst fa i) (subst fb i))
-    | (UCst(ca)    , UCst(cb)    ) ->
+    | (DPrj(t1,s1) , DPrj(t2,s2) ) -> s1 = s2 && eq_term t1 t2
+    | (UCst(t1,f1) , UCst(t2,f2) )
+    | (ECst(t1,f1) , ECst(t2,f2) ) ->
        let i = new_int () in
-       let a = subst ca.qcst_wit_kind i in
-       let b = subst cb.qcst_wit_kind i in
-       lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
-    | (ECst(ca)    , ECst(cb)    ) ->
-       let i = new_int () in
-       let a = subst ca.qcst_wit_kind i in
-       let b = subst cb.qcst_wit_kind i in
-       lower_kind a b && ca.qcst_wit_term == cb.qcst_wit_term
+       lower_kind (subst f1 i) (subst f2 i) && eq_term t1 t2
     (* Handling of unification variables (immitation). *)
     | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
     | (UVar ua     ,(UVar _ as b)) -> set ua b; true
@@ -135,8 +122,14 @@ let lower_kind k1 k2 =
 
 let cr = ref 0
 
-let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * kind * int option =
-  fun t ctxt a b ->
+let rec dot_proj t k s = match full_repr k with
+  | Exis(f) ->
+     let c = ECst(t,f) in
+     if binder_name f = s then c else dot_proj t (subst f c) s
+  | _ -> subtype_error ("Dot projection "^s^" undefined")
+
+let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_ctxt * kind * kind * kind * kind * int option =
+  fun t ctxt a a0 b b0 ->
     (* the test (has_uvar a || has_uvar b) is importanat to
        - avoid occur chek for induction variable
        - to keep the invariant that no ordinal <> OConv occur in
@@ -170,11 +163,11 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt * kind * ki
        let a = recompose false a' os1 in
        let b = recompose true b' os2 in
        let ctxt = (a', b', fnum, os,use)::fst ctxt, snd ctxt in
-       (ctxt, a, b, Some fnum)
+       (ctxt, a, a, b, b, Some fnum)
     | _ ->
-       (ctxt, a, b, None)
+       (ctxt, a, a0, b, b0, None)
 
-let subtype : term -> kind -> kind -> unit = fun t a b ->
+let rec subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a0 b0 =
     let a = repr a0 in
     let b = repr b0 in
@@ -184,7 +177,7 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
        let _ = trace_subtyping t a b in
        trace_sub_pop NRefl
     else begin
-    let (ctxt, a, b, cmps) = check_rec t ctxt (full_repr a) (full_repr b) in
+    let (ctxt, a, a0, b, b0, cmps) = check_rec t ctxt (full_repr a) a0 (full_repr b) b0 in
     let _ = trace_subtyping t a b in
     begin match (a,b) with
     (* Arrow type. *)
@@ -199,7 +192,8 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
     (* Product type. *)
     | (Prod(fsa), Prod(fsb)) ->
         let check_field (l,b) =
-          let a = try List.assoc l fsa with Not_found -> subtype_error "Product fields clash." in
+          let a = try List.assoc l fsa with Not_found ->
+	    subtype_error ("Product fields clash: "^l) in
           subtype ctxt (dummy_pos (Proj(t,l))) a b
         in
         List.iter check_field fsb;
@@ -222,57 +216,67 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
         List.iter check_variant csa;
 	trace_sub_pop NSum
 
+    | (DPrj(t0,s), _        ) ->
+       let u = new_uvar () in
+       type_check t0 u;
+       subtype ctxt t (dot_proj t0 u s) b0;
+       trace_sub_pop NProjLeft
+
+    | (_        , DPrj(t0,s)) ->
+       let u = new_uvar () in
+       type_check t0 u;
+       subtype ctxt t a0 (dot_proj t0 u s);
+       trace_sub_pop NProjRight
+
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
-       let b' = subst f (new_ucst t f) in
-       let a' = if eq_kind a a0 then a0 else a in
-       subtype ctxt t a' b';
+       let b' = subst f (UCst(t,f)) in
+       subtype ctxt t a b';
        trace_sub_pop NAllRight
 
     | (FAll(f)  , _        ) ->
-       let b' = if eq_kind b b0 then b0 else b in
-       subtype ctxt t (subst f (new_uvar ())) b';
+       subtype ctxt t (subst f (new_uvar ())) b0;
        trace_sub_pop NAllLeft
 
     (* Existantial quantifier. *)
     | (Exis(f)  , _        ) ->
-       let a' = subst f (new_ecst t f) in
-       subtype ctxt t a' b;
+       let a' = subst f (ECst(t,f)) in
+       subtype ctxt t a' b0;
        trace_sub_pop NExistsLeft
 
     | (_        , Exis(f)  ) ->
-       subtype ctxt t a (subst f (new_uvar ()));
+       subtype ctxt t a0 (subst f (new_uvar ()));
        trace_sub_pop NExistsRight
 
      (* μ and ν - least and greatest fixpoint. *)
     | (FixM(OConv,f)  , _        ) ->
-       subtype ctxt t (subst f a) b;
+       subtype ctxt t (subst f a) b0;
        trace_sub_pop NMuLeftInf
 
     | (_          , FixN(OConv,f)) ->
-       subtype ctxt t a (subst f b);
-      trace_sub_pop NNuRightInf
+       subtype ctxt t a0 (subst f b);
+       trace_sub_pop NNuRightInf
 
     | (_          , FixN(o,f)) ->
        let o' = OLess (o,NotIn(t,b)) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixN(o', f) in
-       subtype ctxt t a (subst f cst);
+       subtype ctxt t a0 (subst f cst);
        trace_sub_pop NNuRight
 
     | (FixM(o,f)  , _        ) ->
        let o' = OLess (o,In(t,a)) in
        if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
        let cst = FixM(o', f) in
-       subtype ctxt t (subst f cst) b;
+       subtype ctxt t (subst f cst) b0;
        trace_sub_pop NMuLeft
 
     | (FixN(OConv,f)  , _        ) ->
-       subtype ctxt t (subst f a) b;
+       subtype ctxt t (subst f a) b0;
        trace_sub_pop NNuLeftInf
 
     | (_          , FixM(OConv,f)) ->
-       subtype ctxt t a (subst f b);
+       subtype ctxt t a0 (subst f b);
       trace_sub_pop NMuRightInf
 
     (* Subtype clash. *)
@@ -291,10 +295,10 @@ let subtype : term -> kind -> kind -> unit = fun t a b ->
   (*  print_calls Format.std_formatter !calls;*)
   if not (sct !calls)  then subtype_error "loop"
 
-let generic_subtype : kind -> kind -> unit = fun a b ->
+and generic_subtype : kind -> kind -> unit = fun a b ->
   subtype (generic_cnst a b) a b
 
-let type_check : term -> kind -> unit = fun t c ->
+and type_check : term -> kind -> unit = fun t c ->
   let c = repr c in
   let rec type_check t c =
     if !debug then Printf.eprintf "%a : %a\n%!" (print_term false) t (print_kind false) c;

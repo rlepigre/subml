@@ -108,14 +108,16 @@ and print_kind unfold wrap ff t =
           pp_print_string ff td.tdef_name
         else
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
-  | UCst(f) ->
-     let x = new_tvar (binder_name f.qcst_wit_kind) in
-     let a = subst f.qcst_wit_kind (free_of x) in
-     fprintf ff "ϵ_%s(%a ∉ %a)" (name_of x) (print_term false) f.qcst_wit_term pkind a
-  | ECst(f) ->
-     let x = new_tvar (binder_name f.qcst_wit_kind) in
-     let a = subst f.qcst_wit_kind (free_of x) in
-     fprintf ff "ϵ_%s(%a ∈ %a)" (name_of x) (print_term false) f.qcst_wit_term pkind a
+  | DPrj(t,s) ->
+     fprintf ff "%a.%s" (print_term false) t s
+  | UCst(t,f) ->
+     let x = new_tvar (binder_name f) in
+     let a = subst f (free_of x) in
+     fprintf ff "ϵ_%s(%a ∉ %a)" (name_of x) (print_term false) t pkind a
+  | ECst(t,f) ->
+     let x = new_tvar (binder_name f) in
+     let a = subst f (free_of x) in
+     fprintf ff "ϵ_%s(%a ∈ %a)" (name_of x) (print_term false) t pkind a
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(n) ->

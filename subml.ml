@@ -27,7 +27,7 @@ let rec interact () =
   | End_of_file          -> ()
   | Finish               -> ()
   | Stopped              -> error "Stopped."
-  | Unsugar_error(_,msg) -> error ("!!! Error: "^msg)
+  | Unsugar_error(loc,msg) -> error ("!!! Error: "^msg^" at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
   | Failure("No parse.") -> interact ()
   | e                    -> error (Printexc.to_string e)
 

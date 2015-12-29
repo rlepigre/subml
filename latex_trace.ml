@@ -36,6 +36,8 @@ let print_rule_name ff rn =
   | NNuLeftInf -> fprintf ff "\\nu_l^\\infty"
   | NNuRight -> fprintf ff "\\nu_r"
   | NNuRightInf -> fprintf ff "\\nu_r^\\infty"
+  | NProjLeft -> fprintf ff "\\pi_l"
+  | NProjRight -> fprintf ff "\\pi_r"
   | NUnknown -> fprintf ff "?"
 
 let print_subtyping_proof, print_typing_proof =
