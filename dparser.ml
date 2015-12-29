@@ -181,7 +181,7 @@ and term p =
   | t:(term TAtom) "." l:pident when p = TAtom ->
       in_pos _loc (PProj(t,l))
   | case_kw t:(term TFunc) of_kw "|"?
-    ps:(list_sep pattern "|") when p = TFunc ->
+    ps:(list_sep case "|") when p = TFunc ->
       in_pos _loc (PCase(t,ps))
   | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
      in_pos _loc (PReco(fs))
@@ -201,7 +201,11 @@ and term p =
   | t:(term TAppl) when p = TColo
   | t:(term TColo) when p = TFunc
 
-and pattern = c:uident x:var? _:arrow t:(term TFunc) -> (c, x, t)
+and pattern =
+    | c:uident x:var? -> (c,x)
+    | "[" "]"         -> ("Nil", None)
+
+and case = (c,x):pattern _:arrow t:(term TFunc) -> (c, x, t)
 and field   = l:pident k:{ ":" kind }? "=" t:(term TFunc) ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
 and tuple   = l:(list_sep'' (term TFunc) ",") -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
