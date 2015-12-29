@@ -68,7 +68,7 @@ let rec print_ordinal unfold ff o =
 
 and print_index_ordinal ff = function
   | OConv -> ()
-  | o -> fprintf ff "[%a]" (print_ordinal true) o
+  | o -> fprintf ff "[%a]" (print_ordinal false) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
@@ -112,12 +112,12 @@ and print_kind unfold wrap ff t =
      fprintf ff "%a.%s" (print_term false) t s
   | UCst(t,f) ->
      let x = new_tvar (binder_name f) in
-     let a = subst f (free_of x) in
-     fprintf ff "ϵ_%s(%a ∉ %a)" (name_of x) (print_term false) t pkind a
+     fprintf ff "ϵ_%s" (name_of x)
+  (*fprintf ff "ϵ_%s(%a ∉ %a)" (name_of x) (print_term false) t pkind a*)
   | ECst(t,f) ->
      let x = new_tvar (binder_name f) in
-     let a = subst f (free_of x) in
-     fprintf ff "ϵ_%s(%a ∈ %a)" (name_of x) (print_term false) t pkind a
+     fprintf ff "ϵ_%s" (name_of x)
+  (*     fprintf ff "ϵ_%s(%a ∈ %a)" (name_of x) (print_term false) t pkind a*)
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(n) ->
@@ -153,6 +153,10 @@ and print_term unfold ff t =
         | None   -> fprintf ff "λ%s %a" x print_term t
         | Some a -> fprintf ff "λ(%s : %a) %a" x pkind a print_term t
       end
+  | KAbs(f) ->
+     let x = binder_name f in
+     let t = subst f (free_of (new_tvar (binder_name f))) in
+     fprintf ff "Λ%s %a" x print_term t
   | Appl(t,u) ->
       fprintf ff "(%a) %a" print_term t print_term u
   | Reco(fs) ->

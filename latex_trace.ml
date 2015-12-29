@@ -2,9 +2,11 @@ open Ast
 open Print
 open Latex
 open Proof_trace
+open Bindlib
 
 type latex_output =
   | Kind of (bool * kind)
+  | KindDef of type_def
   | Term of (bool * term)
   | Text of string
   | List of latex_output list
@@ -89,3 +91,17 @@ let rec output ch = function
   | SProof p       -> print_subtyping_proof ch p
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_witnesses ch; Print.epsilon_term_table := []
+  | KindDef(t)     ->
+     let name = t.tdef_name in
+     let f = t.tdef_value in
+     let args = mbinder_names f in
+     let params = Array.map (fun s -> free_of (new_tvar s)) args in
+     let k = msubst f params in
+     let print_array cg a =
+       if Array.length a = 0 then () else
+	 Printf.fprintf ch "(%s%a)" a.(0) (fun ch a ->
+	   for i = 1 to Array.length a - 1 do
+	     Printf.fprintf ch ",%s" a.(i)
+	   done) a
+     in
+     Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k

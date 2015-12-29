@@ -19,6 +19,7 @@ and pkind' =
 and pterm = pterm' position
 and pterm' =
   | PLAbs of (strpos * pkind option) list * pterm
+  | PKAbs of strpos * pterm
   | PCoer of pterm * pkind
   | PAppl of pterm * pterm
   | PLVar of string
@@ -34,6 +35,11 @@ let list_nil _loc =
 
 let list_cons _loc t l =
   in_pos _loc (PCstr("Cons", Some (in_pos _loc (PReco [("hd",t);("tl",l)]))))
+
+exception Unbound of Location.t * string
+
+let unbound loc s = raise (Unbound(loc,s))
+
 (****************************************************************************
  *                           Desugaring functions                           *
  ****************************************************************************)
@@ -53,33 +59,25 @@ let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> 
           try
             let k = List.assoc s env in
             if ks <> [] then
-              begin
                 let msg = Printf.sprintf "%s does note expect arguments." s in
                 unsugar_error pk.pos msg
-              end
             else k
           with Not_found ->
-            begin
-              let ks = Array.of_list ks in
-              try
-                let ks = Array.map (unsugar env) ks in
-                let td = Hashtbl.find typ_env s in
-                if td.tdef_arity <> Array.length ks then
-                  begin
-                    let msg =
-                      Printf.sprintf
-                        "%s expect %i arguments but received %i." s
-                        td.tdef_arity (Array.length ks)
-                    in
-                    unsugar_error pk.pos msg
-                  end;
-                tdef td ks
-              with Not_found ->
+            let ks = Array.of_list ks in
+            try
+              let ks = Array.map (unsugar env) ks in
+              let td = Hashtbl.find typ_env s in
+              if td.tdef_arity <> Array.length ks then
                 begin
-                  let msg = Printf.sprintf "Unboud variable %s." s in
-                  Decap.give_up msg
-                end
-            end
+                  let msg =
+                    Printf.sprintf
+                      "%s expect %i arguments but received %i." s
+                      td.tdef_arity (Array.length ks)
+                  in
+                  unsugar_error pk.pos msg
+                end;
+              tdef td ks
+            with Not_found -> unbound pk.pos s
         end
     | PFAll(x,k) ->
        let f xk = unsugar ((x,box_of_var xk) :: env) k in
@@ -96,7 +94,7 @@ let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> 
     | PSum(cs)   ->
        dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
     | PDPrj(t,s) ->
-       dprj (unsugar_term lenv t) s
+       dprj (unsugar_term lenv env t) s
     | PHole      -> box (new_uvar ())
   and unsugar_top env ko =
     match ko with
@@ -104,36 +102,37 @@ let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> 
     | Some k -> unsugar env k
   in unsugar env pk
 
-and unsugar_term : (string * tbox) list -> pterm -> tbox =
-  fun env pt ->
-  let rec unsugar env pt =
+and unsugar_term : (string * tbox) list -> (string * kbox) list -> pterm -> tbox =
+  fun lenv kenv pt ->
+  let rec unsugar pt =
     match pt.elt with
     | PLAbs(vs,t) ->
-        let rec aux env = function
+        let rec aux lenv = function
           | (x,ko)::xs ->
               let ko =
                 match ko with
                 | None   -> None
-                | Some k -> Some (unsugar_kind env [] k)
+                | Some k -> Some (unsugar_kind lenv kenv k)
               in
-              let f xt = aux ((x.elt,xt)::env) xs in
+              let f xt = aux ((x.elt,xt)::lenv) xs in
               labs pt.pos ko x f
-          | [] -> unsugar env t
+          | [] -> unsugar_term lenv kenv t
         in
-        aux env vs
+        aux lenv vs
+    | PKAbs(s,f) ->
+       let f xk = unsugar_term lenv ((s.elt,xk) :: kenv) f in
+       kabs s.pos s f
     | PCoer(t,k) ->
-        coer pt.pos (unsugar env t) (unsugar_kind env [] k)
+        coer pt.pos (unsugar t) (unsugar_kind lenv kenv k)
     | PAppl(t,u) ->
-        appl pt.pos (unsugar env t) (unsugar env u)
+        appl pt.pos (unsugar t) (unsugar u)
     | PLVar(x) ->
         begin
-          try List.assoc x env with Not_found ->
+          try List.assoc x lenv with Not_found ->
           try
             let vd = Hashtbl.find val_env x in
             vdef pt.pos vd
-          with Not_found ->
-	    let msg = Printf.sprintf "Unboud variable %s." x in
-            Decap.give_up msg
+          with Not_found -> unbound pt.pos x
         end
     | PPrnt(s) ->
         prnt pt.pos s
@@ -141,27 +140,27 @@ and unsugar_term : (string * tbox) list -> pterm -> tbox =
         let u =
           match uo with
           | None   -> reco dummy_position []
-          | Some u -> unsugar env u
+          | Some u -> unsugar u
         in
         cons pt.pos c u
     | PProj(t,l) ->
-        proj pt.pos (unsugar env t) l
+        proj pt.pos (unsugar t) l
     | PCase(t,cs) ->
        let f (c,x,t) =
-	 (c, unsugar env (match x with
+	 (c, unsugar (match x with
 	 | None   -> dummy_pos (PLAbs([dummy_pos "_", Some(dummy_pos (PProd([])))], t))
 	 | Some x -> dummy_pos (PLAbs([x],t))))
         in
-        case pt.pos (unsugar env t) (List.map f cs)
+        case pt.pos (unsugar t) (List.map f cs)
     | PReco(fs) ->
-        reco pt.pos (List.map (fun (l,t) -> (l, unsugar env t)) fs)
+        reco pt.pos (List.map (fun (l,t) -> (l, unsugar t)) fs)
     | PFixY((x,ko),t) ->
        let ko =
          match ko with
          | None   -> None
-         | Some k -> Some (unsugar_kind env [] k)
+         | Some k -> Some (unsugar_kind lenv kenv k)
        in
-       let f xt = unsugar ((x.elt,xt)::env) t in
+       let f xt = unsugar_term ((x.elt,xt)::lenv) kenv t in
        fixy pt.pos ko x f
   in
-  unsugar env pt
+  unsugar pt

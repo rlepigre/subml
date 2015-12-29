@@ -157,9 +157,15 @@ and print_term unfold lvl ff t =
      in
      fprintf ff "\\lambda%a" fn t;
      if lvl > 0 then pp_print_string ff ")";
+  | KAbs(f) ->
+     if lvl > 0 then pp_print_string ff "(";
+     let x = binder_name f in
+     let t = subst f (free_of (new_tvar (binder_name f))) in
+     fprintf ff "\\Lambda%s.%a" x (print_term 0) t;
+     if lvl > 0 then pp_print_string ff ")";
   | Appl(t,u) ->
      if lvl > 1 then pp_print_string ff "(";
-    fprintf ff "%a %a" (print_term 1) t (print_term 2) u;
+    fprintf ff "%a\\,%a" (print_term 1) t (print_term 2) u;
     if lvl > 1 then pp_print_string ff ")";
   | Reco(fs) ->
       let pfield ff (l,t) = fprintf ff "%s = %a" l (print_term 0) t in

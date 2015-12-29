@@ -21,7 +21,7 @@ let list_sep' elt sep = parser
   | e:elt es:{_:STR(sep) e:elt}* -> e::es
 
 let list_sep'' elt sep = parser
-  | e:elt es:{_:STR(sep) e:elt}+ -> e::es
+  | e:elt es:{_:sep e:elt}+ -> e::es
 
 let parser string_char =
   | "\\\"" -> "\""
@@ -102,9 +102,12 @@ let parser forall : unit grammar = "∀" | "/\\"
 let parser exists : unit grammar = "∃" | "\\/"
 let parser mu     : unit grammar = "μ" | "!"
 let parser nu     : unit grammar = "ν" | "?"
+let parser time   : unit grammar = "×" | "*"
 let parser lambda : unit grammar = "λ" | fun_kw
+let parser klam   : unit grammar = "Λ" | "/\\"
 let parser dot    : unit grammar = "." | "->" | "→" | "↦"
 let parser hole   : unit grammar = "?"
+let parser comma  : unit grammar = ","
 
 let parser pident = id:''[a-zA-Z0-9][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 let parser lident = id:''[a-z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
@@ -116,7 +119,7 @@ let parser uident = id:''[A-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 
 type pkind_prio = KQuant | KFunc | KProd | KAtom
 
-type pterm_prio = TFunc | TColo | TAppl | TAtom
+type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
 
 let parser pkind p =
   | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
@@ -147,7 +150,7 @@ let parser pkind p =
   | a:(pkind KFunc)  when p = KQuant
 
 and kind_list  = l:(list_sep (pkind KQuant) ",")
-and kind_prod  = l:(list_sep'' (pkind KAtom) "*") -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and kind_prod  = l:(list_sep'' (pkind KAtom) time) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and sum_item   = id:uident a:{_:of_kw a:(pkind KQuant)}?
 and sum_items  = l:(list_sep sum_item "|")
 and prod_item  = id:pident ":" a:(pkind KQuant)
@@ -166,13 +169,19 @@ and var =
   | id:lident                    -> (in_pos _loc_id id, None)
   | "(" id:lident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
 
+and lvar =
+  | id:lident                    -> (in_pos _loc_id id, None)
+  | id:lident ":" k:kind         -> (in_pos _loc_id id, Some k)
+
 
 and term p =
   | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
-  | t:(term TAppl) u:(term TAtom) when p = TAppl ->
+  | klam x:uident t:(term TFunc) when p = TFunc ->
+      in_pos _loc (PKAbs(in_pos _loc_x x,t))
+  | t:(term TAppl) u:(term TColo) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
-  | t:(term TAppl) ";" u:(term TColo) when p = TColo ->
+  | t:(term TAppl) ";" u:(term TSeq) when p = TSeq ->
      sequence _loc t u
   | "print(" - s:string_lit - ")" when p = TAtom ->
       in_pos _loc (PPrnt(s))
@@ -187,19 +196,25 @@ and term p =
      in_pos _loc (PReco(fs))
   | "(" fs:tuple ")" when p = TAtom ->
      in_pos _loc (PReco(fs))
-  | t:(term TAppl) ":" k:kind when p = TColo ->
+  | t:(term TColo) ":" k:kind when p = TColo ->
       in_pos _loc (PCoer(t,k))
-  | t:(term TAppl) "::" l:(term TColo) when p = TColo ->
+  | t:(term TAppl) "::" l:(term TSeq) when p = TSeq ->
       list_cons _loc t l
   | id:lident when p = TAtom ->
       in_pos _loc (PLVar(id))
   | fix_kw x:var dot u:(term TFunc) when p = TFunc ->
       in_pos _loc (PFixY(x,u))
   | "[" l:list "]" -> l
+  | let_kw r:rec_kw? id:lvar "=" t:(term TFunc) in_kw u:(term TFunc) when p = TFunc ->
+       let t =
+	 if r = None then t
+	 else in_pos _loc_t (PFixY(id, t)) in
+       in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
   | "(" t:(term TFunc) ")" when p = TAtom
-  | t:(term TAtom) when p = TAppl
-  | t:(term TAppl) when p = TColo
-  | t:(term TColo) when p = TFunc
+  | t:(term TAtom) when p = TColo
+  | t:(term TColo) when p = TAppl
+  | t:(term TAppl) when p = TSeq
+  | t:(term TSeq) when p = TFunc
 
 and pattern =
     | c:uident x:var? -> (c,x)
@@ -208,7 +223,7 @@ and pattern =
 and case = (c,x):pattern _:arrow t:(term TFunc) -> (c, x, t)
 and field   = l:pident k:{ ":" kind }? "=" t:(term TFunc) ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
-and tuple   = l:(list_sep'' (term TFunc) ",") -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and tuple   = l:(list_sep'' (term TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and list    = EMPTY -> list_nil _loc
             | t:(term TFunc) "," l:list -> list_cons _loc t l
 let term = term TFunc
@@ -262,7 +277,7 @@ let read_file = ref (fun _ -> assert false)
 let parser latex_atom =
   | "#" "witnesses" "#"     -> Latex_trace.Witnesses
   | "#" u:"!"? k:kind "#" -> Latex_trace.Kind (u<>None, unbox (unsugar_kind [] [] k))
-  | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (unsugar_term [] t))
+  | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (unsugar_term [] [] t))
   | t:''[^}{@#]+''        -> Latex_trace.Text t
   | l:latex_text          -> l
   | "#?" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
@@ -273,6 +288,8 @@ let parser latex_atom =
      Latex_trace.SProof prf
   | "#:" id:lident "#"    -> let t = Hashtbl.find val_env id in
 			     Latex_trace.Kind (false, t.ttype)
+  | "#?" id:uident "#"    -> let t = Hashtbl.find typ_env id in
+			     Latex_trace.KindDef t
   | "##" id:lident "#"    -> let t = Hashtbl.find val_env id in
 			     Latex_trace.TProof t.proof
 
@@ -311,11 +328,11 @@ let parser command =
         Printf.fprintf stdout "%a\n%!" (print_kind true) k
   (* Parse a term. *)
   | parse_kw t:term ->
-        let t = unbox (unsugar_term [] t) in
+        let t = unbox (unsugar_term [] [] t) in
         Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | eval_kw t:term ->
-        let t = unbox (unsugar_term [] t) in
+        let t = unbox (unsugar_term [] [] t) in
         let t = eval t in
         Printf.fprintf stdout "%a\n%!" (print_term false) t
   (* Typed value definition. *)
@@ -323,7 +340,7 @@ let parser command =
        let t =
 	 if r = None then t
 	 else in_pos _loc_t (PFixY((in_pos _loc_id id, Some k), t)) in
-       let t = unbox (unsugar_term [] t) in
+       let t = unbox (unsugar_term [] [] t) in
        let k = unbox (unsugar_kind [] [] k) in
        let prf =
 	  try
@@ -405,7 +422,7 @@ let parser file_contents =
 let eval_file fn =
   Printf.printf "## Loading file %S\n%!" fn;
   let parse = parse_file file_contents file_blank in
-  Decap.handle_exception parse fn;
+  parse fn;
   Printf.printf "## file Loaded %S\n%!" fn
 
 let _ = read_file := eval_file

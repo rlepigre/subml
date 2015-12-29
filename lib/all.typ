@@ -1,5 +1,6 @@
 set verbose on
 
+include "lib/syntax.typ"
 include "lib/bool.typ"
 include "lib/list.typ"
 include "lib/nat.typ"

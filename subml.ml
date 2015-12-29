@@ -4,6 +4,7 @@ open Ast
 open Multi_print
 open Dparser
 open Raw
+open Decap
 
 let _ = handle_stop true
 
@@ -20,17 +21,34 @@ let spec =
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
 
+
+
 let rec interact () =
   let error msg = Printf.eprintf "%s\n%!" msg; interact () in
   Printf.printf ">> %!";
-  try toplevel_of_string (read_line ()); interact () with
+  try toplevel_of_string (read_line ()); interact ()
+  with
   | End_of_file          -> ()
   | Finish               -> ()
   | Stopped              -> error "Stopped."
   | Unsugar_error(loc,msg) -> error ("!!! Error: "^msg^" at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
   | Failure("No parse.") -> interact ()
+  | Parse_error _ as e   -> print_exception e; interact ()
+  | Unbound(loc,s)       -> error ("Unbound: "^s^" at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
   | e                    -> error (Printexc.to_string e)
 
 let _ =
-  Arg.parse spec (fun fn -> eval_file fn) "";
+  begin
+    let error msg = Printf.eprintf "%s\n%!" msg; exit 1 in
+    try
+      Arg.parse spec (fun fn -> eval_file fn) "";
+    with
+    | Stopped              -> error ("Stopped.")
+    | Unsugar_error(loc,msg) -> error ("!!! Error: "^msg^
+					  " at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
+    | Failure("No parse.") -> exit 1
+    | Parse_error _ as e   -> print_exception e; exit 1
+    | Unbound(loc,s)       -> error ("Unbound: "^s^" at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
+    | e                    -> error (Printexc.to_string e)
+  end;
   if not !quit then interact ()

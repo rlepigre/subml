@@ -119,6 +119,8 @@ and term' =
   | Prnt of string
   (* Fixpoint combinator. *)
   | FixY of kind option * (term,term) binder
+  (* lambda on typed, semantics via epsilon *)
+  | KAbs of (kind, term) binder
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
@@ -211,6 +213,8 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (_          , Coer(t2,_) ) -> eq_term t1 t2
     | (VDef(d1)   , _          ) -> eq_term d1.value t2
     | (_          , VDef(d2)   ) -> eq_term t1 d2.value
+    | (KAbs(f)    , _          ) -> eq_term (subst f (Prod[])) t2
+    | (_          , KAbs(f)    ) -> eq_term t1 (subst f (Prod[]))
     | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
     | (LAbs(_,f1) , LAbs(_,f2) )
     | (FixY(_,f1) , FixY(_,f2) ) -> eq_tbinder f1 f2
@@ -394,6 +398,9 @@ let lvar_p : pos -> term variable -> term =
 let labs_p : pos -> kind option -> (term, term) binder -> term =
   fun p ko b -> in_pos p (LAbs(ko,b))
 
+let kabs_p : pos -> (kind, term) binder -> term =
+  fun p b -> in_pos p (KAbs b)
+
 let appl_p : pos -> term -> term -> term =
   fun p t u -> in_pos p (Appl(t,u))
 
@@ -434,6 +441,10 @@ let lvar : pos -> term variable -> tbox =
 let labs : pos -> kbox option -> strpos -> (tbox -> tbox) -> tbox =
   fun p ko x f ->
     box_apply2 (labs_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
+
+let kabs : pos -> strpos -> (kbox -> tbox) -> tbox =
+  fun p x f ->
+    box_apply (kabs_p p) (bind mk_free_tvar x.elt f)
 
 let idt : tbox =
   labs dummy_position None (dummy_pos "x") (fun x -> x)
@@ -526,6 +537,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Cons(_,t)     -> aux2 acc t
     | FixY(_,f)
     | LAbs(_,f)     -> aux2 acc (subst f (dummy_pos (Reco [])))
+    | KAbs(f)       -> aux2 acc (subst f (Prod []))
     | Appl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | Reco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
     | Case(t,l)     -> List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l

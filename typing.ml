@@ -63,7 +63,7 @@ let lower_kind k1 k2 =
   let i = ref 0 in
   let new_int () = incr i; TInt !i in
   let rec lower_kind k1 k2 =
-    if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;
+    (*    if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;*)
     match (full_repr k1, full_repr k2) with
     | (k1          , k2          ) when k1 == k2 -> true
     | (TVar(_)     , TVar(_)     ) -> assert false
@@ -128,18 +128,29 @@ let rec dot_proj t k s = match full_repr k with
      if binder_name f = s then c else dot_proj t (subst f c) s
   | _ -> subtype_error ("Dot projection "^s^" undefined")
 
+let rec lambda_kind t k s = match full_repr k with
+  | FAll(f) ->
+     let c = UCst(t,f) in
+     if binder_name f = s then c else lambda_kind t (subst f c) s
+  | _ -> subtype_error ("Dot projection "^s^" undefined")
+
 let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_ctxt * kind * kind * kind * kind * int option =
   fun t ctxt a a0 b b0 ->
     (* the test (has_uvar a || has_uvar b) is importanat to
        - avoid occur chek for induction variable
        - to keep the invariant that no ordinal <> OConv occur in
        positive mus and negative nus *)
-    match (a, b), (has_uvar a || has_uvar b) with
-    | ((FixM _, _) | (FixN _, _) | (_, FixM _) | (_, FixN _)), false ->
-       let (a', os1) = decompose Neg a in
-       let (b', os2) = decompose Pos b in
-       let os' = os1 @ os2 in
-       let os' = Array.of_list os' in
+    try
+      if has_uvar a || has_uvar b then raise Exit;
+      let (a', os1) = decompose Neg a in
+      let (b', os2) = decompose Pos b in
+      let os' = os1 @ os2 in
+      (* Need induction for Nu left and Mu right, just to avoid loops *)
+      if os' = [] then
+	(match (a, b) with
+	| (FixN _, _) | (_, FixM _) -> ()
+	| _ -> raise Exit);
+      let os' = Array.of_list os' in
        let os1 = List.map new_OInd os1 in
        let os2 = List.map new_OInd os2 in
        let los = os1 @ os2 in
@@ -164,7 +175,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_
        let b = recompose true b' os2 in
        let ctxt = (a', b', fnum, os,use)::fst ctxt, snd ctxt in
        (ctxt, a, a, b, b, Some fnum)
-    | _ ->
+    with Exit ->
        (ctxt, a, a0, b, b0, None)
 
 let rec subtype : term -> kind -> kind -> unit = fun t a b ->
@@ -314,10 +325,19 @@ and type_check : term -> kind -> unit = fun t c ->
         let b = new_uvar () in
         subtype t (Func(a,b)) c;
         type_check (subst f (cnst f a b)) b
+    | KAbs(f) ->
+       let k = lambda_kind t c (binder_name f) in
+       type_check (subst f k) c
     | Appl(t,u) ->
-        let a = new_uvar () in
-        type_check t (Func(a,c));
-        type_check u a
+       let a = new_uvar () in
+       let fun_first = match t.elt with LAbs(None,_) -> false | _ -> true in
+       if fun_first then begin
+	 type_check t (Func(a,c));
+	 type_check u a
+       end else begin
+	 type_check u a;
+	 type_check t (Func(a,c))
+       end
     | Reco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
         subtype t (Prod(ts)) c;
