@@ -29,6 +29,11 @@ and pterm' =
   | PReco of (string * pterm) list
   | PFixY of (strpos * pkind option) * pterm
 
+let list_nil _loc =
+  in_pos _loc (PCstr("Nil" , None))
+
+let list_cons _loc t l =
+  in_pos _loc (PCstr("Cons", Some (in_pos _loc (PReco [("hd",t);("tl",l)]))))
 (****************************************************************************
  *                           Desugaring functions                           *
  ****************************************************************************)

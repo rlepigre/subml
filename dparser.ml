@@ -106,7 +106,6 @@ let parser lambda : unit grammar = "λ" | fun_kw
 let parser dot    : unit grammar = "." | "->" | "→" | "↦"
 let parser hole   : unit grammar = "?"
 
-let parser ident = id:''[a-zA-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 let parser pident = id:''[a-zA-Z0-9][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 let parser lident = id:''[a-z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 let parser uident = id:''[A-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
@@ -122,15 +121,15 @@ type pterm_prio = TFunc | TColo | TAppl | TAtom
 let parser pkind p =
   | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFunc(a,b))
-  | id:ident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
+  | id:uident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
       -> in_pos _loc (PTVar(id,l))
-  | forall id:ident a:(pkind KQuant) when p = KQuant
+  | forall id:uident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PFAll(id,a))
-  | exists id:ident a:(pkind KQuant) when p = KQuant
+  | exists id:uident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PExis(id,a))
-  | mu id:ident a:(pkind KQuant) when p = KQuant
+  | mu id:uident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PMu(id,a))
-  | nu id:ident a:(pkind KQuant) when p = KQuant
+  | nu id:uident a:(pkind KQuant) when p = KQuant
       -> in_pos _loc (PNu(id,a))
   | "{" fs:prod_items "}" when p = KAtom
       -> in_pos _loc (PProd(fs))
@@ -149,7 +148,7 @@ let parser pkind p =
 
 and kind_list  = l:(list_sep (pkind KQuant) ",")
 and kind_prod  = l:(list_sep'' (pkind KAtom) "*") -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
-and sum_item   = id:ident a:{_:of_kw a:(pkind KQuant)}?
+and sum_item   = id:uident a:{_:of_kw a:(pkind KQuant)}?
 and sum_items  = l:(list_sep sum_item "|")
 and prod_item  = id:pident ":" a:(pkind KQuant)
 and prod_items = l:(list_sep prod_item ";")
@@ -157,7 +156,7 @@ and prod_items = l:(list_sep prod_item ";")
 and kind = (pkind KQuant)
 
 and kind_def =
-  | id:ident args:{"(" ids:(list_sep' ident ",") ")"}?[[]] "=" k:kind
+  | id:uident args:{"(" ids:(list_sep' uident ",") ")"}?[[]] "=" k:kind
 
 (****************************************************************************
  *                          A parser for expressions                        *
@@ -188,13 +187,15 @@ and term p =
      in_pos _loc (PReco(fs))
   | "(" fs:tuple ")" when p = TAtom ->
      in_pos _loc (PReco(fs))
-  | t:(term TAtom) ":" k:kind when p = TAtom ->
+  | t:(term TAppl) ":" k:kind when p = TColo ->
       in_pos _loc (PCoer(t,k))
+  | t:(term TAppl) "::" l:(term TColo) when p = TColo ->
+      list_cons _loc t l
   | id:lident when p = TAtom ->
       in_pos _loc (PLVar(id))
   | fix_kw x:var dot u:(term TFunc) when p = TFunc ->
       in_pos _loc (PFixY(x,u))
-
+  | "[" l:list "]" -> l
   | "(" t:(term TFunc) ")" when p = TAtom
   | t:(term TAtom) when p = TAppl
   | t:(term TAppl) when p = TColo
@@ -204,7 +205,8 @@ and pattern = c:uident x:var? _:arrow t:(term TFunc) -> (c, x, t)
 and field   = l:pident k:{ ":" kind }? "=" t:(term TFunc) ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
 and tuple   = l:(list_sep'' (term TFunc) ",") -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
-
+and list    = EMPTY -> list_nil _loc
+            | t:(term TFunc) "," l:list -> list_cons _loc t l
 let term = term TFunc
 
 (****************************************************************************
