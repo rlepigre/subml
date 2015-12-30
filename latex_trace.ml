@@ -54,7 +54,7 @@ let print_subtyping_proof, print_typing_proof =
       | 0 -> "\\AxiomC{}\n\\UnaryInfC"
       | 1 -> "\\UnaryInfC"
       | 2 -> "\\BinaryInfC"
-      | 3 -> "\\TernaryInfC"
+      | 3 -> "\\TrinaryInfC"
       | _ -> assert false
     in
     if !print_term_in_subtyping then
@@ -72,7 +72,7 @@ let print_subtyping_proof, print_typing_proof =
       | 0 -> "\\AxiomC{}\n\\UnaryInfC"
       | 1 -> "\\UnaryInfC"
       | 2 -> "\\BinaryInfC"
-      | 3 -> "\\TernaryInfC"
+      | 3 -> "\\TrinaryInfC"
       | _ -> assert false
     in
     List.iter (fn ch) strees;

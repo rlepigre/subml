@@ -288,7 +288,7 @@ let parser latex_atom =
   | "@" br:int_lit?[0] u:"!"? t:term "@" -> Latex_trace.Term (br,u<>None, unbox (unsugar_term [] [] t))
   | t:''[^}{@#]+''        -> Latex_trace.Text t
   | l:latex_text          -> l
-  | "#?" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
+  | "#" "check" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
      let a = unbox (unsugar_kind [] [] a) in
      let b = unbox (unsugar_kind [] [] b) in
      generic_subtype a b;
