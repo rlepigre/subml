@@ -186,12 +186,21 @@ and print_term unfold lvl ff t =
        done;
        pp_print_string ff ")";
      end else begin
+       let fn s t = match t.elt with
+	   Coer(t,k) -> t, fun ff () -> fprintf ff "%s %a" s pkind k
+	 | _ -> t,  fun ff () -> ()
+       in
        if !break_hint = 0 then begin
-	 let pfield ff (l,t) = fprintf ff "\\mathrm{%s} = %a" l (print_term 0) t in
+	 let pfield ff (l,t) =
+	   let t, pt = fn ":" t in
+	   fprintf ff "\\mathrm{%s} %a = %a" l pt () (print_term 0) t in
 	 fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
        end else begin
 	 decr break_hint;
-	 let pfield ff (l,t) = fprintf ff "\\mathrm{%s} &= %a" l (print_term 0) t in
+	 let pfield ff (l,t) =
+	   let t, pt = fn ":" t in
+	   fprintf ff "\\mathrm{%s} %a &= %a" l pt () (print_term 0) t
+	 in
 	 fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}\\begin{array}{ll}%a\\end{array}\\right\\}" (print_list pfield ";\\\\\n") fs
        end
      end
