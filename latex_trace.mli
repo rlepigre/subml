@@ -2,9 +2,9 @@ open Ast
 open Proof_trace
 
 type latex_output =
-  | Kind of (bool * kind)
-  | KindDef of type_def
-  | Term of (bool * term)
+  | Kind of int * bool * kind
+  | KindDef of int * type_def
+  | Term of int * bool * term
   | Text of string
   | List of latex_output list
   | SProof of sub_proof

@@ -8,6 +8,8 @@ open Print
  *                           Printing of a type                             *
  ****************************************************************************)
 
+let break_hint = ref 0
+
 let rec print_ordinal unfold ff o =
   let o = onorm o in
   match o with
@@ -62,15 +64,21 @@ and print_kind unfold wrap ff t =
 	 if i = 2 then fprintf ff "{\\times}";
 	 fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
        done
-     end else begin
-      let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
-      fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
-     end
+     end else
+       if !break_hint = 0 then begin
+	 let pfield ff (l,a) = fprintf ff "\\mathrm{%s} : %a" l pkind a in
+	 fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
+       end else begin
+	 decr break_hint;
+	 let pfield ff (l,a) = fprintf ff "\\mathrm{%s} &: %a" l pkind a in
+	 fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}\\begin{array}{ll}%a\\end{array}\\right\\}"
+	   (print_list pfield ";\\\\\n")fs
+       end
   | DSum(cs) ->
      let pvariant ff (c,a) =
        match repr a with
-       | Prod [] -> fprintf ff "%s" c
-       | _ -> fprintf ff "%s \\of %a" c pkind a
+       | Prod [] -> fprintf ff "\\mathrm{%s}" c
+       | _ -> fprintf ff "\\mathrm{%s} \\of %a" c pkind a
      in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
   | FAll(f)  ->
@@ -153,11 +161,17 @@ and print_term unfold lvl ff t =
      in
      fprintf ff "\\lambda%a" fn t;
      if lvl > 0 then pp_print_string ff ")";
-  | KAbs(f) ->
+  | KAbs(_) ->
      if lvl > 0 then pp_print_string ff "(";
-     let x = binder_name f in
-     let t = subst f (free_of (new_tvar (binder_name f))) in
-     fprintf ff "\\Lambda%s.%a" x (print_term 0) t;
+     let rec fn ff t = match t.elt with
+       | KAbs(b) ->
+	  let x = binder_name b in
+	  let t = subst b (free_of (new_tvar x)) in
+          fprintf ff " %s%a" x fn t
+       | _ ->
+	  fprintf ff ".%a" (print_term 0) t
+     in
+     fprintf ff "\\Lambda %a" fn t;
      if lvl > 0 then pp_print_string ff ")";
   | Appl(t,u) ->
      if lvl > 1 then pp_print_string ff "(";
@@ -172,29 +186,35 @@ and print_term unfold lvl ff t =
        done;
        pp_print_string ff ")";
      end else begin
-       let pfield ff (l,t) = fprintf ff "%s = %a" l (print_term 0) t in
-       fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
+       if !break_hint = 0 then begin
+	 let pfield ff (l,t) = fprintf ff "\\mathrm{%s} = %a" l (print_term 0) t in
+	 fprintf ff "\\{%a\\}" (print_list pfield "; ") fs
+       end else begin
+	 decr break_hint;
+	 let pfield ff (l,t) = fprintf ff "\\mathrm{%s} &= %a" l (print_term 0) t in
+	 fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}\\begin{array}{ll}%a\\end{array}\\right\\}" (print_list pfield ";\\\\\n") fs
+       end
      end
   | Proj(t,l) ->
-      fprintf ff "%a.%s" (print_term 0) t l
+      fprintf ff "%a.\\mathrm{%s}" (print_term 0) t l
   | Cons(c,t) ->
      (match t.elt with
-     | Reco([]) -> fprintf ff "%s" c
-     | _ -> fprintf ff "%s[%a]" c (print_term 0) t)
+     | Reco([]) -> fprintf ff "\\mathrm{%s}" c
+     | _ -> fprintf ff "\\mathrm{%s} %a" c (print_term 0) t)
   | Case(t,l) ->
      let pvariant ff (c,b) =
        match b.elt with
        | LAbs(_,f) ->
           let x = binder_name f in
           let t = subst f (free_of (new_lvar' x)) in
-          fprintf ff "| %s[%s] \\rightarrow %a" c x (print_term 0) t
+          fprintf ff "| \\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
        | _ ->
-          fprintf ff "| %s \\rightarrow %a" c (print_term 0) b
+          fprintf ff "| \\mathrm{%s} \\rightarrow %a" c (print_term 0) b
       in
       fprintf ff "\\case{%a}{%a}" (print_term 0) t (print_list pvariant "; ") l
   | VDef(v) ->
      if unfold then
-       nprint_term lvl ff v.value
+       nprint_term lvl ff v.orig_value
      else
       pp_print_string ff v.tex_name
   | Prnt(s) ->

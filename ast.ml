@@ -133,7 +133,8 @@ and value_def =
   { name  : string
   ; tex_name : string
   (* The corresponding term. *)
-  ; value : term
+  ; value : term  (* evaluated *)
+  ; orig_value : term (* original definition *)
   (* Raw version of the term (i.e. no anotations). *)
   ; ttype : kind
   ; proof : typ_proof }

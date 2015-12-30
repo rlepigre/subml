@@ -5,9 +5,9 @@ open Proof_trace
 open Bindlib
 
 type latex_output =
-  | Kind of (bool * kind)
-  | KindDef of type_def
-  | Term of (bool * term)
+  | Kind of int * bool * kind
+  | KindDef of int * type_def
+  | Term of int * bool * term
   | Text of string
   | List of latex_output list
   | SProof of sub_proof
@@ -84,14 +84,14 @@ let print_subtyping_proof, print_typing_proof =
   (fun ch p -> gn ch p)
 
 let rec output ch = function
-  | Kind(unfold,k) -> print_kind unfold ch k
-  | Term(unfold,t) -> print_term unfold ch t
+  | Kind(n,unfold,k) -> break_hint := n; print_kind unfold ch k; break_hint := 0
+  | Term(n,unfold,t) -> break_hint := n; print_term unfold ch t; break_hint := 0
   | Text(t)        -> Printf.fprintf ch "%s" t
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof p       -> print_subtyping_proof ch p
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
-  | KindDef(t)     ->
+  | KindDef(n,t)     ->
      let name = t.tdef_tex_name in
      let f = t.tdef_value in
      let args = mbinder_names f in
@@ -104,4 +104,6 @@ let rec output ch = function
 	     Printf.fprintf ch ",%s" a.(i)
 	   done) a
      in
-     Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k
+     break_hint := n;
+     Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
+     break_hint := 0

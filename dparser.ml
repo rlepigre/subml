@@ -36,6 +36,9 @@ let string_lit =
   let slit = parser "\"" cs:string_char* "\"" -> String.concat "" cs in
   change_layout slit no_blank
 
+let int_lit =
+  parser s:''[0-9]+'' -> int_of_string s
+
 (* Keyword management. *)
 let keywords = Hashtbl.create 20
 
@@ -281,8 +284,8 @@ let read_file = ref (fun _ -> assert false)
 
 let parser latex_atom =
   | "#" "witnesses" "#"     -> Latex_trace.Witnesses
-  | "#" u:"!"? k:kind "#" -> Latex_trace.Kind (u<>None, unbox (unsugar_kind [] [] k))
-  | "@" u:"!"? t:term "@" -> Latex_trace.Term (u<>None, unbox (unsugar_term [] [] t))
+  | "#" br:int_lit?[0] u:"!"? k:kind "#" -> Latex_trace.Kind (br,u<>None, unbox (unsugar_kind [] [] k))
+  | "@" br:int_lit?[0] u:"!"? t:term "@" -> Latex_trace.Term (br,u<>None, unbox (unsugar_term [] [] t))
   | t:''[^}{@#]+''        -> Latex_trace.Text t
   | l:latex_text          -> l
   | "#?" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
@@ -291,10 +294,12 @@ let parser latex_atom =
      generic_subtype a b;
      let prf = collect_subtyping_proof () in
      Latex_trace.SProof prf
-  | "#:" id:lident "#"    -> let t = Hashtbl.find val_env id in
-			     Latex_trace.Kind (false, t.ttype)
-  | "#?" id:uident "#"    -> let t = Hashtbl.find typ_env id in
-			     Latex_trace.KindDef t
+  | "#" br:int_lit?[0] ":" id:lident "#"    ->
+     let t = Hashtbl.find val_env id in
+     Latex_trace.Kind (br, false, t.ttype)
+  | "#" br:int_lit?[0] "?" id:uident "#"    ->
+     let t = Hashtbl.find typ_env id in
+     Latex_trace.KindDef(br,t)
   | "##" id:lident "#"    -> let t = Hashtbl.find val_env id in
 			     Latex_trace.TProof t.proof
 
@@ -357,11 +362,12 @@ let parser command =
 	    e -> trace_backtrace (); raise e
 	in
         reset_all ();
-        let t = eval t in
+        let tn = eval t in
         Hashtbl.add val_env id
 	  { name = id
 	  ; tex_name = (match tex with None -> "\\mathrm{"^id^"}" | Some s -> s)
-	  ; value = t
+	  ; value = tn
+	  ; orig_value = t
 	  ; ttype = k
 	  ; proof = prf
 	  };

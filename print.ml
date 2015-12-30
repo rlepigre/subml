@@ -234,7 +234,7 @@ and print_term unfold ff t =
       fprintf ff "case %a of %a" print_term t (print_list pvariant "; ") l
   | VDef(v) ->
      if unfold then
-       print_term ff v.value
+       print_term ff v.orig_value
      else
        pp_print_string ff v.name
   | Prnt(s) ->

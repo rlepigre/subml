@@ -17,3 +17,5 @@ val print_kind_def : bool -> out_channel -> type_def -> unit
 val print_ordinal : bool -> out_channel -> ordinal -> unit
 
 val print_epsilon_tbls : out_channel -> unit
+
+val break_hint : int ref
