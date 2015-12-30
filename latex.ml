@@ -59,7 +59,7 @@ and print_kind unfold wrap ff t =
   | Prod(fs) ->
      if is_tuple fs then begin
        for i = 1 to List.length fs do
-	 if i = 2 then fprintf ff "\\times ";
+	 if i = 2 then fprintf ff "{\\times}";
 	 fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
        done
      end else begin
