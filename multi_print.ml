@@ -20,5 +20,3 @@ let print_ordinal ch =
   match !print_mode with
   | Ascii -> Print.print_ordinal ch
   | Latex -> Latex.print_ordinal ch
-
-let reset_ordinals = Print.reset_ordinals

@@ -1,12 +1,35 @@
 open Format
 open Ast
 
+(* code shared with other printing *)
+
+(* usefull function *)
 val print_list : (formatter -> 'a -> unit) -> string -> formatter -> 'a list -> unit
-
 val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -> unit
+val is_tuple : (string * 'a) list -> bool
 
+(* function related to simplification of
+   unused induction rule and the resulting simplification of ordinals *)
 val ignored_ordinals : ordinal list ref
 val onorm : ordinal -> ordinal
+
+(* when true, print_ordinal as variables (as if they were no witnesses *)
+val simplified_ordinals : bool ref
+
+(* function to search, print and reset tables of ordinals and epsilon,
+   this allow to print a simple name, and latex the long definition.
+   without this, printing is unreadable *)
+val reset_epsilon_tbls : unit -> unit
+val search_type_tbl : term -> (kind, kind) Bindlib.binder -> bool -> string * int
+val search_term_tbl : (term, term) Bindlib.binder -> kind -> kind -> string * int
+val search_ordinal_tbl : ordinal -> int
+val print_epsilon_tbls : out_channel -> unit
+(* pointer are exported for the latex versiob of the print function *)
+val ordinal_tbl : (ordinal * int) list ref
+val epsilon_term_tbl : ((term, term) Bindlib.binder * (string * int * kind * kind)) list ref
+val epsilon_type_tbl : ((kind, kind) Bindlib.binder * (string * int * term * bool)) list ref
+
+(* unicode printing *)
 
 (* Pretty-printer for terms. If the boolean is true, definitions are unfolded,
 otherwise the name of the defined type is used instead. *)
@@ -20,20 +43,9 @@ val print_kind : bool -> out_channel -> kind -> unit
 are unfolded, otherwise the name of the defined type is used instead. *)
 val print_kind_def : bool -> out_channel -> type_def -> unit
 
-val print_ordinal : out_channel -> ordinal -> unit
+(* Pretty-printer for an ordinal *)
+val print_ordinal : bool -> out_channel -> ordinal -> unit
 
-val reset_ordinals : unit -> unit
-
-val ordinal_tbl : (ordinal * int) list ref
-val ordinal_count : int ref
-val epsilon_term_table : ((term, term) Bindlib.binder * (string * int * kind * kind)) list ref
-val epsilon_type_table : ((term, term) Bindlib.binder * (string * int * kind * kind)) list ref
+(* various *)
 val print_term_in_subtyping : bool ref
-
-val show_leq : bool ref
-
 val find_tdef : kind -> type_def
-
-val print_witnesses : out_channel -> unit
-
-val is_tuple : (string * 'a) list -> bool

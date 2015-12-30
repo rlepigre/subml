@@ -3,6 +3,7 @@ open Decap
 open Bindlib
 open Util
 open Ast
+open Print
 open Multi_print
 open Eval
 open Typing
@@ -379,22 +380,19 @@ let parser command =
 	      print_subtyping_proof prf;
 	      exit 1
 	    );
-	    reset_ordinals ();
+	    reset_epsilon_tbls ();
 	    Printf.eprintf "check: OK\n%!"
           with
           | Subtype_error s when n ->
 	     Printf.eprintf "CHECK FAILED: OK %s\n%!" s;
-	    trace_backtrace ();
-	    exit 1;
+	     exit 1;
           | Subtype_error s ->
 	     Printf.eprintf "check not: OK %s\n%!" s;
-	     trace_state := [];
- 	     reset_ordinals ();
+ 	     trace_state := [];
+	     reset_epsilon_tbls ();
           | e ->
 	     Printf.eprintf "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
-	     trace_backtrace ();
 	     exit 1;
-
         end
   | latex_kw t:latex_text ->
      if not !ignore_latex then Latex_trace.output !latex_ch t

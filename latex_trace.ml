@@ -90,7 +90,7 @@ let rec output ch = function
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof p       -> print_subtyping_proof ch p
   | TProof p       -> print_typing_proof ch p
-  | Witnesses      -> print_witnesses ch; Print.epsilon_term_table := []
+  | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(t)     ->
      let name = t.tdef_tex_name in
      let f = t.tdef_value in

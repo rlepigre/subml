@@ -270,14 +270,14 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
 
     | (_          , FixN(o,f)) ->
        let o' = OLess (o,NotIn(t,b)) in
-       if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
+       if !debug then Printf.eprintf "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
        let cst = FixN(o', f) in
        subtype ctxt t a0 (subst f cst);
        trace_sub_pop NNuRight
 
     | (FixM(o,f)  , _        ) ->
        let o' = OLess (o,In(t,a)) in
-       if !debug then Printf.eprintf "creating %a < %a\n%!" print_ordinal o' print_ordinal o;
+       if !debug then Printf.eprintf "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
        let cst = FixM(o', f) in
        subtype ctxt t (subst f cst) b0;
        trace_sub_pop NMuLeft

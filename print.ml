@@ -31,22 +31,61 @@ let rec onorm o =
   else o
 
 (* managment of a table to name ordinals and epsilon when printing *)
-let ordinal_tbl = ref []
 let ordinal_count = ref 0
+let ordinal_tbl = ref []
+let epsilon_term_tbl = ref[]
+let epsilon_type_tbl = ref[]
 
-let epsilon_term_table = ref[]
-let epsilon_type_table = ref[]
+let reset_epsilon_tbls () =
+  ordinal_count := 0;
+  ordinal_tbl := [];
+  epsilon_term_tbl := [];
+  epsilon_type_tbl := []
+
+let search_type_tbl u f is_exists =
+  try
+    (* use the fact that f is liskely to be enough as a key.
+       this is just for printing after all … *)
+    let (name,index,_,_) = List.assq f !epsilon_type_tbl in
+    (name, index)
+  with not_found ->
+    let base = binder_name f in
+    let max = List.fold_left
+      (fun acc (_,(base',i,u,is_exists)) -> if base = base' then max acc i else acc) (-1) !epsilon_type_tbl
+    in
+    let index = max + 1 in
+    epsilon_type_tbl := (f,(base,index,u,is_exists)) :: !epsilon_type_tbl;
+    (base, index)
+
+let search_term_tbl f a b =
+  try
+    let (name,index,_,_) = List.assq f !epsilon_term_tbl in
+    (name, index)
+  with not_found ->
+    let base = binder_name f in
+    let max = List.fold_left
+      (fun acc (_,(base',i,_,_)) -> if base = base' then max acc i else acc) (-1) !epsilon_term_tbl
+    in
+    let index = max + 1 in
+    epsilon_term_tbl := (f,(base,index,a,b)) :: !epsilon_term_tbl;
+    (base, index)
+
+let search_ordinal_tbl o =
+  try
+    List.assq o !ordinal_tbl
+  with
+    Not_found ->
+      let n = !ordinal_count in incr ordinal_count;
+      ordinal_tbl := (o,n)::!ordinal_tbl;
+      n
 
 let print_term_in_subtyping = ref false
 
-let reset_ordinals () =
-  ordinal_count := 0;
-  ordinal_tbl := []
 
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
-let show_leq = ref false
+let simplified_ordinals = ref false
 
 let rec print_ordinal unfold ff o =
   let o = onorm o in
@@ -55,35 +94,32 @@ let rec print_ordinal unfold ff o =
   | OConv        -> pp_print_string ff "∞"
   | OTag i       -> fprintf ff "?%i" i
   | _ ->
-    let n =
-      try
-	List.assq o !ordinal_tbl
-      with
-	Not_found ->
-	  let n = !ordinal_count in incr ordinal_count;
-	  ordinal_tbl := (o,n)::!ordinal_tbl; n
-    in
+    let n = search_ordinal_tbl o in
     match o with
-    | OLess(o,In(t,a)) when unfold ->
+    | OLess(o,In(t,a)) when unfold && not !simplified_ordinals ->
        fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
 	 (print_term false) t (print_kind false false) a
-    | OLess(o,NotIn(t,a)) when unfold ->
+    | OLess(o,NotIn(t,a)) when unfold && not !simplified_ordinals ->
        fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
 	 (print_term false) t (print_kind false false) a
-    | OInd(_,o) when unfold && !show_leq && onorm o <> OConv ->
+    | OInd(_,o) when unfold && !simplified_ordinals && onorm o <> OConv ->
        fprintf ff "α(%d≤%a)" n (print_ordinal false) o
+    | OLess(o,_) when unfold && !simplified_ordinals ->
+       fprintf ff "α(%d<%a)" n (print_ordinal false) o
     | OInd(_,o) -> fprintf ff "α%d" n
+    | OLess(o,_) when !simplified_ordinals -> fprintf ff "α%d" n
     | OLess(o,_) -> fprintf ff "κ%d" n
     | _ -> assert false
 
 and print_index_ordinal ff = function
   | OConv -> ()
-  | o -> fprintf ff "[%a]" (print_ordinal false) o
+  | o -> fprintf ff "[%a]" (print_ordinal !simplified_ordinals) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pkindw = print_kind unfold true in
-  match repr t with
+  let t = repr t in
+  match t with
   | TVar(x) ->
       pp_print_string ff (name_of x)
   | Func(a,b) ->
@@ -130,14 +166,11 @@ and print_kind unfold wrap ff t =
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
   | DPrj(t,s) ->
      fprintf ff "%a.%s" (print_term false) t s
-  | UCst(t,f) ->
-     let x = new_tvar (binder_name f) in
-     fprintf ff "ϵ_%s" (name_of x)
-  (*fprintf ff "ϵ_%s(%a ∉ %a)" (name_of x) (print_term false) t pkind a*)
-  | ECst(t,f) ->
-     let x = new_tvar (binder_name f) in
-     fprintf ff "ϵ_%s" (name_of x)
-  (*     fprintf ff "ϵ_%s(%a ∈ %a)" (name_of x) (print_term false) t pkind a*)
+  | UCst(u,f)
+  | ECst(u,f) ->
+     let is_exists = match t with ECst(_) -> true | _ -> false in
+     let name, index =search_type_tbl u f is_exists in
+     fprintf ff "%s_%d" name index
   | UVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | TInt(n) ->
@@ -215,21 +248,8 @@ and print_term unfold ff t =
         | Some a -> fprintf ff "fix(%s : %a) → %a" x pkind a print_term t
       end
   | Cnst(f,a,b) ->
-     let name, index =
-       try
-	 let (name,index,_,_) = List.assq f !epsilon_term_table in
-	 (name, index)
-       with not_found ->
-	 let base = binder_name f in
-	 let max = List.fold_left
-	   (fun acc (_,(base',i,a,b)) -> if base = base' then max acc i else acc) (-1) !epsilon_term_table
-	 in
-	 let index = max + 1 in
-	 epsilon_term_table := (f,(base,index,a,b)) :: !epsilon_term_table;
-	 (base, index)
-     in
+     let name, index = search_term_tbl f a b in
      fprintf ff "%s_%d" name index
-
 
   | TagI(i) ->
       fprintf ff "TAG(%i)" i
@@ -252,16 +272,24 @@ let print_kind_def unfold ch kd =
   let ff = formatter_of_out_channel ch in
   pkind_def unfold ff kd; pp_print_flush ff (); flush ch
 
-let print_ordinal ch o =
+let print_ordinal unfold ch o =
   let ff = formatter_of_out_channel ch in
-  print_ordinal true ff o; pp_print_flush ff (); flush ch
+  print_ordinal unfold ff o; pp_print_flush ff (); flush ch
 
-let print_witnesses ch =
+let print_epsilon_tbls ch =
   List.iter (fun (f,(name,index,a,b)) ->
     let x = new_lvar dummy_position (binder_name f) in
     let t = subst f (free_of x) in
-    Printf.fprintf ch "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)" name index
-      (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_table
+    Printf.fprintf ch "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index
+      (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_tbl;
+  List.iter (fun (f,(name,index,u,is_exists)) ->
+    let x = new_tvar (binder_name f) in
+    let k = subst f (free_of x) in
+    let symbol = if is_exists then "∈" else "∉" in
+      Printf.fprintf ch "%s_%d = ϵ(%s, %a %s %a)\n" name index
+      (name_of x) (print_term false) u symbol (print_kind false) k) !epsilon_type_tbl;
+    List.iter (fun (o,n) ->
+      Printf.fprintf ch "%a = %a\n" (print_ordinal false) o (print_ordinal true) o) !ordinal_tbl
 
 exception Find_tdef of type_def
 

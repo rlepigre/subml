@@ -83,4 +83,4 @@ let trace_backtrace () =
       fn l
     | [] -> ()
   in
-  fn !trace_state; reset_ordinals (); trace_state := []
+  fn !trace_state; reset_epsilon_tbls (); trace_state := []
