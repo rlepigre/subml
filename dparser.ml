@@ -121,7 +121,7 @@ let parser uident = id:''[A-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
  *                         A parser for kinds (types)                       *
  ****************************************************************************)
 
-type pkind_prio = KQuant | KFunc | KProd | KAtom
+type pkind_prio = KFunc | KProd | KAtom
 
 type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
 
@@ -130,13 +130,13 @@ let parser pkind p =
       -> in_pos _loc (PFunc(a,b))
   | id:uident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
       -> in_pos _loc (PTVar(id,l))
-  | forall id:uident a:(pkind KQuant) when p = KQuant
+  | forall id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFAll(id,a))
-  | exists id:uident a:(pkind KQuant) when p = KQuant
+  | exists id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PExis(id,a))
-  | mu id:uident a:(pkind KQuant) when p = KQuant
+  | mu id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PMu(id,a))
-  | nu id:uident a:(pkind KQuant) when p = KQuant
+  | nu id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PNu(id,a))
   | "{" fs:prod_items "}" when p = KAtom
       -> in_pos _loc (PProd(fs))
@@ -148,19 +148,18 @@ let parser pkind p =
   | hole when p = KAtom
       -> in_pos _loc PHole
 
-  | "(" a:(pkind KQuant) ")" when p = KAtom
+  | "(" a:(pkind KFunc) ")" when p = KAtom
   | a:(pkind KAtom) when p = KProd
   | a:(pkind KProd) when p = KFunc
-  | a:(pkind KFunc)  when p = KQuant
 
-and kind_list  = l:(list_sep (pkind KQuant) ",")
+and kind_list  = l:(list_sep (pkind KFunc) ",")
 and kind_prod  = l:(list_sep'' (pkind KAtom) time) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
-and sum_item   = id:uident a:{_:of_kw a:(pkind KQuant)}?
+and sum_item   = id:uident a:{_:of_kw a:(pkind KFunc)}?
 and sum_items  = l:(list_sep sum_item "|")
-and prod_item  = id:pident ":" a:(pkind KQuant)
+and prod_item  = id:pident ":" a:(pkind KFunc)
 and prod_items = l:(list_sep prod_item ";")
 
-and kind = (pkind KQuant)
+and kind = (pkind KFunc)
 
 and kind_def =
   | id:uident args:{"(" ids:(list_sep' uident ",") ")"}?[[]] "=" k:kind
