@@ -1,13 +1,13 @@
 (* A type for binary trees. *)
-type SimpleNode(A,T) = {value : A; left : T; right : T}
-type Tree(A) = μX [Leaf | Node of SimpleNode(A,X)]
+type SNode(A,T) = {value : A; left : T; right : T}
+type Tree(A) = μX [Leaf | Node of SNode(A,X)]
 
 (* A type for red-black trees. *)
-type RedBlackNode(A,T) = {value : A; color : [R | B]; left : T; right : T}
-type RedBlackTree(A) = μX [Leaf | Node of RedBlackNode(A,X)]
+type RBNode(A,T) = {value : A; color : [R | B]; left : T; right : T}
+type RBTree(A) = μX [Leaf | Node of RBNode(A,X)]
 
 (* A red-black tree can also be used as a simple binary tree. *)
-check RedBlackTree({}) ⊆ Tree({})
+check RBTree({}) ⊆ Tree({})
 
 
 
@@ -36,7 +36,7 @@ val rec insert : ∀X (X → X → [Ls|Eq|Gt]) → X → Tree(X) → Tree(X) =
 
 type Ord = ∃X {compare : X → X → [Ls | Eq | Gt]}
 
-type Set = ∃E ∃S
+type Set = ∃S ∃E
   { empty : S
   ; add   : E → S → S
   ; mem   : E → S → [True | False] }
@@ -50,3 +50,5 @@ include "lib/unary.typ"
 
 val ordNat : Ord = {compare = compare}
 val setNat : Set = makeSet ordNat
+
+val emptyNat : setNat.S = setNat.empty
