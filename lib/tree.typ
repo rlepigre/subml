@@ -36,7 +36,7 @@ val rec insert : ∀X (X → X → [Ls|Eq|Gt]) → X → Tree(X) → Tree(X) =
 
 type Ord = ∃X {compare : X → X → [Ls | Eq | Gt]}
 
-type Set = ∃S ∃E
+type Set = ∃E ∃S
   { empty : S
   ; add   : E → S → S
   ; mem   : E → S → [True | False] }
@@ -51,4 +51,9 @@ include "lib/unary.typ"
 val ordNat : Ord = {compare = compare}
 val setNat : Set = makeSet ordNat
 
-val emptyNat   : setNat.S = setNat.empty
+val emptyNat : setNat.S = setNat.empty
+
+(*
+val singleton : UNat → setNat.S = fun n ↦ 
+  setNat.add n emptyNat
+*)

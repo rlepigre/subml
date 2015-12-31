@@ -144,6 +144,7 @@ and value_def =
 and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
 		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf | NMuRightInf
 		 | NNuLeftInf | NNuRight | NNuRightInf | NUnknown | NProjLeft | NProjRight
+     | NWithRight | NWithLeft
 
 and sub_proof =
   { sterm : term;

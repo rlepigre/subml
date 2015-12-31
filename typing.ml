@@ -128,6 +128,11 @@ let rec dot_proj t k s = match full_repr k with
      if binder_name f = s then c else dot_proj t (subst f c) s
   | _ -> subtype_error ("Dot projection "^s^" undefined")
 
+let with_clause a (s,b) = match full_repr a with
+  | Exis(f) -> if binder_name f = s then subst f b
+               else subtype_error ("Unsuported \"with\" clause.")
+  | _       -> subtype_error ("Illegal use of \"with\" on variable "^s^".")
+
 let rec lambda_kind t k s = match full_repr k with
   | FAll(f) ->
      let c = UCst(t,f) in
@@ -225,8 +230,9 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
 	    Not_found -> subtype ctxt t a (DSum([]))
         in
         List.iter check_variant csa;
-	trace_sub_pop NSum
+        trace_sub_pop NSum
 
+    (* Dot projection. *)
     | (DPrj(t0,s), _        ) ->
        let u = new_uvar () in
        type_check t0 u;
@@ -238,6 +244,15 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
        type_check t0 u;
        subtype ctxt t a0 (dot_proj t0 u s);
        trace_sub_pop NProjRight
+
+    (* With clause. *)
+    | (With(a,e), _         ) ->
+       subtype ctxt t (with_clause a e) b;
+       trace_sub_pop NWithLeft
+
+    | (_        , With(b,e) ) ->
+       subtype ctxt t a (with_clause b e);
+       trace_sub_pop NWithRight
 
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
