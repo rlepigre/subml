@@ -127,7 +127,7 @@ and print_kind unfold wrap ff t =
       fprintf ff "%a → %a" pkindw a pkind b;
       if wrap then pp_print_string ff ")"
   | Prod(fs) ->
-     if is_tuple fs then begin
+     if is_tuple fs && List.length fs > 0 then begin
        for i = 1 to List.length fs do
 	 if i = 2 then fprintf ff "×";
 	 fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
