@@ -51,4 +51,4 @@ include "lib/unary.typ"
 val ordNat : Ord = {compare = compare}
 val setNat : Set = makeSet ordNat
 
-val emptyNat : setNat.S = setNat.empty
+val emptyNat   : setNat.S = setNat.empty

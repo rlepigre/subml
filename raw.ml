@@ -12,6 +12,7 @@ and pkind' =
   | PMu   of string * pkind
   | PNu   of string * pkind
   | PDPrj of pterm  * string
+  | PWith of pkind * string * pkind
   | PProd of (string * pkind) list
   | PSum  of (string * pkind option) list
   | PHole
@@ -95,6 +96,8 @@ let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> 
        dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
     | PDPrj(t,s) ->
        dprj (unsugar_term lenv env t) s
+    | PWith(a,s,b) ->
+       wIth (unsugar env a) s (unsugar env b)
     | PHole      -> box (new_uvar ())
   and unsugar_top env ko =
     match ko with

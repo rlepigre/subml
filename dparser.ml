@@ -92,6 +92,7 @@ let fun_kw  = new_keyword "fun"
 let if_kw   = new_keyword "if"
 let then_kw = new_keyword "then"
 let else_kw = new_keyword "else"
+let with_kw = new_keyword "with"
 
 let unfold_kw  = new_keyword "unfold"
 let clear_kw   = new_keyword "clear"
@@ -148,6 +149,8 @@ let parser pkind p =
   | "[" fs:sum_items "]" when p = KAtom
 			 -> in_pos _loc (PSum(fs))
   | t:(term TAtom) "." s:pident -> in_pos _loc (PDPrj(t,s))
+  | a:(pkind KAtom) with_kw s:uident "=" b:(pkind KAtom) when p = KAtom
+       -> in_pos _loc (PWith(a,s,b))
   | hole when p = KAtom
       -> in_pos _loc PHole
 

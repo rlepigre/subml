@@ -113,6 +113,8 @@ and print_kind unfold wrap ff t =
          fprintf ff "%s(%a)" td.tdef_tex_name (print_array pkind ", ") args
   | DPrj(t,s) ->
      fprintf ff "%a.%s" (print_term false 2) t s
+  | With(a,(s,b)) ->
+     fprintf ff "%a \text{ with } %s = %a" pkind a s pkind b
   | UCst(u,f)
   | ECst(u,f) ->
      let is_exists = match t with ECst(_) -> true | _ -> false in

@@ -25,8 +25,10 @@ type kind =
   | FixN of ordinal * (kind, kind) binder
   (* User-defined type applied to arguments: T(A1,...,An). *)
   | TDef of type_def * kind array
-  (* dot projection *)
+  (* Dot projection t.X. *)
   | DPrj of term * string
+  (* With clause A with X = B. *)
+  | With of kind * (string * kind)
   (**** Special constructors (not accessible to user) ****)
   (* Constants (a.k.a. epsilon) - used for subtyping. *)
   | UCst of term * (kind, kind) binder
@@ -196,6 +198,8 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
     | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
     | (DPrj(t1,s1), DPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
+    | (With(a1,e1), With(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
+                                    eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
     | (UCst(t1,f1), UCst(t2,f2))
     | (ECst(t1,f1), ECst(t2,f2)) -> eq_kbinder f1 f2 && eq_term c t1 t2
     | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
@@ -347,6 +351,10 @@ let exis : string -> (kvar -> kbox) -> kbox =
 let dprj : tbox -> string -> kbox =
   fun t s ->
     box_apply (fun t -> DPrj(t,s)) t
+
+let wIth : kbox -> string -> kbox -> kbox =
+  fun a s b ->
+    box_apply2 (fun a b -> With(a,(s,b))) a b
 
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
@@ -526,6 +534,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | FixM(o,f)
     | FixN(o,f) -> aux occ (aux3 acc o) (subst f dummy)
     | DPrj(t,_) -> aux2 acc t
+    | With(a,_) -> aux occ acc a
     | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
     | UCst(t,f)
     | ECst(t,f) -> let a = subst f dummy in aux2 (aux InEps acc a) t

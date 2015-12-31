@@ -129,8 +129,8 @@ and print_kind unfold wrap ff t =
   | Prod(fs) ->
      if is_tuple fs && List.length fs > 0 then begin
        for i = 1 to List.length fs do
-	 if i = 2 then fprintf ff "×";
-	 fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
+         if i = 2 then fprintf ff "×";
+         fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
        done
      end else begin
        let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
@@ -166,6 +166,8 @@ and print_kind unfold wrap ff t =
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
   | DPrj(t,s) ->
      fprintf ff "%a.%s" (print_term false) t s
+  | With(a,(s,b)) ->
+     fprintf ff "%a with %s = %a" pkind a s pkind b
   | UCst(u,f)
   | ECst(u,f) ->
      let is_exists = match t with ECst(_) -> true | _ -> false in
