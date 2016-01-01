@@ -50,9 +50,9 @@ val makeSet : ∀X Ord(X) → Set(X) = ΛX fun o ↦
   ; singleton : X → Tree(X)           = singleton }
 
 (* Example use. *)
-include "lib/unary.typ"
-val ordNat : Ord(UNat) = {compare = compare}
-val setNat : Set(UNat) = makeSet ordNat
+include "lib/nat.typ"
+val ordNat : Ord(Nat) = {compare = compare}
+val setNat : Set(Nat) = makeSet ordNat
 
 val set012 : setNat.S =
   setNat.add (Z) (setNat.add (S Z) (setNat.add (S S Z) setNat.empty))

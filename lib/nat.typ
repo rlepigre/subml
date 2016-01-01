@@ -1,49 +1,40 @@
-(* Church numerals. *)
-set verbose off
+(* Unary natural number library. *)
+type Nat = μX [Z | S of X]
 
-(* The type of natural numbers and the two basic constructors. *)
-type Nat = ∀X (X → X) → X → X
+val rec print_nat : Nat → {} = fun n ↦
+  case n of
+  | Z   → print("Z\n")
+  | S x → print("S"); print_nat x
 
-val z : Nat = fun s z ↦ z
-val s : Nat → Nat = fun n f x ↦ f (n f x)
+val rec add : Nat → Nat → Nat = fun n m ↦
+  case n of
+  | Z   → m
+  | S x → S(add x m)
 
-(* Names for the first 10 natural numbers. *)
-val zero  : Nat = z
-val one   : Nat = s zero
-val two   : Nat = s one
-val three : Nat = s two
-val four  : Nat = s three
-val five  : Nat = s four
-val six   : Nat = s five
-val seven : Nat = s six
-val eight : Nat = s seven
-val nine  : Nat = s eight
-val ten   : Nat = s nine
+val rec mul : Nat → Nat → Nat = fun n m ↦
+  case n of
+  | Z   → Z
+  | S x → add m (mul x m)
 
-(* Addition and product. *)
-val add : Nat → Nat → Nat = fun n m f x ↦ n f (m f x)
-val mul : Nat → Nat → Nat = fun n m f ↦ n (m f)
+val rec compare : Nat → Nat → Cmp = fun n m ↦
+  case n of
+  | Z   → (case m of Z → Eq | S m → Ls)
+  | S n → (case m of Z → Gt | S m → compare n m)
 
-(* Printing function. *)
-val print_nat : Nat → {} = fun n ↦
-  n (print("S"); (fun x -> x)) (print("Z\n"); {})
+val rec eq  : Nat → Nat → Bool = fun n m ↦
+  case compare n m of Ls → fls | Eq → tru | Gt → fls
 
-(* Predecessor. *)
-val pred : Nat → Nat = fun n ↦
-  n (fun p x y ↦ p (s x) x) (fun x y ↦ y) z z
+val rec neq : Nat → Nat → Bool = fun n m ↦
+  case compare n m of Ls → tru | Eq → fls | Gt → tru
 
-(* Maurey's inferior function. *)
-include "lib/church_bool.typ"
-val leq : Nat → Nat → Bool = fun n m ↦
-  n (fun f g ↦ g f) (fun i ↦ tru)
-  (m (fun f g ↦ g f) (fun i ↦ fls))
+val rec ls  : Nat → Nat → Bool = fun n m ↦
+  case compare n m of Ls → tru | Eq → fls | Gt → fls
 
+val rec leq : Nat → Nat → Bool = fun n m ↦
+  case compare n m of Ls → tru | Eq → tru | Gt → fls
 
-include "lib/prod.typ"
-val pred2 : Nat → Nat = fun n ↦ pi2 (n
-        (fun p ↦  pair (s (pi1 p)) (pi1 p))
-        (pair z z))
+val rec gt  : Nat → Nat → Bool = fun n m ↦
+  case compare n m of Ls → fls | Eq → fls | Gt → tru
 
-val pred3 : Nat → Nat = fun n ↦ n
-        (fun p x y ↦ p (s x) x)
-        (fun x y ↦ y) z z
+val rec geq : Nat → Nat → Bool = fun n m ↦
+  case compare n m of Ls → fls | Eq → tru | Gt → tru
