@@ -1,4 +1,3 @@
-include "lib/option.typ"
 include "lib/unary.typ"
 
 type List(A) = μX [Nil of {} | Cons of {hd : A; tl : X}]

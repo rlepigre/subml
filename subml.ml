@@ -9,6 +9,7 @@ open Decap
 let _ = handle_stop true
 
 let quit = ref false
+let prelude = ref true
 
 let spec =
   [ ("--latex", Arg.Unit (fun _ -> print_mode := Latex), "Activate latex mode");
@@ -18,6 +19,7 @@ let spec =
     ("--debug-sct", Arg.Set Sct.debug_sct, "Activate sct verbose mode");
     ("--simple-ordinals", Arg.Set Print.simplified_ordinals, "Print inductive ordinals with <= constraints");
     ("--tex-file", Arg.String (fun s -> open_latex s), "Choose tex file output");
+    ("--no-prelude", Arg.Clear prelude, "Do not load the prelude");
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
 
@@ -41,6 +43,7 @@ let _ =
   begin
     let error msg = Printf.eprintf "%s\n%!" msg; exit 1 in
     try
+      if !prelude then eval_file "lib/prelude.typ";
       Arg.parse spec (fun fn -> eval_file fn) "";
     with
     | Stopped              -> error ("Stopped.")

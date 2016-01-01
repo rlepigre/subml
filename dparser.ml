@@ -221,7 +221,7 @@ and term p =
        in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
   | "(" t:(term TFunc) ")" when p = TAtom
   | if_kw c:(term TFunc) then_kw t:(term TFunc) else_kw e:(term TFunc) ->
-      in_pos _loc (PCase(c, [("True", None, t); ("False", None, e)]))
+      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
   | t:(term TAtom) when p = TColo
   | t:(term TColo) when p = TAppl
   | t:(term TAppl) when p = TSeq
