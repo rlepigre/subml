@@ -111,9 +111,10 @@ let parser exists : unit grammar = "∃" | "\\/"
 let parser mu     : unit grammar = "μ" | "!"
 let parser nu     : unit grammar = "ν" | "?"
 let parser time   : unit grammar = "×" | "*"
-let parser lambda : unit grammar = "λ" | fun_kw
+let parser lambda : unit grammar = "λ"
 let parser klam   : unit grammar = "Λ" | "/\\"
-let parser dot    : unit grammar = "." | "->" | "→" | "↦"
+let parser dot    : unit grammar = "."
+let parser mapto  : unit grammar = "->" | "→" | "↦"
 let parser hole   : unit grammar = "?"
 let parser comma  : unit grammar = ","
 
@@ -129,7 +130,7 @@ type pkind_prio = KFunc | KProd | KAtom
 
 type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
 
-let parser pkind p =
+let cached parser pkind p =
   | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFunc(a,b))
   | id:uident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
@@ -185,6 +186,8 @@ and lvar =
 
 and term p =
   | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
+      in_pos _loc (PLAbs(xs,t))
+  | fun_kw xs:var+ mapto t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
   | klam x:uident t:(term TFunc) when p = TFunc ->
       in_pos _loc (PKAbs(in_pos _loc_x x,t))
