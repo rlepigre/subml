@@ -16,13 +16,13 @@ open Raw
 (* Some combinators. *)
 let list_sep elt sep = parser
   | EMPTY                        -> []
-  | e:elt es:{_:STR(sep) e:elt}* -> e::es
+  | e:elt es:{_:STR(sep) e:elt}** -> e::es
 
 let list_sep' elt sep = parser
-  | e:elt es:{_:STR(sep) e:elt}* -> e::es
+  | e:elt es:{_:STR(sep) e:elt}** -> e::es
 
 let list_sep'' elt sep = parser
-  | e:elt es:{_:sep e:elt}+ -> e::es
+  | e:elt es:{_:sep e:elt}++ -> e::es
 
 let parser string_char =
   | "\\\"" -> "\""
