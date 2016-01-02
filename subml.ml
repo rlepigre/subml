@@ -8,8 +8,11 @@ open Decap
 
 let _ = handle_stop true
 
-let quit = ref false
+let quit    = ref false
 let prelude = ref true
+let files   = ref []
+
+let add_file fn = files := !files @ [fn]
 
 let spec =
   [ ("--latex", Arg.Unit (fun _ -> print_mode := Latex), "Activate latex mode");
@@ -43,8 +46,9 @@ let _ =
   begin
     let error msg = Printf.eprintf "%s\n%!" msg; exit 1 in
     try
+      Arg.parse spec add_file "";
       if !prelude then eval_file "lib/prelude.typ";
-      Arg.parse spec (fun fn -> eval_file fn) "";
+      List.iter eval_file !files
     with
     | Stopped              -> error ("Stopped.")
     | Unsugar_error(loc,msg) -> error ("!!! Error: "^msg^
