@@ -179,7 +179,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_
        let use = trace_subtyping ~ordinal:los t a b in
        let a = recompose false a' os1 in
        let b = recompose true b' os2 in
-       let t = generic_cnst a b in
+       let t = if os = [||] then t else generic_cnst a b in
        let ctxt = (a', b', fnum, os,use)::fst ctxt, snd ctxt in
        (ctxt, t, a, a, b, b, Some fnum)
     with Exit ->
