@@ -13,3 +13,8 @@ include "lib/church_prod_sum.typ"
 (* Test files. *)
 include "lib/dotproj.typ"
 include "lib/tree.typ"
+
+(* subtyping stress *)
+include "lib/tests.typ"
+include "lib/munu2.typ"
+include "lib/munu3.typ"

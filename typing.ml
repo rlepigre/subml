@@ -42,6 +42,7 @@ let try_inline ctxt num =
   let calls = snd ctxt in
   let count, call = List.fold_left (
     fun (n,_ as acc) (i,j,c,a as call) ->
+      if i = j then (2, None) else
       if i = num then (n + 1, Some call) else acc) (0,None) !calls in
   match count, call with
   | 1, Some(_,j,c,a) -> (* one use: do inlining *)
@@ -139,7 +140,7 @@ let rec lambda_kind t k s = match full_repr k with
      if binder_name f = s then c else lambda_kind t (subst f c) s
   | _ -> subtype_error ("Dot projection "^s^" undefined")
 
-let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_ctxt * kind * kind * kind * kind * int option =
+let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_ctxt * term * kind * kind * kind * kind * int option =
   fun t ctxt a a0 b b0 ->
     (* the test (has_uvar a || has_uvar b) is importanat to
        - avoid occur chek for induction variable
@@ -178,10 +179,11 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_
        let use = trace_subtyping ~ordinal:los t a b in
        let a = recompose false a' os1 in
        let b = recompose true b' os2 in
+       let t = generic_cnst a b in
        let ctxt = (a', b', fnum, os,use)::fst ctxt, snd ctxt in
-       (ctxt, a, a, b, b, Some fnum)
+       (ctxt, t, a, a, b, b, Some fnum)
     with Exit ->
-       (ctxt, a, a0, b, b0, None)
+       (ctxt, t, a, a0, b, b0, None)
 
 let rec subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a0 b0 =
@@ -193,7 +195,7 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
        let _ = trace_subtyping t a b in
        trace_sub_pop NRefl
     else begin
-    let (ctxt, a, a0, b, b0, cmps) = check_rec t ctxt (full_repr a) a0 (full_repr b) b0 in
+    let (ctxt, t, a, a0, b, b0, cmps) = check_rec t ctxt (full_repr a) a0 (full_repr b) b0 in
     let _ = trace_subtyping t a b in
     begin match (a,b) with
     (* Arrow type. *)
