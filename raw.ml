@@ -110,18 +110,21 @@ and unsugar_term : (string * tbox) list -> (string * kbox) list -> pterm -> tbox
   let rec unsugar pt =
     match pt.elt with
     | PLAbs(vs,t) ->
-        let rec aux lenv = function
+        let rec aux first lenv = function
           | (x,ko)::xs ->
               let ko =
                 match ko with
                 | None   -> None
                 | Some k -> Some (unsugar_kind lenv kenv k)
               in
-              let f xt = aux ((x.elt,xt)::lenv) xs in
-              labs pt.pos ko x f
+              let f xt = aux false ((x.elt,xt)::lenv) xs in
+	      let pos = if first then pt.pos else
+		  Location.({ pt.pos with loc_start = x.pos.loc_start })
+	      in
+              labs pos ko x f
           | [] -> unsugar_term lenv kenv t
         in
-        aux lenv vs
+        aux true lenv vs
     | PKAbs(s,f) ->
        let f xk = unsugar_term lenv ((s.elt,xk) :: kenv) f in
        kabs s.pos s f

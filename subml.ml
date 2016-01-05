@@ -5,6 +5,7 @@ open Multi_print
 open Dparser
 open Raw
 open Decap
+open Typing
 
 let _ = handle_stop true
 
@@ -26,36 +27,40 @@ let spec =
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
 
-
+let treat_exception ?(filename="console") fn a =
+  let position loc =
+    let open Location in
+    let open Lexing in
+    let lnum   = loc.loc_start.pos_lnum in
+    let cstart = loc.loc_start.pos_cnum in
+    let cend   = loc.loc_end.pos_bol - loc.loc_start.pos_bol + loc.loc_end.pos_cnum in
+    Printf.eprintf "File %S, line %d, characters %d-%d:" filename lnum cstart cend
+  in
+  let position2 lnum cnum =
+    Printf.eprintf "File %S, line %d, characters %d-%d:" filename lnum cnum cnum
+  in
+  let error msg = Printf.eprintf "%s\n%!" msg in
+  try
+    fn a; true
+  with
+  | End_of_file          -> false
+  | Finish               -> false
+  | Stopped              -> error "Stopped."; true
+  | Unsugar_error(loc,msg)
+                         -> position loc; error msg; false
+  | Parse_error(_,lnum,cnum,_,_)
+                         -> position2 lnum cnum; error "Syntax error"; false
+  | Unbound(loc,s)       -> position loc; error ("Unbound: "^s); false
+  | Type_error(loc, msg)
+                         -> position loc; error ("Type error: "^msg); false
+  | e                    -> error (Printexc.to_string e); exit 1
 
 let rec interact () =
-  let error msg = Printf.eprintf "%s\n%!" msg; interact () in
   Printf.printf ">> %!";
-  try toplevel_of_string (read_line ()); interact ()
-  with
-  | End_of_file          -> ()
-  | Finish               -> ()
-  | Stopped              -> error "Stopped."
-  | Unsugar_error(loc,msg) -> error ("!!! Error: "^msg^" at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
-  | Failure("No parse.") -> interact ()
-  | Parse_error _ as e   -> print_exception e; interact ()
-  | Unbound(loc,s)       -> error ("Unbound: "^s^" at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
-  | e                    -> error (Printexc.to_string e)
+  ignore (treat_exception toplevel_of_string (read_line ())); interact ()
 
 let _ =
-  begin
-    let error msg = Printf.eprintf "%s\n%!" msg; exit 1 in
-    try
-      Arg.parse spec add_file "";
-      if !prelude then eval_file "lib/prelude.typ";
-      List.iter eval_file !files
-    with
-    | Stopped              -> error ("Stopped.")
-    | Unsugar_error(loc,msg) -> error ("!!! Error: "^msg^
-					  " at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
-    | Failure("No parse.") -> exit 1
-    | Parse_error _ as e   -> print_exception e; exit 1
-    | Unbound(loc,s)       -> error ("Unbound: "^s^" at "^string_of_int loc.Location.loc_start.Lexing.pos_lnum)
-    | e                    -> error (Printexc.to_string e)
-  end;
-  if not !quit then interact ()
+  Arg.parse spec add_file "";
+  let tef filename = treat_exception ~filename eval_file filename in
+  if !prelude && not (tef "lib/prelude.typ") then exit 1;
+  if List.for_all tef !files && not !quit then interact () else exit 1

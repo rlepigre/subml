@@ -331,7 +331,8 @@ and type_check : term -> kind -> unit = fun t c ->
   let rec type_check t c =
     if !debug then Printf.eprintf "%a : %a\n%!" (print_term false) t (print_kind false) c;
     trace_typing t c;
-    (match t.elt with
+    begin
+    try match t.elt with
     | Coer(t,a) ->
         subtype t a c;
         type_check t a
@@ -389,7 +390,9 @@ and type_check : term -> kind -> unit = fun t c ->
         let (_,a,_) = cst in
         subtype t a c
     | TagI(_) ->
-       assert false (* Cannot happen. *));
+       assert false (* Cannot happen. *)
+    with Subtype_error msg -> type_error t.pos ("subtype failed: "^msg)
+    end;
     trace_typ_pop ();
   in
   type_check t c
