@@ -165,7 +165,7 @@ and print_kind unfold wrap ff t =
         else
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
   | DPrj(t,s) ->
-     fprintf ff "%a.%s" (print_term false) t s
+     fprintf ff "%a.%s" (print_term ~in_proj:false false) t s
   | With(a,(s,b)) ->
      fprintf ff "%a with %s = %a" pkind a s pkind b
   | UCst(u,f)
@@ -200,10 +200,10 @@ and pkind_def unfold ff kd =
   let cend   = loc.loc_end.pos_bol - loc.loc_start.pos_bol + loc.loc_end.pos_cnum in
   fprintf ff "[File %S, line %d, characters %d-%d]" fname lnum cstart cend
 
-and print_term unfold ff t =
+and print_term ?(in_proj=false) unfold ff t =
   let print_term = print_term unfold in
   let pkind = print_kind false false in
-  if not unfold && t.pos <> dummy_position then
+  if not in_proj && not unfold && t.pos <> dummy_position then
     position ff t.pos
   else match t.elt with
   | Coer(t,a) ->
