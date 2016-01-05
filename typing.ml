@@ -192,11 +192,11 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
     if !debug then Printf.eprintf "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
      if a == b || lower_kind a b then
-       let _ = trace_subtyping t a b in
+       let _ = trace_subtyping t a0 b0 in
        trace_sub_pop NRefl
     else begin
     let (ctxt, t, a, a0, b, b0, cmps) = check_rec t ctxt (full_repr a) a0 (full_repr b) b0 in
-    let _ = trace_subtyping t a b in
+    let _ = trace_subtyping t a0 b0 in
     begin match (a,b) with
     (* Arrow type. *)
     | (Func(a1,b1), Func(a2,b2)) ->
@@ -249,17 +249,17 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
 
     (* With clause. *)
     | (With(a,e), _         ) ->
-       subtype ctxt t (with_clause a e) b;
+       subtype ctxt t (with_clause a e) b0;
        trace_sub_pop NWithLeft
 
     | (_        , With(b,e) ) ->
-       subtype ctxt t a (with_clause b e);
+       subtype ctxt t a0 (with_clause b e);
        trace_sub_pop NWithRight
 
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
        let b' = subst f (UCst(t,f)) in
-       subtype ctxt t a b';
+       subtype ctxt t a0 b';
        trace_sub_pop NAllRight
 
     | (FAll(f)  , _        ) ->
