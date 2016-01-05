@@ -16,6 +16,28 @@ module IntMap = Map.Make(IntOrd)
 module StrMap = Map.Make(StrOrd)
 module StrSet = Set.Make(StrOrd)
 
+module Location = struct
+  open Lexing
+  type t = { loc_start: position; loc_end: position; loc_ghost: bool }
+
+  let in_file name =
+    let loc = {
+      pos_fname = name;
+      pos_lnum = 1;
+      pos_bol = 0;
+      pos_cnum = -1;
+    } in
+    { loc_start = loc; loc_end = loc; loc_ghost = true }
+
+  let none = in_file "_none_"
+
+  let locate str pos str' pos' =
+    let s = Input.lexing_position str pos in
+    let e = Input.lexing_position str' pos' in
+    {loc_start = s; loc_end = e; loc_ghost = false}
+
+end
+
 (* Type constructor to give position information in a source file. *)
 type pos = Location.t
 

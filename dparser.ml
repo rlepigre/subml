@@ -1,4 +1,3 @@
-open Pa_ocaml_prelude
 open Decap
 open Bindlib
 open Util
@@ -10,6 +9,8 @@ open Typing
 open Proof_trace
 open Print_trace
 open Raw
+
+let locate = Location.locate
 
 #define LOCATE locate
 
@@ -93,6 +94,7 @@ let if_kw   = new_keyword "if"
 let then_kw = new_keyword "then"
 let else_kw = new_keyword "else"
 let with_kw = new_keyword "with"
+let type_kw = new_keyword "type"
 
 let unfold_kw  = new_keyword "unfold"
 let clear_kw   = new_keyword "clear"
