@@ -321,7 +321,7 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
   let calls = ref [] in
   subtype ([],calls) t a b;
   (*  print_calls Format.std_formatter !calls;*)
-  if not (sct !calls)  then subtype_error "loop"
+  if not (sct !calls)  then subtype_error "Subtyping loop"
 
 and generic_subtype : kind -> kind -> unit = fun a b ->
   subtype (generic_cnst a b) a b
@@ -391,7 +391,9 @@ and type_check : term -> kind -> unit = fun t c ->
         subtype t a c
     | TagI(_) ->
        assert false (* Cannot happen. *)
-    with Subtype_error msg -> type_error t.pos ("subtype failed: "^msg)
+    with
+    | Subtype_error msg -> type_error t.pos msg
+    | Stopped -> type_error t.pos "subtype interrupted (loop?)"
     end;
     trace_typ_pop ();
   in
