@@ -198,13 +198,13 @@ and pkind_def unfold ff kd =
   let lnum   = loc.loc_start.pos_lnum in
   let cstart = loc.loc_start.pos_cnum in
   let cend   = loc.loc_end.pos_bol - loc.loc_start.pos_bol + loc.loc_end.pos_cnum in
-  fprintf ff "[File %S, line %d, characters %d-%d]" fname lnum cstart cend
+  fprintf ff "File %S, line %d, characters %d-%d" fname lnum cstart cend
 
 and print_term ?(in_proj=false) unfold ff t =
   let print_term = print_term unfold in
   let pkind = print_kind false false in
   if not in_proj && not unfold && t.pos <> dummy_position then
-    position ff t.pos
+    printf "[%a]" position t.pos
   else match t.elt with
   | Coer(t,a) ->
       fprintf ff "(%a : %a)" print_term t pkind a

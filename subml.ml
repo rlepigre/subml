@@ -27,24 +27,23 @@ let spec =
   ]
 
 let treat_exception fn a =
-  let position2 fname lnum cnum =
-    Printf.eprintf "File %S, line %d, characters %d-%d:" fname lnum cnum cnum
+  let position2 ch (fname, lnum, cnum) =
+    Printf.fprintf ch "File %S, line %d, characters %d-%d" fname lnum cnum cnum
   in
-  let error msg = Printf.eprintf "%s\n%!" msg in
   try
     fn a; true
   with
   | End_of_file          -> false
   | Finish               -> false
-  | Stopped              -> error "Stopped."; true
+  | Stopped              -> Printf.eprintf "Stopped\n%!"; true
   | Unsugar_error(loc,msg)
-                         -> print_position stderr loc; error msg; false
+                         -> Printf.eprintf "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
-                         -> position2 fname lnum cnum; error "Syntax error"; false
-  | Unbound(loc,s)       -> print_position stderr loc; error ("Unbound: "^s); false
+                         -> Printf.eprintf "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
+  | Unbound(loc,s)       -> Printf.eprintf "%a:\nUnbound: %s\n%!" print_position loc s; false
   | Type_error(loc, msg)
-                         -> print_position stderr loc; error ("Type error: "^msg); false
-  | e                    -> error (Printexc.to_string e); exit 1
+                         -> Printf.eprintf "%a:\nType error: %s\n%!" print_position loc msg; false
+  | e                    -> Printf.eprintf "Uncaught exception %s\n%!" (Printexc.to_string e); exit 1
 
 let rec interact () =
   Printf.printf ">> %!";
