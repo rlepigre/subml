@@ -43,6 +43,8 @@ let print_rule_name ff rn =
   | NWithLeft -> fprintf ff "w_l"
   | NWithRight -> fprintf ff "w_r"
   | NUnknown -> fprintf ff "?"
+  | NWithRight -> fprintf ff "\\text{with}_r"
+  | NWithLeft  -> fprintf ff "\\text{with}_l"
 
 let print_subtyping_proof, print_typing_proof =
   let rec fn ch (p:sub_proof) =
