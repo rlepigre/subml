@@ -33,8 +33,8 @@ let treat_exception fn a =
   try
     fn a; true
   with
-  | End_of_file          -> false
-  | Finish               -> false
+  | End_of_file          -> exit 0
+  | Finish               -> exit 0
   | Stopped              -> Printf.eprintf "Stopped\n%!"; true
   | Unsugar_error(loc,msg)
                          -> Printf.eprintf "%a:\n%s\n%!" print_position loc msg; false
@@ -47,7 +47,8 @@ let treat_exception fn a =
 
 let rec interact () =
   Printf.printf ">> %!";
-  if treat_exception (fun () -> toplevel_of_string (read_line ())) () then interact ()
+  ignore (treat_exception (fun () -> toplevel_of_string (read_line ())) ());
+  interact ()
 
 let _ =
   Arg.parse spec add_file "";

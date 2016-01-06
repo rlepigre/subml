@@ -427,8 +427,7 @@ let parser toplevel =
       raise Finish
 
 let toplevel_of_string : string -> unit = fun s ->
-  let parse = parse_string toplevel top_level_blank in
-  Decap.handle_exception parse s
+  parse_string toplevel top_level_blank s
 
 let parser file_contents =
   | cs:command** -> ()
