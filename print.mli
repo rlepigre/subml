@@ -1,5 +1,6 @@
 open Format
 open Ast
+open Util
 
 (* code shared with other printing *)
 
@@ -49,3 +50,4 @@ val print_ordinal : bool -> out_channel -> ordinal -> unit
 (* various *)
 val print_term_in_subtyping : bool ref
 val find_tdef : kind -> type_def
+val print_position : out_channel -> Location.t -> unit

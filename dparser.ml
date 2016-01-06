@@ -3,7 +3,6 @@ open Bindlib
 open Util
 open Ast
 open Print
-open Multi_print
 open Eval
 open Typing
 open Proof_trace
@@ -284,7 +283,6 @@ let open_latex fn =
 
 let parser opt_flag =
   | "verbose" b:enabled -> verbose := b
-  | "latex" b:enabled -> Multi_print.print_mode := if b then Latex else Ascii
   | "texfile" fn:string_lit -> open_latex fn
   | "print_term_in_subtyping" b:enabled -> Print.print_term_in_subtyping := b
 
@@ -437,8 +435,7 @@ let parser file_contents =
 
 let eval_file fn =
   Printf.printf "## Loading file %S\n%!" fn;
-  let parse = parse_file file_contents file_blank in
-  parse fn;
+  parse_file file_contents file_blank fn;
   Printf.printf "## file Loaded %S\n%!" fn
 
 let _ = read_file := eval_file

@@ -288,6 +288,10 @@ let print_ordinal unfold ch o =
   let ff = formatter_of_out_channel ch in
   print_ordinal unfold ff o; pp_print_flush ff (); flush ch
 
+let print_position ch o =
+  let ff = formatter_of_out_channel ch in
+  position ff o; pp_print_flush ff (); flush ch
+
 let print_epsilon_tbls ch =
   List.iter (fun (f,(name,index,a,b)) ->
     let x = new_lvar dummy_position (binder_name f) in
