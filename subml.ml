@@ -47,7 +47,7 @@ let treat_exception fn a =
 
 let rec interact () =
   Printf.printf ">> %!";
-  ignore (treat_exception toplevel_of_string (read_line ())); interact ()
+  if treat_exception (fun () -> toplevel_of_string (read_line ())) () then interact ()
 
 let _ =
   Arg.parse spec add_file "";
