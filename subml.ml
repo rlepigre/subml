@@ -52,4 +52,5 @@ let rec interact () =
 let _ =
   Arg.parse spec add_file "";
   if !prelude && not (treat_exception eval_file "lib/prelude.typ") then exit 1;
-  if List.for_all (treat_exception eval_file) !files && not !quit then interact () else exit 1
+  if not (List.for_all (treat_exception eval_file) !files) then exit 1;
+  if not !quit then interact ()
