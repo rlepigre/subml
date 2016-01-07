@@ -14,7 +14,7 @@ run: all
 	ledit ./subml.native
 
 test: all
-	ledit ./subml.native lib/all.typ
+	./subml.native --quit lib/all.typ
 
 clean:
 	ocamlbuild -clean

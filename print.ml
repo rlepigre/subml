@@ -203,8 +203,9 @@ and pkind_def unfold ff kd =
 and print_term ?(in_proj=false) unfold ff t =
   let print_term = print_term unfold in
   let pkind = print_kind false false in
-  if not in_proj && not unfold && t.pos <> dummy_position then
-    printf "[%a]" position t.pos
+  let not_def t = match t.elt with VDef _ -> false | _ -> true in
+  if not in_proj && not unfold && t.pos <> dummy_position && not_def t then
+    fprintf ff "[%a]" position t.pos
   else match t.elt with
   | Coer(t,a) ->
       fprintf ff "(%a : %a)" print_term t pkind a
