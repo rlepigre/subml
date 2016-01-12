@@ -42,6 +42,8 @@ let print_rule_name ff rn =
   | NProjRight -> fprintf ff "\\pi_r"
   | NWithLeft -> fprintf ff "w_l"
   | NWithRight -> fprintf ff "w_r"
+  | NWhenLeft -> fprintf ff "\\restriction_l"
+  | NWhenRight -> fprintf ff "\\restriction_r"
   | NUnknown -> fprintf ff "?"
 
 let print_subtyping_proof, print_typing_proof =

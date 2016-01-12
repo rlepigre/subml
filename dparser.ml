@@ -99,6 +99,7 @@ let if_kw   = new_keyword "if"
 let then_kw = new_keyword "then"
 let else_kw = new_keyword "else"
 let with_kw = new_keyword "with"
+let when_kw = new_keyword "when"
 let type_kw = new_keyword "type"
 
 let unfold_kw  = new_keyword "unfold"
@@ -124,6 +125,7 @@ let parser dot    : unit grammar = "."
 let parser mapto  : unit grammar = "->" | "→" | "↦"
 let parser hole   : unit grammar = "?"
 let parser comma  : unit grammar = ","
+let parser subset : unit grammar = "⊂" | "⊆" | "<"
 
 let parser pident = id:''[a-zA-Z0-9][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 let parser lident = id:''[a-z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
@@ -157,8 +159,10 @@ let cached parser pkind p =
   | "[" fs:sum_items "]" when p = KAtom
 			 -> in_pos _loc (PSum(fs))
   | t:(term TAtom) "." s:pident -> in_pos _loc (PDPrj(t,s))
-  | a:(pkind KAtom) with_kw s:uident "=" b:(pkind KAtom) when p = KAtom
-       -> in_pos _loc (PWith(a,s,b))
+  | a:(pkind KAtom)
+       f:{ with_kw s:uident "=" b:(pkind KAtom) -> (fun a -> in_pos _loc (PWith(a,s,b)))
+         | when_kw b:(pkind KAtom) subset c:(pkind KAtom) -> (fun a -> in_pos _loc (PWhen(a,b,c))) }
+       when p = KAtom -> f a
   | hole when p = KAtom
       -> in_pos _loc PHole
 
@@ -302,7 +306,7 @@ let parser latex_atom =
   | "@" br:int_lit?[0] u:"!"? t:term "@" -> Latex_trace.Term (br,u<>None, unbox (unsugar_term [] [] t))
   | t:''[^}{@#]+''        -> Latex_trace.Text t
   | l:latex_text          -> l
-  | "#" "check" a:kind {"⊂" | "⊆" | "<"} b:kind "#" ->
+  | "#" "check" a:kind subset b:kind "#" ->
      let a = unbox (unsugar_kind [] [] a) in
      let b = unbox (unsugar_kind [] [] b) in
      generic_subtype a b;

@@ -29,6 +29,8 @@ type kind =
   | DPrj of term * string
   (* With clause A with X = B. *)
   | With of kind * (string * kind)
+  (* When condition. A when B ⊆ C *)
+  | When of kind * (kind * kind)
   (**** Special constructors (not accessible to user) ****)
   (* Constants (a.k.a. epsilon) - used for subtyping. *)
   | UCst of term * (kind, kind) binder
@@ -144,7 +146,7 @@ and value_def =
 and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
 		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf | NMuRightInf
 		 | NNuLeftInf | NNuRight | NNuRightInf | NUnknown | NProjLeft | NProjRight
-     | NWithRight | NWithLeft
+     | NWithRight | NWithLeft | NWhenRight | NWhenLeft
 
 and sub_proof =
   { sterm : term;
@@ -357,6 +359,9 @@ let wIth : kbox -> string -> kbox -> kbox =
   fun a s b ->
     box_apply2 (fun a b -> With(a,(s,b))) a b
 
+let wHen : kbox -> kbox -> kbox -> kbox =
+  box_apply3 (fun a b c -> When(a,(b,c)))
+
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
 
@@ -536,6 +541,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | FixN(o,f) -> aux occ (aux3 acc o) (subst f dummy)
     | DPrj(t,_) -> aux2 acc t
     | With(a,_) -> aux occ acc a
+    | When(a,_) -> aux occ acc a
     | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
     | UCst(t,f)
     | ECst(t,f) -> let a = subst f dummy in aux2 (aux InEps acc a) t

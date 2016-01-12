@@ -114,7 +114,9 @@ and print_kind unfold wrap ff t =
   | DPrj(t,s) ->
      fprintf ff "%a.%s" (print_term false 2) t s
   | With(a,(s,b)) ->
-     fprintf ff "%a \text{ with } %s = %a" pkind a s pkind b
+     fprintf ff "%a \\text{ with } %s = %a" pkind a s pkind b
+  | When(a,(b,c)) ->
+     fprintf ff "%a \\text{ when } %a \\subset %a" pkind a pkind b pkind c
   | UCst(u,f)
   | ECst(u,f) ->
      let is_exists = match t with ECst(_) -> true | _ -> false in

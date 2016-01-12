@@ -256,6 +256,23 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
        subtype ctxt t a0 (with_clause b e);
        trace_sub_pop NWithRight
 
+    (* When constraint. *)
+    | (When(a,(b,c)), _               ) ->
+       begin
+         try generic_subtype b c
+         with _ -> subtype ctxt t a b0;
+       end;
+       trace_sub_pop NWhenLeft
+
+    | (_            , When(a,(b,c))) ->
+       begin
+         try
+           generic_subtype b c;
+           subtype ctxt t a0 a
+         with _ -> subtype ctxt t a0 bot;
+       end;
+       trace_sub_pop NWhenLeft
+
     (* Universal quantifier. *)
     | (_        , FAll(f)  ) ->
        let b' = subst f (UCst(t,f)) in
