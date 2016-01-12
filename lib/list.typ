@@ -42,3 +42,8 @@ val rec fold_left : ∀A ∀B ((B → A → B) → B → List(A) → B) = fun f 
   case l of
   | []     → e
   | Cons l → fold_left f (f e l.hd) l.tl
+
+val rec assoc : ∀A ∀B (A → Bool) → List(A × B) → Option(B) = fun f l ↦
+  case l of
+  | []     → None
+  | Cons l → if f l.hd.1 then Some l.hd.2 else assoc f l.tl

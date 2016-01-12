@@ -13,6 +13,7 @@ include "lib/church_prod_sum.typ"
 (* Test files. *)
 include "lib/dotproj.typ"
 include "lib/tree.typ"
+include "lib/polyrec.typ"
 
 (* subtyping stress *)
 include "lib/tests.typ"

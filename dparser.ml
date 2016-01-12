@@ -9,20 +9,26 @@ open Proof_trace
 open Print_trace
 open Raw
 
+let _ = debug_lvl := 1
 let locate = Location.locate
 
 #define LOCATE locate
 
 (* Some combinators. *)
-let list_sep elt sep = parser
-  | EMPTY                        -> []
-  | e:elt es:{_:STR(sep) e:elt}** -> e::es
+let glist_sep elt sep = parser
+  | EMPTY -> []
+  | e:elt es:{_:sep e:elt}** -> e::es
 
-let list_sep' elt sep = parser
-  | e:elt es:{_:STR(sep) e:elt}** -> e::es
+let glist_sep' elt sep = parser
+  | e:elt es:{_:sep e:elt}** -> e::es
 
-let list_sep'' elt sep = parser
+let glist_sep'' elt sep = parser
   | e:elt es:{_:sep e:elt}++ -> e::es
+
+let list_sep   elt sep = glist_sep   elt (string sep ())
+let list_sep'  elt sep = glist_sep'  elt (string sep ())
+let list_sep'' elt sep = glist_sep'' elt (string sep ())
+
 
 let parser string_char =
   | "\\\"" -> "\""
@@ -161,7 +167,7 @@ let cached parser pkind p =
   | a:(pkind KProd) when p = KFunc
 
 and kind_list  = l:(list_sep (pkind KFunc) ",")
-and kind_prod  = l:(list_sep'' (pkind KAtom) time) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and kind_prod  = l:(glist_sep'' (pkind KAtom) time) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and sum_item   = id:uident a:{_:of_kw a:(pkind KFunc)}?
 and sum_items  = l:(list_sep sum_item "|")
 and prod_item  = id:pident ":" a:(pkind KFunc)
@@ -191,7 +197,7 @@ and term p =
   | fun_kw xs:var+ mapto t:(term TFunc) when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
   | klam x:uident t:(term TFunc) when p = TFunc ->
-      in_pos _loc (PKAbs(in_pos _loc_x x,t))
+    in_pos _loc (PKAbs(in_pos _loc_x x,t))
   | t:(term TAppl) u:(term TColo) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
   | t:(term TAppl) ";" u:(term TSeq) when p = TSeq ->
@@ -201,34 +207,36 @@ and term p =
   | c:uident uo:(term TAtom)? when p = TAtom ->
       in_pos _loc (PCstr(c,uo))
   | t:(term TAtom) "." l:pident when p = TAtom ->
-      in_pos _loc (PProj(t,l))
-  | case_kw t:(term TFunc) of_kw "|"?
-    ps:(list_sep case "|") when p = TFunc ->
+    in_pos _loc (PProj(t,l))
+  | case_kw t:(term TFunc) of_kw "|"? ps:(list_sep case "|") when p = TFunc ->
       in_pos _loc (PCase(t,ps))
   | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
      in_pos _loc (PReco(fs))
   | "(" fs:tuple ")" when p = TAtom ->
-     in_pos _loc (PReco(fs))
+     (match fs with
+     | [] -> assert false
+     | [(_,t)] -> t
+     | _ -> in_pos _loc (PReco(fs)))
   | t:(term TColo) ":" k:kind when p = TColo ->
-      in_pos _loc (PCoer(t,k))
-  | t:(term TAppl) "::" l:(term TSeq) when p = TSeq ->
-      list_cons _loc t l
+    in_pos _loc (PCoer(t,k))
   | id:lident when p = TAtom ->
-      in_pos _loc (PLVar(id))
+     in_pos _loc (PLVar(id))
   | fix_kw x:var dot u:(term TFunc) when p = TFunc ->
-      in_pos _loc (PFixY(x,u))
+    in_pos _loc (PFixY(x,u))
   | "[" l:list "]" -> l
   | let_kw r:rec_kw? id:lvar "=" t:(term TFunc) in_kw u:(term TFunc) when p = TFunc ->
-       let t =
-	 if r = None then t
-	 else in_pos _loc_t (PFixY(id, t)) in
-       in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
-  | "(" t:(term TFunc) ")" when p = TAtom
+     let t =
+       if r = None then t
+       else in_pos _loc_t (PFixY(id, t)) in
+     in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
   | if_kw c:(term TFunc) then_kw t:(term TFunc) else_kw e:(term TFunc) ->
-      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
-  | t:(term TAtom) when p = TColo
-  | t:(term TColo) when p = TAppl
-  | t:(term TAppl) when p = TSeq
+     in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
+  | t:(term TAtom)  when p = TColo
+  | t:(term TColo)  when p = TAppl
+  | t:(term TAppl) l:{"::" l:(term TSeq)}? when p = TSeq ->
+     (match l with
+       None   -> t
+     | Some l -> list_cons _loc t l)
   | t:(term TSeq) when p = TFunc
 
 and pattern =
@@ -238,7 +246,7 @@ and pattern =
 and case = (c,x):pattern _:arrow t:(term TFunc) -> (c, x, t)
 and field   = l:pident k:{ ":" kind }? "=" t:(term TFunc) ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
-and tuple   = l:(list_sep'' (term TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and tuple   = l:(glist_sep' (term TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and list    = EMPTY -> list_nil _loc
             | t:(term TFunc) "," l:list -> list_cons _loc t l
 let term = term TFunc

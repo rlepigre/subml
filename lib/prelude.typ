@@ -29,6 +29,11 @@ val map_option : ∀X ∀Y (X → Y) → Y → Option(X) → Y = fun f d o ↦
   | None   → d
   | Some x → f x
 
+val apply_option : ∀X ∀Y (X → Y) → Option(X) → Option(Y) = fun f o ↦
+  case o of
+  | None   → None
+  | Some x → Some(f x)
+
 (****************************************************************************
  *                A return type for comparing functions.                    *
  ****************************************************************************)

@@ -2,20 +2,20 @@
 set verbose off
 
 (* The type of booleans and the two constants. *)
-type Bool = ∀X (X → X → X)
+type CBool = ∀X (X → X → X)
 
-val tru : Bool = fun x y ↦ x
-val fls : Bool = fun x y ↦ y
+val ctru : CBool = fun x y ↦ x
+val cfls : CBool = fun x y ↦ y
 
 (* Conditional. *)
-val cond : ∀X (Bool → X → X → X) = fun c t e ↦ c t e
+val cond : ∀X (CBool → X → X → X) = fun c t e ↦ c t e
 
 (* Basic operations. *)
-val or : Bool → Bool → Bool = fun a b ↦ a tru b
-val and : Bool → Bool → Bool = fun a b ↦ a b fls
-val xor : Bool → Bool → Bool = fun a b ↦ a (b fls tru) b
-val not : Bool → Bool = fun a  ↦ a fls tru
+val or : CBool → CBool → CBool = fun a b ↦ a ctru b
+val and : CBool → CBool → CBool = fun a b ↦ a b cfls
+val xor : CBool → CBool → CBool = fun a b ↦ a (b cfls ctru) b
+val not : CBool → CBool = fun a  ↦ a cfls ctru
 
 (* Printing_function. *)
-val print_bool : Bool → {} = fun b ↦
-  b (print("tru\n"); {}) (print("fls\n"); {})
+val print_bool : CBool → {} = fun b ↦
+  b (print("ctru\n"); {}) (print("cfls\n"); {})
