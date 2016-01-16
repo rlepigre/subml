@@ -1,4 +1,0 @@
-<*.ml>        : package(bindlib,decap)
-<*.mli>       : package(bindlib,decap)
-"dparser.ml"  : pp(pa_ocaml)
-"subml.byte" or "subml.native" : package(bindlib,decap)

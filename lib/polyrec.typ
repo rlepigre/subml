@@ -8,17 +8,13 @@ val rec length : ∀A T(A) → Nat = fun t ↦
    | []     → Z
    | Cons c → add (length c.hd.2) (length c.tl)
 
-(*
 type Key = μK [Atom of Nat | Pair of K × K ]
-type Tree(A,X) = [Nil | Branch of List(Nat × A) × X]
-type T2(A,T) = Tree(A,Tree(A,T))
-type T(A) = μT T2(T2(A,T),T)
+type Trie(A) = (μK ∃A [Nil | Branch of List(Nat × A) × (K with A = (K with A = A))]) with A = A
 
+(*
 type A = [A]
 
-check T(A) ⊂ Tree(A, μT T2(T2(A,Tree(A,T)),T))
-
-check T(A) ⊂ [Nil | Branch of List(Nat × A) × T(T(A))]
+check Trie(A) ⊂ [Nil | Branch of List(Nat × A) × Trie(Trie(A))]
 
 val rec find : ∀A T(A) → Key → Option(A) = ΛA fun t k ↦
   case t of

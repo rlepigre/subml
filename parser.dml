@@ -9,41 +9,9 @@ open Proof_trace
 open Print_trace
 open Raw
 
-let _ = debug_lvl := 1
 let locate = Location.locate
 
 #define LOCATE locate
-
-(* Some combinators. *)
-let glist_sep elt sep = parser
-  | EMPTY -> []
-  | e:elt es:{_:sep e:elt}** -> e::es
-
-let glist_sep' elt sep = parser
-  | e:elt es:{_:sep e:elt}** -> e::es
-
-let glist_sep'' elt sep = parser
-  | e:elt es:{_:sep e:elt}++ -> e::es
-
-let list_sep   elt sep = glist_sep   elt (string sep ())
-let list_sep'  elt sep = glist_sep'  elt (string sep ())
-let list_sep'' elt sep = glist_sep'' elt (string sep ())
-
-
-let parser string_char =
-  | "\\\"" -> "\""
-  | "\\\\" -> "\\"
-  | "\\n"  -> "\n"
-  | "\\t"  -> "\t"
-  | c:ANY  -> if c = '\\' || c = '"' || c = '\r' then give_up "";
-              String.make 1 c
-
-let string_lit =
-  let slit = parser "\"" cs:string_char* "\"" -> String.concat "" cs in
-  change_layout slit no_blank
-
-let int_lit =
-  parser s:''[0-9]+'' -> int_of_string s
 
 (* Keyword management. *)
 let keywords = Hashtbl.create 20
@@ -78,6 +46,64 @@ let new_keyword : string -> unit grammar = fun s ->
   in
   black_box f (Charset.singleton s.[0]) None s
 
+(* Some combinators. *)
+let glist_sep elt sep = parser
+  | EMPTY -> []
+  | e:elt es:{_:sep e:elt}** -> e::es
+
+let glist_sep' elt sep = parser
+  | e:elt es:{_:sep e:elt}** -> e::es
+
+let glist_sep'' elt sep = parser
+  | e:elt es:{_:sep e:elt}++ -> e::es
+
+let list_sep   elt sep = glist_sep   elt (string sep ())
+let list_sep'  elt sep = glist_sep'  elt (string sep ())
+let list_sep'' elt sep = glist_sep'' elt (string sep ())
+
+
+let parser string_char =
+  | "\\\"" -> "\""
+  | "\\\\" -> "\\"
+  | "\\n"  -> "\n"
+  | "\\t"  -> "\t"
+  | c:ANY  -> if c = '\\' || c = '"' || c = '\r' then give_up "";
+              String.make 1 c
+
+let string_lit =
+  let slit = parser "\"" cs:string_char* "\"" -> String.concat "" cs in
+  change_layout slit no_blank
+
+let int_of_chars s =
+  List.fold_left (fun acc c -> acc * 10 + (Char.code c - Char.code '0')) 0 (List.rev s)
+
+let string_of_chars s =
+  let s = Array.of_list s in
+  let res = String.make (Array.length s) ' ' in
+  Array.iteri (fun i c -> res.[i] <- c) s;
+  res
+
+let digit     = Charset.range '0' '9'
+let lowercase = Charset.range 'a' 'z'
+let uppercase = Charset.range 'A' 'Z'
+let underscore = Charset.singleton '_'
+let identany  = Charset.union (Charset.union lowercase uppercase) (Charset.union digit underscore)
+let lidentfirst = Charset.union lowercase (Charset.union digit underscore)
+
+let int_lit = change_layout (delim (
+  parser s:(in_charset digit)** -> int_of_chars s)) no_blank
+
+let parser lident =
+  id:(change_layout (delim (
+    parser c:(in_charset lidentfirst) s:(in_charset identany)** s':'\''** ->
+    string_of_chars (c::s@s'))) no_blank)
+  -> check_not_keyword id; id
+
+let parser uident =
+  id:(change_layout (delim (
+    parser c:(in_charset uppercase)  s:(in_charset identany)** s':'\''** ->
+    string_of_chars (c::s@s'))) no_blank)
+  -> check_not_keyword id; id
 
 (* t ; u => (fun (x : unit) -> u) t *)
 let sequence pos t u =
@@ -127,9 +153,6 @@ let parser hole   : unit grammar = "?"
 let parser comma  : unit grammar = ","
 let parser subset : unit grammar = "⊂" | "⊆" | "<"
 
-let parser pident = id:''[a-zA-Z0-9][a-zA-Z0-9_']*'' -> check_not_keyword id; id
-let parser lident = id:''[a-z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
-let parser uident = id:''[A-Z][a-zA-Z0-9_']*'' -> check_not_keyword id; id
 
 (****************************************************************************
  *                         A parser for kinds (types)                       *
@@ -158,7 +181,7 @@ let cached parser pkind p =
       -> in_pos _loc (PProd(fs))
   | "[" fs:sum_items "]" when p = KAtom
 			 -> in_pos _loc (PSum(fs))
-  | t:(term TAtom) "." s:pident -> in_pos _loc (PDPrj(t,s))
+  | t:(term TAtom) "." s:uident -> in_pos _loc (PDPrj(t,s))
   | a:(pkind KAtom)
        f:{ with_kw s:uident "=" b:(pkind KAtom) -> (fun a -> in_pos _loc (PWith(a,s,b)))
          | when_kw b:(pkind KAtom) subset c:(pkind KAtom) -> (fun a -> in_pos _loc (PWhen(a,b,c))) }
@@ -174,7 +197,7 @@ and kind_list  = l:(list_sep (pkind KFunc) ",")
 and kind_prod  = l:(glist_sep'' (pkind KAtom) time) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and sum_item   = id:uident a:{_:of_kw a:(pkind KFunc)}?
 and sum_items  = l:(list_sep sum_item "|")
-and prod_item  = id:pident ":" a:(pkind KFunc)
+and prod_item  = id:lident ":" a:(pkind KFunc)
 and prod_items = l:(list_sep prod_item ";")
 
 and kind = (pkind KFunc)
@@ -210,7 +233,7 @@ and term p =
       in_pos _loc (PPrnt(s))
   | c:uident uo:(term TAtom)? when p = TAtom ->
       in_pos _loc (PCstr(c,uo))
-  | t:(term TAtom) "." l:pident when p = TAtom ->
+  | t:(term TAtom) "." l:lident when p = TAtom ->
     in_pos _loc (PProj(t,l))
   | case_kw t:(term TFunc) of_kw "|"? ps:(list_sep case "|") when p = TFunc ->
       in_pos _loc (PCase(t,ps))
@@ -248,7 +271,7 @@ and pattern =
     | "[" "]"         -> ("Nil", None)
 
 and case = (c,x):pattern _:arrow t:(term TFunc) -> (c, x, t)
-and field   = l:pident k:{ ":" kind }? "=" t:(term TFunc) ->
+and field   = l:lident k:{ ":" kind }? "=" t:(term TFunc) ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
 and tuple   = l:(glist_sep' (term TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and list    = EMPTY -> list_nil _loc
@@ -260,8 +283,6 @@ let term = term TFunc
  ****************************************************************************)
 
 exception Finish
-
-let top_level_blank = blank_regexp ''[ \t\n\r]*''
 
 let comment_char = black_box
   (fun str pos ->
@@ -277,11 +298,13 @@ let comment_char = black_box
     | _      -> ((), str', pos')
   ) Charset.full_charset None "ANY"
 
-let comment = change_layout (parser "(*" _:comment_char** "*)") no_blank
+let blank_chars = Charset.(List.fold_left add empty_charset [' ';'\n';'\r';'\t'])
 
-let parser blank_parser = _:comment**
+let parser comment = "(*" _:comment_char** "*)"
 
-let file_blank = blank_grammar blank_parser top_level_blank
+let parser blank_parser = _:{_:comment | _:(in_charset blank_chars)}**
+
+let blank = blank_grammar blank_parser no_blank
 
 let parser enabled =
   | "on"  -> true
@@ -304,7 +327,8 @@ let parser latex_atom =
   | "#" "witnesses" "#"     -> Latex_trace.Witnesses
   | "#" br:int_lit?[0] u:"!"? k:kind "#" -> Latex_trace.Kind (br,u<>None, unbox (unsugar_kind [] [] k))
   | "@" br:int_lit?[0] u:"!"? t:term "@" -> Latex_trace.Term (br,u<>None, unbox (unsugar_term [] [] t))
-  | t:''[^}{@#]+''        -> Latex_trace.Text t
+  | t:(in_charset Charset.(List.fold_left del full_charset ['}';'{';'@';'#']))+        ->
+     Latex_trace.Text (string_of_chars t)
   | l:latex_text          -> l
   | "#" "check" a:kind subset b:kind "#" ->
      let a = unbox (unsugar_kind [] [] a) in
@@ -325,7 +349,8 @@ let parser latex_atom =
 and latex_text = "{" l:latex_atom* "}" -> Latex_trace.List l
 
 let parser latex_name_aux =
-    | t:''[^{}]+''              -> Latex_trace.Text t
+    | t:(in_charset Charset.(List.fold_left del full_charset ['}';'{';'@';'#']))+
+      -> Latex_trace.Text (string_of_chars t)
     | "{" l:latex_name_aux* "}" -> Latex_trace.List l
 
 and latex_name = "{" t:latex_name_aux* "}" -> Latex_trace.to_string (Latex_trace.List t)
@@ -439,14 +464,14 @@ let parser toplevel =
       raise Finish
 
 let toplevel_of_string : string -> unit = fun s ->
-  parse_string toplevel top_level_blank s
+  parse_string toplevel blank s
 
 let parser file_contents =
   | cs:command** -> ()
 
 let eval_file fn =
   Printf.printf "## Loading file %S\n%!" fn;
-  parse_file file_contents file_blank fn;
+  parse_file file_contents blank fn;
   Printf.printf "## file Loaded %S\n%!" fn
 
 let _ = read_file := eval_file

@@ -129,10 +129,14 @@ let rec dot_proj t k s = match full_repr k with
      if binder_name f = s then c else dot_proj t (subst f c) s
   | _ -> subtype_error ("Dot projection "^s^" undefined")
 
-let with_clause a (s,b) = match full_repr a with
+let rec with_clause a (s,b) = match full_repr a with
   | Exis(f) -> if binder_name f = s then subst f b
                else subtype_error ("Unsuported \"with\" clause.")
-  | _       -> subtype_error ("Illegal use of \"with\" on variable "^s^".")
+  | FixM(OConv,f) -> with_clause (subst f (FixM(OConv,f))) (s,b)
+  | FixN(OConv,f) -> with_clause (subst f (FixN(OConv,f))) (s,b)
+  | k       ->
+     Printf.printf "%a\n%!" (print_kind false) k;
+     subtype_error ("Illegal use of \"with\" on variable "^s^".")
 
 let rec lambda_kind t k s = match full_repr k with
   | FAll(f) ->
