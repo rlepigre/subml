@@ -7,6 +7,7 @@ val tru : Bool = Tru
 val fls : Bool = Fls
 
 (* Prefer the use of built-in syntax "if ... then ... else ...". *)
+
 val cond : ∀X Bool → X → X → X = fun c t e ↦
   case c of Tru → t | Fls → e
 

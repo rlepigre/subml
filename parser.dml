@@ -373,21 +373,21 @@ let parser command =
           ; tdef_arity = Array.length arg_names
           ; tdef_value = unbox b }
         in
-        Printf.fprintf stdout "%a\n%!" (print_kind_def false) td;
+        output.f "%a\n%!" (print_kind_def false) td;
         Hashtbl.add typ_env name td
   (* Unfold a type definition. *)
   | unfold_kw k:kind ->
         let k = unbox (unsugar_kind [] [] k) in
-        Printf.fprintf stdout "%a\n%!" (print_kind true) k
+        output.f "%a\n%!" (print_kind true) k
   (* Parse a term. *)
   | parse_kw t:term ->
         let t = unbox (unsugar_term [] [] t) in
-        Printf.fprintf stdout "%a\n%!" (print_term false) t
+        output.f "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | eval_kw t:term ->
         let t = unbox (unsugar_term [] [] t) in
         let t = eval t in
-        Printf.fprintf stdout "%a\n%!" (print_term false) t
+        output.f "%a\n%!" (print_term false) t
   (* Typed value definition. *)
   | val_kw r:rec_kw? tex:latex_name? id:lident ":" k:kind "=" t:term ->
        let t =
@@ -414,7 +414,7 @@ let parser command =
 	  ; ttype = k
 	  ; proof = prf
 	  };
-        Printf.fprintf stdout "%s : %a\n%!" id (print_kind false) k
+        output.f "%s : %a\n%!" id (print_kind false) k
   (* Check subtyping. *)
   | check_kw n:{"not" -> false}?[true] a:kind {"⊂" | "⊆" | "<"} b:kind ->
         let a = unbox (unsugar_kind [] [] a) in
@@ -424,23 +424,23 @@ let parser command =
 	    generic_subtype a b;
 	    let prf = collect_subtyping_proof () in
 	    if !verbose || not n then (
-	      Printf.eprintf "MUST FAIL\n%!";
+	      output.f "MUST FAIL\n%!";
 	      print_subtyping_proof prf;
-	      exit 1
+	      failwith "check"
 	    );
 	    reset_epsilon_tbls ();
-	    Printf.eprintf "check: OK\n%!"
+	    output.f "check: OK\n%!"
           with
           | Subtype_error s when n ->
-	     Printf.eprintf "CHECK FAILED: OK %s\n%!" s;
-	     exit 1;
+	     output.f "CHECK FAILED: OK %s\n%!" s;
+	      failwith "check"
           | Subtype_error s ->
-	     Printf.eprintf "check not: OK %s\n%!" s;
+	     output.f "check not: OK %s\n%!" s;
  	     trace_state := [];
 	     reset_epsilon_tbls ();
           | e ->
-	     Printf.eprintf "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
-	     exit 1;
+	     output.f "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+	    failwith "check"
         end
   | latex_kw t:latex_text ->
      if not !ignore_latex then Latex_trace.output !latex_ch t

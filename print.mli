@@ -24,7 +24,7 @@ val reset_epsilon_tbls : unit -> unit
 val search_type_tbl : term -> (kind, kind) Bindlib.binder -> bool -> string * int
 val search_term_tbl : (term, term) Bindlib.binder -> kind -> kind -> string * int
 val search_ordinal_tbl : ordinal -> int
-val print_epsilon_tbls : out_channel -> unit
+val print_epsilon_tbls : formatter -> unit
 (* pointer are exported for the latex versiob of the print function *)
 val ordinal_tbl : (ordinal * int) list ref
 val epsilon_term_tbl : ((term, term) Bindlib.binder * (string * int * kind * kind)) list ref
@@ -34,20 +34,23 @@ val epsilon_type_tbl : ((kind, kind) Bindlib.binder * (string * int * term * boo
 
 (* Pretty-printer for terms. If the boolean is true, definitions are unfolded,
 otherwise the name of the defined type is used instead. *)
-val print_term : bool -> out_channel -> term -> unit
+val print_term : bool -> formatter -> term -> unit
 
 (* Pretty-printer for kind. If the boolean is true, definitions are unfolded,
 otherwise the name of the defined type is used instead. *)
-val print_kind : bool -> out_channel -> kind -> unit
+val print_kind : bool -> formatter -> kind -> unit
 
 (* Pretty-printer for a kind definition. If the boolean is true, definitions
 are unfolded, otherwise the name of the defined type is used instead. *)
-val print_kind_def : bool -> out_channel -> type_def -> unit
+val print_kind_def : bool -> formatter -> type_def -> unit
 
 (* Pretty-printer for an ordinal *)
-val print_ordinal : bool -> out_channel -> ordinal -> unit
+val print_ordinal : bool -> formatter -> ordinal -> unit
 
 (* various *)
 val print_term_in_subtyping : bool ref
 val find_tdef : kind -> type_def
-val print_position : out_channel -> Location.t -> unit
+val print_position : formatter -> Location.t -> unit
+
+type output = { mutable f : 'a. ('a, formatter, unit) format -> 'a }
+val output : output

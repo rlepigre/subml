@@ -1,3 +1,4 @@
+open Format
 open Bindlib
 open Util
 open Ast
@@ -27,23 +28,23 @@ let spec =
   ]
 
 let treat_exception fn a =
-  let position2 ch (fname, lnum, cnum) =
-    Printf.fprintf ch "File %S, line %d, characters %d-%d" fname lnum cnum cnum
+  let position2 ff (fname, lnum, cnum) =
+    fprintf ff "File %S, line %d, characters %d-%d" fname lnum cnum cnum
   in
   try
     fn a; true
   with
   | End_of_file          -> exit 0
   | Finish               -> exit 0
-  | Stopped              -> Printf.eprintf "Stopped\n%!"; true
+  | Stopped              -> output.f "Stopped\n%!"; true
   | Unsugar_error(loc,msg)
-                         -> Printf.eprintf "%a:\n%s\n%!" print_position loc msg; false
+                         -> output.f "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
-                         -> Printf.eprintf "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
-  | Unbound(loc,s)       -> Printf.eprintf "%a:\nUnbound: %s\n%!" print_position loc s; false
+                         -> output.f "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
+  | Unbound(loc,s)       -> output.f "%a:\nUnbound: %s\n%!" print_position loc s; false
   | Type_error(loc, msg)
-                         -> Printf.eprintf "%a:\nType error: %s\n%!" print_position loc msg; false
-  | e                    -> Printf.eprintf "Uncaught exception %s\n%!" (Printexc.to_string e); exit 1
+                         -> output.f "%a:\nType error: %s\n%!" print_position loc msg; false
+  | e                    -> output.f "Uncaught exception %s\n%!" (Printexc.to_string e); exit 1
 
 let rec interact () =
   Printf.printf ">> %!";

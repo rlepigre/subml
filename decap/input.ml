@@ -108,6 +108,10 @@ let lexing_position str pos =
 type cont_info =
     Else | Endif | EndOfFile | Elif of bool
 
+exception DirectiveError of string
+
+let directiveError s = raise (DirectiveError s)
+
 let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
   let rec fn fname num bol cont =
     begin
@@ -126,14 +130,11 @@ let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
   lazy (fn fname 0 0 (fun fname status line bol ->
   match status with
   | Else ->
-     Printf.eprintf "file: %s, extra '#else'" fname;
-     exit 1
+     directiveError (Printf.sprintf "file: %s, extra '#else'" fname)
   | Elif _ ->
-     Printf.eprintf "file: %s, extra '#elif'" fname;
-     exit 1
+     directiveError (Printf.sprintf "file: %s, extra '#elif'" fname)
   | Endif ->
-     Printf.eprintf "file: %s, extra '#endif'" fname;
-     exit 1
+     directiveError (Printf.sprintf "file: %s, extra '#endif'" fname)
   | EndOfFile ->
      Lazy.force (empty_buffer fname line bol)))
 

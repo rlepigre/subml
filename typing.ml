@@ -102,7 +102,7 @@ let lower_kind k1 k2 =
 	  | Pos -> FixM(OConv,bind_uvar ua b)
           | _   -> bot
         in
-	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
+	if !debug then output.f "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
         set ua k; true
     | (a           ,(UVar ub as b)) ->
         let k =
@@ -111,7 +111,7 @@ let lower_kind k1 k2 =
 	  | Pos -> FixM(OConv,bind_uvar ub a)
           | _   -> top
         in
-	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
+	if !debug then output.f "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
         set ub k; true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false
@@ -135,7 +135,7 @@ let rec with_clause a (s,b) = match full_repr a with
   | FixM(OConv,f) -> with_clause (subst f (FixM(OConv,f))) (s,b)
   | FixN(OConv,f) -> with_clause (subst f (FixN(OConv,f))) (s,b)
   | k       ->
-     Printf.printf "%a\n%!" (print_kind false) k;
+     output.f "%a\n%!" (print_kind false) k;
      subtype_error ("Illegal use of \"with\" on variable "^s^".")
 
 let rec lambda_kind t k s = match full_repr k with
@@ -193,7 +193,7 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
   let rec subtype ctxt t a0 b0 =
     let a = repr a0 in
     let b = repr b0 in
-    if !debug then Printf.eprintf "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
+    if !debug then output.f "%a ⊂ %a (∋ %a)\n%!" (print_kind false) a (print_kind false) b (print_term false) t;
     (try
      if a == b || lower_kind a b then
        let _ = trace_subtyping t a0 b0 in
@@ -308,14 +308,14 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
 
     | (_          , FixN(o,f)) ->
        let o' = OLess (o,NotIn(t,b)) in
-       if !debug then Printf.eprintf "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+       if !debug then output.f "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
        let cst = FixN(o', f) in
        subtype ctxt t a0 (subst f cst);
        trace_sub_pop NNuRight
 
     | (FixM(o,f)  , _        ) ->
        let o' = OLess (o,In(t,a)) in
-       if !debug then Printf.eprintf "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+       if !debug then output.f "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
        let cst = FixM(o', f) in
        subtype ctxt t (subst f cst) b0;
        trace_sub_pop NMuLeft
@@ -350,7 +350,7 @@ and generic_subtype : kind -> kind -> unit = fun a b ->
 and type_check : term -> kind -> unit = fun t c ->
   let c = repr c in
   let rec type_check t c =
-    if !debug then Printf.eprintf "%a : %a\n%!" (print_term false) t (print_kind false) c;
+    if !debug then output.f "%a : %a\n%!" (print_term false) t (print_kind false) c;
     trace_typing t c;
     begin
     try match t.elt with

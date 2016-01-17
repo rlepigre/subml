@@ -1541,24 +1541,23 @@ let _ =
                         tdef_arity = (Array.length arg_names);
                         tdef_value = (unbox b)
                       } in
-                    Printf.fprintf stdout "%a\n%!" (print_kind_def false) td;
+                    output.f "%a\n%!" (print_kind_def false) td;
                     Hashtbl.add typ_env name td));
        Decap.sequence unfold_kw kind
          (fun _default_0  ->
             fun k  ->
               let k = unbox (unsugar_kind [] [] k) in
-              Printf.fprintf stdout "%a\n%!" (print_kind true) k);
+              output.f "%a\n%!" (print_kind true) k);
        Decap.sequence parse_kw term
          (fun _default_0  ->
             fun t  ->
               let t = unbox (unsugar_term [] [] t) in
-              Printf.fprintf stdout "%a\n%!" (print_term false) t);
+              output.f "%a\n%!" (print_term false) t);
        Decap.sequence eval_kw term
          (fun _default_0  ->
             fun t  ->
               let t = unbox (unsugar_term [] [] t) in
-              let t = eval t in
-              Printf.fprintf stdout "%a\n%!" (print_term false) t);
+              let t = eval t in output.f "%a\n%!" (print_term false) t);
        Decap.fsequence val_kw
          (Decap.fsequence
             (Decap.option None (Decap.apply (fun x  -> Some x) rec_kw))
@@ -1633,8 +1632,7 @@ let _ =
                                                  ttype = k;
                                                  proof = prf
                                                };
-                                             Printf.fprintf stdout
-                                               "%s : %a\n%!" id
+                                             output.f "%s : %a\n%!" id
                                                (print_kind false) k))))))));
        Decap.fsequence check_kw
          (Decap.fsequence
@@ -1660,23 +1658,23 @@ let _ =
                                (let prf = collect_subtyping_proof () in
                                 if (!verbose) || (not n)
                                 then
-                                  (Printf.eprintf "MUST FAIL\n%!";
+                                  (output.f "MUST FAIL\n%!";
                                    print_subtyping_proof prf;
-                                   exit 1);
+                                   failwith "check");
                                 reset_epsilon_tbls ();
-                                Printf.eprintf "check: OK\n%!")
+                                output.f "check: OK\n%!")
                              with
                              | Subtype_error s when n ->
-                                 (Printf.eprintf "CHECK FAILED: OK %s\n%!" s;
-                                  exit 1)
+                                 (output.f "CHECK FAILED: OK %s\n%!" s;
+                                  failwith "check")
                              | Subtype_error s ->
-                                 (Printf.eprintf "check not: OK %s\n%!" s;
+                                 (output.f "check not: OK %s\n%!" s;
                                   trace_state := [];
                                   reset_epsilon_tbls ())
                              | e ->
-                                 (Printf.eprintf "UNCAUGHT EXCEPTION: %s\n%!"
+                                 (output.f "UNCAUGHT EXCEPTION: %s\n%!"
                                     (Printexc.to_string e);
-                                  exit 1)))));
+                                  failwith "check")))));
        Decap.sequence latex_kw latex_text
          (fun _default_0  ->
             fun t  ->

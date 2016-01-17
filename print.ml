@@ -273,42 +273,37 @@ and print_term ?(in_proj=false) unfold ff t =
  *                          Interface functions                             *
  ****************************************************************************)
 
-let print_term unfold ch t =
-  let ff = formatter_of_out_channel ch in
-  print_term unfold ff t; pp_print_flush ff (); flush ch
+let print_term unfold ff t =
+  print_term unfold ff t; pp_print_flush ff ()
 
-let print_kind unfold ch t =
-  let ff = formatter_of_out_channel ch in
-  print_kind unfold false ff t; pp_print_flush ff (); flush ch
+let print_kind unfold ff t =
+  print_kind unfold false ff t; pp_print_flush ff ()
 
-let _ = fprint_kind := print_kind
+(*let _ = fprint_kind := print_kind*)
 
-let print_kind_def unfold ch kd =
-  let ff = formatter_of_out_channel ch in
-  pkind_def unfold ff kd; pp_print_flush ff (); flush ch
+let print_kind_def unfold ff kd =
+  pkind_def unfold ff kd; pp_print_flush ff ()
 
-let print_ordinal unfold ch o =
-  let ff = formatter_of_out_channel ch in
-  print_ordinal unfold ff o; pp_print_flush ff (); flush ch
+let print_ordinal unfold ff o =
+  print_ordinal unfold ff o; pp_print_flush ff ()
 
-let print_position ch o =
-  let ff = formatter_of_out_channel ch in
-  position ff o; pp_print_flush ff (); flush ch
+let print_position ff o =
+  position ff o; pp_print_flush ff ()
 
-let print_epsilon_tbls ch =
+let print_epsilon_tbls ff =
   List.iter (fun (f,(name,index,a,b)) ->
     let x = new_lvar dummy_position (binder_name f) in
     let t = subst f (free_of x) in
-    Printf.fprintf ch "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index
+    fprintf ff "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index
       (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_tbl;
   List.iter (fun (f,(name,index,u,is_exists)) ->
     let x = new_tvar (binder_name f) in
     let k = subst f (free_of x) in
     let symbol = if is_exists then "∈" else "∉" in
-      Printf.fprintf ch "%s_%d = ϵ(%s, %a %s %a)\n" name index
+      fprintf ff "%s_%d = ϵ(%s, %a %s %a)\n" name index
       (name_of x) (print_term false) u symbol (print_kind false) k) !epsilon_type_tbl;
     List.iter (fun (o,n) ->
-      Printf.fprintf ch "%a = %a\n" (print_ordinal false) o (print_ordinal true) o) !ordinal_tbl
+      fprintf ff "%a = %a\n" (print_ordinal false) o (print_ordinal true) o) !ordinal_tbl
 
 exception Find_tdef of type_def
 
@@ -320,3 +315,9 @@ let find_tdef : kind -> type_def = fun t ->
     raise Not_found
   with
     Find_tdef(t) -> t
+
+let output_mode = ref err_formatter
+
+type output = { mutable f : 'a. ('a, formatter, unit) format -> 'a }
+
+let output = { f = fun format -> fprintf err_formatter format }

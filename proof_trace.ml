@@ -1,6 +1,6 @@
 open Ast
 open Print
-
+open Format
 
 type trace_state =
   | Typing of typ_proof
@@ -74,11 +74,11 @@ let collect_subtyping_proof () =
 let trace_backtrace () =
   let rec fn = function
     | (Typing p | EndTyping p)::l ->
-       Printf.eprintf "%a : %a\n%!"
+       output.f "%a : %a\n%!"
 	 (print_term false) p.tterm (print_kind false) p.typ;
       fn l
     | (SubTyping p | EndSubTyping p)::l ->
-       Printf.eprintf "%a ∈ %a ⊆ %a\n%!"
+       output.f "%a ∈ %a ⊆ %a\n%!"
 	 (print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right;
       fn l
     | [] -> ()

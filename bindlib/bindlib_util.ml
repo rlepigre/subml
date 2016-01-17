@@ -1,3 +1,4 @@
+
 type any = Obj.t
 
 (* An environment is used to store the value of every bound variables. We
@@ -7,21 +8,21 @@ module Env = struct
   type t =
     { tab          : any array (* An array with elements of any type. *)
     ; mutable next : int }     (* Next free cell of the array. *)
-  
+
   (* Creates an empty environment of a given size. *)
   let create : int -> t =
     fun size ->
       let dummy = Obj.repr () in
       { tab = Array.make size dummy; next = 0 }
-  
+
   (* Sets the value stored at some position in the environment. *)
   let set : t -> int -> 'a -> unit =
     fun env i e -> Array.set env.tab i (Obj.repr e)
-  
+
   (* Gets the value stored at some position in the environment. *)
   let get : t -> int -> 'a =
     fun env i -> Obj.obj (Array.get env.tab i)
-  
+
   (* Make a copy of the environment. *)
   let dup : t -> t =
     fun env -> { tab = Array.copy env.tab; next = env.next }
