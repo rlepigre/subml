@@ -284,6 +284,8 @@ let term = term TFunc
 
 exception Finish
 
+let top_level_blank = blank_regexp ''[ \t\n\r]*''
+
 let comment_char = black_box
   (fun str pos ->
     let (c, str', pos') = Input.read str pos in
@@ -442,7 +444,7 @@ let parser command =
 	     output.f "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
 	    failwith "check"
         end
-  | latex_kw t:latex_text ->
+  | latex_kw t:(change_layout latex_text latex_blank) ->
      if not !ignore_latex then Latex_trace.output !latex_ch t
   (* Include a file. *)
   | _:include_kw fn:string_lit ->
