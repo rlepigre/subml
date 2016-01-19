@@ -4,7 +4,7 @@ open Format
    all arguments of a call correpond to a parameter
    with a know relation : Less of Less of equal *)
 
-type cmp = Less | Leq
+type cmp = Less | Leq | Unknown
 
 (* a call g(x0-1,x1,x1-1) inside f(x0,x1) is
    represented by (g_n, f_n, [|Less;Leq;Less|] [|0;1;1|])
@@ -18,14 +18,17 @@ type call = int * int * cmp array * int array
 type calls = call list
 
 let debug_sct = ref false
+let summary_sct = ref false
 
 (* call composition *)
 let compose_arg a1 a2 =
-  Array.map (fun i -> a2.(i)) a1
+  Array.map (fun i -> if i = -1 then -1 else a2.(i)) a1
 
 let compose_cmp c1 a1 c2 =
-    Array.mapi (fun i c ->
+  Array.mapi (fun i c ->
+    if a1.(i) = -1 then Unknown else
       match c, c2.(a1.(i)) with
+      | Unknown, _ | _, Unknown -> Unknown
       | Less, _ | _, Less -> Less
       | _ -> Leq) c1
 
@@ -38,8 +41,10 @@ let max c1 c2 =
   let changed = ref false in
   let c = Array.mapi (fun i c1 ->
     match c1, c2.(i) with
-    | Less, Leq -> changed := true; Leq
+    | Unknown, _ -> Unknown
+    | _, Unknown -> changed := true; Unknown
     | Leq, _    -> Leq
+    | _, Leq -> changed := true; Leq
     | Less, _   -> Less) c1
   in
   !changed, c
@@ -47,6 +52,7 @@ let max c1 c2 =
 (* printing function for debugging *)
 let print_cmp ff c =
   match c with
+  | Unknown -> fprintf ff "?"
   | Less -> fprintf ff "<"
   | Leq  -> fprintf ff "="
 
@@ -77,9 +83,16 @@ let decr c a =
   with
     Exit -> true
 
+module IntArray = struct
+  type t = int array
+  let compare = compare
+end
+
+module IAMap = Map.Make(IntArray)
+
 (* function needs to be declared. calling sct will
    reset the function table *)
-let (new_function : int -> int), reset_function =
+let (new_function : int -> int), reset_function, pr_call =
   let count = ref 0 in
   let fun_table = ref [] in (* the table is only used for debugging messages *)
   (fun arity ->
@@ -91,17 +104,12 @@ let (new_function : int -> int), reset_function =
     let res = (!count, !fun_table) in
     count := 0;
     fun_table := [];
-    res)
-
-module IntArray = struct
-  type t = int array
-  let compare = compare
-end
-
-module IAMap = Map.Make(IntArray)
+    res),
+  (fun ch ->
+    print_call !fun_table ch)
 
 (* the main function *)
-let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
+let sct: call list -> bool = fun ls ->
   if !debug_sct then eprintf "sct start ... %!";
   let num_fun, arities = reset_function () in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun IAMap.empty) in
@@ -112,7 +120,10 @@ let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
      if the edge is new or not *)
   let add_edge i j c a =
     (* test idempotent edges as soon as they are discovered *)
-    if i = j && compose c a c a = (c,a) && not (decr c a) then raise Exit;
+    if i = j && compose c a c a = (c,a) && not (decr c a) then begin
+      if !debug_sct then eprintf "edge %a idempotent and looping\n%!" print_call (i,j,c,a);
+      raise Exit;
+    end;
     let ti = tbl.(i) in
     try
       let c' = IAMap.find a ti.(j) in
@@ -132,7 +143,7 @@ let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
       match !new_edges with
 	[] -> ()
       | (i,j,c,a)::l ->
-	new_edges := l;
+	 new_edges := l;
 	if add_edge i j c a then begin
 	  if !debug_sct then eprintf "\tedge %a added\n%!" print_call (i,j,c,a);
 	  incr added;
@@ -142,7 +153,7 @@ let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
 	    incr composed;
 	    new_edges := (i,k,c'',a'') :: !new_edges;
 	    if !debug_sct then
-	      eprintf "\tcompose: %a * %a = %a "
+	      eprintf "\tcompose: %a * %a = %a\n%!"
 		print_call (i,j,c,a)
 		print_call (j,k,c',a')
 		print_call (i,k,c'',a'');
@@ -152,11 +163,10 @@ let sct: ?summary:bool -> call list -> bool = fun ?(summary=false) ls ->
 	fn ()
     in
     fn ();
-    if !debug_sct || summary then
+    if !debug_sct || !summary_sct then
       eprintf "sct passed (%5d edges added, %6d composed)\t%!" !added !composed;
     true
   with Exit ->
-    if !debug_sct then eprintf "looping idempotent call!\n%!";
-    if !debug_sct || summary then
+    if !debug_sct || !summary_sct then
       eprintf "sct failed (%5d edges added, %6d composed)\t%!" !added !composed;
     false

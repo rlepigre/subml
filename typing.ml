@@ -30,7 +30,7 @@ let find_index a o =
   try
     Array.iteri (fun i o' -> if less_ordinal o o' then raise (Found(Less,i))
       else if leq_ordinal o o' then raise (Found(Leq,i))) a;
-    assert false
+    (Unknown,-1)
   with Found(c,i) -> (c, i)
 
 let find_indexes a b =
