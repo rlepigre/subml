@@ -1340,6 +1340,8 @@ let comment_char =
 let blank_chars =
   let open Charset in
     List.fold_left add empty_charset [' '; '\n'; '\r'; '\t']
+let latex_blank_chars =
+  let open Charset in List.fold_left add empty_charset [' '; '\t']
 let comment = Decap.declare_grammar "comment"
 let _ =
   Decap.set_grammar comment
@@ -1360,6 +1362,15 @@ let _ =
                    [Decap.apply (fun _  -> ()) comment;
                    Decap.apply (fun _  -> ()) (in_charset blank_chars)])))))
 let blank = blank_grammar blank_parser no_blank
+let latex_blank_parser = Decap.declare_grammar "latex_blank_parser"
+let _ =
+  Decap.set_grammar latex_blank_parser
+    (Decap.apply (fun _  -> ())
+       (Decap.apply List.rev
+          (Decap.fixpoint' []
+             (Decap.apply (fun x  -> fun l  -> x :: l)
+                (in_charset latex_blank_chars)))))
+let latex_blank = blank_grammar latex_blank_parser no_blank
 let enabled = Decap.declare_grammar "enabled"
 let _ =
   Decap.set_grammar enabled
@@ -1675,7 +1686,7 @@ let _ =
                                  (output.f "UNCAUGHT EXCEPTION: %s\n%!"
                                     (Printexc.to_string e);
                                   failwith "check")))));
-       Decap.sequence latex_kw latex_text
+       Decap.sequence latex_kw (change_layout latex_text latex_blank)
          (fun _default_0  ->
             fun t  ->
               if not (!ignore_latex) then Latex_trace.output (!latex_ch) t);

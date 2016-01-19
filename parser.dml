@@ -284,8 +284,6 @@ let term = term TFunc
 
 exception Finish
 
-let top_level_blank = blank_regexp ''[ \t\n\r]*''
-
 let comment_char = black_box
   (fun str pos ->
     let (c, str', pos') = Input.read str pos in
@@ -302,11 +300,17 @@ let comment_char = black_box
 
 let blank_chars = Charset.(List.fold_left add empty_charset [' ';'\n';'\r';'\t'])
 
+let latex_blank_chars = Charset.(List.fold_left add empty_charset [' ';'\t'])
+
 let parser comment = "(*" _:comment_char** "*)"
 
 let parser blank_parser = _:{_:comment | _:(in_charset blank_chars)}**
 
 let blank = blank_grammar blank_parser no_blank
+
+let parser latex_blank_parser = _:(in_charset latex_blank_chars)**
+
+let latex_blank = blank_grammar latex_blank_parser no_blank
 
 let parser enabled =
   | "on"  -> true

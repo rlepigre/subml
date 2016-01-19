@@ -104,7 +104,7 @@ let lower_kind k1 k2 =
 	  | Pos -> FixM(OConv,bind_uvar ua k)
           | _   -> bot
         in
-	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
+	if !debug then output.f "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
         set ua k; true
     | (a           ,(UVar ub as b)) ->
 	let k, l = decompose Neg a in
@@ -115,7 +115,7 @@ let lower_kind k1 k2 =
 	  | Pos -> FixM(OConv,bind_uvar ub k)
           | _   -> top
         in
-	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
+	if !debug then output.f "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
         set ub k; true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false
