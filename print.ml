@@ -198,8 +198,8 @@ and pkind_def unfold ff kd =
   let open Lexing in
   let fname  = loc.loc_start.pos_fname in
   let lnum   = loc.loc_start.pos_lnum in
-  let cstart = loc.loc_start.pos_cnum in
-  let cend   = loc.loc_end.pos_bol - loc.loc_start.pos_bol + loc.loc_end.pos_cnum in
+  let cstart = loc.loc_start.pos_cnum - loc.loc_start.pos_bol in
+  let cend   = loc.loc_end.pos_cnum   - loc.loc_start.pos_bol in
   fprintf ff "File %S, line %d, characters %d-%d" fname lnum cstart cend
 
 and print_term ?(in_proj=false) unfold ff t =
