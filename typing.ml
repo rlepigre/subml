@@ -96,19 +96,23 @@ let lower_kind k1 k2 =
     | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
     | (UVar ua     ,(UVar _ as b)) -> set ua b; true
     | (UVar ua as a, b           ) ->
+	let k, l = decompose Pos b in
+	let k = recompose true k (List.map (fun _ -> OConv) l) in
         let k =
-          match uvar_occur ua b with
-          | Non -> b
-	  | Pos -> FixM(OConv,bind_uvar ua b)
+          match uvar_occur ua k with
+          | Non -> k
+	  | Pos -> FixM(OConv,bind_uvar ua k)
           | _   -> bot
         in
 	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
         set ua k; true
     | (a           ,(UVar ub as b)) ->
+	let k, l = decompose Neg a in
+	let k = recompose false k (List.map (fun _ -> OConv) l) in
         let k =
           match uvar_occur ub a with
-          | Non -> a
-	  | Pos -> FixM(OConv,bind_uvar ub a)
+          | Non -> k
+	  | Pos -> FixM(OConv,bind_uvar ub k)
           | _   -> top
         in
 	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
@@ -149,7 +153,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_
     try
       (* the test (has_uvar a || has_uvar b) is important to
          avoid failure of occur chek for induction variable
-         because we take an general witness in this case.
+         because we take a general witness in this case.
       *)
       if has_uvar a || has_uvar b then raise Exit;
       let (a', os1) = decompose Neg a in
