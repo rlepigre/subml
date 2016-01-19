@@ -64,7 +64,7 @@ let lower_kind k1 k2 =
   let i = ref 0 in
   let new_int () = incr i; TInt !i in
   let rec lower_kind k1 k2 =
-    (*    if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;*)
+    (*if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;*)
     match (full_repr k1, full_repr k2) with
     | (k1          , k2          ) when k1 == k2 -> true
     | (TVar(_)     , TVar(_)     ) -> assert false
@@ -102,7 +102,7 @@ let lower_kind k1 k2 =
 	  | Pos -> FixM(OConv,bind_uvar ua b)
           | _   -> bot
         in
-	if !debug then output.f "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
+	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
         set ua k; true
     | (a           ,(UVar ub as b)) ->
         let k =
@@ -111,7 +111,7 @@ let lower_kind k1 k2 =
 	  | Pos -> FixM(OConv,bind_uvar ub a)
           | _   -> top
         in
-	if !debug then output.f "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
+	if !debug then Printf.eprintf "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
         set ub k; true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false
@@ -146,11 +146,11 @@ let rec lambda_kind t k s = match full_repr k with
 
 let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_ctxt * term * kind * kind * kind * kind * int option =
   fun t ctxt a a0 b b0 ->
-    (* the test (has_uvar a || has_uvar b) is importanat to
-       - avoid occur chek for induction variable
-       - to keep the invariant that no ordinal <> OConv occur in
-       positive mus and negative nus *)
     try
+      (* the test (has_uvar a || has_uvar b) is important to
+         avoid failure of occur chek for induction variable
+         because we take an general witness in this case.
+      *)
       if has_uvar a || has_uvar b then raise Exit;
       let (a', os1) = decompose Neg a in
       let (b', os2) = decompose Pos b in
