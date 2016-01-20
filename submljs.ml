@@ -53,17 +53,17 @@ let rec interact () =
   interact ()
 
 let js_object = Js.Unsafe.variable "Object"
-let js_handler = jsnew js_object ()
 let postMessage = Js.Unsafe.variable "postMessage"
 
 let onmessage event =
-  let fname = event##data##fname in
-  let args = event##data##args in
-  let handle = Js.Unsafe.get js_handler fname in
-  let result = Js.Unsafe.fun_call handle (Js.to_array args) in
+  let filename = Js.to_string event##data##fname in
+  let s = Js.to_string event##data##args in
+  let b = treat_exception (parse_string ~filename file_contents blank) s in
+  io.log "File %s loaded" filename;
+  let result = if b then Js.string "OK" else Js.string "ERREUR" in
   let response = jsnew js_object () in
   Js.Unsafe.set response (Js.string "typ") (Js.string "result");
-  Js.Unsafe.set response (Js.string "fname") fname;
+  Js.Unsafe.set response (Js.string "fname") filename;
   Js.Unsafe.set response (Js.string "result") result;
   Js.Unsafe.call postMessage (Js.Unsafe.variable "self") [|Js.Unsafe.inject response|]
 
@@ -87,14 +87,8 @@ let _ = io.log    <- (fun format -> output "log"    format)
 let _ = io.stderr <- (fun format -> output "stderr" format)
 
 let _ = io.files  <- (fun filename  ->
-  let res = Js.Unsafe.call (Js.Unsafe.variable "loadFile") (Js.Unsafe.variable "self") [|Js.Unsafe.inject (Js.string filename)|] in
+  let fn = Js.Unsafe.js_expr "syncloadsubmlfile" in
+  let args = [|Js.Unsafe.inject (Js.string filename)|] in
+  let res = Js.Unsafe.fun_call fn args in
   let s = Js.to_string res in
   Input.buffer_from_string ~filename s)
-
-let eval_file_string s =
-  let s = Js.to_string s in
-  let b = treat_exception (parse_string file_contents blank) s in
-  if b then Js.string "OK" else Js.string "ERREUR"
-
-let _ =
-  Js.Unsafe.set js_handler (Js.string "eval_file_string") (Js.wrap_callback eval_file_string)
