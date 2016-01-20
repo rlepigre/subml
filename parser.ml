@@ -8,6 +8,7 @@ open Typing
 open Proof_trace
 open Print_trace
 open Raw
+open Io
 let locate = Location.locate
 let keywords = Hashtbl.create 20
 let is_keyword: string -> bool = Hashtbl.mem keywords
@@ -1552,23 +1553,22 @@ let _ =
                         tdef_arity = (Array.length arg_names);
                         tdef_value = (unbox b)
                       } in
-                    output.f "%a\n%!" (print_kind_def false) td;
                     Hashtbl.add typ_env name td));
        Decap.sequence unfold_kw kind
          (fun _default_0  ->
             fun k  ->
               let k = unbox (unsugar_kind [] [] k) in
-              output.f "%a\n%!" (print_kind true) k);
+              io.stdout "%a\n%!" (print_kind true) k);
        Decap.sequence parse_kw term
          (fun _default_0  ->
             fun t  ->
               let t = unbox (unsugar_term [] [] t) in
-              output.f "%a\n%!" (print_term false) t);
+              io.stdout "%a\n%!" (print_term false) t);
        Decap.sequence eval_kw term
          (fun _default_0  ->
             fun t  ->
               let t = unbox (unsugar_term [] [] t) in
-              let t = eval t in output.f "%a\n%!" (print_term false) t);
+              let t = eval t in io.stdout "%a\n%!" (print_term false) t);
        Decap.fsequence val_kw
          (Decap.fsequence
             (Decap.option None (Decap.apply (fun x  -> Some x) rec_kw))
@@ -1642,9 +1642,7 @@ let _ =
                                                  orig_value = t;
                                                  ttype = k;
                                                  proof = prf
-                                               };
-                                             output.f "%s : %a\n%!" id
-                                               (print_kind false) k))))))));
+                                               }))))))));
        Decap.fsequence check_kw
          (Decap.fsequence
             (Decap.option true
@@ -1669,21 +1667,18 @@ let _ =
                                (let prf = collect_subtyping_proof () in
                                 if (!verbose) || (not n)
                                 then
-                                  (output.f "MUST FAIL\n%!";
+                                  (io.stdout "MUST FAIL\n%!";
                                    print_subtyping_proof prf;
                                    failwith "check");
-                                reset_epsilon_tbls ();
-                                output.f "check: OK\n%!")
+                                reset_epsilon_tbls ())
                              with
                              | Subtype_error s when n ->
-                                 (output.f "CHECK FAILED: OK %s\n%!" s;
+                                 (io.stdout "CHECK FAILED: OK %s\n%!" s;
                                   failwith "check")
                              | Subtype_error s ->
-                                 (output.f "check not: OK %s\n%!" s;
-                                  trace_state := [];
-                                  reset_epsilon_tbls ())
+                                 (trace_state := []; reset_epsilon_tbls ())
                              | e ->
-                                 (output.f "UNCAUGHT EXCEPTION: %s\n%!"
+                                 (io.stdout "UNCAUGHT EXCEPTION: %s\n%!"
                                     (Printexc.to_string e);
                                   failwith "check")))));
        Decap.sequence latex_kw (change_layout latex_text latex_blank)
@@ -1714,7 +1709,6 @@ let _ =
           (Decap.fixpoint' []
              (Decap.apply (fun x  -> fun l  -> x :: l) command))))
 let eval_file fn =
-  Printf.printf "## Loading file %S\n%!" fn;
-  parse_file file_contents blank fn;
-  Printf.printf "## file Loaded %S\n%!" fn
+  let buf = io.files fn in
+  parse_buffer file_contents blank buf; io.stdout "## file Loaded %S\n%!" fn
 let _ = read_file := eval_file

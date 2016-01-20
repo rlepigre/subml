@@ -315,9 +315,3 @@ let find_tdef : kind -> type_def = fun t ->
     raise Not_found
   with
     Find_tdef(t) -> t
-
-let output_mode = ref err_formatter
-
-type output = { mutable f : 'a. ('a, formatter, unit) format -> 'a }
-
-let output = { f = fun format -> fprintf err_formatter format }

@@ -8,6 +8,7 @@ open Typing
 open Proof_trace
 open Print_trace
 open Raw
+open Io
 
 let locate = Location.locate
 
@@ -379,21 +380,20 @@ let parser command =
           ; tdef_arity = Array.length arg_names
           ; tdef_value = unbox b }
         in
-        output.f "%a\n%!" (print_kind_def false) td;
         Hashtbl.add typ_env name td
   (* Unfold a type definition. *)
   | unfold_kw k:kind ->
         let k = unbox (unsugar_kind [] [] k) in
-        output.f "%a\n%!" (print_kind true) k
+        io.stdout "%a\n%!" (print_kind true) k
   (* Parse a term. *)
   | parse_kw t:term ->
         let t = unbox (unsugar_term [] [] t) in
-        output.f "%a\n%!" (print_term false) t
+        io.stdout "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | eval_kw t:term ->
         let t = unbox (unsugar_term [] [] t) in
         let t = eval t in
-        output.f "%a\n%!" (print_term false) t
+        io.stdout "%a\n%!" (print_term false) t
   (* Typed value definition. *)
   | val_kw r:rec_kw? tex:latex_name? id:lident ":" k:kind "=" t:term ->
        let t =
@@ -419,8 +419,7 @@ let parser command =
 	  ; orig_value = t
 	  ; ttype = k
 	  ; proof = prf
-	  };
-        output.f "%s : %a\n%!" id (print_kind false) k
+	  }
   (* Check subtyping. *)
   | check_kw n:{"not" -> false}?[true] a:kind {"⊂" | "⊆" | "<"} b:kind ->
         let a = unbox (unsugar_kind [] [] a) in
@@ -430,22 +429,20 @@ let parser command =
 	    generic_subtype a b;
 	    let prf = collect_subtyping_proof () in
 	    if !verbose || not n then (
-	      output.f "MUST FAIL\n%!";
+	      io.stdout "MUST FAIL\n%!";
 	      print_subtyping_proof prf;
 	      failwith "check"
 	    );
-	    reset_epsilon_tbls ();
-	    output.f "check: OK\n%!"
+	    reset_epsilon_tbls ()
           with
           | Subtype_error s when n ->
-	     output.f "CHECK FAILED: OK %s\n%!" s;
+	     io.stdout "CHECK FAILED: OK %s\n%!" s;
 	      failwith "check"
           | Subtype_error s ->
-	     output.f "check not: OK %s\n%!" s;
  	     trace_state := [];
 	     reset_epsilon_tbls ();
           | e ->
-	     output.f "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+	     io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
 	    failwith "check"
         end
   | latex_kw t:(change_layout latex_text latex_blank) ->
@@ -476,8 +473,8 @@ let parser file_contents =
   | cs:command** -> ()
 
 let eval_file fn =
-  Printf.printf "## Loading file %S\n%!" fn;
-  parse_file file_contents blank fn;
-  Printf.printf "## file Loaded %S\n%!" fn
+  let buf = io.files fn in
+  parse_buffer file_contents blank buf;
+  io.stdout "## file Loaded %S\n%!" fn
 
 let _ = read_file := eval_file

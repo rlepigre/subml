@@ -7,6 +7,7 @@ open Parser
 open Raw
 open Decap
 open Typing
+open Io
 
 let _ = handle_stop true
 
@@ -36,15 +37,15 @@ let treat_exception fn a =
   with
   | End_of_file          -> exit 0
   | Finish               -> exit 0
-  | Stopped              -> output.f "Stopped\n%!"; true
+  | Stopped              -> io.stderr "Stopped\n%!"; true
   | Unsugar_error(loc,msg)
-                         -> output.f "%a:\n%s\n%!" print_position loc msg; false
+                         -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
-                         -> output.f "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
-  | Unbound(loc,s)       -> output.f "%a:\nUnbound: %s\n%!" print_position loc s; false
+                         -> io.stderr "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
+  | Unbound(loc,s)       -> io.stderr "%a:\nUnbound: %s\n%!" print_position loc s; false
   | Type_error(loc, msg)
-                         -> output.f "%a:\nType error: %s\n%!" print_position loc msg; false
-  | e                    -> output.f "Uncaught exception %s\n%!" (Printexc.to_string e); exit 1
+                         -> io.stderr "%a:\nType error: %s\n%!" print_position loc msg; false
+  | e                    -> io.stderr "Uncaught exception %s\n%!" (Printexc.to_string e); exit 1
 
 let rec interact () =
   Printf.printf ">> %!";

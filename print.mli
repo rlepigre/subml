@@ -51,6 +51,3 @@ val print_ordinal : bool -> formatter -> ordinal -> unit
 val print_term_in_subtyping : bool ref
 val find_tdef : kind -> type_def
 val print_position : formatter -> Location.t -> unit
-
-type output = { mutable f : 'a. ('a, formatter, unit) format -> 'a }
-val output : output
