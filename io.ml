@@ -10,7 +10,7 @@ let io = {
   stdout = (fun format -> fprintf std_formatter format);
   log    = (fun format -> fprintf std_formatter format);
   stderr = (fun format -> fprintf err_formatter format);
-  files  = (fun fname ->
-    let ch = open_in fname in
-    Input.buffer_from_channel ch);
+  files  = (fun filename ->
+    let ch = open_in filename in
+    Input.buffer_from_channel ~filename ch);
 }

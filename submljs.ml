@@ -87,22 +87,14 @@ let _ = io.log    <- (fun format -> output "log"    format)
 let _ = io.stderr <- (fun format -> output "stderr" format)
 
 let _ = io.files  <- (fun filename  ->
-  let thread = XmlHttpRequest.perform_raw_url filename in
-  Lwt_main.run (Lwt.bind thread (fun frame ->
-    Lwt.return (Input.buffer_from_string ~filename frame.XmlHttpRequest.content);
-  )))
+  let res = Js.Unsafe.call (Js.Unsafe.variable "loadFile") (Js.Unsafe.variable "self") [|Js.Unsafe.inject (Js.string filename)|] in
+  let s = Js.to_string res in
+  Input.buffer_from_string ~filename s)
 
 let eval_file_string s =
   let s = Js.to_string s in
   let b = treat_exception (parse_string file_contents blank) s in
   if b then Js.string "OK" else Js.string "ERREUR"
 
-let eval_toplevel_string s =
-  Dom_html.window##alert (Js.string "call");
-  let s = Js.to_string s in
-  let b = treat_exception (parse_string file_contents blank) s in
-  if b then Js.string "OK" else Js.string "ERREUR"
-
 let _ =
-  Js.Unsafe.set js_handler (Js.string "eval_file_string") (Js.wrap_callback eval_file_string);
-  Js.Unsafe.set js_handler (Js.string "eval_toplevel_string") (Js.wrap_callback eval_toplevel_string)
+  Js.Unsafe.set js_handler (Js.string "eval_file_string") (Js.wrap_callback eval_file_string)
