@@ -43,12 +43,13 @@ let rec interact () =
 
 let js_object = Js.Unsafe.variable "Object"
 let postMessage = Js.Unsafe.variable "postMessage"
+let syncloadsubmlfile = Js.Unsafe.variable "syncloadsubmlfile"
 
 let onmessage event =
   let filename = Js.to_string event##data##fname in
   let s = Js.to_string event##data##args in
   let b = treat_exception (parse_string ~filename file_contents blank) s in
-  io.log "File %s loaded" filename;
+  io.log "Editor content loaded\n%!";
   let result = if b then Js.string "OK" else Js.string "ERREUR" in
   let response = jsnew js_object () in
   Js.Unsafe.set response (Js.string "typ") (Js.string "result");
@@ -76,16 +77,12 @@ let _ = io.log    <- (fun format -> output "log"    format)
 let _ = io.stderr <- (fun format -> output "stderr" format)
 
 let _ = io.files  <- (fun filename  ->
-  (*
-  let fn = Js.Unsafe.js_expr "syncloadsubmlfile" in
   let args = [|Js.Unsafe.inject (Js.string filename)|] in
-  let res = Js.Unsafe.fun_call fn args in
+  let res = Js.Unsafe.fun_call  syncloadsubmlfile args in
   let s = Js.to_string res in
-  *)
-  let cmd = Printf.sprintf "syncloadsubmlfile(%S)" filename in
-  io.stdout "blabla\n%!";
-  let res = Js.Unsafe.eval_string cmd in
-  io.stdout "bloblo\n%!";
-  let s = Js.to_string res in
-  io.stdout "blybly\n%!";
   Input.buffer_from_string ~filename s)
+
+let _ =
+  let s = io.files "lib/prelude.typ" in
+  treat_exception (parse_buffer file_contents blank) s;
+  io.log "File \"lib/prelude.typ\" loaded\n%!"
