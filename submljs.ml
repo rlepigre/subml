@@ -86,16 +86,11 @@ let _ = io.stdout <- (fun format -> output "stdout" format)
 let _ = io.log    <- (fun format -> output "log"    format)
 let _ = io.stderr <- (fun format -> output "stderr" format)
 
-let _ = io.files  <- (fun fname  ->
-  let thread = XmlHttpRequest.perform_raw_url fname in
-  let res = Lwt.bind thread (fun frame ->
-    Lwt.return (Input.buffer_from_string frame.XmlHttpRequest.content);
-  )
-  in
-  match Lwt.state res with
-    Lwt.Return buf -> buf
-  | Lwt.Fail e     -> raise e
-  | Lwt.Sleep      -> assert false)
+let _ = io.files  <- (fun filename  ->
+  let thread = XmlHttpRequest.perform_raw_url filename in
+  Lwt_main.run (Lwt.bind thread (fun frame ->
+    Lwt.return (Input.buffer_from_string ~filename frame.XmlHttpRequest.content);
+  )))
 
 let eval_file_string s =
   let s = Js.to_string s in

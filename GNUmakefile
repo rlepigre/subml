@@ -16,7 +16,7 @@ subml.byte: $(MLFILES) subml.ml
 	ocamlbuild -cflags -w,-3-30 -use-ocamlfind $@
 
 submljs.byte: $(MLFILES) submljs.ml
-	ocamlbuild -pkgs js_of_ocaml,js_of_ocaml.syntax -cflags -syntax,camlp4o,-w,-3-30 -use-ocamlfind $@
+	ocamlbuild -pkgs lwt.unix,js_of_ocaml,js_of_ocaml.syntax -cflags -syntax,camlp4o,-w,-3-30 -use-ocamlfind $@
 
 subml.js: submljs.byte
 	js_of_ocaml +weak.js submljs.byte -o subml.js
