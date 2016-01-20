@@ -17,17 +17,6 @@ let files   = ref ([] : string list)
 
 let add_file fn = files := !files @ [fn]
 
-let spec =
-  [ ("--verbose", Arg.Set verbose, "Activate verbose mode");
-    ("--debug", Arg.Set Typing.debug, "Activate verbose mode");
-    ("--no-contraction", Arg.Clear Ast.contract_mu, "Activate verbose mode");
-    ("--debug-sct", Arg.Set Sct.debug_sct, "Activate sct verbose mode");
-    ("--simple-ordinals", Arg.Set Print.simplified_ordinals, "Print inductive ordinals with <= constraints");
-    ("--tex-file", Arg.String (fun s -> open_latex s), "Choose tex file output");
-    ("--no-prelude", Arg.Clear prelude, "Do not load the prelude");
-    ("--quit", Arg.Set quit, "quit after parsing files");
-  ]
-
 let treat_exception fn a =
   let position2 ff (fname, lnum, cnum) =
     fprintf ff "File %S, line %d, characters %d-%d" fname lnum cnum cnum
@@ -87,8 +76,16 @@ let _ = io.log    <- (fun format -> output "log"    format)
 let _ = io.stderr <- (fun format -> output "stderr" format)
 
 let _ = io.files  <- (fun filename  ->
+  (*
   let fn = Js.Unsafe.js_expr "syncloadsubmlfile" in
   let args = [|Js.Unsafe.inject (Js.string filename)|] in
   let res = Js.Unsafe.fun_call fn args in
   let s = Js.to_string res in
+  *)
+  let cmd = Printf.sprintf "syncloadsubmlfile(%S)" filename in
+  io.stdout "blabla\n%!";
+  let res = Js.Unsafe.eval_string cmd in
+  io.stdout "bloblo\n%!";
+  let s = Js.to_string res in
+  io.stdout "blybly\n%!";
   Input.buffer_from_string ~filename s)
