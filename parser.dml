@@ -393,7 +393,7 @@ let parser command =
   | eval_kw t:term ->
         let t = unbox (unsugar_term [] [] t) in
         let t = eval t in
-        io.stdout "%a\n%!" (print_term false) t
+        io.stdout "%a\n%!" (print_term true) t
   (* Typed value definition. *)
   | val_kw r:rec_kw? tex:latex_name? id:lident ":" k:kind "=" t:term ->
        let t =
