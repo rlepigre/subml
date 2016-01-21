@@ -25,12 +25,14 @@ installjs: subml.js subml-latest.tar.gz
 	cp subml.js ../subml/subml/
 	scp subml.js lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 	rm -f lib/*~
+	ssh lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/subml/lib
 	scp -r lib lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 	scp subml-latest.tar.gz lama.univ-savoie.fr:/home/rlepi/WWW/subml/docs/
 
 rodinstalljs: subml.js subml-latest.tar.gz
 	scp subml.js rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 	rm -f lib/*~
+	ssh rlepi@lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/subml/lib
 	scp -r lib rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 	scp subml-latest.tar.gz rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/docs/
 
