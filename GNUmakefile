@@ -63,5 +63,6 @@ subml-latest.tar.gz: parser.ml
 	cp _tags subml-latest
 	rm -f lib/*~
 	cp -r lib subml-latest
+	cp README subml-latest
 	tar zcvf subml-latest.tar.gz subml-latest
 	rm -r subml-latest
