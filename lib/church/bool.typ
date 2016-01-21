@@ -1,5 +1,4 @@
 (* Church booleans. *)
-set verbose off
 
 (* The type of booleans and the two constants. *)
 type CBool = ∀X (X → X → X)
