@@ -1568,7 +1568,10 @@ let _ =
          (fun _default_0  ->
             fun t  ->
               let t = unbox (unsugar_term [] [] t) in
-              let t = eval t in io.stdout "%a\n%!" (print_term true) t);
+              (try type_check t (new_uvar ())
+               with | e -> (trace_backtrace (); raise e));
+              reset_all ();
+              io.stdout "%a\n%!" (print_term true) (eval t));
        Decap.fsequence val_kw
          (Decap.fsequence
             (Decap.option None (Decap.apply (fun x  -> Some x) rec_kw))

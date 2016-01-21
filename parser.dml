@@ -108,10 +108,10 @@ let parser uident =
 
 (* t ; u => (fun (x : unit) -> u) t *)
 let sequence pos t u =
-     in_pos pos (
-       PAppl(in_pos pos (
-	 PLAbs([in_pos pos "_",Some (in_pos pos (
-	   PProd []))] ,u)), t))
+  in_pos pos (
+    PAppl(in_pos pos (
+      PLAbs([in_pos pos "_",Some (in_pos pos (
+        PProd []))] ,u)), t))
 
 (* Basic tokens. *)
 let case_kw = new_keyword "case"
@@ -181,7 +181,7 @@ let cached parser pkind p =
   | fs : kind_prod when p = KProd
       -> in_pos _loc (PProd(fs))
   | "[" fs:sum_items "]" when p = KAtom
-			 -> in_pos _loc (PSum(fs))
+      -> in_pos _loc (PSum(fs))
   | t:(term TAtom) "." s:uident -> in_pos _loc (PDPrj(t,s))
   | a:(pkind KAtom)
        f:{ with_kw s:uident "=" b:(pkind KAtom) -> (fun a -> in_pos _loc (PWith(a,s,b)))
@@ -350,7 +350,7 @@ let parser latex_atom =
      let t = Hashtbl.find typ_env id in
      Latex_trace.KindDef(br,t)
   | "##" id:lident "#"    -> let t = Hashtbl.find val_env id in
-			     Latex_trace.TProof t.proof
+     Latex_trace.TProof t.proof
 
 
 and latex_text = "{" l:latex_atom* "}" -> Latex_trace.List l
@@ -376,7 +376,7 @@ let parser command =
         let b = mbind mk_free_tvar arg_names f in
         let td =
           { tdef_name  = name
-	  ; tdef_tex_name = (match tex with None -> "\\mathrm{"^name^"}" | Some s -> s)
+          ; tdef_tex_name = (match tex with None -> "\\mathrm{"^name^"}" | Some s -> s)
           ; tdef_arity = Array.length arg_names
           ; tdef_value = unbox b }
         in
@@ -392,58 +392,62 @@ let parser command =
   (* Evaluate a term. *)
   | eval_kw t:term ->
         let t = unbox (unsugar_term [] [] t) in
-        let t = eval t in
-        io.stdout "%a\n%!" (print_term true) t
+        begin
+          try type_check t (new_uvar ());
+          with e -> trace_backtrace (); raise e
+        end;
+        reset_all ();
+        io.stdout "%a\n%!" (print_term true) (eval t)
   (* Typed value definition. *)
   | val_kw r:rec_kw? tex:latex_name? id:lident ":" k:kind "=" t:term ->
        let t =
-	 if r = None then t
-	 else in_pos _loc_t (PFixY((in_pos _loc_id id, Some k), t)) in
+         if r = None then t
+         else in_pos _loc_t (PFixY((in_pos _loc_id id, Some k), t))
+       in
        let t = unbox (unsugar_term [] [] t) in
        let k = unbox (unsugar_kind [] [] k) in
        let prf =
-	  try
-	    type_check t k;
-	    let prf = collect_typing_proof () in
-	    if !verbose then print_typing_proof prf;
-	    prf
-	  with
-	    e -> trace_backtrace (); raise e
-	in
-        reset_all ();
-        let tn = eval t in
-        Hashtbl.add val_env id
-	  { name = id
-	  ; tex_name = (match tex with None -> "\\mathrm{"^id^"}" | Some s -> s)
-	  ; value = tn
-	  ; orig_value = t
-	  ; ttype = k
-	  ; proof = prf
-	  }
+         try
+           type_check t k;
+           let prf = collect_typing_proof () in
+           if !verbose then print_typing_proof prf;
+           prf
+         with e -> trace_backtrace (); raise e
+       in
+       reset_all ();
+       let tn = eval t in
+       Hashtbl.add val_env id
+         { name = id
+         ; tex_name = (match tex with None -> "\\mathrm{"^id^"}" | Some s -> s)
+         ; value = tn
+         ; orig_value = t
+         ; ttype = k
+         ; proof = prf
+         }
   (* Check subtyping. *)
   | check_kw n:{"not" -> false}?[true] a:kind {"⊂" | "⊆" | "<"} b:kind ->
         let a = unbox (unsugar_kind [] [] a) in
         let b = unbox (unsugar_kind [] [] b) in
         begin
           try
-	    generic_subtype a b;
-	    let prf = collect_subtyping_proof () in
-	    if !verbose || not n then (
-	      io.stdout "MUST FAIL\n%!";
-	      print_subtyping_proof prf;
-	      failwith "check"
-	    );
-	    reset_epsilon_tbls ()
+            generic_subtype a b;
+            let prf = collect_subtyping_proof () in
+            if !verbose || not n then (
+              io.stdout "MUST FAIL\n%!";
+              print_subtyping_proof prf;
+              failwith "check"
+            );
+            reset_epsilon_tbls ()
           with
           | Subtype_error s when n ->
-	     io.stdout "CHECK FAILED: OK %s\n%!" s;
-	      failwith "check"
+             io.stdout "CHECK FAILED: OK %s\n%!" s;
+             failwith "check"
           | Subtype_error s ->
- 	     trace_state := [];
-	     reset_epsilon_tbls ();
+             trace_state := [];
+             reset_epsilon_tbls ();
           | e ->
-	     io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
-	    failwith "check"
+             io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+             failwith "check"
         end
   | latex_kw t:(change_layout latex_text latex_blank) ->
      if not !ignore_latex then Latex_trace.output !latex_ch t
