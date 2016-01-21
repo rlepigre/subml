@@ -1,0 +1,25 @@
+all: subml.byte subml.native
+
+MLFILES=bindlib/bindlib_util.ml bindlib/bindlib.ml \
+        decap/ahash.ml decap/ptmap.ml decap/input.ml decap/decap.ml \
+        util.ml io.ml timed_ref.ml ast.ml eval.ml print.ml latex.ml \
+				sct.ml proof_trace.ml raw.ml typing.ml print_trace.ml \
+				latex_trace.ml parser.ml subml.ml
+
+subml.native: $(MLFILES)
+	ocamlbuild -cflags -w,-3-30 $@
+
+subml.byte: $(MLFILES)
+	ocamlbuild -cflags -w,-3-30 $@
+
+run: all
+	ledit ./subml.native
+
+test: all
+	./subml.native --quit lib/all.typ
+
+clean:
+	ocamlbuild -clean
+
+distclean: clean
+	rm -f *~ lib/*~

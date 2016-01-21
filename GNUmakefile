@@ -21,16 +21,18 @@ submljs.byte: $(MLFILES) submljs.ml
 subml.js: submljs.byte
 	js_of_ocaml --pretty +weak.js submljs.byte -o subml.js
 
-installjs: subml.js
+installjs: subml.js subml-latest.tar.gz
 	cp subml.js ../subml/subml/
 	scp subml.js lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 	rm -f lib/*~
 	scp -r lib lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
+	scp subml-latest.tar.gz lama.univ-savoie.fr:/home/rlepi/WWW/subml/docs/
 
-rodinstalljs: subml.js
+rodinstalljs: subml.js subml-latest.tar.gz
 	scp subml.js rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 	rm -f lib/*~
 	scp -r lib rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
+	scp subml-latest.tar.gz rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/docs/
 
 run: all
 	ledit ./subml.native
@@ -43,6 +45,23 @@ clean:
 
 distclean: clean
 	rm -f *~ lib/*~
+	rm -rf subml-latest subml-latest.tar.gz
 
 install: all
 	install ./subml.native $(DESTDIR)/subml
+
+subml-latest.tar.gz: parser.ml
+	rm -rf subml-latest
+	mkdir subml-latest
+	cp -r decap subml-latest
+	cp -r bindlib subml-latest
+	cp parser.ml subml-latest
+	cp util.ml io.ml timed_ref.ml ast.ml eval.ml print.ml subml-latest
+	cp latex.ml sct.ml proof_trace.ml raw.ml typing.ml subml-latest
+	cp print_trace.ml latex_trace.ml parser.ml subml.ml subml-latest
+	cp Makefile_minimum subml-latest/Makefile
+	cp _tags subml-latest
+	rm -f lib/*~
+	cp -r lib subml-latest
+	tar zcvf subml-latest.tar.gz subml-latest
+	rm -r subml-latest
