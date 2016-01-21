@@ -696,10 +696,9 @@ let cache : 'a grammar -> 'a grammar
       def = None;
       parse =
         fun grouped str pos next g ->
-	try
-	  let lc = Hashtbl.find cache (line_num str, pos, fname str, grouped.stack, next) in
-	  (*	  Printf.eprintf "use cache %d %d %a %a %d\n%!" (line_num str) pos print_next next print_info grouped (List.length lc);*)
-	  fn g lc
+	let lc = try
+	  Hashtbl.find cache (line_num str, pos, fname str, grouped.stack, next)
+	(*	  Printf.eprintf "use cache %d %d %a %a %d\n%!" (line_num str) pos print_next next print_info grouped (List.length lc);*)
 	with Not_found ->
 	  let lc = ref [] in
 	  let set = Hashtbl.create 5 in
@@ -715,9 +714,8 @@ let cache : 'a grammar -> 'a grammar
 	  with Error ->
 	    let lc = List.rev !lc in
 	    Hashtbl.add cache (line_num str, pos, fname str, grouped.stack, next) lc;
-	    fn g lc
-
-
+	    lc
+	in fn g lc
     }
   in
   res.set_info <- (fun () ->

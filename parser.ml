@@ -699,31 +699,27 @@ let _ =
                                  let y =
                                    let y =
                                      let y =
-                                       let y =
-                                         (Decap.fsequence
-                                            (Decap.string "[" "[")
-                                            (Decap.sequence list
-                                               (Decap.string "]" "]")
-                                               (fun l  ->
-                                                  fun _  -> fun _  -> l)))
-                                         ::
-                                         (let y =
-                                            (Decap.fsequence_position if_kw
-                                               (Decap.fsequence (term TFunc)
-                                                  (Decap.fsequence then_kw
-                                                     (Decap.fsequence
-                                                        (term TFunc)
-                                                        (Decap.sequence
-                                                           else_kw
-                                                           (term TFunc)
-                                                           (fun _default_0 
-                                                              ->
-                                                              fun e  ->
-                                                                fun t  ->
-                                                                  fun
-                                                                    _default_1
-                                                                     ->
-                                                                    fun c  ->
+                                       (Decap.fsequence
+                                          (Decap.string "[" "[")
+                                          (Decap.sequence list
+                                             (Decap.string "]" "]")
+                                             (fun l  -> fun _  -> fun _  -> l)))
+                                       ::
+                                       (let y =
+                                          (Decap.fsequence_position if_kw
+                                             (Decap.fsequence (term TFunc)
+                                                (Decap.fsequence then_kw
+                                                   (Decap.fsequence
+                                                      (term TFunc)
+                                                      (Decap.sequence else_kw
+                                                         (term TFunc)
+                                                         (fun _default_0  ->
+                                                            fun e  ->
+                                                              fun t  ->
+                                                                fun
+                                                                  _default_1 
+                                                                  ->
+                                                                  fun c  ->
                                                                     fun
                                                                     _default_2
                                                                      ->
@@ -755,81 +751,102 @@ let _ =
                                                                     None, t);
                                                                     ("Fls",
                                                                     None, e)]))))))))
-                                            ::
-                                            (let y =
+                                          ::
+                                          (let y =
+                                             let y =
                                                let y =
-                                                 let y =
-                                                   let y = [] in
-                                                   if p = TFunc
-                                                   then (term TSeq) :: y
-                                                   else y in
-                                                 if p = TSeq
-                                                 then
-                                                   (Decap.sequence_position
-                                                      (term TAppl)
-                                                      (Decap.option None
-                                                         (Decap.apply
-                                                            (fun x  -> Some x)
-                                                            (Decap.sequence
-                                                               (Decap.string
-                                                                  "::" "::")
-                                                               (term TSeq)
-                                                               (fun _  ->
-                                                                  fun l  -> l))))
-                                                      (fun t  ->
-                                                         fun l  ->
-                                                           fun
-                                                             __loc__start__buf
-                                                              ->
-                                                             fun
-                                                               __loc__start__pos
-                                                                ->
-                                                               fun
-                                                                 __loc__end__buf
-                                                                  ->
-                                                                 fun
-                                                                   __loc__end__pos
-                                                                    ->
-                                                                   let _loc =
+                                                 let y = [] in
+                                                 if p = TFunc
+                                                 then (term TSeq) :: y
+                                                 else y in
+                                               if p = TSeq
+                                               then
+                                                 (Decap.sequence (term TAppl)
+                                                    (Decap.option
+                                                       (fun i  -> i)
+                                                       (Decap.alternatives
+                                                          [Decap.sequence_position
+                                                             (Decap.string
+                                                                "::" "::")
+                                                             (term TSeq)
+                                                             (fun _  ->
+                                                                fun u  ->
+                                                                  fun
+                                                                    __loc__start__buf
+                                                                     ->
+                                                                    fun
+                                                                    __loc__start__pos
+                                                                     ->
+                                                                    fun
+                                                                    __loc__end__buf
+                                                                     ->
+                                                                    fun
+                                                                    __loc__end__pos
+                                                                     ->
+                                                                    let _loc
+                                                                    =
                                                                     locate
                                                                     __loc__start__buf
                                                                     __loc__start__pos
                                                                     __loc__end__buf
                                                                     __loc__end__pos in
-                                                                   match l
-                                                                   with
-                                                                   | 
-                                                                   None  -> t
-                                                                   | 
-                                                                   Some l ->
+                                                                    fun t  ->
                                                                     list_cons
-                                                                    _loc t l))
-                                                   :: y
-                                                 else y in
-                                               if p = TAppl
-                                               then (term TColo) :: y
-                                               else y in
-                                             if p = TColo
-                                             then (term TAtom) :: y
-                                             else y) in
-                                          if p = TFunc
-                                          then
-                                            (Decap.fsequence_position let_kw
-                                               (Decap.fsequence
-                                                  (Decap.option None
-                                                     (Decap.apply
-                                                        (fun x  -> Some x)
-                                                        rec_kw))
-                                                  (Decap.fsequence lvar
-                                                     (Decap.fsequence
-                                                        (Decap.string "=" "=")
-                                                        (Decap.fsequence
-                                                           (Decap.apply_position
-                                                              (fun x  ->
-                                                                 fun str  ->
-                                                                   fun pos 
+                                                                    _loc t u);
+                                                          Decap.sequence_position
+                                                            (Decap.string ";"
+                                                               ";")
+                                                            (term TSeq)
+                                                            (fun _  ->
+                                                               fun u  ->
+                                                                 fun
+                                                                   __loc__start__buf
                                                                     ->
-                                                                    fun str' 
+                                                                   fun
+                                                                    __loc__start__pos
+                                                                     ->
+                                                                    fun
+                                                                    __loc__end__buf
+                                                                     ->
+                                                                    fun
+                                                                    __loc__end__pos
+                                                                     ->
+                                                                    let _loc
+                                                                    =
+                                                                    locate
+                                                                    __loc__start__buf
+                                                                    __loc__start__pos
+                                                                    __loc__end__buf
+                                                                    __loc__end__pos in
+                                                                    fun t  ->
+                                                                    sequence
+                                                                    _loc t u)]))
+                                                    (fun t  -> fun f  -> f t))
+                                                 :: y
+                                               else y in
+                                             if p = TAppl
+                                             then (term TColo) :: y
+                                             else y in
+                                           if p = TColo
+                                           then (term TAtom) :: y
+                                           else y) in
+                                        if p = TFunc
+                                        then
+                                          (Decap.fsequence_position let_kw
+                                             (Decap.fsequence
+                                                (Decap.option None
+                                                   (Decap.apply
+                                                      (fun x  -> Some x)
+                                                      rec_kw))
+                                                (Decap.fsequence lvar
+                                                   (Decap.fsequence
+                                                      (Decap.string "=" "=")
+                                                      (Decap.fsequence
+                                                         (Decap.apply_position
+                                                            (fun x  ->
+                                                               fun str  ->
+                                                                 fun pos  ->
+                                                                   fun str' 
                                                                     ->
                                                                     fun pos' 
                                                                     ->
@@ -837,13 +854,12 @@ let _ =
                                                                     str pos
                                                                     str' pos'),
                                                                     x))
-                                                              (term TFunc))
-                                                           (Decap.sequence
-                                                              in_kw
-                                                              (Decap.apply_position
-                                                                 (fun x  ->
-                                                                    fun str 
-                                                                    ->
+                                                            (term TFunc))
+                                                         (Decap.sequence
+                                                            in_kw
+                                                            (Decap.apply_position
+                                                               (fun x  ->
+                                                                  fun str  ->
                                                                     fun pos 
                                                                     ->
                                                                     fun str' 
@@ -854,18 +870,18 @@ let _ =
                                                                     str pos
                                                                     str' pos'),
                                                                     x))
-                                                                 (term TFunc))
-                                                              (fun _default_0
-                                                                  ->
-                                                                 fun u  ->
+                                                               (term TFunc))
+                                                            (fun _default_0 
+                                                               ->
+                                                               fun u  ->
+                                                                 let 
+                                                                   (_loc_u,u)
+                                                                   = u in
+                                                                 fun t  ->
                                                                    let 
-                                                                    (_loc_u,u)
-                                                                    = u in
-                                                                   fun t  ->
-                                                                    let 
                                                                     (_loc_t,t)
                                                                     = t in
-                                                                    fun _  ->
+                                                                   fun _  ->
                                                                     fun id 
                                                                     ->
                                                                     fun r  ->
@@ -908,92 +924,65 @@ let _ =
                                                                     (PLAbs
                                                                     ([id], u))),
                                                                     t)))))))))
-                                            :: y
-                                          else y) in
-                                       if p = TFunc
-                                       then
-                                         (Decap.fsequence_position fix_kw
-                                            (Decap.fsequence var
-                                               (Decap.sequence dot
-                                                  (term TFunc)
-                                                  (fun _default_0  ->
-                                                     fun u  ->
-                                                       fun x  ->
-                                                         fun _default_1  ->
+                                          :: y
+                                        else y) in
+                                     if p = TFunc
+                                     then
+                                       (Decap.fsequence_position fix_kw
+                                          (Decap.fsequence var
+                                             (Decap.sequence dot (term TFunc)
+                                                (fun _default_0  ->
+                                                   fun u  ->
+                                                     fun x  ->
+                                                       fun _default_1  ->
+                                                         fun
+                                                           __loc__start__buf 
+                                                           ->
                                                            fun
-                                                             __loc__start__buf
+                                                             __loc__start__pos
                                                               ->
                                                              fun
-                                                               __loc__start__pos
+                                                               __loc__end__buf
                                                                 ->
                                                                fun
-                                                                 __loc__end__buf
+                                                                 __loc__end__pos
                                                                   ->
-                                                                 fun
-                                                                   __loc__end__pos
-                                                                    ->
-                                                                   let _loc =
-                                                                    locate
+                                                                 let _loc =
+                                                                   locate
                                                                     __loc__start__buf
                                                                     __loc__start__pos
                                                                     __loc__end__buf
                                                                     __loc__end__pos in
-                                                                   in_pos
-                                                                    _loc
-                                                                    (PFixY
+                                                                 in_pos _loc
+                                                                   (PFixY
                                                                     (x, u))))))
-                                         :: y
-                                       else y in
-                                     if p = TAtom
-                                     then
-                                       (Decap.apply_position
-                                          (fun id  ->
-                                             fun __loc__start__buf  ->
-                                               fun __loc__start__pos  ->
-                                                 fun __loc__end__buf  ->
-                                                   fun __loc__end__pos  ->
-                                                     let _loc =
-                                                       locate
-                                                         __loc__start__buf
-                                                         __loc__start__pos
-                                                         __loc__end__buf
-                                                         __loc__end__pos in
-                                                     in_pos _loc (PLVar id))
-                                          lident)
                                        :: y
                                      else y in
-                                   if p = TColo
+                                   if p = TAtom
                                    then
-                                     (Decap.fsequence_position (term TColo)
-                                        (Decap.sequence
-                                           (Decap.string ":" ":") kind
-                                           (fun _  ->
-                                              fun k  ->
-                                                fun t  ->
-                                                  fun __loc__start__buf  ->
-                                                    fun __loc__start__pos  ->
-                                                      fun __loc__end__buf  ->
-                                                        fun __loc__end__pos 
-                                                          ->
-                                                          let _loc =
-                                                            locate
-                                                              __loc__start__buf
-                                                              __loc__start__pos
-                                                              __loc__end__buf
-                                                              __loc__end__pos in
-                                                          in_pos _loc
-                                                            (PCoer (t, k)))))
+                                     (Decap.apply_position
+                                        (fun id  ->
+                                           fun __loc__start__buf  ->
+                                             fun __loc__start__pos  ->
+                                               fun __loc__end__buf  ->
+                                                 fun __loc__end__pos  ->
+                                                   let _loc =
+                                                     locate __loc__start__buf
+                                                       __loc__start__pos
+                                                       __loc__end__buf
+                                                       __loc__end__pos in
+                                                   in_pos _loc (PLVar id))
+                                        lident)
                                      :: y
                                    else y in
-                                 if p = TAtom
+                                 if p = TColo
                                  then
-                                   (Decap.fsequence_position
-                                      (Decap.string "(" "(")
-                                      (Decap.sequence tuple
-                                         (Decap.string ")" ")")
-                                         (fun fs  ->
-                                            fun _  ->
-                                              fun _  ->
+                                   (Decap.fsequence_position (term TColo)
+                                      (Decap.sequence (Decap.string ":" ":")
+                                         kind
+                                         (fun _  ->
+                                            fun k  ->
+                                              fun t  ->
                                                 fun __loc__start__buf  ->
                                                   fun __loc__start__pos  ->
                                                     fun __loc__end__buf  ->
@@ -1004,148 +993,146 @@ let _ =
                                                             __loc__start__pos
                                                             __loc__end__buf
                                                             __loc__end__pos in
-                                                        match fs with
-                                                        | [] -> assert false
-                                                        | (_,t)::[] -> t
-                                                        | _ ->
-                                                            in_pos _loc
-                                                              (PReco fs))))
+                                                        in_pos _loc
+                                                          (PCoer (t, k)))))
                                    :: y
                                  else y in
                                if p = TAtom
                                then
                                  (Decap.fsequence_position
-                                    (Decap.string "{" "{")
-                                    (Decap.fsequence (list_sep field ";")
-                                       (Decap.sequence
-                                          (Decap.option None
-                                             (Decap.apply (fun x  -> Some x)
-                                                (Decap.string ";" ";")))
-                                          (Decap.string "}" "}")
-                                          (fun _default_0  ->
-                                             fun _  ->
-                                               fun fs  ->
-                                                 fun _  ->
-                                                   fun __loc__start__buf  ->
-                                                     fun __loc__start__pos 
-                                                       ->
-                                                       fun __loc__end__buf 
-                                                         ->
-                                                         fun __loc__end__pos 
-                                                           ->
-                                                           let _loc =
-                                                             locate
-                                                               __loc__start__buf
-                                                               __loc__start__pos
-                                                               __loc__end__buf
-                                                               __loc__end__pos in
-                                                           in_pos _loc
-                                                             (PReco fs)))))
+                                    (Decap.string "(" "(")
+                                    (Decap.sequence tuple
+                                       (Decap.string ")" ")")
+                                       (fun fs  ->
+                                          fun _  ->
+                                            fun _  ->
+                                              fun __loc__start__buf  ->
+                                                fun __loc__start__pos  ->
+                                                  fun __loc__end__buf  ->
+                                                    fun __loc__end__pos  ->
+                                                      let _loc =
+                                                        locate
+                                                          __loc__start__buf
+                                                          __loc__start__pos
+                                                          __loc__end__buf
+                                                          __loc__end__pos in
+                                                      match fs with
+                                                      | [] -> assert false
+                                                      | (_,t)::[] -> t
+                                                      | _ ->
+                                                          in_pos _loc
+                                                            (PReco fs))))
                                  :: y
                                else y in
-                             if p = TFunc
+                             if p = TAtom
                              then
-                               (Decap.fsequence_position case_kw
-                                  (Decap.fsequence (term TFunc)
-                                     (Decap.fsequence of_kw
-                                        (Decap.sequence
-                                           (Decap.option None
-                                              (Decap.apply (fun x  -> Some x)
-                                                 (Decap.string "|" "|")))
-                                           (list_sep case "|")
-                                           (fun _default_0  ->
-                                              fun ps  ->
-                                                fun _default_1  ->
-                                                  fun t  ->
-                                                    fun _default_2  ->
-                                                      fun __loc__start__buf 
-                                                        ->
-                                                        fun __loc__start__pos
-                                                           ->
-                                                          fun __loc__end__buf
-                                                             ->
-                                                            fun
-                                                              __loc__end__pos
-                                                               ->
-                                                              let _loc =
-                                                                locate
-                                                                  __loc__start__buf
-                                                                  __loc__start__pos
-                                                                  __loc__end__buf
-                                                                  __loc__end__pos in
-                                                              in_pos _loc
-                                                                (PCase
-                                                                   (t, ps)))))))
+                               (Decap.fsequence_position
+                                  (Decap.string "{" "{")
+                                  (Decap.fsequence (list_sep field ";")
+                                     (Decap.sequence
+                                        (Decap.option None
+                                           (Decap.apply (fun x  -> Some x)
+                                              (Decap.string ";" ";")))
+                                        (Decap.string "}" "}")
+                                        (fun _default_0  ->
+                                           fun _  ->
+                                             fun fs  ->
+                                               fun _  ->
+                                                 fun __loc__start__buf  ->
+                                                   fun __loc__start__pos  ->
+                                                     fun __loc__end__buf  ->
+                                                       fun __loc__end__pos 
+                                                         ->
+                                                         let _loc =
+                                                           locate
+                                                             __loc__start__buf
+                                                             __loc__start__pos
+                                                             __loc__end__buf
+                                                             __loc__end__pos in
+                                                         in_pos _loc
+                                                           (PReco fs)))))
                                :: y
                              else y in
-                           if p = TAtom
+                           if p = TFunc
                            then
-                             (Decap.fsequence_position (term TAtom)
-                                (Decap.sequence (Decap.string "." ".") lident
-                                   (fun _  ->
-                                      fun l  ->
-                                        fun t  ->
-                                          fun __loc__start__buf  ->
-                                            fun __loc__start__pos  ->
-                                              fun __loc__end__buf  ->
-                                                fun __loc__end__pos  ->
-                                                  let _loc =
-                                                    locate __loc__start__buf
-                                                      __loc__start__pos
-                                                      __loc__end__buf
-                                                      __loc__end__pos in
-                                                  in_pos _loc (PProj (t, l)))))
+                             (Decap.fsequence_position case_kw
+                                (Decap.fsequence (term TFunc)
+                                   (Decap.fsequence of_kw
+                                      (Decap.sequence
+                                         (Decap.option None
+                                            (Decap.apply (fun x  -> Some x)
+                                               (Decap.string "|" "|")))
+                                         (list_sep case "|")
+                                         (fun _default_0  ->
+                                            fun ps  ->
+                                              fun _default_1  ->
+                                                fun t  ->
+                                                  fun _default_2  ->
+                                                    fun __loc__start__buf  ->
+                                                      fun __loc__start__pos 
+                                                        ->
+                                                        fun __loc__end__buf 
+                                                          ->
+                                                          fun __loc__end__pos
+                                                             ->
+                                                            let _loc =
+                                                              locate
+                                                                __loc__start__buf
+                                                                __loc__start__pos
+                                                                __loc__end__buf
+                                                                __loc__end__pos in
+                                                            in_pos _loc
+                                                              (PCase (t, ps)))))))
                              :: y
                            else y in
                          if p = TAtom
                          then
-                           (Decap.sequence_position uident
-                              (Decap.option None
-                                 (Decap.apply (fun x  -> Some x) (term TAtom)))
-                              (fun c  ->
-                                 fun uo  ->
-                                   fun __loc__start__buf  ->
-                                     fun __loc__start__pos  ->
-                                       fun __loc__end__buf  ->
-                                         fun __loc__end__pos  ->
-                                           let _loc =
-                                             locate __loc__start__buf
-                                               __loc__start__pos
-                                               __loc__end__buf
-                                               __loc__end__pos in
-                                           in_pos _loc (PCstr (c, uo))))
+                           (Decap.fsequence_position (term TAtom)
+                              (Decap.sequence (Decap.string "." ".") lident
+                                 (fun _  ->
+                                    fun l  ->
+                                      fun t  ->
+                                        fun __loc__start__buf  ->
+                                          fun __loc__start__pos  ->
+                                            fun __loc__end__buf  ->
+                                              fun __loc__end__pos  ->
+                                                let _loc =
+                                                  locate __loc__start__buf
+                                                    __loc__start__pos
+                                                    __loc__end__buf
+                                                    __loc__end__pos in
+                                                in_pos _loc (PProj (t, l)))))
                            :: y
                          else y in
                        if p = TAtom
                        then
-                         (Decap.fsequence_position
-                            (Decap.ignore_next_blank
-                               (Decap.string "print(" "print("))
-                            (Decap.sequence
-                               (Decap.ignore_next_blank string_lit)
-                               (Decap.string ")" ")")
-                               (fun s  ->
-                                  fun _  ->
-                                    fun _  ->
-                                      fun __loc__start__buf  ->
-                                        fun __loc__start__pos  ->
-                                          fun __loc__end__buf  ->
-                                            fun __loc__end__pos  ->
-                                              let _loc =
-                                                locate __loc__start__buf
-                                                  __loc__start__pos
-                                                  __loc__end__buf
-                                                  __loc__end__pos in
-                                              in_pos _loc (PPrnt s))))
+                         (Decap.sequence_position uident
+                            (Decap.option None
+                               (Decap.apply (fun x  -> Some x) (term TAtom)))
+                            (fun c  ->
+                               fun uo  ->
+                                 fun __loc__start__buf  ->
+                                   fun __loc__start__pos  ->
+                                     fun __loc__end__buf  ->
+                                       fun __loc__end__pos  ->
+                                         let _loc =
+                                           locate __loc__start__buf
+                                             __loc__start__pos
+                                             __loc__end__buf __loc__end__pos in
+                                         in_pos _loc (PCstr (c, uo))))
                          :: y
                        else y in
-                     if p = TSeq
+                     if p = TAtom
                      then
-                       (Decap.fsequence_position (term TAppl)
-                          (Decap.sequence (Decap.string ";" ";") (term TSeq)
-                             (fun _  ->
-                                fun u  ->
-                                  fun t  ->
+                       (Decap.fsequence_position
+                          (Decap.ignore_next_blank
+                             (Decap.string "print(" "print("))
+                          (Decap.sequence
+                             (Decap.ignore_next_blank string_lit)
+                             (Decap.string ")" ")")
+                             (fun s  ->
+                                fun _  ->
+                                  fun _  ->
                                     fun __loc__start__buf  ->
                                       fun __loc__start__pos  ->
                                         fun __loc__end__buf  ->
@@ -1155,7 +1142,7 @@ let _ =
                                                 __loc__start__pos
                                                 __loc__end__buf
                                                 __loc__end__pos in
-                                            sequence _loc t u)))
+                                            in_pos _loc (PPrnt s))))
                        :: y
                      else y in
                    if p = TAppl

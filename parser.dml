@@ -163,7 +163,7 @@ type pkind_prio = KFunc | KProd | KAtom
 
 type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
 
-let parser pkind p =
+let cached parser pkind p =
   | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFunc(a,b))
   | id:uident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
