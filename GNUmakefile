@@ -24,9 +24,13 @@ subml.js: submljs.byte
 installjs: subml.js
 	cp subml.js ../subml/subml/
 	scp subml.js lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
+	rm -f lib/*~
+	scp -r lib lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 
 rodinstalljs: subml.js
 	scp subml.js rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
+	rm -f lib/*~
+	scp -r lib rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 
 run: all
 	ledit ./subml.native
