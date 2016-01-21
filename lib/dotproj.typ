@@ -1,4 +1,3 @@
-
 val pair : ∀A ∀B (A → B → A * B) = fun x y → (x, y)
 
 val fst : ∀A ∀B (A * B → A) = fun x → x.1

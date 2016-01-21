@@ -3,6 +3,11 @@ include "lib/nat.typ"
 
 type List(A) = μX [Nil of {} | Cons of {hd : A; tl : X}]
 
+val cons : ∀A A → List(A) → List(A) = fun e l ↦
+  Cons {hd = e; tl = l}
+
+val nil : ∀A List(A) = Nil
+
 val hd : ∀A List(A) → Option(A) = fun l ↦
   case l of
   | []     → None

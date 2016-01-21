@@ -1,3 +1,4 @@
+(* Append list library. *)
 type AList(A) = μX
   [Nil | Cons of {hd : A ; tl : X} | App of {left : X ; right : X}]
 
