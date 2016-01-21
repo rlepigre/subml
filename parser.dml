@@ -393,6 +393,7 @@ let parser command =
           try type_check t (new_uvar ());
           with e -> trace_backtrace (); raise e
         end;
+        let _ = collect_typing_proof () in
         reset_all ();
         io.stdout "%a\n%!" (print_term true) (eval t)
   (* Typed value definition. *)

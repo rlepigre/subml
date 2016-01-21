@@ -1557,8 +1557,8 @@ let _ =
               let t = unbox (unsugar_term [] [] t) in
               (try type_check t (new_uvar ())
                with | e -> (trace_backtrace (); raise e));
-              reset_all ();
-              io.stdout "%a\n%!" (print_term true) (eval t));
+              (let _ = collect_typing_proof () in
+               reset_all (); io.stdout "%a\n%!" (print_term true) (eval t)));
        Decap.fsequence val_kw
          (Decap.fsequence
             (Decap.option None (Decap.apply (fun x  -> Some x) rec_kw))
