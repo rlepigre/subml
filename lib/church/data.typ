@@ -1,4 +1,4 @@
-(* Church encoding of pairs and triples. *)
+(* Church encoding of pairs and triples and sum types. *)
 
 (* Type of pairs. *)
 type Pair(A, B) = ∀X (A → B → X) → X
