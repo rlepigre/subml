@@ -10,9 +10,10 @@ val cfls : CBool = fun x y ↦ y
 val cond : ∀X (CBool → X → X → X) = fun c t e ↦ c t e
 
 (* Basic operations. *)
-val or : CBool → CBool → CBool = fun a b ↦ a ctru b
+val or  : CBool → CBool → CBool = fun a b ↦ a ctru b
 val and : CBool → CBool → CBool = fun a b ↦ a b cfls
 val xor : CBool → CBool → CBool = fun a b ↦ a (b cfls ctru) b
+
 val not : CBool → CBool = fun a  ↦ a cfls ctru
 
 (* Printing_function. *)
