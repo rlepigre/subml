@@ -163,7 +163,7 @@ type pkind_prio = KFunc | KProd | KAtom
 
 type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
 
-let cached parser pkind p =
+let parser pkind p =
   | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFunc(a,b))
   | id:uident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
@@ -228,8 +228,6 @@ and term p =
     in_pos _loc (PKAbs(in_pos _loc_x x,t))
   | t:(term TAppl) u:(term TColo) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
-  | t:(term TAppl) ";" u:(term TSeq) when p = TSeq ->
-     sequence _loc t u
   | "print(" - s:string_lit - ")" when p = TAtom ->
       in_pos _loc (PPrnt(s))
   | c:uident uo:(term TAtom)? when p = TAtom ->
@@ -261,10 +259,9 @@ and term p =
      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
   | t:(term TAtom)  when p = TColo
   | t:(term TColo)  when p = TAppl
-  | t:(term TAppl) l:{"::" l:(term TSeq)}? when p = TSeq ->
-     (match l with
-       None   -> t
-     | Some l -> list_cons _loc t l)
+  | t:(term TAppl) f:{"::" u:(term TSeq) -> fun t -> list_cons _loc t u
+		    | ";"  u:(term TSeq) -> fun t -> sequence  _loc t u
+		                         }?[fun i -> i] when p = TSeq -> f t
   | t:(term TSeq) when p = TFunc
 
 and pattern =
