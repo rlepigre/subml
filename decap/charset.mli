@@ -51,6 +51,7 @@
 
 (** The abstract type for a character set. *)
 type charset
+type t = charset
 
 (** {2 Constant charsets} *)
 

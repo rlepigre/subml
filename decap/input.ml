@@ -46,13 +46,15 @@
 *)
 
 type buffer = buffer_aux Lazy.t
- and buffer_aux = { is_empty     : bool     (* Is the buffer empty? *)
-                  ; name         : string   (* The name of the buffer. *)
-                  ; lnum         : int      (* Current line number. *)
-                  ; bol          : int      (* Offset to current line. *)
-                  ; length       : int      (* Length of the current line. *)
-                  ; contents     : string   (* Contents of the line. *)
-                  ; mutable next : buffer } (* Rest of the buffer. *)
+and  buffer_aux =
+  { is_empty     : bool     (* Is the buffer empty? *)
+  ; name         : string   (* The name of the buffer. *)
+  ; lnum         : int      (* Current line number. *)
+  ; bol          : int      (* Offset to current line. *)
+  ; length       : int      (* Length of the current line. *)
+  ; contents     : string   (* Contents of the line. *)
+  ; mutable next : buffer   (* Rest of the buffer. *)
+  ; ident        : int }    (* Unique identifier for comparison *)
 
 let rec read (lazy b as b0) i =
   if b.is_empty then ('\255', b0, 0) else
@@ -68,6 +70,10 @@ let rec get (lazy b) i =
   else
     get b.next (i - b.length)
 
+let gen_ident =
+  let c = ref 0 in
+  fun () -> let x = !c in c := x + 1; x
+
 let empty_buffer fn lnum bol =
   let rec res =
     lazy { is_empty = true
@@ -76,7 +82,9 @@ let empty_buffer fn lnum bol =
          ; bol      = bol
          ; length   = 0
          ; contents = ""
-         ; next     = res }
+         ; next     = res
+	 ; ident    = gen_ident ()
+	 }
   in res
 
 let rec is_empty (lazy b) pos =
@@ -105,15 +113,10 @@ let lexing_position str pos =
           ; pos_cnum  = bol +pos
           ; pos_bol   = bol })
 
-type cont_info =
-    Else | Endif | EndOfFile | Elif of bool
-
-exception DirectiveError of string
-
-let directiveError s = raise (DirectiveError s)
+type cont_info = EndOfFile
 
 let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
-  let rec fn fname num bol cont =
+  let rec fn fname active num bol cont =
     begin
       let num = num + 1 in
       try
@@ -121,20 +124,16 @@ let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
         let len = String.length line in
         let bol' = bol + len in
         (fun () ->
-          { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ;
-            next = lazy (fn fname num bol' cont) })
+           if active then (
+               { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ;
+                 next = lazy (fn fname active num bol' cont); ident = gen_ident () })
+           else fn fname active num bol' cont)
       with
         End_of_file -> fun () -> finalise data; cont fname EndOfFile num bol
     end ()
   in
-  lazy (fn fname 0 0 (fun fname status line bol ->
+  lazy (fn fname true 0 0 (fun fname status line bol ->
   match status with
-  | Else ->
-     directiveError (Printf.sprintf "file: %s, extra '#else'" fname)
-  | Elif _ ->
-     directiveError (Printf.sprintf "file: %s, extra '#elif'" fname)
-  | Endif ->
-     directiveError (Printf.sprintf "file: %s, extra '#endif'" fname)
   | EndOfFile ->
      Lazy.force (empty_buffer fname line bol)))
 
@@ -155,16 +154,16 @@ let input_line chan =
     if n = 0 then begin                   (* n = 0: we are at EOF *)
       match accu with
         [] -> raise End_of_file
-      | _  -> build_result (String.create len) len accu
+      | _  -> build_result (Bytes.create len) len accu
     end else if n > 0 then begin          (* n > 0: newline found in buffer *)
-      let res = String.create n in
+      let res = Bytes.create n in
       ignore (unsafe_input chan res 0 n);
       match accu with
         [] -> res
       |  _ -> let len = len + n in
-              build_result (String.create len) len (res :: accu)
+              build_result (Bytes.create len) len (res :: accu)
     end else begin                        (* n < 0: newline not found *)
-      let beg = String.create (-n) in
+      let beg = Bytes.create (-n) in
       ignore(unsafe_input chan beg 0 (-n));
       scan (beg :: accu) (len - n)
     end
@@ -191,3 +190,37 @@ let get_string_line (str, p) =
 let buffer_from_string ?(filename="") str =
   let data = (str, ref 0) in
   buffer_from_fun filename get_string_line data
+
+type 'a buf_table = (buffer_aux * int * 'a list) list
+
+let empty_buf = []
+
+let eq_buf (lazy b1) (lazy b2) = b1.ident = b2.ident
+
+let cmp_buf (lazy b1) (lazy b2) = b1.ident - b2.ident
+
+let buf_ident (lazy buf) = buf.ident
+
+let leq_buf b1 i1 b2 i2 =
+  match (b1, b2) with
+    ({ ident=ident1; }, { ident=ident2; }) ->
+      (ident1 = ident2 && i1 <= i2) || ident1 < ident2
+
+let insert_buf buf pos x tbl =
+  let buf = Lazy.force buf in
+  let rec fn acc = function
+  | [] -> List.rev_append acc [(buf, pos, [x])]
+  | ((buf',pos', y as c) :: rest) as tbl ->
+     if pos = pos' && buf.ident = buf'.ident then
+       List.rev_append acc ((buf', pos', (x::y)) :: rest)
+     else if leq_buf buf pos buf' pos' then
+       List.rev_append acc ((buf, pos, [x]) :: tbl)
+     else fn (c::acc) rest
+  in fn [] tbl
+
+let pop_firsts_buf = function
+  | [] -> raise Not_found
+  | (buf,pos,l)::rest -> Lazy.from_val buf,pos,l,rest
+
+let iter_buf buf fn =
+  List.iter (fun (_,_,l) -> List.iter fn l) buf

@@ -1,25 +1,25 @@
 all: subml.byte subml.native
 
 DESTDIR=/usr/local/bin
-MLFILES=bindlib/bindlib_util.ml bindlib/bindlib.ml \
-        decap/ahash.ml decap/ptmap.ml decap/input.ml decap/decap.ml \
+MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
+				bindlib/bindlib.ml decap/ahash.ml decap/input.ml decap/decap.ml \
         util.ml io.ml timed_ref.ml ast.ml eval.ml print.ml latex.ml sct.ml \
-	proof_trace.ml raw.ml typing.ml print_trace.ml latex_trace.ml parser.ml
+				proof_trace.ml raw.ml typing.ml print_trace.ml latex_trace.ml parser.ml
 
 parser.ml: parser.dml
 	pa_ocaml --ascii --impl parser.dml > parser.ml
 
 subml.native: $(MLFILES) subml.ml
-	ocamlbuild -cflags -w,-3-30 -use-ocamlfind $@
+	ocamlbuild -cflags -w,-3-30 $@
 
 subml.byte: $(MLFILES) subml.ml
-	ocamlbuild -cflags -w,-3-30 -use-ocamlfind $@
+	ocamlbuild -cflags -w,-3-30,-g -lflags -g $@
 
 submljs.byte: $(MLFILES) submljs.ml
 	ocamlbuild -pkgs lwt.syntax,js_of_ocaml,js_of_ocaml.syntax -cflags -syntax,camlp4o,-w,-3-30 -use-ocamlfind $@
 
 subml.js: submljs.byte
-	js_of_ocaml --pretty +weak.js submljs.byte -o subml.js
+	js_of_ocaml --pretty --noinline +weak.js submljs.byte -o subml.js
 
 installjs: subml.js subml-latest.tar.gz
 	cp subml.js ../subml/subml/
@@ -36,6 +36,13 @@ rodinstalljs: subml.js subml-latest.tar.gz
 	scp -r lib rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
 	scp subml-latest.tar.gz rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/docs/
 
+rodlinstalljs: subml.js subml-latest.tar.gz
+	cp subml.js /home/rodolphe/public_html/subml/subml/
+	rm -f lib/*~
+	rm -rf /home/rodolphe/public_html/subml/subml/lib
+	cp -r lib /home/rodolphe/public_html/subml/subml/
+	cp subml-latest.tar.gz /home/rodolphe/public_html/subml/docs/
+
 run: all
 	ledit ./subml.native
 
@@ -48,6 +55,7 @@ clean:
 distclean: clean
 	rm -f *~ lib/*~
 	rm -rf subml-latest subml-latest.tar.gz
+	rm -f parser.ml
 
 install: all
 	install ./subml.native $(DESTDIR)/subml

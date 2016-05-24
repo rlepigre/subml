@@ -46,6 +46,7 @@
 *)
 
 type charset = int array
+type t = charset
 
 let mask, shift, size =
   match Sys.word_size with
@@ -57,7 +58,7 @@ let empty_charset = Array.make size 0
 let full_charset  = Array.make size (-1)
 
 let complement = Array.map ((lxor) (-1))
- 
+
 let mem cs c =
   let i = Char.code c in
   cs.(i lsr shift) land (1 lsl (i land mask)) <> 0
@@ -87,8 +88,8 @@ let del cs c =
   let cs = Array.copy cs in
   cs.(i lsr shift) <- cs.(i lsr shift) land (lnot (1 lsl (i land mask)));
   cs
-  
-let union cs1 cs2 = 
+
+let union cs1 cs2 =
   Array.mapi (fun i x -> x lor cs2.(i)) cs1
 
 let singleton =

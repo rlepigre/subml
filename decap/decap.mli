@@ -78,9 +78,7 @@ type blank = buffer -> int -> buffer * int
 (** [no_blank] is the blank function accepting no charaters *)
 val no_blank : blank
 
-(** {2 Core type} *)
-
-(** Type of a grammar returning a value of type ['a]. *)
+(** A BNF grammar *)
 type 'a grammar
 
 (** {2 Parsing functions} *)
@@ -154,24 +152,21 @@ val fail : string -> 'a grammar
   false otherwise. The [name] argument is used to give more readable error
   messages. In case of parse error, the function [fn] should raise the
   exception [Give_up msg], where [msg] is an explicit error message. *)
-val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> 'a option
+val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool
                  -> string -> 'a grammar
 
-(** [internal_parse_buffer g bl buf pos] can be used to parse using a
-  grammar in the definition of a [black_box]. *)
-val internal_parse_buffer : 'a grammar -> blank -> buffer -> int
-                            -> 'a * buffer * int
-
 (** [char c v] is a grammar that parses the character [c] and returns [v]. *)
-val char : char -> 'a -> 'a grammar
+val char : ?name:string -> char -> 'a -> 'a grammar
 
 (** [in_charset cs] is a grammar that parses any character in the charset
   [cs] and returns it. *)
-val in_charset : charset -> char grammar
+val in_charset : ?name:string -> charset -> char grammar
+
+val not_in_charset : ?name:string -> charset -> unit grammar
 
 (** [string str v] is a grammar that parses the string [str] and returns
   [v]. *)
-val string : string -> 'a -> 'a grammar
+val string : ?name:string -> string -> 'a -> 'a grammar
 
 (** {2 Combinators acting on blanks} *)
 
@@ -183,8 +178,12 @@ val string : string -> 'a -> 'a grammar
   optional parameter [oba], which is [true] by default, forces a call to the
   old blank function, after the end of the parsing of [g]. The new blank
   function is always called after the last terminal. *)
-val change_layout : ?new_blank_before:bool -> ?old_blank_after:bool
-                    -> 'a grammar -> blank -> 'a grammar
+val change_layout : ?old_blank_before:bool -> ?new_blank_after:bool ->
+                   'a grammar -> blank -> 'a grammar
+
+(** [greedy g] parses g in a greedy way: only the longest match is considered.
+    Still ambigous if the longest match is not unique *)
+val greedy : 'a grammar -> 'a grammar
 
 (** [ignore_next_blank g] disables the call to the blank function before the
   first terminal of [g]. If the empty input is parsed using [g], blanks are
@@ -192,7 +191,7 @@ val change_layout : ?new_blank_before:bool -> ?old_blank_after:bool
   empty). *)
 val ignore_next_blank : 'a grammar -> 'a grammar
 
-(** {2 Sequencing combinators} *)
+(** {Sequencing combinators} *)
 
 (** [sequence g1 g2 f] is a grammar that first parses using [g1], and then
   parses using [g2]. The results of the sequence is then obtained by applying
@@ -234,47 +233,57 @@ val fsequence_position : 'a grammar
 val sequence3 : 'a grammar -> 'b grammar -> 'c grammar
                 -> ('a -> 'b -> 'c -> 'd) -> 'd grammar
 
+
+(** [conditional_sequence g1 cond g2 f] is a grammar that first parses using [g1],
+  which returns a value [x], and if [cond x] does not raise Give_up, then it
+  continues to parse with [g2] which returns [y] and return [f (cond x) y]. *)
+val conditional_sequence : 'a grammar -> ('a -> 'b) -> 'c grammar -> ('b -> 'c -> 'd) -> 'd grammar
+
+(** similar to the previous one, with position passed to f *)
+val conditional_sequence_position : 'a grammar -> ('a -> 'b) -> 'c grammar -> ('b -> 'c -> buffer -> int -> buffer -> int -> 'd) -> 'd grammar
+
+(** [conditional_fsequence g1 cond g2] is a grammar that first parses using [g1],
+  which returns a value [x], and if [cond x] does not raise Give_up, then it
+  continues to parse with [g2] and returns the result of [g2] applied to [cond x].
+
+  Remark: [conditional_fsequence g1 cond g2] is equivalent to
+  [conditional_sequence g1 cond g2 (fun x f -> f x)]. *)
+val conditional_fsequence : 'a grammar -> ('a -> 'b) -> ('b -> 'c) grammar -> 'c grammar
+
+(** similar to the previous one, with position passed to the result of g2 *)
+val conditional_fsequence_position : 'a grammar -> ('a -> 'b) -> ('b -> buffer -> int -> buffer -> int -> 'c) grammar -> 'c grammar
+
+
 (** [dependent_sequence g1 g2] is a grammar that first parses using [g1],
   which returns a value [x], and then continues to parse with [g2 x] and
   return its result. *)
 val dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 
-(** [conditional_sequence cond g1 g2 f] is a grammar that first parses using [g1],
-  which returns a value [x], and if [cond x] is true then if
-  continues to parse with [g2] which returns [y] and return [f x y]. *)
-val conditional_sequence : 'a grammar -> ('a -> bool) -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
-
-(** {2 Misc} *)
-
 val iter : 'a grammar grammar -> 'a grammar
-  (* = fun g -> dependent_sequence g (fun x -> x) *)
+(**  = fun g -> dependent_sequence g (fun x -> x) *)
+
 
 (** [option v g] tries to parse the input as [g], and returns [v] in case of
   failure. *)
 val option : 'a -> 'a grammar -> 'a grammar
 
-(** [fixpoint v g] parses a repetition of zero or more times the input parsed
-  by [g]. The value [v] is used as the initial value (i.e. to finish the
-  sequence). *)
 val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
-
 (** [fixpoint v g] parses a repetition of one or more times the input parsed
   by [g]. The value [v] is used as the initial value (i.e. to finish the
-  sequence). *)
+  sequence).
+
+  if parsing X with g returns a function gX, parsing X Y Z with fixpoint a g
+  will return gX (gY (gZ a)).
+
+  This consumes stack proportinal to the input length ! use revfixpoint ...
+*)
+
 val fixpoint1 : 'a -> ('a -> 'a) grammar -> 'a grammar
+(** as [fixpoint] but parses at leat once with the given grammar *)
 
 (** [alternatives [g1;...;gn]] tries to parse using all the grammars
   [[g1;...;gn]] and keeps only the first success. *)
 val alternatives : 'a grammar list -> 'a grammar
-
-(** the only difference between the next function and the previous one
-    if that they do not backtrack if they completely parse an object
-    of type 'a grammar.
- *)
-val option' : 'a -> 'a grammar -> 'a grammar
-val fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
-val fixpoint1' : 'a -> ('a -> 'a) grammar -> 'a grammar
-val alternatives' : 'a grammar list -> 'a grammar
 
 (** [apply f g] applies function [f] to the value returned by the grammar
   [g]. *)
@@ -296,16 +305,12 @@ val apply_position : ('a -> buffer -> int -> buffer -> int -> 'b)
   position of the parsed text. *)
 val position : 'a grammar -> (string * int * int * int * int * 'a) grammar
 
-(* [delim g] behaves the same as [g], but backtraching is prevented beyond
-  grammar [g]. *)
-val delim : 'a grammar -> 'a grammar
+val test : ?name:string -> Charset.t -> (buffer -> int -> ('a * bool)) -> 'a grammar
 
-(* [lists g] lists all the possible parse-trees produced by grammar [g].
-  The parse-trees do not need to correspond to the same initial segment of
-  the input. *)
-val lists : 'a grammar -> 'a list grammar
-
-val merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
+(* an always succesful test. Useful to recover blank parsing in a rule like
+   x - y? which does not parse blank after the rule is y parses nothing.
+   x - y? relax works as expected *)
+val relax : unit grammar
 
 (** {2 Support for recursive grammars} *)
 
@@ -378,3 +383,10 @@ val blank_grammar : unit grammar -> blank -> buffer -> int -> buffer * int
 
 (* developper only *)
 val debug_lvl : int ref
+val warn_merge : bool ref
+
+type info = bool * Charset.t
+val grammar_info : 'a grammar -> info
+
+val give_name : string -> 'a grammar -> 'a grammar
+(** give a name to the grammar. Usefull for debugging. *)

@@ -34,12 +34,7 @@ let treat_exception fn a =
   | Unbound(loc,s)       -> io.stderr "%a:\nUnbound: %s\n%!" print_position loc s; false
   | Type_error(loc, msg)
                          -> io.stderr "%a:\nType error: %s\n%!" print_position loc msg; false
-  | e                    -> io.stderr "Uncaught exception %s\n%!" (Printexc.to_string e); false
-
-let rec interact () =
-  Printf.printf ">> %!";
-  ignore (treat_exception (fun () -> toplevel_of_string (read_line ())) ());
-  interact ()
+  | e                    -> io.stderr "Uncaught fucking exception %s\n%!" (Printexc.to_string e); false
 
 let js_object = Js.Unsafe.variable "Object"
 let postMessage = Js.Unsafe.variable "postMessage"
@@ -50,7 +45,7 @@ let onmessage event =
   let s = Js.to_string event##data##args in
   let b = treat_exception (parse_string ~filename file_contents blank) s in
   io.log "Editor content loaded\n%!";
-  let result = if b then Js.string "OK" else Js.string "ERREUR" in
+  let result = if b then Js.string "OK" else Js.string "ERROR" in
   let response = jsnew js_object () in
   Js.Unsafe.set response (Js.string "typ") (Js.string "result");
   Js.Unsafe.set response (Js.string "fname") filename;
@@ -84,5 +79,5 @@ let _ = io.files  <- (fun filename  ->
 
 let _ =
   let s = io.files "lib/prelude.typ" in
-  treat_exception (parse_buffer file_contents blank) s;
+  ignore (treat_exception (parse_buffer file_contents blank) s);
   io.log "File \"lib/prelude.typ\" loaded\n%!"

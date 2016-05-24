@@ -16,7 +16,7 @@ val or : Bool → Bool → Bool = fun a b ↦
 val and : Bool → Bool → Bool = fun a b ↦
   if a then b else fls
 
-val not : Bool → Bool = fun a ↦
+val neg : Bool → Bool = fun a ↦
   if a then fls else tru
 
 (****************************************************************************)
@@ -26,13 +26,13 @@ type Option(A) = [None | Some of A]
 
 val map_option : ∀X ∀Y (X → Y) → Option(X) → Option(Y) = fun f o ↦
   case o of
-  | None   → None
-  | Some x → Some(f x)
+  | None    → None
+  | Some[x] → Some[f x]
 
 val from_option : ∀X Option(X) → X → X = fun o d ↦
   case o of
-  | None   → d
-  | Some x → x
+  | None    → d
+  | Some[x] → x
 
 (****************************************************************************)
 (*             A standard return type for comparing functions.              *)
