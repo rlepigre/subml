@@ -14,7 +14,7 @@ val or  : CBool → CBool → CBool = fun a b ↦ a ctru b
 val and : CBool → CBool → CBool = fun a b ↦ a b cfls
 val xor : CBool → CBool → CBool = fun a b ↦ a (b cfls ctru) b
 
-val not : CBool → CBool = fun a  ↦ a cfls ctru
+val neg : CBool → CBool = fun a  ↦ a cfls ctru
 
 (* Printing_function. *)
 val print_bool : CBool → {} = fun b ↦

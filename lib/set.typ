@@ -7,8 +7,8 @@ type Tree(A) = μX [Leaf | Node of SNode(A,X)]
 val rec mem : ∀X (X → X → Cmp) → X → Tree(X) → Bool =
   fun cmp e t ↦
     case t of
-    | Leaf   → fls
-    | Node n →
+    | Leaf    → fls
+    | Node[n] →
        (case cmp e n.value of
         | Eq → tru
         | Ls → mem cmp e n.left
@@ -16,22 +16,22 @@ val rec mem : ∀X (X → X → Cmp) → X → Tree(X) → Bool =
 
 val rec add : ∀X (X → X → Cmp) → X → Tree(X) → Tree(X) = fun cmp e t ↦
   case t of
-  | Leaf   → Node {value = e; left = Leaf; right = Leaf}
-  | Node n →
+  | Leaf    → Node[{value = e; left = Leaf; right = Leaf}]
+  | Node[n] →
      (case cmp e n.value of
       | Eq → t
       | Ls → let l = add cmp e n.left in
-             Node {value = n.value; left = l; right = n.right}
+             Node[{value = n.value; left = l; right = n.right}]
       | Gt → let r = add cmp e n.right in
-             Node {value = n.value; left = n.left; right = r})
+             Node[{value = n.value; left = n.left; right = r}])
 
 val is_empty : ∀X Tree(X) → Bool = fun t ↦
   case t of
-  | Leaf   → tru
-  | Node n → fls
+  | Leaf    → tru
+  | Node[n] → fls
 
 val singleton : ∀X X → Tree(X) = fun e ↦
-  Node { value = e ; left = Leaf ; right = Leaf }
+  Node[{ value = e ; left = Leaf ; right = Leaf }]
 
 (* Interface of the set library. *)
 type Ord(X) = {compare : X → X → Cmp}
@@ -55,4 +55,4 @@ val ordNat : Ord(Nat) = {compare = compare}
 val setNat : Set(Nat) = makeSet ordNat
 
 val set012 : setNat.S =
-  setNat.add (Z) (setNat.add (S Z) (setNat.add (S S Z) setNat.empty))
+  setNat.add Z (setNat.add S[Z] (setNat.add S[S[Z]] setNat.empty))
