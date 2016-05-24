@@ -43,7 +43,7 @@ let syncloadsubmlfile = Js.Unsafe.variable "syncloadsubmlfile"
 let onmessage event =
   let filename = Js.to_string event##data##fname in
   let s = Js.to_string event##data##args in
-  let b = treat_exception (parse_string ~filename file_contents blank) s in
+  let b = treat_exception (parse_string ~filename file_contents subml_blank) s in
   io.log "Editor content loaded\n%!";
   let result = if b then Js.string "OK" else Js.string "ERROR" in
   let response = jsnew js_object () in
@@ -79,5 +79,5 @@ let _ = io.files  <- (fun filename  ->
 
 let _ =
   let s = io.files "lib/prelude.typ" in
-  ignore (treat_exception (parse_buffer file_contents blank) s);
+  ignore (treat_exception (parse_buffer file_contents subml_blank) s);
   io.log "File \"lib/prelude.typ\" loaded\n%!"
