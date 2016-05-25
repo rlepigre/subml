@@ -434,8 +434,11 @@ let parser latex_atom =
      let a = unbox (unsugar_kind [] [] a) in
      let b = unbox (unsugar_kind [] [] b) in
      generic_subtype a b;
-     let prf = collect_subtyping_proof () in
-     Latex_trace.SProof prf)
+     let prf, calls = collect_subtyping_proof () in
+     let calls = match calls with
+     | [c] -> c | _ -> assert false
+     in
+     Latex_trace.SProof (prf, calls))
   | hash br:int_lit?[0] ":" id:lident "#"    -> (fun () ->
      let t = Hashtbl.find val_env id in
      Latex_trace.Kind (br, false, t.ttype))
@@ -445,6 +448,9 @@ let parser latex_atom =
   | "##" id:lident "#"    -> (fun () ->
      let t = Hashtbl.find val_env id in
      Latex_trace.TProof t.proof)
+  | "#!" id:lident "#" -> (fun () ->
+     let t = Hashtbl.find val_env id in
+     Latex_trace.Sct t.calls)
 
 and latex_text = "{" l:latex_atom* "}" -> (fun () ->
   Latex_trace.List (List.map (fun f -> f ()) l))
@@ -529,12 +535,12 @@ let run_command : command -> unit = function
       in
       let t = unbox (unsugar_term [] [] t) in
       let k = unbox (unsugar_kind [] [] k) in
-      let prf =
+      let prf, calls =
         try
           type_check t k;
-          let prf = collect_typing_proof () in
+          let prf, calls = collect_typing_proof () in
           if !verbose then print_typing_proof prf;
-          prf
+          prf, calls
         with e -> trace_backtrace (); raise e
       in
       reset_all ();
@@ -546,6 +552,7 @@ let run_command : command -> unit = function
         ; orig_value = t
         ; ttype = k
         ; proof = prf
+	; calls
         }
   (* Check subtyping. *)
   | Check(n,a,b) ->
@@ -554,7 +561,7 @@ let run_command : command -> unit = function
       begin
         try
           generic_subtype a b;
-          let prf = collect_subtyping_proof () in
+          let prf, _ = collect_subtyping_proof () in
           if !verbose || not n then (
             io.stdout "MUST FAIL\n%!";
             print_subtyping_proof prf;
@@ -566,7 +573,7 @@ let run_command : command -> unit = function
            io.stdout "CHECK FAILED: OK %s\n%!" s;
            failwith "check"
         | Subtype_error s ->
-           trace_state := [];
+           reset trace_state;
            reset_epsilon_tbls ();
         | e ->
            io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);

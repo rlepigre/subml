@@ -347,6 +347,7 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
   let calls = ref [] in
   subtype ([],calls) t a b;
   (*  print_calls Format.std_formatter !calls;*)
+  trace_state.calls <- (arities (), !calls) :: trace_state.calls;
   if not (sct !calls)  then subtype_error "Subtyping loop"
 
 and generic_subtype : kind -> kind -> unit = fun a b ->

@@ -92,7 +92,7 @@ module IAMap = Map.Make(IntArray)
 
 (* function needs to be declared. calling sct will
    reset the function table *)
-let (new_function : int -> int), reset_function, pr_call =
+let (new_function : int -> int), reset_function, pr_call, arities =
   let count = ref 0 in
   let fun_table = ref [] in (* the table is only used for debugging messages *)
   (fun arity ->
@@ -106,7 +106,8 @@ let (new_function : int -> int), reset_function, pr_call =
     fun_table := [];
     res),
   (fun ch ->
-    print_call !fun_table ch)
+    print_call !fun_table ch),
+  (fun () -> !fun_table)
 
 (* the main function *)
 let sct: call list -> bool = fun ls ->

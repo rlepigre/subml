@@ -10,8 +10,9 @@ type latex_output =
   | Term of int * bool * term
   | Text of string
   | List of latex_output list
-  | SProof of sub_proof
+  | SProof of sub_proof * ((int * int) list * Sct.calls)
   | TProof of typ_proof
+  | Sct of ((int * int) list * Sct.calls) list
   | Witnesses
 
 let rec to_string = function
@@ -45,6 +46,32 @@ let print_rule_name ff rn =
   | NWhenLeft -> fprintf ff "\\restriction_l"
   | NWhenRight -> fprintf ff "\\restriction_r"
   | NUnknown -> fprintf ff "?"
+
+let print_calls ch arities calls =
+  let print_cmp ch c =
+    match c with
+    | Sct.Unknown -> Printf.fprintf ch "?"
+    | Sct.Less -> Printf.fprintf ch "<"
+    | Sct.Leq  -> Printf.fprintf ch "="
+  in
+  let print_args ch i =
+    let a = try List.assoc i arities with Not_found -> assert false in
+    for i = 0 to a - 1 do
+      Printf.fprintf ch "%sx_%d" (if i = 0 then "" else ",") i
+    done
+  in
+  Printf.fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
+  List.iter (fun (i,_) ->
+    Printf.fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" i i print_args i) (List.filter (fun (i,_) ->
+       List.exists (fun (j,k,_,_) -> i = j || i =k) calls) arities);
+  let print_call arities (i,j,c,a) =
+    Printf.fprintf ch "    N%d -> N%d [label = \"(" j i;
+    Array.iteri (fun i c ->
+      Printf.fprintf ch "%s%ax_%d" (if i = 0 then "" else ",") print_cmp c a.(i)) c;
+    Printf.fprintf ch ")\"]\n%!"
+  in
+  List.iter (print_call arities) calls;
+  Printf.fprintf ch "  }\n\\end{dot2tex}\n"
 
 let print_subtyping_proof, print_typing_proof =
   let rec fn ch (p:sub_proof) =
@@ -92,7 +119,13 @@ let rec output ch = function
   | Term(n,unfold,t) -> break_hint := n; print_term unfold ch t; break_hint := 0
   | Text(t)        -> Printf.fprintf ch "%s" t
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
-  | SProof p       -> print_subtyping_proof ch p
+  | SProof (p,(tt,sct)) ->
+     Printf.fprintf ch "\\begin{prooftree}\n";
+     print_subtyping_proof ch p;
+     Printf.fprintf ch "\\end{prooftree}\n%!";
+     Printf.fprintf ch "\\begin{center}\n";
+     if sct <> [] then print_calls ch tt sct;
+     Printf.fprintf ch "\\end{center}\n%!";
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(n,t)     ->
@@ -111,3 +144,5 @@ let rec output ch = function
      break_hint := n;
      Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
      break_hint := 0
+  | Sct ls ->
+     List.iter (fun (tt,calls) -> print_calls ch tt calls) ls

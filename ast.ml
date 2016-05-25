@@ -141,7 +141,8 @@ and value_def =
   ; orig_value : term (* original definition *)
   (* Raw version of the term (i.e. no anotations). *)
   ; ttype : kind
-  ; proof : typ_proof }
+  ; proof : typ_proof
+  ; calls : ((int * int) list * Sct.calls) list }
 
 and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
 		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf | NMuRightInf
