@@ -1,0 +1,19 @@
+
+- ramener la quantification sur les ordinaux de proto_advanced
+- affichage/génération des preuves
+- garde du Y
+- témoin ordinal spécifique à Y
+- enlever When
+- enlever ODum
+- priorité du type cast
+- vérifier covariance des arguments de mu/nu
+- prendre dans proto_advanced la variance des types à paramètre
+- syntaxe pour paramètre ordinal
+- lambda sur un terme sur un ordinal
+- ordinal en grec.
+- collecter tous les exemples
+
+
+
+- sum et record extensible
+- participation compétition terminaire catégorie ordre-sup.
