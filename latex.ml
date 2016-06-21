@@ -13,7 +13,6 @@ let break_hint = ref 0
 let rec print_ordinal unfold ff o =
   let o = onorm o in
   match o with
-  | ODumm      -> pp_print_string ff "\\alpha"
   | OConv      -> pp_print_string ff "\\infty"
   | OTag i     -> fprintf ff "?%i" i
   | _ ->
@@ -115,8 +114,6 @@ and print_kind unfold wrap ff t =
      fprintf ff "%a.%s" (print_term false 2) t s
   | With(a,(s,b)) ->
      fprintf ff "%a \\text{ with } %s = %a" pkind a s pkind b
-  | When(a,(b,c)) ->
-     fprintf ff "%a \\text{ when } %a \\subset %a" pkind a pkind b pkind c
   | UCst(u,f)
   | ECst(u,f) ->
      let is_exists = match t with ECst(_) -> true | _ -> false in

@@ -282,10 +282,8 @@ let parser pkind p =
   | "[" fs:sum_items "]" when p = KAtom
       -> in_pos _loc (PSum(fs))
   | t:(term TAtom) "." s:uident -> in_pos _loc (PDPrj(t,s))
-  | a:(pkind KAtom)
-       f:{ with_kw s:uident "=" b:(pkind KAtom) -> (fun a -> in_pos _loc (PWith(a,s,b)))
-         | when_kw b:(pkind KAtom) subset c:(pkind KAtom) -> (fun a -> in_pos _loc (PWhen(a,b,c))) }
-       when p = KAtom -> f a
+  | a:(pkind KAtom) with_kw s:uident "=" b:(pkind KAtom) when p = KAtom
+      -> in_pos _loc (PWith(a,s,b))
   | hole when p = KAtom
       -> in_pos _loc PHole
 

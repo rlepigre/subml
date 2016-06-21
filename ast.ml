@@ -17,9 +17,12 @@ type kind =
   | Prod of (string * kind) list
   (* Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
   | DSum of (string * kind) list
-  (* Quantifiers: ∀/∃X A. *)
+  (* Quantifiers over a type: ∀/∃X A. *)
   | KAll of (kind, kind) binder
   | KExi of (kind, kind) binder
+  (* Quantifiers over an ordinal: ∀/∃o A. *)
+  | OAll of (ordinal, kind) binder
+  | OExi of (ordinal, kind) binder
   (* Least and greatest fixpoint: μα X A, να X A. *)
   | FixM of ordinal * (kind, kind) binder
   | FixN of ordinal * (kind, kind) binder
@@ -29,8 +32,6 @@ type kind =
   | DPrj of term * string
   (* With clause A with X = B. *)
   | With of kind * (string * kind)
-  (* When condition. A when B ⊆ C *)
-  | When of kind * (kind * kind)
   (**** Special constructors (not accessible to user) ****)
   (* Constants (a.k.a. epsilon) - used for subtyping. *)
   | UCst of term * (kind, kind) binder
@@ -59,8 +60,6 @@ and ordinal =
   | OInd of int * ordinal
   (* integer tag for comparing ordinals *)
   | OTag of int
-  (* *)
-  | ODumm
 
 and ord_constraint = term * kind * kind
 
@@ -147,7 +146,7 @@ and value_def =
 and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
 		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf | NMuRightInf
 		 | NNuLeftInf | NNuRight | NNuRightInf | NUnknown | NProjLeft | NProjRight
-     | NWithRight | NWithLeft | NWhenRight | NWhenLeft
+     | NWithRight | NWithLeft
 
 and sub_proof =
   { sterm : term;
@@ -247,7 +246,6 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   let rec eq_ordinal o1 o2 =
     if o1 == o2 then true else
       match o1, o2 with
-      | ODumm, ODumm -> assert false
       | OConv, OConv -> true
       | OInd(n1,_), OInd(n2,_) -> n1 = n2
       | OLess(o1,In(t1,a1)), OLess(o2,In(t2,a2))
@@ -277,7 +275,6 @@ let eq_ordinal : ordinal -> ordinal -> bool = fun t1 t2 ->
 let rec leq_ordinal o1 o2 =
   if o1 == o2 then true else
   match (o1, o2) with
-  | (_            , ODumm       ) -> assert false
   | (_            , OConv       ) -> true
   | (OInd(n1,_) , OInd(n2,_)    ) -> n1 = n2
   | (OLess(o1,_)  , o2          ) -> leq_ordinal o1 o2
@@ -285,7 +282,6 @@ let rec leq_ordinal o1 o2 =
 
 let rec less_ordinal o1 o2 =
   match o1 with
-  | ODumm      -> assert false
   | OLess(o,_) -> leq_ordinal o o2
   | _          -> false
 
@@ -359,9 +355,6 @@ let dprj : tbox -> string -> kbox =
 let wIth : kbox -> string -> kbox -> kbox =
   fun a s b ->
     box_apply2 (fun a b -> With(a,(s,b))) a b
-
-let wHen : kbox -> kbox -> kbox -> kbox =
-  box_apply3 (fun a b c -> When(a,(b,c)))
 
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
@@ -542,7 +535,6 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | FixN(o,f) -> aux occ (aux3 acc o) (subst f dummy)
     | DPrj(t,_) -> aux2 acc t
     | With(a,_) -> aux occ acc a
-    | When(a,_) -> aux occ acc a
     | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
     | UCst(t,f)
     | ECst(t,f) -> let a = subst f dummy in aux2 (aux InEps acc a) t

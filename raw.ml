@@ -13,7 +13,6 @@ and pkind' =
   | PNu   of string * pkind
   | PDPrj of pterm  * string
   | PWith of pkind * string * pkind
-  | PWhen of pkind * pkind * pkind
   | PProd of (string * pkind) list
   | PSum  of (string * pkind option) list
   | PHole
@@ -99,8 +98,6 @@ let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> 
        dprj (unsugar_term lenv env t) s
     | PWith(a,s,b) ->
        wIth (unsugar env a) s (unsugar env b)
-    | PWhen(a,b,c) ->
-       wHen (unsugar env a) (unsugar env b) (unsugar env c)
     | PHole      -> box (new_uvar ())
   and unsugar_top env ko =
     match ko with
