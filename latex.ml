@@ -81,12 +81,12 @@ and print_kind unfold wrap ff t =
        | _ -> fprintf ff "\\mathrm{%s} \\of %a" c pkind a
      in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
-  | FAll(f)  ->
+  | KAll(f)  ->
       if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name f) in
       fprintf ff "\\forall %s.%a" (name_of x) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
-  | Exis(f)  ->
+  | KExi(f)  ->
       if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name f) in
       fprintf ff "\\exists %s.%a" (name_of x) pkind (subst f (free_of x));

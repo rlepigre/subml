@@ -76,10 +76,10 @@ let lower_kind k1 k2 =
        let f (la,a) (lb,b) = la = lb && lower_kind a b in
        List.length fsa = List.length fsb &&
            List.for_all2 f (List.sort cmp fsa) (List.sort cmp fsb)
-    | (FAll(a)     , FAll(b)     ) ->
+    | (KAll(a)     , KAll(b)     ) ->
        let i = new_int () in
        lower_kind (subst a i) (subst b i)
-    | (Exis(a)     , Exis(b)     ) ->
+    | (KExi(a)     , KExi(b)     ) ->
        let i = new_int () in
        lower_kind (subst a i) (subst b i)
     | (FixM(oa,fa) , FixM(ob,fb) ) ->
@@ -129,13 +129,13 @@ let lower_kind k1 k2 =
 let cr = ref 0
 
 let rec dot_proj t k s = match full_repr k with
-  | Exis(f) ->
+  | KExi(f) ->
      let c = ECst(t,f) in
      if binder_name f = s then c else dot_proj t (subst f c) s
   | _ -> subtype_error ("Dot projection "^s^" undefined")
 
 let rec with_clause a (s,b) = match full_repr a with
-  | Exis(f) -> if binder_name f = s then subst f b
+  | KExi(f) -> if binder_name f = s then subst f b
                else subtype_error ("Unsuported \"with\" clause.")
   | FixM(OConv,f) -> with_clause (subst f (FixM(OConv,f))) (s,b)
   | FixN(OConv,f) -> with_clause (subst f (FixN(OConv,f))) (s,b)
@@ -144,7 +144,7 @@ let rec with_clause a (s,b) = match full_repr a with
      subtype_error ("Illegal use of \"with\" on variable "^s^".")
 
 let rec lambda_kind t k s = match full_repr k with
-  | FAll(f) ->
+  | KAll(f) ->
      let c = UCst(t,f) in
      if binder_name f = s then c else lambda_kind t (subst f c) s
   | _ -> subtype_error ("Dot projection "^s^" undefined")
@@ -283,22 +283,22 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
        trace_sub_pop NWhenLeft
 
     (* Universal quantifier. *)
-    | (_        , FAll(f)  ) ->
+    | (_        , KAll(f)  ) ->
        let b' = subst f (UCst(t,f)) in
        subtype ctxt t a0 b';
        trace_sub_pop NAllRight
 
-    | (FAll(f)  , _        ) ->
+    | (KAll(f)  , _        ) ->
        subtype ctxt t (subst f (new_uvar ())) b0;
        trace_sub_pop NAllLeft
 
     (* Existantial quantifier. *)
-    | (Exis(f)  , _        ) ->
+    | (KExi(f)  , _        ) ->
        let a' = subst f (ECst(t,f)) in
        subtype ctxt t a' b0;
        trace_sub_pop NExistsLeft
 
-    | (_        , Exis(f)  ) ->
+    | (_        , KExi(f)  ) ->
        subtype ctxt t a0 (subst f (new_uvar ()));
        trace_sub_pop NExistsRight
 

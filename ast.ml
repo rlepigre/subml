@@ -18,8 +18,8 @@ type kind =
   (* Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
   | DSum of (string * kind) list
   (* Quantifiers: ∀/∃X A. *)
-  | FAll of (kind, kind) binder
-  | Exis of (kind, kind) binder
+  | KAll of (kind, kind) binder
+  | KExi of (kind, kind) binder
   (* Least and greatest fixpoint: μα X A, να X A. *)
   | FixM of ordinal * (kind, kind) binder
   | FixN of ordinal * (kind, kind) binder
@@ -197,8 +197,8 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (Func(a1,b1), Func(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
     | (Prod(fs1)  , Prod(fs2)  ) -> eq_assoc eq_kind fs1 fs2
     | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
-    | (FAll(b1)   , FAll(b2)   ) -> eq_kbinder b1 b2
-    | (Exis(b1)   , Exis(b2)   ) -> eq_kbinder b1 b2
+    | (KAll(b1)   , KAll(b2)   ) -> eq_kbinder b1 b2
+    | (KExi(b1)   , KExi(b2)   ) -> eq_kbinder b1 b2
     | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
     | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
     | (DPrj(t1,s1), DPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
@@ -346,11 +346,11 @@ let dsum : (string * kbox) list -> kbox =
 
 let fall : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> FAll(b)) (vbind mk_free_tvar x f)
+    box_apply (fun b -> KAll(b)) (vbind mk_free_tvar x f)
 
 let exis : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> Exis(b)) (vbind mk_free_tvar x f)
+    box_apply (fun b -> KExi(b)) (vbind mk_free_tvar x f)
 
 let dprj : tbox -> string -> kbox =
   fun t s ->
@@ -536,8 +536,8 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Func(a,b) -> aux (neg occ) (aux occ acc b) a
     | Prod(ks)
     | DSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
-    | FAll(f)
-    | Exis(f)   -> aux occ acc (subst f dummy)
+    | KAll(f)
+    | KExi(f)   -> aux occ acc (subst f dummy)
     | FixM(o,f)
     | FixN(o,f) -> aux occ (aux3 acc o) (subst f dummy)
     | DPrj(t,_) -> aux2 acc t
@@ -582,8 +582,8 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | Func(a,b) -> func (fn a) (fn b)
       | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
       | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | FAll(f)   -> fall (binder_name f) (fun x -> fn (subst f (TVar x)))
-      | Exis(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
+      | KAll(f)   -> fall (binder_name f) (fun x -> fn (subst f (TVar x)))
+      | KExi(f)   -> exis (binder_name f) (fun x -> fn (subst f (TVar x)))
       | FixM(o,f) -> fixm (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
       | FixN(o,f) -> fixn (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
       | UVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
@@ -599,8 +599,8 @@ let has_uvar : kind -> bool = fun k ->
     | Func(a,b) -> fn a; fn b
     | Prod(ls)
     | DSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
-    | FAll(f)
-    | Exis(f)
+    | KAll(f)
+    | KExi(f)
     | FixM(_,f)
     | FixN(_,f) -> fn (subst f (Prod []))
     | UVar(u)   -> raise Exit
@@ -630,8 +630,8 @@ let decompose : occur -> kind -> kind * ordinal list = fun pos k ->
     | Func(a,b) -> func (fn (neg pos) a) (fn pos b)
     | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn pos a)) fs)
     | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
-    | FAll(f)   -> fall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
-    | Exis(f)   -> exis (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | KAll(f)   -> fall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | KExi(f)   -> exis (binder_name f) (fun x -> fn pos (subst f (TVar x)))
     | FixM(OConv,f) when is_mu f ->
        let aux x =
          match subst f x with
@@ -670,8 +670,8 @@ let recompose : bool -> kind -> ordinal list -> kind = fun pos k os ->
     | Func(a,b) -> func (fn (not pos) a) (fn pos b)
     | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn pos a)) fs)
     | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
-    | FAll(f)   -> fall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
-    | Exis(f)   -> exis (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | KAll(f)   -> fall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+    | KExi(f)   -> exis (binder_name f) (fun x -> fn pos (subst f (TVar x)))
     | FixM(o,f) ->
        let ordinal = if not pos then get () else o in
        fixm (binder_name f) ~ordinal (fun x -> fn pos (subst f (TVar x)))

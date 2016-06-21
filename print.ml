@@ -142,10 +142,10 @@ and print_kind unfold wrap ff t =
         else fprintf ff "%s of %a" c pkind a
       in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
-  | FAll(f)  ->
+  | KAll(f)  ->
       let x = new_tvar (binder_name f) in
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
-  | Exis(f)  ->
+  | KExi(f)  ->
       let x = new_tvar (binder_name f) in
       fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
   | FixM(o,b) ->
