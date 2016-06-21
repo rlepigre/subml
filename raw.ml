@@ -83,10 +83,10 @@ let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> 
         end
     | PFAll(x,k) ->
        let f xk = unsugar ((x,box_of_var xk) :: env) k in
-       fall x f
+       kall x f
     | PExis(x,k) ->
        let f xk = unsugar ((x,box_of_var xk) :: env) k in
-       exis x f
+       kexi x f
     | PMu(x,k) ->
        fixm x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
     | PNu(x,k) ->
