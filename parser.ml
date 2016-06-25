@@ -1,6 +1,5 @@
 open Decap
 open Bindlib
-open Util
 open Ast
 open Print
 open Eval

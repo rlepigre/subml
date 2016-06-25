@@ -1,5 +1,4 @@
 open Bindlib
-open Util
 open Ast
 open Print
 open Proof_trace

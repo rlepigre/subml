@@ -1,6 +1,5 @@
 open Format
 open Ast
-open Util
 
 (* code shared with other printing *)
 

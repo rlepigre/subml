@@ -1,6 +1,72 @@
 open Bindlib
-open Util
 open Timed_ref
+
+exception Stopped
+
+let handle_stop : bool -> unit =
+  let open Sys in function
+  | true  -> set_signal sigint (Signal_handle (fun i -> raise Stopped))
+  | false -> set_signal sigint Signal_default
+
+let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
+  match o with
+  | None   -> None
+  | Some e -> Some (f e)
+
+let from_opt : 'a option -> 'a -> 'a = fun o d ->
+  match o with
+  | None   -> d
+  | Some e -> e
+
+(* Equality of association lists. *)
+let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list ->
+               ('a * 'b) list -> bool = fun eq l1 l2 ->
+  List.for_all (fun (k,_) -> List.mem_assoc k l2) l1 &&
+  List.for_all (fun (k,_) -> List.mem_assoc k l1) l2 &&
+  List.for_all (fun (k,e1) -> eq e1 (List.assoc k l2)) l1
+
+(****************************************************************************
+ *                     Source code position management                      *
+ ****************************************************************************)
+
+module Location =
+  struct
+    open Lexing
+
+    type t =
+      { loc_start : position
+      ; loc_end   : position
+      ; loc_ghost : bool }
+
+    let in_file fname =
+      let loc =
+        { pos_fname = fname
+        ; pos_lnum  = 1
+        ; pos_bol   = 0
+        ; pos_cnum  = -1 }
+      in
+      { loc_start = loc; loc_end = loc; loc_ghost = true }
+
+    let none = in_file "_none_"
+
+    let locate str pos str' pos' =
+      let s = Input.lexing_position str pos in
+      let e = Input.lexing_position str' pos' in
+      { loc_start = s ; loc_end = e ; loc_ghost = false }
+end
+
+type pos = Location.t
+
+type 'a position = { elt : 'a ; pos : pos }
+
+let in_pos : pos -> 'a -> 'a position =
+  fun p e -> { elt = e; pos = p }
+
+let dummy_position : pos = Location.none
+
+let dummy_pos : 'a -> 'a position = fun e -> in_pos dummy_position e
+
+type strpos = string position
 
 (****************************************************************************
  *                         AST for kinds (or types)                         *
@@ -21,10 +87,8 @@ type kind =
   | KAll of (kind, kind) binder
   | KExi of (kind, kind) binder
   (* Quantifiers over an ordinal: ∀/∃o A. *)
-  (*
   | OAll of (ordinal, kind) binder
   | OExi of (ordinal, kind) binder
-  *)
   (* Least and greatest fixpoint: μα X A, να X A. *)
   | FixM of ordinal * (kind, kind) binder
   | FixN of ordinal * (kind, kind) binder
@@ -124,8 +188,10 @@ and term' =
   | Prnt of string
   (* Fixpoint combinator. *)
   | FixY of kind option * (term,term) binder
-  (* lambda on typed, semantics via epsilon *)
+  (* Lambda on a type, semantics via epsilon *)
   | KAbs of (kind, term) binder
+  (* Lambda on an ordinal, semantics via epsilon *)
+  | OAbs of (ordinal, term) binder
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
@@ -301,9 +367,13 @@ let verbose : bool ref = ref false
 
 (* Bindbox type shortcuts. *)
 type tvar = term variable
-type kvar = kind variable
 type tbox = term bindbox
+
+type kvar = kind variable
 type kbox = kind bindbox
+
+type ovar = ordinal variable
+type obox = ordinal bindbox
 
 (* Kind variable management. *)
 let mk_free_tvar : kind variable -> kind =
@@ -321,6 +391,10 @@ let new_lvar : pos -> string -> term variable =
 
 let new_lvar' : string -> term variable =
   new_lvar dummy_position
+
+(* Ordinal variable management. *)
+let mk_free_ovar : ovar -> ordinal =
+  fun o -> assert false (* TODO *)
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
@@ -350,6 +424,14 @@ let kexi : string -> (kvar -> kbox) -> kbox =
   fun x f ->
     box_apply (fun b -> KExi(b)) (vbind mk_free_tvar x f)
 
+let oall : string -> (ovar -> kbox) -> kbox =
+  fun x f ->
+    box_apply (fun b -> OAll(b)) (vbind mk_free_ovar x f)
+
+let oexi : string -> (ovar -> kbox) -> kbox =
+  fun x f ->
+    box_apply (fun b -> OExi(b)) (vbind mk_free_ovar x f)
+
 let dprj : tbox -> string -> kbox =
   fun t s ->
     box_apply (fun t -> DPrj(t,s)) t
@@ -361,15 +443,15 @@ let wIth : kbox -> string -> kbox -> kbox =
 let tdef : type_def -> kbox array -> kbox =
   fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
 
-let fixn : string -> ?ordinal:ordinal -> (kvar -> kbox) -> kbox =
-  fun x ?(ordinal=OConv) f ->
+let fixn : string -> obox -> (kvar -> kbox) -> kbox =
+  fun x o f ->
     let b = vbind mk_free_tvar x f in
-    box_apply (fun b -> FixN(ordinal,b)) b
+    box_apply2 (fun o b -> FixN(o,b)) o b
 
-let fixm : string -> ?ordinal:ordinal -> (kvar -> kbox) -> kbox =
-  fun x ?(ordinal=OConv) f ->
+let fixm : string -> obox -> (kvar -> kbox) -> kbox =
+  fun x o f ->
     let b = vbind mk_free_tvar x f in
-    box_apply (fun b -> FixM(ordinal,b)) b
+    box_apply2 (fun o b -> FixM(o,b)) o b
 
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
@@ -412,6 +494,9 @@ let labs_p : pos -> kind option -> (term, term) binder -> term =
 let kabs_p : pos -> (kind, term) binder -> term =
   fun p b -> in_pos p (KAbs b)
 
+let oabs_p : pos -> (ordinal, term) binder -> term =
+  fun p b -> in_pos p (OAbs b)
+
 let appl_p : pos -> term -> term -> term =
   fun p t u -> in_pos p (Appl(t,u))
 
@@ -453,9 +538,13 @@ let labs : pos -> kbox option -> strpos -> (tbox -> tbox) -> tbox =
   fun p ko x f ->
     box_apply2 (labs_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
 
-let kabs : pos -> strpos -> (kbox -> tbox) -> tbox =
+let kabs : pos -> strpos -> (kvar -> tbox) -> tbox =
   fun p x f ->
-    box_apply (kabs_p p) (bind mk_free_tvar x.elt f)
+    box_apply (kabs_p p) (vbind mk_free_tvar x.elt f)
+
+let oabs : pos -> strpos -> (ovar -> tbox) -> tbox =
+  fun p o f ->
+    box_apply (oabs_p p) (vbind mk_free_ovar o.elt f)
 
 let idt : tbox =
   labs dummy_position None (dummy_pos "x") (fun x -> x)
@@ -578,8 +667,9 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
       | KAll(f)   -> kall (binder_name f) (fun x -> fn (subst f (TVar x)))
       | KExi(f)   -> kexi (binder_name f) (fun x -> fn (subst f (TVar x)))
-      | FixM(o,f) -> fixm (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
-      | FixN(o,f) -> fixn (binder_name f) ~ordinal:o (fun x -> fn (subst f (TVar x)))
+      (* FIXME box *)
+      | FixM(o,f) -> fixm (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
+      | FixN(o,f) -> fixn (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
       | UVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
       | TVar x    -> box_of_var x
       | TDef(d,a) -> tdef d (Array.map fn a)
@@ -643,9 +733,9 @@ let decompose : occur -> kind -> kind * ordinal list = fun pos k ->
        let f = binder_from_fun (binder_name f) (binder_rank f) aux in
        fn pos (FixN(OConv, f))
     | FixM(o,f) ->  if pos <> Pos then res := o :: !res else assert (o = OConv);
-                   fixm (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+                   fixm (binder_name f) (box OConv) (fun x -> fn pos (subst f (TVar x)))
     | FixN(o,f) -> if pos <> Neg then res := o :: !res else assert (o = OConv);
-                   fixn (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+                   fixn (binder_name f) (box OConv) (fun x -> fn pos (subst f (TVar x)))
     | TDef(d,a) -> fn pos (msubst d.tdef_value a)
     | TVar x    -> box_of_var x
     | t         -> box t
@@ -667,11 +757,12 @@ let recompose : bool -> kind -> ordinal list -> kind = fun pos k os ->
     | KAll(f)   -> kall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
     | KExi(f)   -> kexi (binder_name f) (fun x -> fn pos (subst f (TVar x)))
     | FixM(o,f) ->
+        (* FIXME box ordinal *)
        let ordinal = if not pos then get () else o in
-       fixm (binder_name f) ~ordinal (fun x -> fn pos (subst f (TVar x)))
+       fixm (binder_name f) (box ordinal) (fun x -> fn pos (subst f (TVar x)))
     | FixN(o,f) ->
        let ordinal = if pos then get () else o in
-       fixn (binder_name f) ~ordinal (fun x -> fn pos (subst f (TVar x)))
+       fixn (binder_name f) (box ordinal) (fun x -> fn pos (subst f (TVar x)))
     | TVar x    -> box_of_var x
     | TDef(d,a) -> fn pos (msubst d.tdef_value a)
     | t         -> box t

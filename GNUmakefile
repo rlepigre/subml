@@ -3,7 +3,7 @@ all: subml.byte subml.native
 DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
 				bindlib/bindlib.ml decap/ahash.ml decap/input.ml decap/decap.ml \
-        util.ml io.ml timed_ref.ml ast.ml eval.ml print.ml latex.ml sct.ml \
+        io.ml timed_ref.ml ast.ml eval.ml print.ml latex.ml sct.ml \
 				proof_trace.ml raw.ml typing.ml print_trace.ml latex_trace.ml \
 				parser.ml
 
@@ -63,7 +63,7 @@ subml-latest.tar.gz: $(MLFILES)
 	cp -r decap subml-latest
 	cp -r bindlib subml-latest
 	pa_ocaml --ascii parser.ml > subml-latest/parser.ml
-	cp util.ml io.ml timed_ref.ml ast.ml eval.ml print.ml subml-latest
+	cp io.ml timed_ref.ml ast.ml eval.ml print.ml subml-latest
 	cp latex.ml sct.ml proof_trace.ml raw.ml typing.ml subml-latest
 	cp print_trace.ml latex_trace.ml latex_trace.mli subml.ml subml-latest
 	cp Makefile_minimum subml-latest/Makefile

@@ -1,7 +1,6 @@
 open Bindlib
 open Format
 open Ast
-open Util
 
 let rec print_list pelem sep ff = function
   | []    -> ()

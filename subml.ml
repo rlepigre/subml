@@ -1,6 +1,5 @@
 open Format
 open Bindlib
-open Util
 open Ast
 open Print
 open Parser
@@ -38,8 +37,7 @@ let treat_exception fn a =
   | End_of_file          -> exit 0
   | Finish               -> exit 0
   | Stopped              -> io.stderr "Stopped\n%!"; true
-  | Unsugar_error(loc,msg)
-                         -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
+  | Arity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
                          -> io.stderr "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
   | Unbound(s)           -> io.stderr "%a:\nUnbound: %s\n%!" print_position s.pos s.elt; false

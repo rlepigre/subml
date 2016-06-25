@@ -1,6 +1,5 @@
 open Format
 open Bindlib
-open Util
 open Ast
 open Print
 open Parser

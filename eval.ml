@@ -1,5 +1,4 @@
 open Bindlib
-open Util
 open Ast
 
 let rec eval : term -> term = fun t0 ->
