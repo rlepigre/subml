@@ -198,10 +198,8 @@ let parser uident =
 
 (* t ; u => (fun (x : unit) -> u) t *)
 let sequence pos t u =
-  in_pos pos (
-    PAppl(in_pos pos (
-      PLAbs([in_pos pos "_",Some (in_pos pos (
-        PProd []))] ,u)), t))
+  let dum = (in_pos pos "_", Some(in_pos pos (PProd []))) in
+  in_pos pos (PAppl(in_pos pos (PLAbs([dum],u)), t))
 
 (* Basic tokens. *)
 let case_kw = new_keyword "case"
@@ -317,24 +315,28 @@ and lvar =
 
 
 and term p =
-  | lambda xs:var+ dot t:(term TFunc) when p = TFunc ->
+  | lambda xs:var+ dot t:(term TFunc)$ when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
-  | fun_kw xs:var+ mapto t:(term TFunc) when p = TFunc ->
+  | fun_kw xs:var+ mapto t:(term TFunc)$ when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
   | klam x:uident t:(term TFunc) when p = TFunc ->
-    in_pos _loc (PKAbs(in_pos _loc_x x,t))
+      in_pos _loc (PKAbs(in_pos _loc_x x,t))
+  | klam x:lident t:(term TFunc) when p = TFunc ->
+      in_pos _loc (POAbs(in_pos _loc_x x,t))
   | t:(term TAppl) u:(term TColo) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
+  | t:(term TAppl) ";" u:(term TSeq) when p = TSeq ->
+      sequence _loc t u
   | "print(" - s:string_lit - ")" when p = TAtom ->
       in_pos _loc (PPrnt(s))
-  | c:uident uo:{"[" (term TFunc) "]"}? when p = TAtom ->
+  | c:uident uo:{"[" (term TFunc) "]"}?$ when p = TAtom ->
       in_pos _loc (PCons(c,uo))
   | t:(term TAtom) "." l:lident when p = TAtom ->
-    in_pos _loc (PProj(t,l))
-  | case_kw t:(term TFunc) of_kw "|"? ps:(list_sep case "|") when p = TFunc ->
+      in_pos _loc (PProj(t,l))
+  | case_kw t:(term TFunc) of_kw "|"?$ ps:(list_sep case "|")$ when p = TFunc ->
       in_pos _loc (PCase(t,ps))
   | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
-     in_pos _loc (PReco(fs))
+      in_pos _loc (PReco(fs))
   | "(" fs:tuple ")" when p = TAtom ->
      (match fs with
      | [] -> assert false
@@ -352,13 +354,12 @@ and term p =
        if r then t
        else in_pos _loc_t (PFixY(id, t)) in
      in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
-  | if_kw c:(term TFunc) then_kw t:(term TFunc) else_kw e:(term TFunc) ->
+  | if_kw c:(term TFunc) then_kw t:(term TFunc) else_kw e:(term TFunc)$ ->
      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
   | t:(term TAtom)  when p = TColo
   | t:(term TColo)  when p = TAppl
-  | t:(term TAppl) f:{"::" u:(term TSeq) -> fun t -> list_cons _loc t u
-		    | ";"  u:(term TSeq) -> fun t -> sequence  _loc t u
-		                         }?[fun i -> i] when p = TSeq -> f t
+  | t:(term TAppl) l:{"::" u:(term TSeq)}? when p = TSeq ->
+      (match l with None -> t | Some u -> list_cons _loc t u)
   | t:(term TSeq) when p = TFunc
 
 and pattern =
@@ -366,7 +367,7 @@ and pattern =
   | "[" "]"                     -> ("Nil", None)
 
 and case = (c,x):pattern _:arrow t:(term TFunc) -> (c, x, t)
-and field   = l:lident k:{ ":" kind }? "=" t:(term TFunc) ->
+and field   = l:lident k:{ ":" kind }?$ "=" t:(term TAppl)$ ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
 and tuple   = l:(glist_sep' (term TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and list    = EMPTY -> list_nil _loc

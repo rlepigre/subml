@@ -452,8 +452,9 @@ let add : string -> position -> 'a final -> 'a pos_tbl -> bool =
            eq_pos d d', rest === r', full === fu', ignb=ignb', acts, acts' with
            | true, Eq, Eq, true, act, acts' ->
 	   if not (eq_closure acts acts') && !warn_merge then
-       Printf.eprintf "\027[31mmerging %a %a %a\027[0m\n%!" print_final
-         element print_pos (debut pos element) print_pos pos;
+       Printf.eprintf "\027[31mmerging %a %a %a [%s]\027[0m\n%!" print_final
+         element print_pos (debut pos element) print_pos pos
+         (fname (fst pos));
 	   assert(stack == stack' || (Printf.eprintf "\027[31mshould be the same stack %s %a %d %d\027[0m\n%!" info print_final element (elt_pos pos element) (char_pos pos); false));
 	   false
 	  | _ ->
