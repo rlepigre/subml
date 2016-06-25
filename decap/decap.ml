@@ -1,5 +1,6 @@
 open Charset
 open Input
+open Str
 
 let debug_lvl = ref 0
 let warn_merge = ref true
@@ -319,16 +320,21 @@ let find (_,c) dlr =
   Obj.magic (List.assq dlr c.alr)
 
 let add (_,c) p dlr =
-  try
+(*  try
     let _ = List.assq dlr c.alr in
     assert false
   with
-    Not_found ->
+    Not_found ->*)
       dlr := c::!dlr; c.alr <- (dlr,Obj.repr p)::c.alr
 
 let unset dlr =
-  List.iter (fun c ->
-    c.alr <- List.filter (fun (d,_) -> d != dlr) c.alr) !dlr
+  dlr :=
+    List.filter (fun c ->
+      let l = List.filter (fun (d,_) -> d != dlr) c.alr in
+      let keep = l <> [] in
+      c.alr <- l;
+      keep
+    ) !dlr
 
 let memo_assq : type a b. a rule -> b dep_pair_tbl -> ((a, b) element -> unit) -> unit =
   fun r dlr f ->
@@ -426,14 +432,14 @@ let merge_acts o n =
 
 (* ajoute un élément dans la table et retourne true si il est nouveau *)
 let add : string -> position -> 'a final -> 'a pos_tbl -> bool =
-  fun info pos element old ->
+  fun info pos element elements ->
     let deb = debut pos element in
-    let oldl = try find_pos_tbl old deb with Not_found -> [] in
-    let rec fn acc = function
+    let oldl = try find_pos_tbl elements deb with Not_found -> [] in
+    let rec fn = function
       | [] ->
 	 if !debug_lvl > 1 then Printf.eprintf "add %s %a %d %d\n%!" info print_final element
 	   (char_pos deb) (char_pos pos);
-	add_pos_tbl old deb (element :: oldl); true
+	add_pos_tbl elements deb (element :: oldl); true
       | e::es ->
 	 (match e, element with
 	   D {debut=d; rest; full; ignb; stack; acts},
@@ -446,13 +452,13 @@ let add : string -> position -> 'a final -> 'a pos_tbl -> bool =
            eq_pos d d', rest === r', full === fu', ignb=ignb', acts, acts' with
            | true, Eq, Eq, true, act, acts' ->
 	   if not (eq_closure acts acts') && !warn_merge then
-	     Printf.eprintf "\027[31mmerging %a %a %a\027[0m\n%!" print_final element
-	       print_pos (debut pos element) print_pos pos;
+       Printf.eprintf "\027[31mmerging %a %a %a\027[0m\n%!" print_final
+         element print_pos (debut pos element) print_pos pos;
 	   assert(stack == stack' || (Printf.eprintf "\027[31mshould be the same stack %s %a %d %d\027[0m\n%!" info print_final element (elt_pos pos element) (char_pos pos); false));
 	   false
 	  | _ ->
-	    fn (e::acc) es))
-    in fn [] oldl
+	    fn es))
+    in fn oldl
 
 let taille : 'a final -> (Obj.t, Obj.t) element list ref -> int = fun el adone ->
   let cast_elements : type a b.(a,b) element list -> (Obj.t, Obj.t) element list = Obj.magic in
@@ -584,8 +590,8 @@ let pop_final : type a. errpos -> a dep_pair_tbl -> position -> position -> a fi
 let taille_tables els forward =
   let adone = ref [] in
   let res = ref 0 in
-  Hashtbl.iter (fun _ els -> List.iter (fun el -> res := !res + taille el adone) els) els;
-  iter_buf forward (fun el -> res := !res + taille el adone);
+  Hashtbl.iter (fun _ els -> List.iter (fun el -> res := !res + 1 + taille el adone) els) els;
+  iter_buf forward (fun el -> res := !res + 1 + taille el adone);
   !res
 
 let good c i =
@@ -686,13 +692,15 @@ let rec one_prediction_production
 
 exception Parse_error of string * int * int * string list * string list
 
-let c = ref 0
+let count = ref 0
+
 let parse_buffer_aux : type a.errpos -> bool -> a grammar -> blank -> buffer -> int -> a * buffer * int =
   fun errpos internal main blank buf0 pos0 ->
     Fixpoint.debug := !debug_lvl > 2;
-    let parse_id = incr c; !c in
+    let parse_id = incr count; !count in
     (* construction de la table initiale *)
     let elements : a pos_tbl = Hashtbl.create 31 in
+    let last_success = ref [] in
     let r0 : a rule = grammar_to_rule main in
     let s0 : (a, a) element list ref = ref [B Idt] in
     let init = D {debut=None; acts = idt; stack=s0; rest=r0; full=r0;ignb=false} in
@@ -709,10 +717,22 @@ let parse_buffer_aux : type a.errpos -> bool -> a grammar -> blank -> buffer -> 
       let c',_,_ = Input.read !buf !pos in
       buf' := buf''; pos' := pos'';
       update_errpos errpos (buf'', pos'');
-      if !debug_lvl > 0 then Printf.eprintf "read blank parsing %d: line = %d(%d), col = %d(%d), char = %C(%C)\n%!" parse_id (line_num !buf) (line_num !buf') !pos !pos' c c';
+      if !debug_lvl > 0 then Printf.eprintf "parsing %d: line = %d(%d), col = %d(%d), char = %C(%C)\n%!" parse_id (line_num !buf) (line_num !buf') !pos !pos' c c';
       List.iter (fun s ->
 	ignore (add msg (!buf,!pos) s elements);
 	one_prediction_production errpos s elements !dlr (!buf,!pos) (!buf',!pos') c c') l;
+      if internal then begin
+	try
+	  let found = ref false in
+	  List.iter (function D {stack=s1; rest=(Empty f,_); acts; ignb; full=r1} as elt ->
+	    if eq r0 r1 then (
+	      if not !found then last_success := [];
+	      found := true;
+	      last_success := elt :: !last_success)
+	  | _ -> ())
+	    (find_pos_tbl elements (buf0,pos0))
+	with Not_found -> ()
+      end;
     in
 
     prediction_production "I" [init];
@@ -739,6 +759,7 @@ let parse_buffer_aux : type a.errpos -> bool -> a grammar -> blank -> buffer -> 
      in
      if l = [] then continue := false else prediction_production "L" l;
     done;
+    unset !dlr; (* don't forget final cleaning of assoc cell !! *)
     (* on regarde si on a parsé complètement la catégorie initiale *)
     let parse_error () =
       if internal then
@@ -750,7 +771,7 @@ let parse_buffer_aux : type a.errpos -> bool -> a grammar -> blank -> buffer -> 
     if !debug_lvl > 0 then Printf.eprintf "searching final state of %d at line = %d(%d), col = %d(%d)\n%!" parse_id (line_num !buf) (line_num !buf') !pos !pos';
     let rec fn : type a.a final list -> bool * a = function
       | [] -> raise Not_found
-      | D {stack=s1; rest=(Empty f,_); acts; ignb; full=r1} :: els ->
+      | D {stack=s1; rest=(Empty f,_); acts; ignb; full=r1} :: els when eq r0 r1 ->
 	 (try
 	   let x = acts (apply_pos f (buf0, pos0) (!buf, !pos)) in
 	   let rec gn : type a b.(unit -> bool * a) -> b -> (b,a) element list -> bool * a =
@@ -767,7 +788,8 @@ let parse_buffer_aux : type a.errpos -> bool -> a grammar -> blank -> buffer -> 
 	  with Error -> fn els)
       | _ :: els -> fn els
     in
-    let ignb, a = (try fn (find_pos_tbl elements (buf0,pos0)) with Not_found -> parse_error ()) in
+    let ignb, a = (try fn (if internal then !last_success else find_pos_tbl elements (buf0,pos0))
+                   with Not_found -> parse_error ()) in
     if !debug_lvl > 0 then Printf.eprintf "exit parsing %d at line = %d(%d), col = %d(%d)\n%!" parse_id (line_num !buf) (line_num !buf') !pos !pos';
     if ignb then (a, !buf, !pos) else (a, !buf', !pos')
 
@@ -1025,12 +1047,12 @@ let grammar_family ?(param_to_string=fun _ -> "X") name =
     ) tbl)
 
 let blank_grammar grammar blank buf pos =
-  let save_debug = !debug_lvl in
-  debug_lvl := !debug_lvl / 10;
-  let (_,buf,pos) = internal_parse_buffer (ref(buf,pos)) grammar blank buf pos in
-  debug_lvl := save_debug;
-  if !debug_lvl > 0 then Printf.eprintf "exit blank %d %d\n%!" (line_num buf) pos;
-  (buf,pos)
+    let save_debug = !debug_lvl in
+    debug_lvl := !debug_lvl / 10;
+    let (_,buf,pos) = internal_parse_buffer (ref(buf,pos)) grammar blank buf pos in
+    debug_lvl := save_debug;
+    if !debug_lvl > 0 then Printf.eprintf "exit blank %d %d\n%!" (line_num buf) pos;
+    (buf,pos)
 
 let accept_empty grammar =
   try

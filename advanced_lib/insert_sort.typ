@@ -6,7 +6,7 @@ val rec insert0 : ∀o ∀A (A → A → Bool) →  A → List(A) →  List(A) =
   fun cmp a l →
     case l of
     | []      → a :: []
-    | Cons[c] → if cmp a (c.hd) then a::l else (c.hd) :: insert0 cmp a (c.tl)
+    | Cons[c] → if cmp a c.hd then a::l else c.hd :: insert0 cmp a c.tl
 
 val rec insert : ∀o ∀A (A → A → Bool) → A → (μo X F(A,X)) → F(A, μo X F(A,X)) =
   fun cmp a l →
