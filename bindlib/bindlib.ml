@@ -83,9 +83,6 @@ type ('a,'b) binder =
   ; rank  : int        (* Number of remaining free variables (>= 0). *)
   ; value : 'a -> 'b } (* Substitution function. *)
 
-let binder_from_fun name rank f =
-  { name; bind = true; rank; value = f }
-
 (* Obtain the name of the bound variable. *)
 let binder_name : ('a,'b) binder -> string =
   fun b -> b.name
@@ -434,7 +431,7 @@ let mk_mbind colls prefixes suffixes keys pos pt htbl =
   let f i key =
     let suffix = get_suffix colls.(i) !htbl suffixes.(i) in
     names.(i) <- merge_name prefixes.(i) suffix;
-    if key <> 0 then
+    if key >= 0 then
       (htbl := IMap.add key (!cur_pos,suffix) !htbl; incr cur_pos; true)
     else false
   in
@@ -484,7 +481,7 @@ let mk_first_mbind colls prefixes suffixes keys esize pt =
   let f i key =
     let suffix = get_suffix colls.(i) !htbl suffixes.(i) in
     names.(i) <- merge_name prefixes.(i) suffix;
-    if key <> 0 then
+    if key >= 0 then
       (htbl := IMap.add key (!cur_pos,suffix) !htbl; incr cur_pos; true)
     else false
   in
@@ -526,7 +523,7 @@ let bind_mvar vs = function
         with Not_found ->
           colls.(i) <- filter_map (fun v' -> v.prefix = v'.prefix)
               (fun v -> v.key) !vt;
-          keys.(i) <- 0
+          keys.(i) <- -1
       done;
       if !vt = [] then
         Closed(mk_first_mbind colls prefixes suffixes keys !nnbt t)
@@ -568,6 +565,8 @@ let box_apply3 f ta tb tc = apply_box (box_apply2 f ta tb) tc
 let bind_apply f = box_apply2 (fun f -> f.value) f
 
 let mbind_apply f = box_apply2 (fun f -> f.values) f
+
+let binder_from_fun name f = unbox (bind (fun _ -> assert false) name (fun x -> box_apply f x))
 
 let fixpoint = function
   | Closed t      -> let rec fix t =

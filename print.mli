@@ -8,11 +8,6 @@ val print_list : (formatter -> 'a -> unit) -> string -> formatter -> 'a list -> 
 val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -> unit
 val is_tuple : (string * 'a) list -> bool
 
-(* function related to simplification of
-   unused induction rule and the resulting simplification of ordinals *)
-val ignored_ordinals : ordinal list ref
-val onorm : ordinal -> ordinal
-
 (* when true, print_ordinal as variables (as if they were no witnesses *)
 val simplified_ordinals : bool ref
 

@@ -9,7 +9,6 @@ let rec filter_rule p =
   | [] ->
      p.rule_name, p.strees
   | os ->
-     ignored_ordinals := os @ !ignored_ordinals;
     match p.strees with
     | [p'] -> filter_rule p'
     | _ -> assert false

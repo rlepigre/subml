@@ -158,7 +158,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                      | []           -> unsugar_term env t
                      | (x,ko) :: xs ->
                          let ko = map_opt (unsugar_kind env) ko in
-                         let f xt = aux false (add_term x.elt xt env) xs in
+                         let f xt = aux false (add_term x.elt (box_of_var xt) env) xs in
                          let pos =
                            if first then pt.pos else
                            let open Location in
@@ -190,5 +190,5 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    reco pt.pos (List.map f fs)
   | PFixY(x,t)  -> let (x, ko) = x in
                    let ko = map_opt (unsugar_kind env) ko in
-                   let f xt = unsugar_term (add_term x.elt xt env) t in
+                   let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in
                    fixy pt.pos ko x f

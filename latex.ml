@@ -10,27 +10,25 @@ open Print
 let break_hint = ref 0
 
 let rec print_ordinal unfold ff o =
-  let o = onorm o in
+  let o = orepr o in
   match o with
-  | OConv      -> pp_print_string ff "\\infty"
-  | OTag i     -> fprintf ff "?%i" i
-  | _ ->
+  | OConv   -> pp_print_string ff "\\infty"
+  | OTInt i -> fprintf ff "?%i" i
+  | o       ->
      let n = search_ordinal_tbl o in
      match o with
-     | OLess(o,In(t,a)) when unfold && not !simplified_ordinals ->
-	fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) a
-     | OLess(o,NotIn(t,a)) when unfold && not !simplified_ordinals ->
-	fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) a
-     | OInd(_,o) when unfold && !simplified_ordinals && onorm o <> OConv ->
-	fprintf ff "\\alpha_{%d{\\leq}%a}" n (print_ordinal false) o
+     | OLess(o,In(t,a)) as o0 when unfold && not !simplified_ordinals ->
+	fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) (subst a o0)
+     | OLess(o,NotIn(t,a)) as o0 when unfold && not !simplified_ordinals ->
+	fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) (subst a o0)
      | OLess(o,_) when unfold && !simplified_ordinals ->
        fprintf ff "\\alpha_{%d<%a}" n (print_ordinal false) o
      | OLess(_) when !simplified_ordinals -> fprintf ff "\\alpha_{%d}" n
      | OLess(_) -> fprintf ff "\\kappa_{%d}" n
-     | OInd(_) -> fprintf ff "\\alpha_{%d}" n
+     | OVari(x) -> fprintf ff "%s" (name_of x)
      | _ -> assert false
 
-and print_index_ordinal ff o = match onorm o with
+and print_index_ordinal ff o = match orepr o with
   | OConv -> ()
   | o -> fprintf ff "_{%a}" (print_ordinal !simplified_ordinals) o
 
@@ -38,15 +36,15 @@ and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
   let pkindw = print_kind false true in
   let t = repr t in
-  let key, ords = decompose Both t in
+  let key, _, ords = decompose None Both t (Prod[]) in
   try
     if unfold then raise Not_found;
     let d = find_tdef key in
-    let ords = List.filter (fun o -> onorm o <> OConv) ords in
+    let ords = List.filter (fun (_,o) -> orepr o <> OConv) ords in
     match ords with
     | [] -> fprintf ff "%s" d.tdef_tex_name
     | _  -> fprintf ff "%s_{%a}" d.tdef_tex_name
-       (fun ff l -> List.iteri (fun i o -> fprintf ff "%s%a" (if i <> 0 then "," else "")
+       (fun ff l -> List.iter (fun (i, o) -> fprintf ff "%s%a" (if i <> 0 then "," else "")
 	 (print_ordinal !simplified_ordinals) o) l) ords
   with Not_found ->
   match t with
@@ -88,6 +86,16 @@ and print_kind unfold wrap ff t =
       if wrap then pp_print_string ff "(";
       let x = new_tvar (binder_name f) in
       fprintf ff "\\exists %s.%a" (name_of x) pkind (subst f (free_of x));
+      if wrap then pp_print_string ff ")"
+  | OAll(f)  ->
+      if wrap then pp_print_string ff "(";
+      let x = new_ovar (binder_name f) in
+      fprintf ff "\\forall %s.%a" (name_of x) pkind (subst f (free_of x));
+      if wrap then pp_print_string ff ")"
+  | OExi(f)  ->
+      if wrap then pp_print_string ff "(";
+      let x = new_ovar (binder_name f) in
+      fprintf ff "\\exists%s.%a" (name_of x) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
   | FixM(o,b) ->
       if wrap then pp_print_string ff "(";
@@ -173,6 +181,18 @@ and print_term unfold lvl ff t =
      in
      fprintf ff "\\Lambda %a" fn t;
      if lvl > 0 then pp_print_string ff ")";
+  | OAbs(_) ->
+     if lvl > 0 then pp_print_string ff "(";
+     let rec fn ff t = match t.elt with
+       | OAbs(b) ->
+	  let x = binder_name b in
+	  let t = subst b (free_of (new_ovar x)) in
+          fprintf ff " %s%a" x fn t
+       | _ ->
+	  fprintf ff ".%a" (print_term 0) t
+     in
+     fprintf ff "\\Lambda %a" fn t;
+     if lvl > 0 then pp_print_string ff ")";
   | Appl(t,u) ->
      if lvl > 1 then pp_print_string ff "(";
     fprintf ff "%a\\,%a" (print_term 1) t (print_term 2) u;
@@ -238,6 +258,12 @@ and print_term unfold lvl ff t =
         | Some a -> fprintf ff "Y(%s : %a) . %a" x pkind a (print_term 0) t
       end;
      if lvl > 0 then pp_print_string ff ")";
+  | CstY(f,_) ->
+     if lvl > 0 then pp_print_string ff "(";
+      let x = binder_name f in
+      let t = subst f (free_of (new_lvar' x)) in
+      fprintf ff "Y %s . %a" x (print_term 0) t;
+      if lvl > 0 then pp_print_string ff ")";
   | Cnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_{%d}" name index

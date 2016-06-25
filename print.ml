@@ -20,15 +20,6 @@ let is_tuple ls =
   with
     Exit -> false
 
-(* ordinals in this list are not printed, used
-   to remove unused induction rule from printing *)
-let ignored_ordinals = ref []
-
-let rec onorm o =
-  if List.memq o !ignored_ordinals then
-    match o with OLess(o',_) | OInd(_,o') -> onorm o' | _ -> assert false
-  else o
-
 (* managment of a table to name ordinals and epsilon when printing *)
 let ordinal_count = ref 0
 let ordinal_tbl = ref []
@@ -87,27 +78,29 @@ let print_term_in_subtyping = ref false
 let simplified_ordinals = ref false
 
 let rec print_ordinal unfold ff o =
-  let o = onorm o in
+  let o = orepr o in
   match o with
-  | OConv        -> pp_print_string ff "∞"
-  | OTag i       -> fprintf ff "?%i" i
-  | _ ->
+  | OConv   -> pp_print_string ff "∞"
+  | OTInt i -> fprintf ff "?%i" i
+  | _       ->
     let n = search_ordinal_tbl o in
-    match o with
-    | OLess(o,In(t,a)) when unfold && not !simplified_ordinals ->
+    match orepr o with
+    | OLess(o,In(t,a)) as o0 when unfold && not !simplified_ordinals ->
        fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
-	 (print_term false) t (print_kind false false) a
-    | OLess(o,NotIn(t,a)) when unfold && not !simplified_ordinals ->
+	 (print_term false) t (print_kind false false) (subst a o0)
+    | OLess(o,NotIn(t,a)) as o0 when unfold && not !simplified_ordinals ->
        fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
-	 (print_term false) t (print_kind false false) a
-    | OInd(_,o) when unfold && !simplified_ordinals && onorm o <> OConv ->
-       fprintf ff "α(%d≤%a)" n (print_ordinal false) o
+	 (print_term false) t (print_kind false false) (subst a o0)
     | OLess(o,_) when unfold && !simplified_ordinals ->
        fprintf ff "α(%d<%a)" n (print_ordinal false) o
-    | OInd(_,o) -> fprintf ff "α%d" n
     | OLess(o,_) when !simplified_ordinals -> fprintf ff "α%d" n
     | OLess(o,_) -> fprintf ff "κ%d" n
-    | _ -> assert false
+    | OMaxi(l) ->
+       fprintf ff "max(%a)" (print_list (print_ordinal false) ";") l
+    | OVari(x) -> fprintf ff "%s" (name_of x)
+    | OConv -> fprintf ff "∞"
+    | OTInt(n) -> fprintf ff "!%d!" n
+    | OUVar(o,n) -> fprintf ff "?<%a" (print_ordinal false) o
 
 and print_index_ordinal ff = function
   | OConv -> ()
@@ -145,6 +138,12 @@ and print_kind unfold wrap ff t =
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
   | KExi(f)  ->
       let x = new_tvar (binder_name f) in
+      fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
+  | OAll(f)  ->
+      let x = new_ovar (binder_name f) in
+      fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
+  | OExi(f)  ->
+      let x = new_ovar (binder_name f) in
       fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
   | FixM(o,b) ->
       let x = new_tvar (binder_name b) in
@@ -221,6 +220,10 @@ and print_term ?(in_proj=false) unfold ff t =
      let x = binder_name f in
      let t = subst f (free_of (new_tvar (binder_name f))) in
      fprintf ff "Λ%s %a" x print_term t
+  | OAbs(f) ->
+     let x = binder_name f in
+     let t = subst f (free_of (new_ovar (binder_name f))) in
+     fprintf ff "Λ%s %a" x print_term t
   | Appl(t,u) ->
       fprintf ff "(%a) %a" print_term t print_term u
   | Reco(fs) ->
@@ -261,7 +264,9 @@ and print_term ?(in_proj=false) unfold ff t =
   | Cnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_%d" name index
-
+  | CstY(f,a) ->
+     let name, index = search_term_tbl f a a in
+     fprintf ff "%s_%d" name index
   | TagI(i) ->
       fprintf ff "TAG(%i)" i
 

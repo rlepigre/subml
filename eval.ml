@@ -6,7 +6,8 @@ let rec eval : term -> term = fun t0 ->
   | Coer(t,_) -> eval t
   | LVar(_)   -> t0
   | LAbs(_,_) -> t0
-  | KAbs(f) -> eval (subst f (Prod []))
+  | KAbs(f)   -> eval (subst f (Prod []))
+  | OAbs(f)   -> eval (subst f (OTInt(-1)))
   | Appl(t,u) ->
       begin
         let u' = eval u in
@@ -45,5 +46,6 @@ let rec eval : term -> term = fun t0 ->
   | VDef(v)   -> eval v.value
   | Prnt(s)   -> Printf.printf "%s%!" s; in_pos t0.pos (Reco[])
   | FixY(_)   -> t0
-  | Cnst(_)   -> invalid_arg "Constant during evaluation."
+  | Cnst(_)
+  | CstY(_)   -> invalid_arg "Constant during evaluation."
   | TagI(_)   -> invalid_arg "Integer tag during evaluation."

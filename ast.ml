@@ -1,5 +1,4 @@
 open Bindlib
-open Timed_ref
 
 exception Stopped
 
@@ -18,7 +17,6 @@ let from_opt : 'a option -> 'a -> 'a = fun o d ->
   | None   -> d
   | Some e -> e
 
-(* Equality of association lists. *)
 let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list ->
                ('a * 'b) list -> bool = fun eq l1 l2 ->
   List.for_all (fun (k,_) -> List.mem_assoc k l2) l1 &&
@@ -108,30 +106,23 @@ type kind =
   | TInt of int
 
 and ordinal =
-  (* ordinal large enough to ensure convergence of all fixpoint *)
+  (* Ordinal large enough to ensure convergence of all fixpoint. *)
   | OConv
-
-  (* ordinal created by the mu left and nu right rule *)
+  (* Unification variables for ordinals. *)
+  | OUVar of ordinal * ordinal option ref
+  (* Ordinal created by the μl and νr rules. *)
   | OLess of ordinal * ord_witness
-
-  (* ordinal created by induction, they are not witness and have
-     no relation with others, except OConv. The ordinal inside
-     is only used to simplify proof when an induction hypothesis
-     is unused, in this case OInd(n,o) = o
-
-     These ordinal should have an occur-check constraint. Instead,
-     it seems better to forbid the presence of unifcation variable
-     when we apply the induction rule.
-  *)
-  | OInd of int * ordinal
-  (* integer tag for comparing ordinals *)
-  | OTag of int
-
-and ord_constraint = term * kind * kind
+  (* Maximum of a list of ordinals. *)
+  | OMaxi of ordinal list
+  (* Ordinal variable. *)
+  | OVari of ordinal variable
+  (* Integer tag used in decompose / recompose. *)
+  | OTInt of int
 
 and ord_witness =
-    In of term * kind
-  | NotIn of term * kind
+  | In     of term * (ordinal, kind) binder
+  | NotIn  of term * (ordinal, kind) binder
+  | YNotIn of term * kind
 
 (* Occurence markers for variables. *)
 and occur =
@@ -140,21 +131,24 @@ and occur =
   | Neg   (* Occurs negatively only. *)
   | Both  (* Occurs both positively and negatively. *)
   | InEps (* Occurs under epsilon (special case). *)
+  | Register of int * occur array * int array (* for variance in defs *)
 
 (* Type definition (user defined type). *)
 and type_def =
   (* Name of the type constructor. *)
-  { tdef_name  : string
+  { tdef_name     : string
   ; tdef_tex_name : string
   (* Arity of the constructor. *)
-  ; tdef_arity : int
+  ; tdef_arity    : int
+  ; tdef_variance : occur array
+  ; tdef_depth    : int array
   (* Definition of the constructor. *)
-  ; tdef_value : (kind, kind) mbinder }
+  ; tdef_value    : (kind, kind) mbinder }
 
 (* Unification variable identified by a key and possibly a value. *)
 and uvar =
   (* Unique key identifying the variable. *)
-  { uvar_key         : int
+  { uvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
   ; uvar_val : kind option ref }
 
@@ -196,162 +190,70 @@ and term' =
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
   | Cnst of ((term, term) binder * kind * kind)
+  (* Specific witness for recursive definitions. *)
+  | CstY of ((term, term) binder * kind)
   (* Integer tag. *)
   | TagI of int
 
 and value_def =
   (* Name of the value. *)
-  { name  : string
-  ; tex_name : string
+  { name       : string
+  ; tex_name   : string
   (* The corresponding term. *)
-  ; value : term  (* evaluated *)
+  ; value      : term  (* evaluated *)
   ; orig_value : term (* original definition *)
   (* Raw version of the term (i.e. no anotations). *)
-  ; ttype : kind
-  ; proof : typ_proof
-  ; calls : ((int * int) list * Sct.calls) list }
+  ; ttype      : kind
+  ; proof      : typ_proof
+  ; calls      : ((int * int) list * Sct.calls) list }
 
-and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd | NAllLeft
-		 | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf | NMuRightInf
-		 | NNuLeftInf | NNuRight | NNuRightInf | NUnknown | NProjLeft | NProjRight
-     | NWithRight | NWithLeft
+and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd
+  | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf
+  | NMuRightInf | NNuLeftInf | NNuRight | NNuRightInf | NUnknown | NProjLeft
+  | NProjRight | NWithRight | NWithLeft
 
 and sub_proof =
-  { sterm : term;
-    left : kind;
-    right : kind;
-    mutable unused : ordinal list;
-    mutable strees : sub_proof list;
-    mutable rule_name : srule_name }
+  { sterm             : term
+  ; left              : kind
+  ; right             : kind
+  ; mutable unused    : ordinal list
+  ; mutable strees    : sub_proof list
+  ; mutable rule_name : srule_name }
 
 and typ_proof =
-  { tterm : term;
-    typ : kind;
-    mutable strees : sub_proof list;
-    mutable ttrees : typ_proof list;
-  }
-
-let fprint_kind : (bool -> out_channel -> kind -> unit) ref = ref (fun _ -> assert false)
-
-let new_OInd, reset_O =
-  let count = ref 0 in
-  (fun o -> let n = !count in incr count; OInd(n,o)),
-  (fun () -> count := 0)
+  { tterm          : term
+  ; typ            : kind
+  ; mutable strees : sub_proof list
+  ; mutable ttrees : typ_proof list }
 
 (* Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function
-  | UVar { uvar_val = { contents = Some k} } -> repr k
-  | k      -> k
+  | UVar({uvar_val = {contents = Some k}}) -> repr k
+  | k                                      -> k
 
 (* Unfolding unification variable indirections and definitions *)
 let rec full_repr : kind -> kind = function
-  | UVar { uvar_val = { contents = Some k} } -> full_repr k
-  | TDef(d,a) -> full_repr (msubst d.tdef_value a)
-  | k      -> k
+  | UVar({uvar_val = {contents = Some k}}) -> full_repr k
+  | TDef({tdef_value = v}, a)              -> full_repr (msubst v a)
+  | k                                      -> k
+
+let rec orepr = function
+  | OUVar(_, {contents = Some o}) -> orepr o
+  | o                             -> o
 
 let set v k =
   assert (!(v.uvar_val) = None);
-  v.uvar_val <:- Some k
+  Timed.(v.uvar_val := Some k)
 
-(****************************************************************************
- *                        Equality of types and terms                       *
- ****************************************************************************)
+(* Printing function from "print.ml" *)
+let fprint_term : (bool -> out_channel -> term -> unit) ref =
+  ref (fun _ -> assert false)
 
-let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
-  let rec eq_kind k1 k2 = k1 == k2 ||
-    match (full_repr k1, full_repr k2) with
-    | (TVar(x1)   , TVar(x2)   ) -> eq_variables x1 x2
-    | (Func(a1,b1), Func(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
-    | (Prod(fs1)  , Prod(fs2)  ) -> eq_assoc eq_kind fs1 fs2
-    | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
-    | (KAll(b1)   , KAll(b2)   ) -> eq_kbinder b1 b2
-    | (KExi(b1)   , KExi(b2)   ) -> eq_kbinder b1 b2
-    | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
-    | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder f1 f2
-    | (DPrj(t1,s1), DPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
-    | (With(a1,e1), With(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
-                                    eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
-    | (UCst(t1,f1), UCst(t2,f2))
-    | (ECst(t1,f1), ECst(t2,f2)) -> eq_kbinder f1 f2 && eq_term c t1 t2
-    | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
-    | (TInt(i1)   , TInt(i2)   ) -> i1 = i2
-    | (_          , _          ) -> false
-  and eq_kbinder f1 f2 = f1 == f2 ||
-    let i = incr c; TInt(!c) in
-    eq_kind (subst f1 i) (subst f2 i)
-  in
-  eq_kind k1 k2
+let fprint_kind : (bool -> out_channel -> kind -> unit) ref =
+  ref (fun _ -> assert false)
 
-and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
-  let rec eq_term t1 t2 = t1.elt == t2.elt ||
-    match (t1.elt, t2.elt) with
-    | (Coer(t1,_) , _          ) -> eq_term t1 t2
-    | (_          , Coer(t2,_) ) -> eq_term t1 t2
-    | (VDef(d1)   , _          ) -> eq_term d1.value t2
-    | (_          , VDef(d2)   ) -> eq_term t1 d2.value
-    | (KAbs(f)    , _          ) -> eq_term (subst f (Prod[])) t2
-    | (_          , KAbs(f)    ) -> eq_term t1 (subst f (Prod[]))
-    | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
-    | (LAbs(_,f1) , LAbs(_,f2) )
-    | (FixY(_,f1) , FixY(_,f2) ) -> eq_tbinder f1 f2
-    | (Appl(t1,u1), Appl(t2,u2)) -> eq_term t1 t2 && eq_term u1 u2
-    | (Reco(fs1)  , Reco(fs2)  ) -> eq_assoc eq_term fs1 fs2
-    | (Proj(t1,l1), Proj(t2,l2)) -> l1 = l2 && eq_term t1 t2
-    | (Cons(c1,t1), Cons(c2,t2)) -> c1 = c2 && eq_term t1 t2
-    | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
-    | (Prnt(s1)   , Prnt(s2)   ) -> s1 = s2
-    | (Cnst(c1)   , Cnst(c2)   ) ->
-        let (f1,a1,b1) = c1 and (f2,a2,b2) = c2 in
-        eq_tbinder f1 f2 && eq_kind c a1 a2 && eq_kind c b1 b2
-    | (_          , _          ) -> false
-  and eq_tbinder f1 f2 =
-    let a = incr c; dummy_pos (TagI(!c)) in
-    eq_term (subst f1 a) (subst f2 a)
-  in
-  eq_term t1 t2
-
-and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
-  let rec eq_ordinal o1 o2 =
-    if o1 == o2 then true else
-      match o1, o2 with
-      | OConv, OConv -> true
-      | OInd(n1,_), OInd(n2,_) -> n1 = n2
-      | OLess(o1,In(t1,a1)), OLess(o2,In(t2,a2))
-      | OLess(o1,NotIn(t1,a1)), OLess(o2,NotIn(t2,a2)) ->
-	 eq_ordinal o1 o2 && eq_term c t1 t2 && eq_kind c a1 a2
-      | OTag n1, OTag n2 -> n1 = n2
-      | _ -> false
-  in eq_ordinal o1 o2
-
-
-let eq_kind : kind -> kind -> bool = fun k1 k2 ->
-  let c = ref 0 in
-  eq_kind c k1 k2
-
-let eq_term : term -> term -> bool = fun t1 t2 ->
-  let c = ref 0 in
-  eq_term c t1 t2
-
-let eq_ordinal : ordinal -> ordinal -> bool = fun t1 t2 ->
-  let c = ref 0 in
-  eq_ordinal c t1 t2
-
-(****************************************************************************
- *                                 Ordinals                                 *
- ****************************************************************************)
-
-let rec leq_ordinal o1 o2 =
-  if o1 == o2 then true else
-  match (o1, o2) with
-  | (_            , OConv       ) -> true
-  | (OInd(n1,_) , OInd(n2,_)    ) -> n1 = n2
-  | (OLess(o1,_)  , o2          ) -> leq_ordinal o1 o2
-  | (_            , _           ) -> false
-
-let rec less_ordinal o1 o2 =
-  match o1 with
-  | OLess(o,_) -> leq_ordinal o o2
-  | _          -> false
+let fprint_ordinal : (bool -> out_channel -> ordinal -> unit) ref =
+  ref (fun _ -> assert false)
 
 (****************************************************************************
  *                   Frequently used types and functions                    *
@@ -394,7 +296,10 @@ let new_lvar' : string -> term variable =
 
 (* Ordinal variable management. *)
 let mk_free_ovar : ovar -> ordinal =
-  fun o -> assert false (* TODO *)
+  fun o -> OVari(o)
+
+let new_ovar : string -> ovar =
+  new_var mk_free_ovar
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
@@ -534,9 +439,9 @@ let coer : pos -> tbox -> kbox -> tbox =
 let lvar : pos -> term variable -> tbox =
   fun p x -> box_of_var x
 
-let labs : pos -> kbox option -> strpos -> (tbox -> tbox) -> tbox =
+let labs : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
   fun p ko x f ->
-    box_apply2 (labs_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
+    box_apply2 (labs_p p) (box_opt ko) (vbind (lvar_p x.pos) x.elt f)
 
 let kabs : pos -> strpos -> (kvar -> tbox) -> tbox =
   fun p x f ->
@@ -547,7 +452,7 @@ let oabs : pos -> strpos -> (ovar -> tbox) -> tbox =
     box_apply (oabs_p p) (vbind mk_free_ovar o.elt f)
 
 let idt : tbox =
-  labs dummy_position None (dummy_pos "x") (fun x -> x)
+  labs dummy_position None (dummy_pos "x") (fun x -> box_of_var x)
 
 let appl : pos -> tbox -> tbox -> tbox =
   fun p -> box_apply2 (appl_p p)
@@ -574,8 +479,8 @@ let vdef : pos -> value_def -> tbox =
 let prnt : pos -> string -> tbox =
   fun p s -> box (prnt_p p s)
 
-let fixy : pos -> kbox option -> strpos -> (tbox -> tbox) -> tbox =
-  fun p ko x f -> box_apply2 (fixy_p p) (box_opt ko) (bind (lvar_p x.pos) x.elt f)
+let fixy : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
+  fun p ko x f -> box_apply2 (fixy_p p) (box_opt ko) (vbind (lvar_p x.pos) x.elt f)
 
 (* Build a constant. Useful during typing. *)
 let cnst : (term, term) binder -> kind -> kind -> term =
@@ -587,11 +492,217 @@ let generic_cnst : kind -> kind -> term =
     dummy_pos (Cnst(unbox f,a,b))
 
 (****************************************************************************
+ *                        Equality of types and terms                       *
+ ****************************************************************************)
+
+let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
+  let rec eq_kind k1 k2 = k1 == k2 ||
+    match (full_repr k1, full_repr k2) with
+    | (TVar(x1)   , TVar(x2)   ) -> eq_variables x1 x2
+    | (Func(a1,b1), Func(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
+    | (Prod(fs1)  , Prod(fs2)  ) -> eq_assoc eq_kind fs1 fs2
+    | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
+    | (KAll(b1)   , KAll(b2)   ) -> eq_kbinder c b1 b2
+    | (KExi(b1)   , KExi(b2)   ) -> eq_kbinder c b1 b2
+    | (OAll(b1)   , OAll(b2)   ) -> eq_obinder c b1 b2
+    | (OExi(b1)   , OExi(b2)   ) -> eq_obinder c b1 b2
+    | (FixM(o1,f1), FixM(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder c f1 f2
+    | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder c f1 f2
+    | (DPrj(t1,s1), DPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
+    | (With(a1,e1), With(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
+                                    eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
+    | (UCst(t1,f1), UCst(t2,f2))
+    | (ECst(t1,f1), ECst(t2,f2)) -> eq_kbinder c f1 f2 && eq_term c t1 t2
+    | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
+    | (TInt(i1)   , TInt(i2)   ) -> i1 = i2
+    | (_          , _          ) -> false
+  in
+  eq_kind k1 k2
+
+and eq_kbinder c f1 f2 = f1 == f2 ||
+  let i = incr c; TInt(!c) in
+  eq_kind c (subst f1 i) (subst f2 i)
+
+and eq_obinder c f1 f2 = f1 == f2 ||
+  let i = incr c; OTInt(!c) in
+  eq_kind c (subst f1 i) (subst f2 i)
+
+and eq_tbinder c f1 f2 = f1 == f2 ||
+  let i = incr c; dummy_pos (TagI(!c)) in
+  eq_kind c (subst f1 i) (subst f2 i)
+
+and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
+  let rec eq_term t1 t2 =
+    t1.elt == t2.elt ||
+    match (t1.elt, t2.elt) with
+    | (Coer(t1,_) , _          ) -> eq_term t1 t2
+    | (_          , Coer(t2,_) ) -> eq_term t1 t2
+    | (VDef(d1)   , _          ) -> eq_term d1.value t2
+    | (_          , VDef(d2)   ) -> eq_term t1 d2.value
+    | (KAbs(f)    , _          ) -> eq_term (subst f (Prod[])) t2
+    | (_          , KAbs(f)    ) -> eq_term t1 (subst f (Prod[]))
+    | (OAbs(f)    , _          ) -> eq_term (subst f (OTInt(-1))) t2
+    | (_          , OAbs(f)    ) -> eq_term t1 (subst f (OTInt(-1)))
+    | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
+    | (LAbs(_,f1) , LAbs(_,f2) )
+    | (FixY(_,f1) , FixY(_,f2) ) -> eq_tbinder f1 f2
+    | (Appl(t1,u1), Appl(t2,u2)) -> eq_term t1 t2 && eq_term u1 u2
+    | (Reco(fs1)  , Reco(fs2)  ) -> eq_assoc eq_term fs1 fs2
+    | (Proj(t1,l1), Proj(t2,l2)) -> l1 = l2 && eq_term t1 t2
+    | (Cons(c1,t1), Cons(c2,t2)) -> c1 = c2 && eq_term t1 t2
+    | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
+    | (Prnt(s1)   , Prnt(s2)   ) -> s1 = s2
+    | (Cnst(c1)   , Cnst(c2)   ) ->
+        let (f1,a1,b1) = c1 and (f2,a2,b2) = c2 in
+        eq_tbinder f1 f2 && eq_kind c a1 a2 && eq_kind c b1 b2
+    | (CstY(f1,a1), CstY(f2,a2)) -> eq_tbinder f1 f2 && eq_kind c a1 a2
+    | (_          , _          ) -> false
+  and eq_tbinder f1 f2 =
+    let a = incr c; dummy_pos (TagI(!c)) in
+    eq_term (subst f1 a) (subst f2 a)
+  in
+  eq_term t1 t2
+
+(****************************************************************************
+ *                                 Ordinals                                 *
+ ****************************************************************************)
+
+and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
+  let rec eq_ordinal o1 o2 =
+  let o1 = orepr o1 and o2 = orepr o2 in
+    if o1 == o2 then true else
+      match o1, o2 with
+      | OUVar(o',p), o
+      | o, OUVar(o',p) -> if Timed.pure_test (less_ordinal c o) o' then
+                           (assert(!p = None); Timed.(p := Some o); true)
+                         else false
+      | OConv, OConv -> true
+      | OLess(o1,w1), OLess(o2,w2) ->
+	 eq_ordinal o1 o2 && eq_ord_witness c w1 w2
+      | OMaxi(l1), OMaxi(l2) ->
+	 List.for_all (fun o1 -> List.exists (fun o2 ->
+	   eq_ordinal o1 o2) l2) l1 &&
+	 List.for_all (fun o1 -> List.exists (fun o2 ->
+	   eq_ordinal o1 o2) l1) l2
+      | OTInt n1, OTInt n2 -> n1 = n2
+      | _ -> false
+  in eq_ordinal o1 o2
+
+and eq_ord_witness c w1 w2 = match w1, w2 with
+  | In(t1,f1), In(t2,f2)
+  | NotIn(t1,f1), NotIn(t2,f2) ->
+     eq_term c t1 t2 && eq_obinder c f1 f2
+  | YNotIn(t1,k1), YNotIn(t2,k2) ->
+     eq_term c t1 t2 && eq_kind c k1 k2
+  | _ -> false
+
+and leq_ordinal c o1 o2 =
+  let o1 = orepr o1 and o2 = orepr o2 in
+  if o1 == o2 then true else
+  match (o1, o2) with
+  | (_            , OConv       ) -> true
+  | (OUVar(o, p)   , o2          ) ->
+     if Timed.pure_test (leq_ordinal c o) o2 then true else (
+       if Timed.pure_test (less_ordinal c o2) o then
+         (assert(!p = None); Timed.(p := Some o2); true)
+       else false)
+  | (o1           , OUVar(o,p)   ) ->
+     if Timed.pure_test (less_ordinal c o1) o then
+       (assert(!p = None); Timed.(p := Some o1); true) else false
+  | (OLess(o1,_)  , o2          ) -> leq_ordinal c o1 o2
+  | (OMaxi(l1)     , o2          ) -> List.for_all (fun o1 -> leq_ordinal c o1 o2) l1
+  | (o1           , OMaxi(l2)    ) -> List.exists (fun o2 -> leq_ordinal c o1 o2) l2
+  | (_            , _           ) -> false
+
+and less_ordinal c o1 o2 =
+  let o1 = orepr o1 and o2 = orepr o2 in
+  match o1 with
+  | OLess _ when o2 = OConv -> true
+  | OLess(o,_) -> leq_ordinal c o o2
+  | OUVar(o, p) -> leq_ordinal  c o o2
+  | OMaxi(l1)   -> List.for_all (fun o1 -> less_ordinal c o1 o2) l1
+  | _          -> false
+
+let omax =
+  function
+  | [] -> assert false
+  | [o] -> o
+  | l -> Printf.eprintf "USE MAX\n%!"; OMaxi l (* FIXME: normalize elements, sort the list, eliminate duplicate, even hashcons ? *)
+
+let eq_kind : kind -> kind -> bool = fun k1 k2 ->
+  let c = ref 0 in
+  eq_kind c k1 k2
+
+let eq_term : term -> term -> bool = fun t1 t2 ->
+  let c = ref 0 in
+  eq_term c t1 t2
+
+let eq_ordinal : ordinal -> ordinal -> bool = fun t1 t2 ->
+  let c = ref 0 in
+  eq_ordinal c t1 t2
+
+let eq_ord_witness : ord_witness -> ord_witness -> bool = fun t1 t2 ->
+  let c = ref 0 in
+  eq_ord_witness c t1 t2
+
+let leq_ordinal : ordinal -> ordinal -> bool = fun t1 t2 ->
+  let c = ref 0 in
+  leq_ordinal c t1 t2
+
+let less_ordinal : ordinal -> ordinal -> bool = fun t1 t2 ->
+  let c = ref 0 in
+  less_ordinal c t1 t2
+
+let eq_head_term t u =
+  let rec fn u =
+    eq_term t u || match u.elt with
+      Appl(u,_)
+    | Case(u,_)
+    | Proj(u,_) -> fn u
+    | KAbs(f) -> fn (subst f (Prod[]))
+    | OAbs(f) -> fn (subst f (OTInt(-1)))
+    | _ -> false
+  in fn u
+
+ (****************************************************************************
+ *                             mapping on terms                              *
+ ****************************************************************************)
+
+let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
+  let rec fn t =
+    match t.elt with
+    | Coer(t,k)  -> coer t.pos (fn t) (kn k)
+    | LVar x     -> box_of_var x
+    | LAbs(ko,f) ->
+       let ko = match ko with
+	   None -> None
+	 | Some k -> Some (kn k)
+       in
+       labs t.pos ko (in_pos t.pos (binder_name f)) (fun x -> fn (subst f (dummy_pos (LVar x))))
+    | FixY(ko,f) ->
+       let ko = match ko with
+	   None -> None
+	 | Some k -> Some (kn k)
+       in
+       fixy t.pos ko (in_pos t.pos (binder_name f)) (fun x -> fn (subst f (dummy_pos (LVar x))))
+    | KAbs(f)    -> kabs t.pos (dummy_pos (binder_name f)) (fun x -> fn (subst f (TVar x)))
+    | OAbs(f)    -> oabs t.pos (dummy_pos (binder_name f)) (fun x -> fn (subst f (OVari x)))
+    | Appl(a,b)  -> appl t.pos (fn a) (fn b)
+    | Reco(fs)   -> reco t.pos (List.map (fun (s,a) -> (s, fn a)) fs)
+    | Proj(a,s)  -> proj t.pos (fn a) s
+    | Cons(s,a)  -> cons t.pos s (fn a)
+    | Case(a,fs) -> case t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
+    | u          -> box_apply (in_pos t.pos) (box u)
+  in fn t
+
+(****************************************************************************
  *                 Occurence test for unification variables                 *
  ****************************************************************************)
 
 let combine oa ob =
   match (oa, ob) with
+  | (Register _, _) -> assert false
+  | (_, Register _) -> assert false
   | (Non  , _    ) -> ob
   | (_    , Non  ) -> oa
   | (InEps, _    ) -> InEps
@@ -603,7 +714,34 @@ let combine oa ob =
   | (Neg  , Neg  ) -> Neg
   | (Pos  , Pos  ) -> Pos
 
+let compose oa ob =
+  match (oa, ob) with
+  | (Register _, _) -> assert false
+  | (_, Register _) -> assert false
+  | (Non  , _    ) -> Non
+  | (_    , Non  ) -> Non
+  | (InEps, _    ) -> InEps
+  | (_    , InEps) -> InEps
+  | (Both , _    ) -> Both
+  | (_    , Both ) -> Both
+  | (Neg  , Pos  ) -> Neg
+  | (Pos  , Neg  ) -> Neg
+  | (Neg  , Neg  ) -> Pos
+  | (Pos  , Pos  ) -> Pos
+
+let compose2 (oa,da) (ob,db) =
+  let o =
+    match (oa, ob) with
+    | (Register (i,a,d), p) ->
+       a.(i) <- combine a.(i) p;
+      d.(i) <- min d.(i) (db - da);
+      Non
+    | _ -> compose oa ob
+  in
+  (o, da + db)
+
 let neg = function
+  | Register _ -> assert false
   | Neg -> Pos
   | Pos -> Neg
   | o   -> o
@@ -614,6 +752,7 @@ let neg = function
 
 let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
   let dummy = Prod [] in
+  let odummy = OTInt(-42) in
   let rec aux occ acc k =
     match repr k with
     | TVar(x)   -> acc
@@ -622,23 +761,31 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | DSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
     | KAll(f)
     | KExi(f)   -> aux occ acc (subst f dummy)
+    | OAll(f)
+    | OExi(f)   -> aux occ acc (subst f odummy)
     | FixM(o,f)
     | FixN(o,f) -> aux occ (aux3 acc o) (subst f dummy)
     | DPrj(t,_) -> aux2 acc t
-    | With(a,_) -> aux occ acc a
-    | TDef(d,a) -> aux occ acc (msubst d.tdef_value a)
+    | With(a,_) -> aux occ acc a (* FIXME *)
+    | TDef(d,a) ->
+       let acc = ref acc in
+       Array.iteri (fun i k ->
+         acc := aux (compose occ d.tdef_variance.(i)) !acc k) a;
+       !acc
     | UCst(t,f)
     | ECst(t,f) -> let a = subst f dummy in aux2 (aux InEps acc a) t
     | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | TInt(_)   -> assert false
   and aux2 acc t = match t.elt with
     | Cnst(t,k1,k2) -> aux2 (aux InEps (aux InEps acc k1) k2) (subst t (dummy_pos (Reco [])))
+    | CstY(t,k)     -> aux2 (aux InEps acc k) (subst t (dummy_pos (Reco [])))
     | Coer(t,_)
     | Proj(t,_)
     | Cons(_,t)     -> aux2 acc t
     | FixY(_,f)
     | LAbs(_,f)     -> aux2 acc (subst f (dummy_pos (Reco [])))
     | KAbs(f)       -> aux2 acc (subst f (Prod []))
+    | OAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
     | Appl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | Reco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
     | Case(t,l)     -> List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
@@ -647,12 +794,39 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Prnt _
     | TagI _        -> acc
   and aux3 acc = function
-    | OLess(o,(In(t,a)|NotIn(t,a))) -> aux InEps (aux2 (aux3 acc o) t) a
+    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux InEps (aux2 (aux3 acc o) t) (subst f odummy)
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
-    | OInd(_,o)                     -> aux3 acc o
     | _             -> acc
   in aux Pos Non k
+
+(****************************************************************************
+ *                            lifting of kind                               *
+ ****************************************************************************)
+
+let lift_kind : kind -> kind bindbox = fun k ->
+  let rec fn k =
+      match repr k with
+      | Func(a,b) -> func (fn a) (fn b)
+      | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | KAll(f)   -> kall (binder_name f) (fun x -> fn (subst f (TVar x)))
+      | KExi(f)   -> kexi (binder_name f) (fun x -> fn (subst f (TVar x)))
+      | OAll(f)   -> oall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | OExi(f)   -> oexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | FixM(o,f) -> fixm (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
+      | FixN(o,f) -> fixn (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
+      | TVar x    -> box_of_var x
+      | TDef(d,a) -> tdef d (Array.map fn a)
+      | DPrj(t,s) -> dprj (map_term fn t) s
+      | With(t,(s,a)) -> wIth (fn t) s (fn a)
+      | t         -> box t
+    and gn o =
+      match orepr o with
+      | OVari x -> box_of_var x
+      | o -> box o
+    in
+    fn k
 
 (****************************************************************************
  *                 Binding a unification variable in a type                 *
@@ -667,48 +841,51 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
       | KAll(f)   -> kall (binder_name f) (fun x -> fn (subst f (TVar x)))
       | KExi(f)   -> kexi (binder_name f) (fun x -> fn (subst f (TVar x)))
-      (* FIXME box *)
-      | FixM(o,f) -> fixm (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
-      | FixN(o,f) -> fixn (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
+      | OAll(f)   -> oall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | OExi(f)   -> oexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | FixM(o,f) -> fixm (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
+      | FixN(o,f) -> fixn (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
       | UVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
       | TVar x    -> box_of_var x
       | TDef(d,a) -> tdef d (Array.map fn a)
+      | DPrj(t,s) -> dprj (map_term fn t) s
+      | With(t,(s,a)) -> wIth (fn t) s (fn a)
       | t         -> box t
+    and gn o =
+      match orepr o with
+      | OVari x -> box_of_var x
+      | o -> box o
     in
     fn k))
 
-let has_uvar : kind -> bool = fun k ->
-  let rec fn k =
-    match repr k with
-    | Func(a,b) -> fn a; fn b
-    | Prod(ls)
-    | DSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
-    | KAll(f)
-    | KExi(f)
-    | FixM(_,f)
-    | FixN(_,f) -> fn (subst f (Prod []))
-    | UVar(u)   -> raise Exit
-    | TDef(d,a) -> Array.iter fn a
-    | t         -> ()
-  in
-  try
-    fn k; false
-  with
-    Exit -> true
-
 (****************************************************************************
- *                    Decompostiion type, ordinals                          *
+ *                    Decomposition type, ordinals                          *
  *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
 
 let contract_mu = ref true
 let is_mu f = !contract_mu &&
-  match subst f (Prod []) with FixM(o,_) -> o = OConv | _ -> false
+  match full_repr (subst f (Prod [])) with FixM(OConv,_) -> true
+  | _ -> false
 let is_nu f = !contract_mu &&
-  match subst f (Prod []) with FixN(o,_) -> o = OConv | _ -> false
+  match full_repr (subst f (Prod [])) with FixN(OConv,_) -> true
+  | _ -> false
 
-let decompose : occur -> kind -> kind * ordinal list = fun pos k ->
+let decompose : ord_witness option -> occur -> kind -> kind -> kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
   let res = ref [] in
+  let i = ref 0 in
+  let search o =
+    try
+      match o with
+	OLess _ -> OTInt (List.assq o !res)
+      | _ -> raise Not_found
+    with
+      Not_found ->
+	let n = !i in incr i; res := (o, n) :: !res; OTInt n
+  in
+  let create o =
+    let n = !i in incr i; res := (o, n) :: !res; OTInt n
+  in
   let rec fn pos k =
     match repr k with
     | Func(a,b) -> func (fn (neg pos) a) (fn pos b)
@@ -716,57 +893,85 @@ let decompose : occur -> kind -> kind * ordinal list = fun pos k ->
     | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
     | KAll(f)   -> kall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
     | KExi(f)   -> kexi (binder_name f) (fun x -> fn pos (subst f (TVar x)))
-    | FixM(OConv,f) when is_mu f ->
+    | OAll(f)   -> oall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
+    | OExi(f)   -> oexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
+    | FixM(OConv,f) when !contract_mu && is_mu f ->
        let aux x =
-         match subst f x with
-         | FixM(_,g) -> subst g x
+         match full_repr (subst f x) with
+         | FixM(OConv,g) -> subst g x
          | _       -> assert false (* Unreachable. *)
        in
-       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       fn pos (FixM(OConv, f))
-    | FixN(OConv,f) when is_nu f ->
+       let f = binder_from_fun (binder_name f) aux in
+       let a' = FixM(OConv, f) in
+       fn pos a'
+    | FixN(OConv,f) when !contract_mu && is_nu f ->
        let aux x =
-         match subst f x with
-         | FixN(_,g) -> subst g x
+         match full_repr (subst f x) with
+         | FixN(OConv,g) -> subst g x
          | _       -> assert false (* Unreachable. *)
        in
-       let f = binder_from_fun (binder_name f) (binder_rank f) aux in
-       fn pos (FixN(OConv, f))
-    | FixM(o,f) ->  if pos <> Pos then res := o :: !res else assert (o = OConv);
-                   fixm (binder_name f) (box OConv) (fun x -> fn pos (subst f (TVar x)))
-    | FixN(o,f) -> if pos <> Neg then res := o :: !res else assert (o = OConv);
-                   fixn (binder_name f) (box OConv) (fun x -> fn pos (subst f (TVar x)))
-    | TDef(d,a) -> fn pos (msubst d.tdef_value a)
-    | TVar x    -> box_of_var x
-    | t         -> box t
-  in
-  let k = unbox (fn pos k) in
-  k, (List.rev !res)
-
-let recompose : bool -> kind -> ordinal list -> kind = fun pos k os ->
-  let os = ref os in
-  let get () = match !os with
-      [] -> assert false
-    | x::l -> os := l; x
-  in
-  let rec fn pos k =
-    match repr k with
-    | Func(a,b) -> func (fn (not pos) a) (fn pos b)
-    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn pos a)) fs)
-    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
-    | KAll(f)   -> kall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
-    | KExi(f)   -> kexi (binder_name f) (fun x -> fn pos (subst f (TVar x)))
+       let f = binder_from_fun (binder_name f) aux in
+       let a' = FixN(OConv, f) in
+       fn pos a'
+    | FixM(OVari o,f) ->
+       fixm (binder_name f) (box_of_var o)
+	 (fun x -> fn pos (subst f (TVar x)))
+    | FixN(OVari o,f) ->
+       fixn (binder_name f) (box_of_var o)
+	 (fun x -> fn pos (subst f (TVar x)))
     | FixM(o,f) ->
-        (* FIXME box ordinal *)
-       let ordinal = if not pos then get () else o in
-       fixm (binder_name f) (box ordinal) (fun x -> fn pos (subst f (TVar x)))
+       let o =
+	 if o <> OConv && pos <> InEps then search o
+	 else if o = OConv && pos = Neg then (match fix with
+	   None -> o
+	 | Some w ->
+	    let o' = OLess(o,w) in create o')
+	 else o
+       in
+       fixm (binder_name f) (box o) (fun x -> fn pos (subst f (TVar x)))
     | FixN(o,f) ->
-       let ordinal = if pos then get () else o in
-       fixn (binder_name f) (box ordinal) (fun x -> fn pos (subst f (TVar x)))
-    | TVar x    -> box_of_var x
+       let o =
+	 if o <> OConv && pos <> InEps then search o
+	 else if o = OConv && pos = Pos then (match fix with
+	   None -> o
+	 | Some w ->
+	    let o' = OLess(o,w) in create o')
+	 else o
+       in
+       fixn (binder_name f) (box o) (fun x -> fn pos (subst f (TVar x)))
     | TDef(d,a) -> fn pos (msubst d.tdef_value a)
+    | DPrj(t,s) -> dprj (map_term (fn InEps) t) s
+    | With(t,(s,a)) -> wIth (fn pos t) s (fn InEps a)
+    | TVar x    -> box_of_var x
     | t         -> box t
   in
-  let k = unbox (fn pos k) in
-  assert (!os = []);
-  k
+  let k1 = unbox (fn (neg pos) k1) in
+  let k2 = unbox (fn pos k2) in
+  (k1, k2, List.rev_map (fun (a,b) -> (b,a)) !res)
+
+let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
+  let get i =
+    try List.assoc i os with Not_found -> assert false
+  in
+  let rec fn k =
+    match repr k with
+    | Func(a,b) -> func (fn a) (fn b)
+    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
+    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
+    | KAll(f)   -> kall (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | KExi(f)   -> kexi (binder_name f) (fun x -> fn (subst f (TVar x)))
+    | OAll(f)   -> oall (binder_name f) (fun x -> fn (subst f (OVari x)))
+    | OExi(f)   -> oexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+    | FixM(OVari x,f) -> fixm (binder_name f) (box_of_var x) (fun x -> fn (subst f (TVar x)))
+    | FixN(OVari x,f) -> fixn (binder_name f) (box_of_var x) (fun x -> fn (subst f (TVar x)))
+    | FixM(OTInt i,f) -> fixm (binder_name f) (box (get i))  (fun x -> fn (subst f (TVar x)))
+    | FixN(OTInt i,f) -> fixn (binder_name f) (box (get i))  (fun x -> fn (subst f (TVar x)))
+    | FixM(o, f) -> fixm (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
+    | FixN(o, f) -> fixn (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
+    | TVar x    -> box_of_var x
+    | TDef(d,a) -> fn (msubst d.tdef_value a)
+    | DPrj(t,s) -> dprj (map_term fn t) s
+    | With(t,(s,a)) -> wIth (fn t) s (fn a)
+    | t         -> box t
+  in
+  unbox (fn k)
