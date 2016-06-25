@@ -271,9 +271,9 @@ let parser pkind p =
   | exists id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PKExi(id,a))
   | mu id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PFixM(id,a))
+      -> in_pos _loc (PFixM(None,id,a))
   | nu id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PFixN(id,a))
+      -> in_pos _loc (PFixN(None,id,a))
   | "{" fs:prod_items "}" when p = KAtom
       -> in_pos _loc (PProd(fs))
   | fs : kind_prod when p = KProd
@@ -418,15 +418,15 @@ let parser latex_atom =
   | hash "witnesses" "#"     ->
      (fun () -> Latex_trace.Witnesses)
   | hash br:int_lit?[0] u:"!"? k:kind "#" ->
-     (fun () -> Latex_trace.Kind (br,u<>None, unbox (unsugar_kind [] [] k)))
+     (fun () -> Latex_trace.Kind (br,u<>None, unbox (unsugar_kind empty_env k)))
   | "@" br:int_lit?[0] u:"!"? t:term "@" ->
-     (fun () -> Latex_trace.Term (br,u<>None, unbox (unsugar_term [] [] t)))
+     (fun () -> Latex_trace.Term (br,u<>None, unbox (unsugar_term empty_env t)))
   | t:(Decap.(change_layout (parser (in_charset Charset.(List.fold_left del full_charset ['}';'{';'@';'#']))+) no_blank)) ->
      (fun () -> Latex_trace.Text (string_of_chars t))
   | l:latex_text          -> l
   | hash "check" a:kind subset b:kind "#" -> (fun () ->
-     let a = unbox (unsugar_kind [] [] a) in
-     let b = unbox (unsugar_kind [] [] b) in
+     let a = unbox (unsugar_kind empty_env a) in
+     let b = unbox (unsugar_kind empty_env b) in
      generic_subtype a b;
      let prf, calls = collect_subtyping_proof () in
      let calls = match calls with
@@ -488,7 +488,7 @@ let run_command : command -> unit = function
       let f args =
         let env = ref [] in
         Array.iteri (fun i k -> env := (arg_names.(i), k) :: !env) args;
-        unsugar_kind [] !env k
+        unsugar_kind {empty_env with kinds = !env} k
       in
       let b = mbind mk_free_tvar arg_names f in
       let tex_name =
@@ -505,15 +505,15 @@ let run_command : command -> unit = function
       Hashtbl.add typ_env name td
   (* Unfold a type definition. *)
   | UnfoldK(k) ->
-      let k = unbox (unsugar_kind [] [] k) in
+      let k = unbox (unsugar_kind empty_env k) in
       io.stdout "%a\n%!" (print_kind true) k
   (* Parse a term. *)
   | ParseT(t) ->
-      let t = unbox (unsugar_term [] [] t) in
+      let t = unbox (unsugar_term empty_env t) in
       io.stdout "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | Eval(t) ->
-      let t = unbox (unsugar_term [] [] t) in
+      let t = unbox (unsugar_term empty_env t) in
       begin
         try type_check t (new_uvar ());
         with e -> trace_backtrace (); raise e
@@ -527,8 +527,8 @@ let run_command : command -> unit = function
         if not r then t
         else in_pos _loc_t (PFixY((in_pos _loc_id id, Some k), t))
       in
-      let t = unbox (unsugar_term [] [] t) in
-      let k = unbox (unsugar_kind [] [] k) in
+      let t = unbox (unsugar_term empty_env t) in
+      let k = unbox (unsugar_kind empty_env k) in
       let prf, calls =
         try
           type_check t k;
@@ -550,8 +550,8 @@ let run_command : command -> unit = function
         }
   (* Check subtyping. *)
   | Check(n,a,b) ->
-      let a = unbox (unsugar_kind [] [] a) in
-      let b = unbox (unsugar_kind [] [] b) in
+      let a = unbox (unsugar_kind empty_env a) in
+      let b = unbox (unsugar_kind empty_env b) in
       begin
         try
           generic_subtype a b;

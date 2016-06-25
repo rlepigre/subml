@@ -79,6 +79,11 @@ let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
   | None   -> None
   | Some e -> Some (f e)
 
+let from_opt : 'a option -> 'a -> 'a = fun o d ->
+  match o with
+  | None   -> d
+  | Some e -> e
+
 (* Equality of association lists. *)
 let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list ->
                ('a * 'b) list -> bool = fun eq l1 l2 ->
