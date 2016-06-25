@@ -25,7 +25,6 @@ val containsRB : ∀X (X → X → Cmp) → X → RBTree(X) → Bool =
 
 val rec insert : ∀X (X → X → [Ls|Eq|Gt]) → X → Tree(X) → Tree(X) =
   fun cmp e t ↦
-  t (* FIXME
     case t of
     | Leaf    → Node[{value = e; left = Leaf; right = Leaf}]
     | Node[n] →
@@ -35,7 +34,6 @@ val rec insert : ∀X (X → X → [Ls|Eq|Gt]) → X → Tree(X) → Tree(X) =
                Node[{value = n.value; left = l; right = n.right}]
         | Gt → let r = insert cmp e n.right in
                Node[{value = n.value; left = n.left; right = r}])
-       *)
 
 type Ord(X) = {compare : X → X → [Ls | Eq | Gt]}
 
@@ -75,7 +73,6 @@ val balance : ∀X RBNode(X, RBTree(X)) → RBTree(X) = fun n ↦
   n.left (* wont fix. *)
 
 val rec insert_aux : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = fun cmp e t ↦
-  t (* FIXME
   case t of
   | Leaf    → Node[node e R Leaf Leaf]
   | Node[n] →
@@ -85,7 +82,6 @@ val rec insert_aux : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = 
             balance (node n.value n.color l n.right)
      | Gt → let r = insert_aux cmp e n.right in
             balance (node n.value n.color n.left r))
-    *)
 
 val insert : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = fun cmp e t ↦
   blackRoot (insert_aux cmp e t)

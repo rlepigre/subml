@@ -15,7 +15,6 @@ val rec mem : ∀X (X → X → Cmp) → X → Tree(X) → Bool =
         | Gt → mem cmp e n.right)
 
 val rec add : ∀X (X → X → Cmp) → X → Tree(X) → Tree(X) = fun cmp e t ↦
-  t (* FIXME
   case t of
   | Leaf    → Node[{value = e; left = Leaf; right = Leaf}]
   | Node[n] →
@@ -25,7 +24,6 @@ val rec add : ∀X (X → X → Cmp) → X → Tree(X) → Tree(X) = fun cmp e t
              Node[{value = n.value; left = l; right = n.right}]
       | Gt → let r = add cmp e n.right in
              Node[{value = n.value; left = n.left; right = r}])
-     *)
 
 val is_empty : ∀X Tree(X) → Bool = fun t ↦
   case t of
