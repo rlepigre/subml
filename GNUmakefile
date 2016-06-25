@@ -4,16 +4,14 @@ DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
 				bindlib/bindlib.ml decap/ahash.ml decap/input.ml decap/decap.ml \
         util.ml io.ml timed_ref.ml ast.ml eval.ml print.ml latex.ml sct.ml \
-				proof_trace.ml raw.ml typing.ml print_trace.ml latex_trace.ml parser.ml
-
-parser.ml: parser.dml
-	pa_ocaml --ascii --impl parser.dml > parser.ml
+				proof_trace.ml raw.ml typing.ml print_trace.ml latex_trace.ml \
+				parser.ml
 
 subml.native: $(MLFILES) subml.ml
 	ocamlbuild -cflags -w,-3-30 $@
 
 subml.byte: $(MLFILES) subml.ml
-	ocamlbuild -cflags -w,-3-30,-g -lflags -g $@
+	ocamlbuild -cflags -w,-3-30 $@
 
 submljs.byte: $(MLFILES) submljs.ml
 	ocamlbuild -pkgs lwt.syntax,js_of_ocaml,js_of_ocaml.syntax -cflags -syntax,camlp4o,-w,-3-30 -use-ocamlfind $@
@@ -55,20 +53,19 @@ clean:
 distclean: clean
 	rm -f *~ lib/*~
 	rm -rf subml-latest subml-latest.tar.gz
-	rm -f parser.ml
 
 install: all
 	install ./subml.native $(DESTDIR)/subml
 
-subml-latest.tar.gz: parser.ml
+subml-latest.tar.gz: $(MLFILES)
 	rm -rf subml-latest
 	mkdir subml-latest
 	cp -r decap subml-latest
 	cp -r bindlib subml-latest
-	cp parser.ml subml-latest
+	pa_ocaml --ascii parser.ml > subml-latest/parser.ml
 	cp util.ml io.ml timed_ref.ml ast.ml eval.ml print.ml subml-latest
 	cp latex.ml sct.ml proof_trace.ml raw.ml typing.ml subml-latest
-	cp print_trace.ml latex_trace.ml parser.ml subml.ml subml-latest
+	cp print_trace.ml latex_trace.ml latex_trace.mli subml.ml subml-latest
 	cp Makefile_minimum subml-latest/Makefile
 	cp _tags subml-latest
 	rm -f lib/*~

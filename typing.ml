@@ -50,8 +50,8 @@ let try_inline ctxt num =
      calls := List.filter (fun (i,_,_,_) -> i <> num) !calls;
      calls := List.map (fun (i,k,c',a' as call) ->
        if k = num then
-	 let c'',a'' = compose c' a' c a in
-	 (i,j,c'',a'') else call) !calls
+         let c'',a'' = compose c' a' c a in
+         (i,j,c'',a'') else call) !calls
   | _ -> ()
 
 
@@ -84,10 +84,10 @@ let lower_kind k1 k2 =
        lower_kind (subst a i) (subst b i)
     | (FixM(oa,fa) , FixM(ob,fb) ) ->
        leq_ordinal oa ob && (fa == fb ||
-			       let i = new_int () in lower_kind (subst fa i) (subst fb i))
+                               let i = new_int () in lower_kind (subst fa i) (subst fb i))
     | (FixN(oa,fa) , FixN(ob,fb) ) ->
        leq_ordinal ob oa && (fa == fb ||
-			       let i = new_int () in lower_kind (subst fa i) (subst fb i))
+                               let i = new_int () in lower_kind (subst fa i) (subst fb i))
     | (DPrj(t1,s1) , DPrj(t2,s2) ) -> s1 = s2 && eq_term t1 t2
     | (UCst(t1,f1) , UCst(t2,f2) )
     | (ECst(t1,f1) , ECst(t2,f2) ) ->
@@ -97,26 +97,26 @@ let lower_kind k1 k2 =
     | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
     | (UVar ua     ,(UVar _ as b)) -> set ua b; true
     | (UVar ua as a, b           ) ->
-	let k, l = decompose Pos b in
-	let k = recompose true k (List.map (fun _ -> OConv) l) in
+        let k, l = decompose Pos b in
+        let k = recompose true k (List.map (fun _ -> OConv) l) in
         let k =
           match uvar_occur ua k with
           | Non -> k
-	  | Pos -> FixM(OConv,bind_uvar ua k)
+          | Pos -> FixM(OConv,bind_uvar ua k)
           | _   -> bot
         in
-	if !debug then io.log "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
+        if !debug then io.log "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
         set ua k; true
     | (a           ,(UVar ub as b)) ->
-	let k, l = decompose Neg a in
-	let k = recompose false k (List.map (fun _ -> OConv) l) in
+        let k, l = decompose Neg a in
+        let k = recompose false k (List.map (fun _ -> OConv) l) in
         let k =
           match uvar_occur ub a with
           | Non -> k
-	  | Pos -> FixM(OConv,bind_uvar ub k)
+          | Pos -> FixM(OConv,bind_uvar ub k)
           | _   -> top
         in
-	if !debug then io.log "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
+        if !debug then io.log "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
         set ub k; true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false
@@ -162,9 +162,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_
       let os' = os1 @ os2 in
       (* Need induction for Nu left and Mu right, just to avoid loops *)
       if os' = [] then
-	(match (a, b) with
-	| (FixN _, _) | (_, FixM _) -> ()
-	| _ -> raise Exit);
+        (match (a, b) with
+        | (FixN _, _) | (_, FixM _) -> ()
+        | _ -> raise Exit);
       let os' = Array.of_list os' in
        let os1 = List.map new_OInd os1 in
        let os2 = List.map new_OInd os2 in
@@ -172,18 +172,18 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> kind -> kind -> subtype_
        let os = Array.of_list los in
        let fnum = new_function (Array.length os) in
        begin match ctxt with
-	 [], _ -> ()
+         [], _ -> ()
        | (_,_,cur,os0,_)::_ as up, calls  ->
-	  List.iter (fun (a0,b0,index,_,use) ->
-	    if eq_kind a0 a' && eq_kind b0 b' then (
-	      let cmp, ind = find_indexes os' os0 in
-	      calls := (index, cur, cmp, ind) :: !calls;
-	      use ();
-	      let _ = trace_subtyping t a b in
-	      trace_sub_pop (NUseInd index);
-	      raise Induction_hypothesis)) up;
-	 let cmp, ind = find_indexes os' os0 in
-	 calls := (fnum, cur, cmp, ind)::!calls;
+          List.iter (fun (a0,b0,index,_,use) ->
+            if eq_kind a0 a' && eq_kind b0 b' then (
+              let cmp, ind = find_indexes os' os0 in
+              calls := (index, cur, cmp, ind) :: !calls;
+              use ();
+              let _ = trace_subtyping t a b in
+              trace_sub_pop (NUseInd index);
+              raise Induction_hypothesis)) up;
+         let cmp, ind = find_indexes os' os0 in
+         calls := (fnum, cur, cmp, ind)::!calls;
        end;
        let use = trace_subtyping ~ordinal:los t a b in
        let a = recompose false a' os1 in
@@ -214,17 +214,17 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
         let wit = cnst bnd a2 b2 in
         subtype ctxt (dummy_pos (Appl(t,wit))) b1 b2;
         subtype ctxt wit a2 a1;
-	trace_sub_pop NArrow
+        trace_sub_pop NArrow
 
     (* Product type. *)
     | (Prod(fsa), Prod(fsb)) ->
         let check_field (l,b) =
           let a = try List.assoc l fsa with Not_found ->
-	    subtype_error ("Product fields clash: "^l) in
+            subtype_error ("Product fields clash: "^l) in
           subtype ctxt (dummy_pos (Proj(t,l))) a b
         in
         List.iter check_field fsb;
-	trace_sub_pop NProd
+        trace_sub_pop NProd
 
     (* Sum type. *)
     | (DSum([]), a)          -> trace_sub_pop NSum
@@ -234,11 +234,11 @@ let rec subtype : term -> kind -> kind -> unit = fun t a b ->
           let t = unbox
             (case dummy_position (box t) [(c, idt)])
           in
-	  try
+          try
             let b = List.assoc c csb in
             subtype ctxt t a b
-	  with
-	    Not_found -> subtype ctxt t a (DSum([]))
+          with
+            Not_found -> subtype ctxt t a (DSum([]))
         in
         List.iter check_variant csa;
         trace_sub_pop NSum
@@ -360,11 +360,11 @@ and type_check : term -> kind -> unit = fun t c ->
        let a = new_uvar () in
        let fun_first = match t.elt with LAbs(None,_) -> false | _ -> true in
        if fun_first then begin
-	 type_check t (Func(a,c));
-	 type_check u a
+         type_check t (Func(a,c));
+         type_check u a
        end else begin
-	 type_check u a;
-	 type_check t (Func(a,c))
+         type_check u a;
+         type_check t (Func(a,c))
        end
     | Reco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in

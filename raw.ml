@@ -2,7 +2,10 @@ open Util
 open Ast
 open Bindlib
 
-(* Parser level AST. *)
+(****************************************************************************
+ *                              Parser level AST                            *
+ ****************************************************************************)
+
 type pkind = pkind' position
 and pkind' =
   | PFunc of pkind * pkind
@@ -17,7 +20,7 @@ and pkind' =
   | PSum  of (string * pkind option) list
   | PHole
 
-and pterm = pterm' position
+and pterm  = pterm' position
 and pterm' =
   | PLAbs of (strpos * pkind option) list * pterm
   | PKAbs of strpos * pterm
@@ -35,19 +38,18 @@ let list_nil _loc =
   in_pos _loc (PCstr("Nil" , None))
 
 let list_cons _loc t l =
-  in_pos _loc (PCstr("Cons", Some (in_pos _loc (PReco [("hd",t);("tl",l)]))))
-
-exception Unbound of Location.t * string
-
-let unbound loc s = raise (Unbound(loc,s))
+  let c = in_pos _loc (PReco [("hd",t);("tl",l)]) in
+  in_pos _loc (PCstr("Cons", Some c))
 
 (****************************************************************************
  *                           Desugaring functions                           *
  ****************************************************************************)
 
+exception Unbound of Location.t * string
+let unbound loc s = raise (Unbound(loc,s))
+
 exception Unsugar_error of Location.t * string
-let unsugar_error l s =
-  raise (Unsugar_error (l,s))
+let unsugar_error loc s = raise (Unsugar_error (loc,s))
 
 let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> kbox =
   fun lenv env pk ->
@@ -118,9 +120,9 @@ and unsugar_term : (string * tbox) list -> (string * kbox) list -> pterm -> tbox
                 | Some k -> Some (unsugar_kind lenv kenv k)
               in
               let f xt = aux false ((x.elt,xt)::lenv) xs in
-	      let pos = if first then pt.pos else
-		  Location.({ pt.pos with loc_start = x.pos.loc_start })
-	      in
+              let pos = if first then pt.pos else
+                  Location.({ pt.pos with loc_start = x.pos.loc_start })
+              in
               labs pos ko x f
           | [] -> unsugar_term lenv kenv t
         in
@@ -153,9 +155,9 @@ and unsugar_term : (string * tbox) list -> (string * kbox) list -> pterm -> tbox
         proj pt.pos (unsugar t) l
     | PCase(t,cs) ->
        let f (c,x,t) =
-	 (c, unsugar (match x with
-	 | None   -> dummy_pos (PLAbs([dummy_pos "_", Some(dummy_pos (PProd([])))], t))
-	 | Some x -> dummy_pos (PLAbs([x],t))))
+         (c, unsugar (match x with
+         | None   -> dummy_pos (PLAbs([dummy_pos "_", Some(dummy_pos (PProd([])))], t))
+         | Some x -> dummy_pos (PLAbs([x],t))))
         in
         case pt.pos (unsugar t) (List.map f cs)
     | PReco(fs) ->

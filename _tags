@@ -1,3 +1,4 @@
-true: -traverse
-"bindlib": include
-"decap": include
+true        : -traverse
+"parser.ml" : pp(pa_ocaml)
+"bindlib"   : include
+"decap"     : include

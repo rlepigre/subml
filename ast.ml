@@ -21,8 +21,10 @@ type kind =
   | KAll of (kind, kind) binder
   | KExi of (kind, kind) binder
   (* Quantifiers over an ordinal: ∀/∃o A. *)
+  (*
   | OAll of (ordinal, kind) binder
   | OExi of (ordinal, kind) binder
+  *)
   (* Least and greatest fixpoint: μα X A, να X A. *)
   | FixM of ordinal * (kind, kind) binder
   | FixN of ordinal * (kind, kind) binder
