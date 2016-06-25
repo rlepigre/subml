@@ -8,38 +8,41 @@ open Bindlib
 
 type pkind = pkind' position
 and pkind' =
-  | PFunc of pkind * pkind
   | PTVar of string * pkind list
-  | PFAll of string * pkind
-  | PExis of string * pkind
-  | PMu   of string * pkind
-  | PNu   of string * pkind
+  | PFunc of pkind * pkind
+  | PProd of (string * pkind) list
+  | PDSum of (string * pkind option) list
+  | PKAll of string * pkind
+  | PKExi of string * pkind
+  (*
+  | POAll of string * pkind
+  | POExi of string * pkind
+  *)
+  | PFixM of string * pkind
+  | PFixN of string * pkind
   | PDPrj of pterm  * string
   | PWith of pkind * string * pkind
-  | PProd of (string * pkind) list
-  | PSum  of (string * pkind option) list
-  | PHole
 
 and pterm  = pterm' position
 and pterm' =
-  | PLAbs of (strpos * pkind option) list * pterm
-  | PKAbs of strpos * pterm
   | PCoer of pterm * pkind
-  | PAppl of pterm * pterm
   | PLVar of string
-  | PPrnt of string
-  | PCstr of string * pterm option
-  | PProj of pterm * string
-  | PCase of pterm * (string * (strpos * pkind option) option * pterm) list
+  | PLAbs of (strpos * pkind option) list * pterm
+  | PAppl of pterm * pterm
   | PReco of (string * pterm) list
+  | PProj of pterm * string
+  | PCons of string * pterm option
+  | PCase of pterm * (string * (strpos * pkind option) option * pterm) list
+  | PKAbs of strpos * pterm
+  | PPrnt of string
   | PFixY of (strpos * pkind option) * pterm
 
 let list_nil _loc =
-  in_pos _loc (PCstr("Nil" , None))
+  in_pos _loc (PCons("Nil" , None))
 
 let list_cons _loc t l =
   let c = in_pos _loc (PReco [("hd",t);("tl",l)]) in
-  in_pos _loc (PCstr("Cons", Some c))
+  in_pos _loc (PCons("Cons", Some c))
 
 (****************************************************************************
  *                           Desugaring functions                           *
@@ -82,25 +85,24 @@ let rec unsugar_kind : (string * tbox) list -> (string * kbox) list -> pkind -> 
               tdef td ks
             with Not_found -> unbound pk.pos s
         end
-    | PFAll(x,k) ->
+    | PKAll(x,k) ->
        let f xk = unsugar ((x,box_of_var xk) :: env) k in
        kall x f
-    | PExis(x,k) ->
+    | PKExi(x,k) ->
        let f xk = unsugar ((x,box_of_var xk) :: env) k in
        kexi x f
-    | PMu(x,k) ->
+    | PFixM(x,k) ->
        fixm x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
-    | PNu(x,k) ->
+    | PFixN(x,k) ->
        fixn x (fun xk -> unsugar ((x,box_of_var xk) :: env) k)
     | PProd(fs)  ->
        prod (List.map (fun (l,k) -> (l, unsugar env k)) fs)
-    | PSum(cs)   ->
+    | PDSum(cs)   ->
        dsum (List.map (fun (c,k) -> (c, unsugar_top env k)) cs)
     | PDPrj(t,s) ->
        dprj (unsugar_term lenv env t) s
     | PWith(a,s,b) ->
        wIth (unsugar env a) s (unsugar env b)
-    | PHole      -> box (new_uvar ())
   and unsugar_top env ko =
     match ko with
     | None   -> prod []
@@ -144,7 +146,7 @@ and unsugar_term : (string * tbox) list -> (string * kbox) list -> pterm -> tbox
         end
     | PPrnt(s) ->
         prnt pt.pos s
-    | PCstr(c,uo) ->
+    | PCons(c,uo) ->
         let u =
           match uo with
           | None   -> reco dummy_position []

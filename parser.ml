@@ -242,7 +242,6 @@ let parser lambda : unit grammar = "λ"
 let parser klam   : unit grammar = "Λ" | "/\\"
 let parser dot    : unit grammar = "."
 let parser mapto  : unit grammar = "->" | "→" | "↦"
-let parser hole   : unit grammar = "?"
 let parser comma  : unit grammar = ","
 let parser subset : unit grammar = "⊂" | "⊆" | "<"
 
@@ -268,25 +267,22 @@ let parser pkind p =
   | id:uident l:{"(" l:kind_list ")"}?[[]] when p = KAtom
       -> in_pos _loc (PTVar(id,l))
   | forall id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PFAll(id,a))
+      -> in_pos _loc (PKAll(id,a))
   | exists id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PExis(id,a))
+      -> in_pos _loc (PKExi(id,a))
   | mu id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PMu(id,a))
+      -> in_pos _loc (PFixM(id,a))
   | nu id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PNu(id,a))
+      -> in_pos _loc (PFixN(id,a))
   | "{" fs:prod_items "}" when p = KAtom
       -> in_pos _loc (PProd(fs))
   | fs : kind_prod when p = KProd
       -> in_pos _loc (PProd(fs))
   | "[" fs:sum_items "]" when p = KAtom
-      -> in_pos _loc (PSum(fs))
+      -> in_pos _loc (PDSum(fs))
   | t:(term TAtom) "." s:uident -> in_pos _loc (PDPrj(t,s))
   | a:(pkind KAtom) with_kw s:uident "=" b:(pkind KAtom) when p = KAtom
       -> in_pos _loc (PWith(a,s,b))
-  | hole when p = KAtom
-      -> in_pos _loc PHole
-
   | "(" a:(pkind KFunc) ")" when p = KAtom
   | a:(pkind KAtom) when p = KProd
   | a:(pkind KProd) when p = KFunc
@@ -329,7 +325,7 @@ and term p =
   | "print(" - s:string_lit - ")" when p = TAtom ->
       in_pos _loc (PPrnt(s))
   | c:uident uo:{"[" (term TFunc) "]"}? when p = TAtom ->
-      in_pos _loc (PCstr(c,uo))
+      in_pos _loc (PCons(c,uo))
   | t:(term TAtom) "." l:lident when p = TAtom ->
     in_pos _loc (PProj(t,l))
   | case_kw t:(term TFunc) of_kw "|"? ps:(list_sep case "|") when p = TFunc ->
