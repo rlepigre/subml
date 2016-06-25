@@ -27,12 +27,12 @@ let spec =
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
 
-let treat_exception fn a =
+let handle_exception fn v =
   let position2 ff (fname, lnum, cnum) =
     fprintf ff "File %S, line %d, characters %d-%d" fname lnum cnum cnum
   in
   try
-    fn a; true
+    fn v; true
   with
   | End_of_file          -> exit 0
   | Finish               -> exit 0
@@ -47,11 +47,12 @@ let treat_exception fn a =
 
 let rec interact () =
   Printf.printf ">> %!";
-  ignore (treat_exception (fun () -> toplevel_of_string (read_line ())) ());
+  let line = read_line () in
+  handle_exception (fun () -> toplevel_of_string line) ();
   interact ()
 
 let _ =
   Arg.parse spec add_file "";
-  if !prelude && not (treat_exception eval_file "lib/prelude.typ") then exit 1;
-  if not (List.for_all (treat_exception eval_file) !files) then exit 1;
+  let files = if !prelude then "lib/prelude.typ" :: !files else !files in
+  if not (List.for_all (handle_exception eval_file) files) then exit 1;
   if not !quit then interact ()
