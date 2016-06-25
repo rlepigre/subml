@@ -48,7 +48,7 @@ let handle_exception fn v =
 let rec interact () =
   Printf.printf ">> %!";
   let line = read_line () in
-  handle_exception (fun () -> toplevel_of_string line) ();
+  ignore (handle_exception (fun () -> toplevel_of_string line) ());
   interact ()
 
 let _ =

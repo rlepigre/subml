@@ -269,10 +269,14 @@ let parser pkind p =
       -> in_pos _loc (PKAll(id,a))
   | exists id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PKExi(id,a))
-  | mu id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PFixM(None,id,a))
-  | nu id:uident a:(pkind KFunc) when p = KFunc
-      -> in_pos _loc (PFixN(None,id,a))
+  | forall id:lident a:(pkind KFunc) when p = KFunc
+      -> in_pos _loc (POAll(id,a))
+  | exists id:lident a:(pkind KFunc) when p = KFunc
+      -> in_pos _loc (POExi(id,a))
+  | mu o:lident? id:uident a:(pkind KFunc) when p = KFunc
+      -> in_pos _loc (PFixM(o,id,a))
+  | nu o:lident? id:uident a:(pkind KFunc) when p = KFunc
+      -> in_pos _loc (PFixN(o,id,a))
   | "{" fs:prod_items "}" when p = KAtom
       -> in_pos _loc (PProd(fs))
   | fs : kind_prod when p = KProd
