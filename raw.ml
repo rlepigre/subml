@@ -51,7 +51,7 @@ let dummy_case_var _loc =
 
 type env =
   { terms    : (string * tbox) list
-  ; kinds    : (string * kbox) list
+  ; kinds    : (string * (kbox * (occur * int))) list
   ; ordinals : (string * obox) list }
 
 let empty_env : env = { terms = [] ; kinds = [] ; ordinals = [] }
@@ -59,8 +59,8 @@ let empty_env : env = { terms = [] ; kinds = [] ; ordinals = [] }
 let add_term : string -> tbox -> env -> env = fun x t env ->
   { env with terms = (x,t) :: env.terms }
 
-let add_kind : string -> kbox -> env -> env = fun x k env ->
-  { env with kinds = (x,k) :: env.kinds }
+let add_kind : string -> kbox -> occur * int -> env -> env = fun x k o env ->
+  { env with kinds = (x,(k,o)) :: env.kinds }
 
 let add_ordinal : string -> obox -> env -> env = fun x o env ->
   { env with ordinals = (x,o) :: env.ordinals }
@@ -71,26 +71,8 @@ let unbound s = raise (Unbound(s))
 exception Arity_error of Location.t * string
 let arity_error loc s = raise (Arity_error (loc,s))
 
-
-(* Lookup a kind variable in the environment. If it does not appear, look for
-   the name in the list of type definitions. *)
-let kind_variable : env -> strpos -> kbox array -> kbox = fun env s ks ->
-  let arity = Array.length ks in
-  try
-    let k = List.assoc s.elt env.kinds in
-    if arity > 0 then
-      arity_error s.pos (s.elt ^ " does not expect arguments.")
-    else k
-  with Not_found ->
-    try
-      let td = Hashtbl.find typ_env s.elt in
-      if td.tdef_arity <> arity then
-        let msg =
-          Printf.sprintf "%s expect %i arguments but received %i." s.elt
-            td.tdef_arity (Array.length ks)
-        in arity_error s.pos msg
-      else tdef td ks
-    with Not_found -> unbound s
+exception Positivity_error of Location.t * string
+let positivity_error loc s = raise (Positivity_error (loc,s))
 
 (* Lookup a term variable in the environment. If it does not appear, look for
    the name in the list of term definitions. *)
@@ -105,20 +87,51 @@ let term_variable : env -> strpos -> tbox = fun env s ->
 let ordinal_variable : env -> strpos -> obox = fun env s ->
   try List.assoc s.elt env.ordinals with Not_found -> unbound s
 
+(* Lookup a kind variable in the environment. If it does not appear, look for
+   the name in the list of type definitions. *)
+let rec kind_variable : (occur * int) -> env -> strpos -> pkind array -> kbox =
+ fun pos env s ks ->
+  let arity = Array.length ks in
+  try
+    let (k, pos') = List.assoc s.elt env.kinds in
+    if not (List.mem (fst (compose2 pos' pos)) [Non; Pos]) then
+      let msg = Printf.sprintf "%s used in a negative position." s.elt in
+      positivity_error s.pos msg
+    else if arity > 0 then
+      arity_error s.pos (s.elt ^ " does not expect arguments.")
+    else k
+  with Not_found ->
+    try
+      let td = Hashtbl.find typ_env s.elt in
+      if td.tdef_arity <> arity then begin
+        let msg =
+          Printf.sprintf "%s expect %i arguments but received %i." s.elt
+            td.tdef_arity (Array.length ks)
+        in arity_error s.pos msg
+      end;
+      let ks = Array.mapi (fun i k ->
+	unsugar_kind ~pos:(compose2 (td.tdef_variance.(i), td.tdef_depth.(i)) pos) env k) ks
+      in
+      tdef td ks
+    with Not_found -> unbound s
+
 (****************************************************************************
  *                           Desugaring functions                           *
  ****************************************************************************)
 
-let rec unsugar_kind : env -> pkind -> kbox = fun env pk ->
+and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
+  fun ?(pos=(Pos,0)) (env:env) pk ->
   match pk.elt with
-  | PFunc(a,b)   -> func (unsugar_kind env a) (unsugar_kind env b)
-  | PTVar(s,ks)  -> let ks = Array.of_list (List.map (unsugar_kind env) ks) in
-                    kind_variable env (in_pos pk.pos s) ks
+  | PFunc(a,b)   ->
+     let (o,d) = pos in
+     func (unsugar_kind ~pos:(neg o, d+1) env a) (unsugar_kind ~pos:(neg o, d) env b)
+  | PTVar(s,ks)  ->
+     kind_variable pos env (in_pos pk.pos s) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =
-                      unsugar_kind (add_kind x (box_of_var xk) env) k
+                      unsugar_kind ~pos (add_kind x (box_of_var xk) (Non,-1) env) k
                     in kall x f
   | PKExi(x,k)   -> let f xk =
-                      unsugar_kind (add_kind x (box_of_var xk) env) k
+                      unsugar_kind (add_kind x (box_of_var xk) (Non,-1) env) k
                     in kexi x f
   | POAll(o,k)   -> let f xo =
                       unsugar_kind (add_ordinal o (box_of_var xo) env) k
@@ -132,7 +145,7 @@ let rec unsugar_kind : env -> pkind -> kbox = fun env pk ->
                       | Some o -> ordinal_variable env (in_pos pk.pos o)
                     in
                     let f xk =
-                      unsugar_kind (add_kind x (box_of_var xk) env) k
+                      unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
                     in fixm x o f
   | PFixN(o,x,k) -> let o =
                       match o with
@@ -140,17 +153,17 @@ let rec unsugar_kind : env -> pkind -> kbox = fun env pk ->
                       | Some o -> ordinal_variable env (in_pos pk.pos o)
                     in
                     let f xk =
-                      unsugar_kind (add_kind x (box_of_var xk) env) k
+                      unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
                     in fixn x o f
-  | PProd(fs)    -> let f (l,k) = (l, unsugar_kind env k) in
+  | PProd(fs)    -> let f (l,k) = (l, unsugar_kind ~pos env k) in
                     prod (List.map f fs)
   | PDSum(cs)    -> let f (c,ko) =
                       match ko with
                       | None   -> (c, prod [])
-                      | Some k -> (c, unsugar_kind env k)
+                      | Some k -> (c, unsugar_kind ~pos env k)
                     in dsum (List.map f cs)
   | PDPrj(t,s)   -> dprj (unsugar_term env t) s
-  | PWith(a,s,b) -> wIth (unsugar_kind env a) s (unsugar_kind env b)
+  | PWith(a,s,b) -> wIth (unsugar_kind ~pos env a) s (unsugar_kind ~pos env b)
 
 and unsugar_term : env -> pterm -> tbox = fun env pt ->
   match pt.elt with
@@ -167,7 +180,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                          labs pos ko x f
                    in aux true env vs
   | PKAbs(s,f)  -> let f xk =
-                     unsugar_term (add_kind s.elt (box_of_var xk) env) f
+                     unsugar_term (add_kind s.elt (box_of_var xk) (Non, -1) env) f
                    in kabs s.pos s f
   | POAbs(s,f)  -> let f xo =
                       unsugar_term (add_ordinal s.elt (box_of_var xo) env) f
