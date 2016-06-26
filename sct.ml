@@ -111,7 +111,7 @@ let (new_function : int -> int), reset_function, pr_call, arities =
 
 (* the main function *)
 let sct: call list -> bool = fun ls ->
-  if !debug_sct then eprintf "sct start ... %!";
+  if !debug_sct then eprintf "SCT starts...\n%!";
   let num_fun, arities = reset_function () in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun IAMap.empty) in
   let print_call = print_call arities in
@@ -137,6 +137,9 @@ let sct: call list -> bool = fun ls ->
   in
   (* adding initial edges *)
   try
+    if !debug_sct then (
+      eprintf "initial edges to be added:\n%!";
+      List.iter (fun c -> eprintf "\t%a\n%!" print_call c) ls);
     let new_edges = ref ls in
     (* compute the transitive closure of the call graph *)
     if !debug_sct then eprintf "start completion\n%!";
@@ -165,9 +168,9 @@ let sct: call list -> bool = fun ls ->
     in
     fn ();
     if !debug_sct || !summary_sct then
-      eprintf "sct passed (%5d edges added, %6d composed)\t%!" !added !composed;
+      eprintf "SCT passed (%5d edges added, %6d composed)\t%!" !added !composed;
     true
   with Exit ->
     if !debug_sct || !summary_sct then
-      eprintf "sct failed (%5d edges added, %6d composed)\t%!" !added !composed;
+      eprintf "SCT failed (%5d edges added, %6d composed)\t%!" !added !composed;
     false
