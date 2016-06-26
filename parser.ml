@@ -494,11 +494,9 @@ let run_command : command -> unit = function
       let tdef_depth = Array.make tdef_arity max_int in
       let f args =
         let env = ref [] in
-        Array.iteri (fun i k -> env := (arg_names.(i), (k, Register(i,tdef_variance, tdef_depth), 0)) :: !env) args;
-        (* FIXME change the type of the map for kinds in the env *)
-        let env = !env in
-        let env = List.map (fun (k, (v,_,_)) -> (k,v)) env in
-        unsugar_kind {empty_env with kinds = env} k
+        Array.iteri (fun i k ->
+          env := (arg_names.(i), (k, (Register(i,tdef_variance, tdef_depth), 0))) :: !env) args;
+        unsugar_kind {empty_env with kinds = !env} k
       in
       let b = mbind mk_free_tvar arg_names f in
       let tdef_tex_name =
