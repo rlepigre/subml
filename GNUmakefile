@@ -47,6 +47,9 @@ run: all
 test: all
 	./subml.native --quit lib/all.typ
 
+test2: all
+	./subml.native --no-prelude --quit advanced_lib/all.typ
+
 clean:
 	ocamlbuild -clean
 
