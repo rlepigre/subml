@@ -241,9 +241,13 @@ let rec orepr = function
   | OUVar(_, {contents = Some o}) -> orepr o
   | o                             -> o
 
-let set v k =
+let set_kuvar v k =
   assert (!(v.uvar_val) = None);
   Timed.(v.uvar_val := Some k)
+
+let set_ouvar v o =
+  assert(!v = None);
+  Timed.(v := Some o)
 
 (* Printing function from "print.ml" *)
 let fprint_term : (bool -> out_channel -> term -> unit) ref =
@@ -563,7 +567,7 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   | (OConv       , OConv       ) -> true
   | (OUVar(o',p) , o           )
   | (o           , OUVar(o',p) ) -> Timed.pure_test (less_ordinal c o) o' &&
-                                    (assert(!p = None); Timed.(p := Some o); true)
+                                    (set_ouvar p o; true)
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal c o1 o2 && eq_ord_wit c w1 w2
   | (OMaxi(l1)   , OMaxi(l2)   ) -> List.for_all (fun o1 ->
                                       List.exists (fun o2 ->
@@ -586,9 +590,9 @@ and leq_ordinal c o1 o2 =
   | (_          , OConv     ) -> true
   | (OUVar(o, p), o2        ) -> Timed.pure_test (leq_ordinal c o) o2 || (
                                    Timed.pure_test (less_ordinal c o2) o &&
-                                   (assert(!p = None); Timed.(p := Some o2); true))
+                                   (set_ouvar p o2; true))
   | (o1         , OUVar(o,p)) -> Timed.pure_test (less_ordinal c o1) o &&
-                                 (assert(!p = None); Timed.(p := Some o1); true)
+                                 (set_ouvar p o1; true)
   | (OLess(o1,_), o2        ) -> leq_ordinal c o1 o2
   | (OMaxi(l1)  , o2        ) -> List.for_all (fun o1 -> leq_ordinal c o1 o2) l1
   | (o1         , OMaxi(l2) ) -> List.exists (fun o2 -> leq_ordinal c o1 o2) l2

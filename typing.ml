@@ -239,7 +239,7 @@ let lower_kind k1 k2 =
     | (UVar(ua)    , UVar(ub)    ) when ua == ub -> true
     | (UVar ua as a,(UVar _ as b)) ->
         if !debug then io.log "  set %a <- %a\n%!" (print_kind false) a (print_kind false) b;
-       set ua b; true
+        set_kuvar ua b; true
     | (UVar ua as a, b           ) when true || first ->
         let k =
           match uvar_occur ua b with
@@ -248,7 +248,7 @@ let lower_kind k1 k2 =
           | _   -> bot
         in
         if !debug then io.log "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
-        set ua k; true
+        set_kuvar ua k; true
     | (a           ,(UVar ub as b)) when true || first ->
         let k =
           match uvar_occur ub a with
@@ -257,7 +257,7 @@ let lower_kind k1 k2 =
           | _   -> top
         in
         if !debug then io.log "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
-        set ub k; true
+        set_kuvar ub k; true
     | (TInt(ia)    , TInt(ib)    ) -> ia = ib
     | (_           , _           ) -> false
   in
