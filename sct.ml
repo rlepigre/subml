@@ -73,7 +73,7 @@ let print_calls tbl ff (l:calls) =
 
 (* check is a call (supposed idempotnent) is
    decreasing *)
-let decr c a =
+let decrease c a =
   try
     Array.iteri (fun i c ->
     match c with
@@ -121,7 +121,7 @@ let sct: call list -> bool = fun ls ->
      if the edge is new or not *)
   let add_edge i j c a =
     (* test idempotent edges as soon as they are discovered *)
-    if i = j && compose c a c a = (c,a) && not (decr c a) then begin
+    if i = j && compose c a c a = (c,a) && not (decrease c a) then begin
       if !debug_sct then eprintf "edge %a idempotent and looping\n%!" print_call (i,j,c,a);
       raise Exit;
     end;

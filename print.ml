@@ -111,13 +111,13 @@ and print_kind unfold wrap ff t =
   let pkindw = print_kind unfold true in
   let t = repr t in
   match t with
-  | TVar(x) ->
+  | KVari(x) ->
       pp_print_string ff (name_of x)
-  | Func(a,b) ->
+  | KFunc(a,b) ->
       if wrap then pp_print_string ff "(";
       fprintf ff "%a → %a" pkindw a pkind b;
       if wrap then pp_print_string ff ")"
-  | Prod(fs) ->
+  | KProd(fs) ->
      if is_tuple fs && List.length fs > 0 then begin
        if wrap then pp_print_string ff "(";
        for i = 1 to List.length fs do
@@ -129,33 +129,33 @@ and print_kind unfold wrap ff t =
        let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
        fprintf ff "{%a}" (print_list pfield "; ") fs
      end
-  | DSum(cs) ->
+  | KDSum(cs) ->
       let pvariant ff (c,a) =
-        if a = Prod [] then pp_print_string ff c
+        if a = KProd [] then pp_print_string ff c
         else fprintf ff "%s of %a" c pkind a
       in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
-  | KAll(f)  ->
+  | KKAll(f)  ->
       let x = new_tvar (binder_name f) in
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
-  | KExi(f)  ->
+  | KKExi(f)  ->
       let x = new_tvar (binder_name f) in
       fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
-  | OAll(f)  ->
+  | KOAll(f)  ->
       let x = new_ovar (binder_name f) in
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
-  | OExi(f)  ->
+  | KOExi(f)  ->
       let x = new_ovar (binder_name f) in
       fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
-  | FixM(o,b) ->
+  | KFixM(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
       fprintf ff "μ%a%s %a" print_index_ordinal o (name_of x) pkindw a
-  | FixN(o,b) ->
+  | KFixN(o,b) ->
       let x = new_tvar (binder_name b) in
       let a = subst b (free_of x) in
       fprintf ff "ν%a%s %a" print_index_ordinal o (name_of x) pkindw a
-  | TDef(td,args) ->
+  | KDefi(td,args) ->
       if unfold then
         print_kind unfold wrap ff (msubst td.tdef_value args)
       else
@@ -163,18 +163,18 @@ and print_kind unfold wrap ff t =
           pp_print_string ff td.tdef_name
         else
           fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
-  | DPrj(t,s) ->
+  | KDPrj(t,s) ->
      fprintf ff "%a.%s" (print_term ~in_proj:false false) t s
-  | With(a,(s,b)) ->
+  | KWith(a,(s,b)) ->
      fprintf ff "%a with %s = %a" pkind a s pkind b
-  | UCst(u,f)
-  | ECst(u,f) ->
-     let is_exists = match t with ECst(_) -> true | _ -> false in
+  | KUCst(u,f)
+  | KECst(u,f) ->
+     let is_exists = match t with KECst(_) -> true | _ -> false in
      let name, index =search_type_tbl u f is_exists in
      fprintf ff "%s_%d" name index
-  | UVar(u) ->
+  | KUVar(u) ->
       fprintf ff "?%i" u.uvar_key
-  | TInt(n) ->
+  | KTInt(n) ->
       fprintf ff "!%i" n
 
 and print_occur ff = function

@@ -117,7 +117,7 @@ let rec kind_variable : (occur * int) -> env -> strpos -> pkind array -> kbox =
       let ks = Array.mapi (fun i k ->
 	unsugar_kind ~pos:(compose2 (td.tdef_variance.(i), td.tdef_depth.(i)) pos) env k) ks
       in
-      tdef td ks
+      kdefi td ks
     with Not_found -> unbound s
 
 (****************************************************************************
@@ -129,21 +129,21 @@ and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
   match pk.elt with
   | PFunc(a,b)   ->
      let (o,d) = pos in
-     func (unsugar_kind ~pos:(neg o, d+1) env a) (unsugar_kind ~pos:(o, d) env b)
+     kfunc (unsugar_kind ~pos:(neg o, d+1) env a) (unsugar_kind ~pos:(o, d) env b)
   | PTVar(s,ks)  ->
      kind_variable pos env (in_pos pk.pos s) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) (Non,-1) env) k
-                    in kall x f
+                    in kkall x f
   | PKExi(x,k)   -> let f xk =
                       unsugar_kind (add_kind x (box_of_var xk) (Non,-1) env) k
-                    in kexi x f
+                    in kkexi x f
   | POAll(o,k)   -> let f xo =
                       unsugar_kind (add_ordinal o (box_of_var xo) env) k
-                    in oall o f
+                    in koall o f
   | POExi(o,k)   -> let f xo =
                       unsugar_kind (add_ordinal o (box_of_var xo) env) k
-                    in oexi o f
+                    in koexi o f
   | PFixM(o,x,k) -> let o =
                       match o with
                       | None   -> box OConv
@@ -151,7 +151,7 @@ and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
                     in
                     let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
-                    in fixm x o f
+                    in kfixm x o f
   | PFixN(o,x,k) -> let o =
                       match o with
                       | None   -> box OConv
@@ -159,16 +159,16 @@ and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
                     in
                     let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
-                    in fixn x o f
+                    in kfixn x o f
   | PProd(fs)    -> let f (l,k) = (l, unsugar_kind ~pos env k) in
-                    prod (List.map f fs)
+                    kprod (List.map f fs)
   | PDSum(cs)    -> let f (c,ko) =
                       match ko with
-                      | None   -> (c, prod [])
+                      | None   -> (c, kprod [])
                       | Some k -> (c, unsugar_kind ~pos env k)
-                    in dsum (List.map f cs)
-  | PDPrj(t,s)   -> dprj (unsugar_term env t) s
-  | PWith(a,s,b) -> wIth (unsugar_kind ~pos env a) s (unsugar_kind ~pos env b)
+                    in kdsum (List.map f cs)
+  | PDPrj(t,s)   -> kdprj (unsugar_term env t) s
+  | PWith(a,s,b) -> kwith (unsugar_kind ~pos env a) s (unsugar_kind ~pos env b)
 
 and unsugar_term : env -> pterm -> tbox = fun env pt ->
   match pt.elt with

@@ -74,36 +74,36 @@ type strpos = string position
 type kind =
   (**** Main type constructors ****)
   (* Type variable. *)
-  | TVar of kind variable
+  | KVari of kind variable
   (* Function type: A ⇒ B. *)
-  | Func of kind * kind
+  | KFunc of kind * kind
   (* Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
-  | Prod of (string * kind) list
+  | KProd of (string * kind) list
   (* Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
-  | DSum of (string * kind) list
+  | KDSum of (string * kind) list
   (* Quantifiers over a type: ∀/∃X A. *)
-  | KAll of (kind, kind) binder
-  | KExi of (kind, kind) binder
+  | KKAll of (kind, kind) binder
+  | KKExi of (kind, kind) binder
   (* Quantifiers over an ordinal: ∀/∃o A. *)
-  | OAll of (ordinal, kind) binder
-  | OExi of (ordinal, kind) binder
+  | KOAll of (ordinal, kind) binder
+  | KOExi of (ordinal, kind) binder
   (* Least and greatest fixpoint: μα X A, να X A. *)
-  | FixM of ordinal * (kind, kind) binder
-  | FixN of ordinal * (kind, kind) binder
+  | KFixM of ordinal * (kind, kind) binder
+  | KFixN of ordinal * (kind, kind) binder
   (* User-defined type applied to arguments: T(A1,...,An). *)
-  | TDef of type_def * kind array
+  | KDefi of type_def * kind array
   (* Dot projection t.X. *)
-  | DPrj of term * string
+  | KDPrj of term * string
   (* With clause A with X = B. *)
-  | With of kind * (string * kind)
+  | KWith of kind * (string * kind)
   (**** Special constructors (not accessible to user) ****)
   (* Constants (a.k.a. epsilon) - used for subtyping. *)
-  | UCst of term * (kind, kind) binder
-  | ECst of term * (kind, kind) binder
+  | KUCst of term * (kind, kind) binder
+  | KECst of term * (kind, kind) binder
   (* Unification variables - used for typechecking. *)
-  | UVar of uvar
+  | KUVar of uvar
   (* Integer tag for comparing kinds. *)
-  | TInt of int
+  | KTInt of int
 
 and ordinal =
   (* Ordinal large enough to ensure convergence of all fixpoint. *)
@@ -228,13 +228,13 @@ and typ_proof =
 
 (* Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function
-  | UVar({uvar_val = {contents = Some k}}) -> repr k
-  | k                                      -> k
+  | KUVar({uvar_val = {contents = Some k}}) -> repr k
+  | k                                       -> k
 
 (* Unfolding unification variable indirections and definitions *)
 let rec full_repr : kind -> kind = function
-  | UVar({uvar_val = {contents = Some k}}) -> full_repr k
-  | TDef({tdef_value = v}, a)              -> full_repr (msubst v a)
+  | KUVar({uvar_val = {contents = Some k}}) -> full_repr k
+  | KDefi({tdef_value = v}, a)              -> full_repr (msubst v a)
   | k                                      -> k
 
 let rec orepr = function
@@ -283,7 +283,7 @@ type obox = ordinal bindbox
 
 (* Kind variable management. *)
 let mk_free_tvar : kind variable -> kind =
-  fun x -> TVar(x)
+  fun x -> KVari(x)
 
 let new_tvar : string -> kind variable =
   new_var mk_free_tvar
@@ -309,63 +309,63 @@ let new_ovar : string -> ovar =
  *                     Smart constructors for kinds                         *
  ****************************************************************************)
 
-let tvar : string -> kbox =
+let kvari : string -> kbox =
   fun x -> box_of_var (new_tvar x)
 
-let func : kbox -> kbox -> kbox =
-  box_apply2 (fun t u -> Func(t,u))
+let kfunc : kbox -> kbox -> kbox =
+  box_apply2 (fun t u -> KFunc(t,u))
 
-let prod : (string * kbox) list -> kbox =
+let kprod : (string * kbox) list -> kbox =
   fun fs ->
     let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
-    box_apply (fun fs -> Prod(fs)) (box_list fs)
+    box_apply (fun fs -> KProd(fs)) (box_list fs)
 
-let dsum : (string * kbox) list -> kbox =
+let kdsum : (string * kbox) list -> kbox =
   fun cs ->
     let cs = List.map (fun (c,t) -> box_pair (box c) t) cs in
-    box_apply (fun cs -> DSum(cs)) (box_list cs)
+    box_apply (fun cs -> KDSum(cs)) (box_list cs)
 
-let kall : string -> (kvar -> kbox) -> kbox =
+let kkall : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KAll(b)) (vbind mk_free_tvar x f)
+    box_apply (fun b -> KKAll(b)) (vbind mk_free_tvar x f)
 
-let kexi : string -> (kvar -> kbox) -> kbox =
+let kkexi : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KExi(b)) (vbind mk_free_tvar x f)
+    box_apply (fun b -> KKExi(b)) (vbind mk_free_tvar x f)
 
-let oall : string -> (ovar -> kbox) -> kbox =
+let koall : string -> (ovar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> OAll(b)) (vbind mk_free_ovar x f)
+    box_apply (fun b -> KOAll(b)) (vbind mk_free_ovar x f)
 
-let oexi : string -> (ovar -> kbox) -> kbox =
+let koexi : string -> (ovar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> OExi(b)) (vbind mk_free_ovar x f)
+    box_apply (fun b -> KOExi(b)) (vbind mk_free_ovar x f)
 
-let dprj : tbox -> string -> kbox =
+let kdprj : tbox -> string -> kbox =
   fun t s ->
-    box_apply (fun t -> DPrj(t,s)) t
+    box_apply (fun t -> KDPrj(t,s)) t
 
-let wIth : kbox -> string -> kbox -> kbox =
+let kwith : kbox -> string -> kbox -> kbox =
   fun a s b ->
-    box_apply2 (fun a b -> With(a,(s,b))) a b
+    box_apply2 (fun a b -> KWith(a,(s,b))) a b
 
-let tdef : type_def -> kbox array -> kbox =
-  fun td ks -> box_apply2 (fun td ks -> TDef(td,ks)) (box td) (box_array ks)
+let kdefi : type_def -> kbox array -> kbox =
+  fun td ks -> box_apply2 (fun td ks -> KDefi(td,ks)) (box td) (box_array ks)
 
-let fixn : string -> obox -> (kvar -> kbox) -> kbox =
+let kfixn : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
     let b = vbind mk_free_tvar x f in
-    box_apply2 (fun o b -> FixN(o,b)) o b
+    box_apply2 (fun o b -> KFixN(o,b)) o b
 
-let fixm : string -> obox -> (kvar -> kbox) -> kbox =
+let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
     let b = vbind mk_free_tvar x f in
-    box_apply2 (fun o b -> FixM(o,b)) o b
+    box_apply2 (fun o b -> KFixM(o,b)) o b
 
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
-  let new_uvar () = UVar {uvar_key = (incr c; !c); uvar_val = ref None} in
+  let new_uvar () = KUVar {uvar_key = (incr c; !c); uvar_val = ref None} in
   let reset_uvar () = c := 0 in
   (new_uvar, reset_uvar)
 
@@ -379,10 +379,10 @@ let reset_all () =
  ****************************************************************************)
 
 let bot : kind =
-  unbox (kall "X" (fun x -> box_of_var x))
+  unbox (kkall "X" (fun x -> box_of_var x))
 
 let top : kind =
-  unbox (kexi "X" (fun x -> box_of_var x))
+  unbox (kkexi "X" (fun x -> box_of_var x))
 
 (****************************************************************************
  *              Functional constructors with position for terms             *
@@ -500,29 +500,29 @@ let generic_cnst : kind -> kind -> term =
 let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
   let rec eq_kind k1 k2 = k1 == k2 ||
     match (full_repr k1, full_repr k2) with
-    | (TVar(x1)   , TVar(x2)   ) -> eq_variables x1 x2
-    | (Func(a1,b1), Func(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
-    | (Prod(fs1)  , Prod(fs2)  ) -> eq_assoc eq_kind fs1 fs2
-    | (DSum(cs1)  , DSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
-    | (KAll(b1)   , KAll(b2)   )
-    | (KExi(b1)   , KExi(b2)   ) -> eq_kbinder c b1 b2
-    | (OAll(b1)   , OAll(b2)   )
-    | (OExi(b1)   , OExi(b2)   ) -> eq_obinder c b1 b2
-    | (FixM(o1,f1), FixM(o2,f2))
-    | (FixN(o1,f1), FixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder c f1 f2
-    | (DPrj(t1,s1), DPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
-    | (With(a1,e1), With(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
-                                    eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
-    | (UCst(t1,f1), UCst(t2,f2))
-    | (ECst(t1,f1), ECst(t2,f2)) -> eq_kbinder c f1 f2 && eq_term c t1 t2
-    | (UVar(u1)   , UVar(u2)   ) -> u1.uvar_key = u2.uvar_key
-    | (TInt(i1)   , TInt(i2)   ) -> i1 = i2
+    | (KVari(x1)   , KVari(x2)   ) -> eq_variables x1 x2
+    | (KFunc(a1,b1), KFunc(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
+    | (KProd(fs1)  , KProd(fs2)  ) -> eq_assoc eq_kind fs1 fs2
+    | (KDSum(cs1)  , KDSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
+    | (KKAll(b1)   , KKAll(b2)   )
+    | (KKExi(b1)   , KKExi(b2)   ) -> eq_kbinder c b1 b2
+    | (KOAll(b1)   , KOAll(b2)   )
+    | (KOExi(b1)   , KOExi(b2)   ) -> eq_obinder c b1 b2
+    | (KFixM(o1,f1), KFixM(o2,f2))
+    | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder c f1 f2
+    | (KDPrj(t1,s1), KDPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
+    | (KWith(a1,e1), KWith(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
+                                      eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
+    | (KUCst(t1,f1), KUCst(t2,f2))
+    | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder c f1 f2 && eq_term c t1 t2
+    | (KUVar(u1)   , KUVar(u2)   ) -> u1.uvar_key = u2.uvar_key
+    | (KTInt(i1)   , KTInt(i2)   ) -> i1 = i2
     | (_          , _          ) -> false
   in
   eq_kind k1 k2
 
 and eq_kbinder c f1 f2 = f1 == f2 ||
-  let i = incr c; TInt(!c) in
+  let i = incr c; KTInt(!c) in
   eq_kind c (subst f1 i) (subst f2 i)
 
 and eq_obinder c f1 f2 = f1 == f2 ||
@@ -541,8 +541,8 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (_          , Coer(t2,_) ) -> eq_term t1 t2
     | (VDef(d1)   , _          ) -> eq_term d1.value t2
     | (_          , VDef(d2)   ) -> eq_term t1 d2.value
-    | (KAbs(f)    , _          ) -> eq_term (subst f (Prod[])) t2
-    | (_          , KAbs(f)    ) -> eq_term t1 (subst f (Prod[]))
+    | (KAbs(f)    , _          ) -> eq_term (subst f (KProd[])) t2
+    | (_          , KAbs(f)    ) -> eq_term t1 (subst f (KProd[]))
     | (OAbs(f)    , _          ) -> eq_term (subst f (OTInt(-1))) t2
     | (_          , OAbs(f)    ) -> eq_term t1 (subst f (OTInt(-1)))
     | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
@@ -637,7 +637,7 @@ let eq_head_term t u =
     | Appl(u,_)
     | Case(u,_)
     | Proj(u,_) -> fn u
-    | KAbs(f)   -> fn (subst f (Prod[]))
+    | KAbs(f)   -> fn (subst f (KProd[]))
     | OAbs(f)   -> fn (subst f (OTInt(-1)))
     | _         -> false
   in fn u
@@ -658,7 +658,7 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
                     fixy t.pos ko (in_pos t.pos (binder_name f))
                       (fun x -> fn (subst f (dummy_pos (LVar x))))
     | KAbs(f)    -> kabs t.pos (dummy_pos (binder_name f))
-                      (fun x -> fn (subst f (TVar x)))
+                      (fun x -> fn (subst f (KVari x)))
     | OAbs(f)    -> oabs t.pos (dummy_pos (binder_name f))
                       (fun x -> fn (subst f (OVari x)))
     | Appl(a,b)  -> appl t.pos (fn a) (fn b)
@@ -721,31 +721,31 @@ let neg = function
    and we traverse all constants ... One could also precompute the
    variance of definitions to avoid substitution *)
 let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
-  let dummy = Prod [] in
+  let kdummy = KProd [] in
   let odummy = OTInt(-42) in
   let rec aux occ acc k =
     match repr k with
-    | TVar(x)   -> acc
-    | Func(a,b) -> aux (neg occ) (aux occ acc b) a
-    | Prod(ks)
-    | DSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
-    | KAll(f)
-    | KExi(f)   -> aux occ acc (subst f dummy)
-    | OAll(f)
-    | OExi(f)   -> aux occ acc (subst f odummy)
-    | FixM(o,f)
-    | FixN(o,f) -> aux occ (aux3 acc o) (subst f dummy)
-    | DPrj(t,_) -> aux2 acc t
-    | With(a,_) -> aux occ acc a (* FIXME *)
-    | TDef(d,a) ->
+    | KVari(x)   -> acc
+    | KFunc(a,b) -> aux (neg occ) (aux occ acc b) a
+    | KProd(ks)
+    | KDSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
+    | KKAll(f)
+    | KKExi(f)   -> aux occ acc (subst f kdummy)
+    | KOAll(f)
+    | KOExi(f)   -> aux occ acc (subst f odummy)
+    | KFixM(o,f)
+    | KFixN(o,f) -> aux occ (aux3 acc o) (subst f kdummy)
+    | KDPrj(t,_) -> aux2 acc t
+    | KWith(a,_) -> aux occ acc a (* FIXME *)
+    | KDefi(d,a) ->
        let acc = ref acc in
        Array.iteri (fun i k ->
          acc := aux (compose occ d.tdef_variance.(i)) !acc k) a;
        !acc
-    | UCst(t,f)
-    | ECst(t,f) -> let a = subst f dummy in aux2 (aux InEps acc a) t
-    | UVar(u)   -> if u.uvar_key = i then combine acc occ else acc
-    | TInt(_)   -> assert false
+    | KUCst(t,f)
+    | KECst(t,f) -> let a = subst f kdummy in aux2 (aux InEps acc a) t
+    | KUVar(u)   -> if u.uvar_key = i then combine acc occ else acc
+    | KTInt(_)   -> assert false
   and aux2 acc t = match t.elt with
     | Cnst(t,k1,k2) -> aux2 (aux InEps (aux InEps acc k1) k2) (subst t (dummy_pos (Reco [])))
     | CstY(t,k)     -> aux2 (aux InEps acc k) (subst t (dummy_pos (Reco [])))
@@ -754,7 +754,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | Cons(_,t)     -> aux2 acc t
     | FixY(_,f)
     | LAbs(_,f)     -> aux2 acc (subst f (dummy_pos (Reco [])))
-    | KAbs(f)       -> aux2 acc (subst f (Prod []))
+    | KAbs(f)       -> aux2 acc (subst f (KProd []))
     | OAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
     | Appl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | Reco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
@@ -777,20 +777,20 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
 let lift_kind : kind -> kind bindbox = fun k ->
   let rec fn k =
       match repr k with
-      | Func(a,b) -> func (fn a) (fn b)
-      | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
-      | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | KAll(f)   -> kall (binder_name f) (fun x -> fn (subst f (TVar x)))
-      | KExi(f)   -> kexi (binder_name f) (fun x -> fn (subst f (TVar x)))
-      | OAll(f)   -> oall (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | OExi(f)   -> oexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | FixM(o,f) -> fixm (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
-      | FixN(o,f) -> fixn (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
-      | TVar x    -> box_of_var x
-      | TDef(d,a) -> tdef d (Array.map fn a)
-      | DPrj(t,s) -> dprj (map_term fn t) s
-      | With(t,(s,a)) -> wIth (fn t) s (fn a)
-      | t         -> box t
+      | KFunc(a,b) -> kfunc (fn a) (fn b)
+      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KVari(x)   -> box_of_var x
+      | KDefi(d,a) -> kdefi d (Array.map fn a)
+      | KDPrj(t,s) -> kdprj (map_term fn t) s
+      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+      | t          -> box t
     and gn o =
       match orepr o with
       | OVari x -> box_of_var x
@@ -806,20 +806,20 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
   unbox (bind mk_free_tvar "X" (fun x ->
     let rec fn k =
       match repr k with
-      | Func(a,b) -> func (fn a) (fn b)
-      | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
-      | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | KAll(f)   -> kall (binder_name f) (fun x -> fn (subst f (TVar x)))
-      | KExi(f)   -> kexi (binder_name f) (fun x -> fn (subst f (TVar x)))
-      | OAll(f)   -> oall (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | OExi(f)   -> oexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | FixM(o,f) -> fixm (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
-      | FixN(o,f) -> fixn (binder_name f) (gn o) (fun x -> fn (subst f (TVar x)))
-      | UVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
-      | TVar x    -> box_of_var x
-      | TDef(d,a) -> tdef d (Array.map fn a)
-      | DPrj(t,s) -> dprj (map_term fn t) s
-      | With(t,(s,a)) -> wIth (fn t) s (fn a)
+      | KFunc(a,b) -> kfunc (fn a) (fn b)
+      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KUVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
+      | KVari(x)   -> box_of_var x
+      | KDefi(d,a) -> kdefi d (Array.map fn a)
+      | KDPrj(t,s) -> kdprj (map_term fn t) s
+      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
       | t         -> box t
     and gn o =
       match orepr o with
@@ -835,10 +835,10 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
 
 let contract_mu = ref true
 let is_mu f = !contract_mu &&
-  match full_repr (subst f (Prod [])) with FixM(OConv,_) -> true
+  match full_repr (subst f (KProd [])) with KFixM(OConv,_) -> true
   | _ -> false
 let is_nu f = !contract_mu &&
-  match full_repr (subst f (Prod [])) with FixN(OConv,_) -> true
+  match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
 let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
@@ -858,38 +858,36 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
   in
   let rec fn pos k =
     match repr k with
-    | Func(a,b) -> func (fn (neg pos) a) (fn pos b)
-    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn pos a)) fs)
-    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
-    | KAll(f)   -> kall (binder_name f) (fun x -> fn pos (subst f (TVar x)))
-    | KExi(f)   -> kexi (binder_name f) (fun x -> fn pos (subst f (TVar x)))
-    | OAll(f)   -> oall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | OExi(f)   -> oexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | FixM(OConv,f) when !contract_mu && is_mu f ->
+    | KFunc(a,b) -> kfunc (fn (neg pos) a) (fn pos b)
+    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn pos a)) fs)
+    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
+    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn pos (subst f (KVari x)))
+    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn pos (subst f (KVari x)))
+    | KOAll(f)   -> koall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
+    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
+    | KFixM(OConv,f) when !contract_mu && is_mu f ->
        let aux x =
          match full_repr (subst f x) with
-         | FixM(OConv,g) -> subst g x
-         | _       -> assert false (* Unreachable. *)
+         | KFixM(OConv,g) -> subst g x
+         | _              -> assert false (* Unreachable. *)
        in
        let f = binder_from_fun (binder_name f) aux in
-       let a' = FixM(OConv, f) in
+       let a' = KFixM(OConv, f) in
        fn pos a'
-    | FixN(OConv,f) when !contract_mu && is_nu f ->
+    | KFixN(OConv,f) when !contract_mu && is_nu f ->
        let aux x =
          match full_repr (subst f x) with
-         | FixN(OConv,g) -> subst g x
-         | _       -> assert false (* Unreachable. *)
+         | KFixN(OConv,g) -> subst g x
+         | _              -> assert false (* Unreachable. *)
        in
        let f = binder_from_fun (binder_name f) aux in
-       let a' = FixN(OConv, f) in
+       let a' = KFixN(OConv, f) in
        fn pos a'
-    | FixM(OVari o,f) ->
-       fixm (binder_name f) (box_of_var o)
-         (fun x -> fn pos (subst f (TVar x)))
-    | FixN(OVari o,f) ->
-       fixn (binder_name f) (box_of_var o)
-         (fun x -> fn pos (subst f (TVar x)))
-    | FixM(o,f) ->
+    | KFixM(OVari o,f) ->
+       kfixm (binder_name f) (box_of_var o) (fun x -> fn pos (subst f (KVari x)))
+    | KFixN(OVari o,f) ->
+       kfixn (binder_name f) (box_of_var o) (fun x -> fn pos (subst f (KVari x)))
+    | KFixM(o,f) ->
        let o =
          if o <> OConv && pos <> InEps then search o
          else if o = OConv && pos = Neg then (match fix with
@@ -898,8 +896,8 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
             let o' = OLess(o,w) in create o')
          else o
        in
-       fixm (binder_name f) (box o) (fun x -> fn pos (subst f (TVar x)))
-    | FixN(o,f) ->
+       kfixm (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
+    | KFixN(o,f) ->
        let o =
          if o <> OConv && pos <> InEps then search o
          else if o = OConv && pos = Pos then (match fix with
@@ -908,12 +906,12 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
             let o' = OLess(o,w) in create o')
          else o
        in
-       fixn (binder_name f) (box o) (fun x -> fn pos (subst f (TVar x)))
-    | TDef(d,a) -> fn pos (msubst d.tdef_value a)
-    | DPrj(t,s) -> dprj (map_term (fn InEps) t) s
-    | With(t,(s,a)) -> wIth (fn pos t) s (fn InEps a)
-    | TVar x    -> box_of_var x
-    | t         -> box t
+       kfixn (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
+    | KDefi(d,a) -> fn pos (msubst d.tdef_value a)
+    | KDPrj(t,s) -> kdprj (map_term (fn InEps) t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn InEps a)
+    | KVari(x)   -> box_of_var x
+    | t          -> box t
   in
   let k1 = unbox (fn (neg pos) k1) in
   let k2 = unbox (fn pos k2) in
@@ -925,23 +923,23 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
   in
   let rec fn k =
     match repr k with
-    | Func(a,b) -> func (fn a) (fn b)
-    | Prod(fs)  -> prod (List.map (fun (l,a) -> (l, fn a)) fs)
-    | DSum(cs)  -> dsum (List.map (fun (c,a) -> (c, fn a)) cs)
-    | KAll(f)   -> kall (binder_name f) (fun x -> fn (subst f (TVar x)))
-    | KExi(f)   -> kexi (binder_name f) (fun x -> fn (subst f (TVar x)))
-    | OAll(f)   -> oall (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | OExi(f)   -> oexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | FixM(OVari x,f) -> fixm (binder_name f) (box_of_var x) (fun x -> fn (subst f (TVar x)))
-    | FixN(OVari x,f) -> fixn (binder_name f) (box_of_var x) (fun x -> fn (subst f (TVar x)))
-    | FixM(OTInt i,f) -> fixm (binder_name f) (box (get i))  (fun x -> fn (subst f (TVar x)))
-    | FixN(OTInt i,f) -> fixn (binder_name f) (box (get i))  (fun x -> fn (subst f (TVar x)))
-    | FixM(o, f) -> fixm (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
-    | FixN(o, f) -> fixn (binder_name f) (box o) (fun x -> fn (subst f (TVar x)))
-    | TVar x    -> box_of_var x
-    | TDef(d,a) -> fn (msubst d.tdef_value a)
-    | DPrj(t,s) -> dprj (map_term fn t) s
-    | With(t,(s,a)) -> wIth (fn t) s (fn a)
-    | t         -> box t
+    | KFunc(a,b) -> kfunc (fn a) (fn b)
+    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
+    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
+    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
+    | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
+    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+    | KFixM(OVari x,f) -> kfixm (binder_name f) (box_of_var x) (fun x -> fn (subst f (KVari x)))
+    | KFixN(OVari x,f) -> kfixn (binder_name f) (box_of_var x) (fun x -> fn (subst f (KVari x)))
+    | KFixM(OTInt i,f) -> kfixm (binder_name f) (box (get i))  (fun x -> fn (subst f (KVari x)))
+    | KFixN(OTInt i,f) -> kfixn (binder_name f) (box (get i))  (fun x -> fn (subst f (KVari x)))
+    | KFixM(o, f) -> kfixm (binder_name f) (box o) (fun x -> fn (subst f (KVari x)))
+    | KFixN(o, f) -> kfixn (binder_name f) (box o) (fun x -> fn (subst f (KVari x)))
+    | KVari(x)   -> box_of_var x
+    | KDefi(d,a) -> fn (msubst d.tdef_value a)
+    | KDPrj(t,s) -> kdprj (map_term fn t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+    | t          -> box t
   in
   unbox (fn k)

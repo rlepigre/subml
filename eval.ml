@@ -6,7 +6,7 @@ let rec eval : term -> term = fun t0 ->
   | Coer(t,_) -> eval t
   | LVar(_)   -> t0
   | LAbs(_,_) -> t0
-  | KAbs(f)   -> eval (subst f (Prod []))
+  | KAbs(f)   -> eval (subst f (KProd []))
   | OAbs(f)   -> eval (subst f (OTInt(-1)))
   | Appl(t,u) ->
       begin
