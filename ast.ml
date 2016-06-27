@@ -597,10 +597,10 @@ and leq_ordinal c o1 o2 =
 and less_ordinal c o1 o2 =
   let o1 = orepr o1 and o2 = orepr o2 in
   match o1 with
-  | OLess(o,_)  -> leq_ordinal c o o2
-  | OUVar(o, p) -> leq_ordinal  c o o2
-  | OMaxi(l1)   -> List.for_all (fun o1 -> less_ordinal c o1 o2) l1
-  | _           -> false
+  | OLess(o,_) -> leq_ordinal c o o2
+  | OUVar(o,_) -> less_ordinal c o o2
+  | OMaxi(l1)  -> List.for_all (fun o1 -> less_ordinal c o1 o2) l1
+  | _          -> false
 
 (* FIXME: normalize elements, sort, eliminate duplicate, hashcons ? *)
 let omax = function
