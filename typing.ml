@@ -143,11 +143,11 @@ let rec neg_kind k =
 
 let uwit_kind t f =
   (* FIXME: could use t *)
-  neg_kind (subst f (dummy_pos (TagI 0)))
+  neg_kind (subst f (dummy_pos (TTInt 0)))
 
 let ewit_kind t f =
   (* FIXME: could use t *)
-  pos_kind (subst f (dummy_pos (TagI 0)))
+  pos_kind (subst f (dummy_pos (TTInt 0)))
 
 let has_leading_exists : kind -> bool = fun k ->
   let rec fn k =
@@ -295,7 +295,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> term * subtype_ctxt * (i
       List.iter (fun (a0,b0,index,os0) ->
         if eq_kind a' a0 && eq_kind b0 b' then (
           raise (Induction_hypothesis(index,os)))) ctxt.induction_hyp;
-      let t = if os = [] then t else generic_cnst a b in
+      let t = if os = [] then t else generic_tcnst a b in
       let ctxt = { ctxt with induction_hyp = (a', b', fnum, os)::ctxt.induction_hyp } in
       (t, ctxt, os, Some fnum)
     with Exit ->
@@ -342,15 +342,15 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
     begin match (a,b) with
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
-        let f x = appl dummy_position (box t) x in
-        let bnd = unbox (bind (lvar_p dummy_position) "x" f) in
-        let wit = cnst bnd a2 b2 in
+        let f x = tappl dummy_position (box t) x in
+        let bnd = unbox (bind (tvari_p dummy_position) "x" f) in
+        let wit = tcnst bnd a2 b2 in
         if has_uvar b1 then begin
-          loops := !loops @ subtype ctxt (dummy_pos (Appl(t,wit))) b1 b2;
+          loops := !loops @ subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2;
           loops := !loops @ subtype ctxt wit a2 a1;
         end else begin
           loops := !loops @ subtype ctxt wit a2 a1;
-          loops := !loops @ subtype ctxt (dummy_pos (Appl(t,wit))) b1 b2;
+          loops := !loops @ subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2;
         end;
         trace_sub_pop NArrow
 
@@ -359,7 +359,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
         let check_field (l,b) =
           let a = try List.assoc l fsa with Not_found ->
             subtype_error ("Product fields clash: "^l) in
-          loops := !loops @ subtype ctxt (dummy_pos (Proj(t,l))) a b
+          loops := !loops @ subtype ctxt (dummy_pos (TProj(t,l))) a b
         in
         List.iter check_field fsb;
         trace_sub_pop NProd
@@ -370,7 +370,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
     | (KDSum(csa), KDSum(csb)) ->
         let check_variant (c,a) =
           let t = unbox
-            (case dummy_position (box t) [(c, idt)])
+            (tcase dummy_position (box t) [(c, idt)])
           in
           try
             let b = List.assoc c csb in
@@ -445,7 +445,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
 
     (* μ and ν - least and greatest fixpoint. *)
     | (_          , KFixN(o,f)) ->
-       let g = bind mk_free_ovar (binder_name f) (fun o ->
+       let g = bind mk_free_ovari (binder_name f) (fun o ->
          bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
        in
        let o' = OLess (o,NotIn(t,unbox g)) in
@@ -456,7 +456,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
        trace_sub_pop NNuRight
 
     | (KFixM(o,f)  , _        ) ->
-       let g = bind mk_free_ovar (binder_name f) (fun o ->
+       let g = bind mk_free_ovari (binder_name f) (fun o ->
          bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
        in
        let o' = OLess (o,In(t,unbox g)) in
@@ -502,7 +502,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
 and generic_subtype : kind -> kind -> unit = fun a b ->
   let calls = ref [] in
   let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
-  let wit = generic_cnst a b in
+  let wit = generic_tcnst a b in
   let _ = subtype ctxt wit a b in
   if not (sct !calls)  then subtype_error "loop"
 
@@ -523,30 +523,30 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
     trace_typing t c;
     begin
     try match t.elt with
-    | Coer(t,a) ->
+    | TCoer(t,a) ->
         wf_subtype ctxt t a c;
         type_check ctxt t a
-    | LVar(_) ->
+    | TVari(_) ->
         type_error t.pos "Cannot type-check open terms..."
-    | LAbs(ao,f) ->
+    | TAbst(ao,f) ->
         let a = match ao with None -> new_uvar () | Some a -> a in
         let b = new_uvar () in
         let c' = KFunc(a,b) in
         wf_subtype ctxt t c' c;
         let ctxt = collect_pos ctxt (false,t) c c' in
-        let wit = cnst f a b in
+        let wit = tcnst f a b in
         type_check ctxt (subst f wit) b
-    | KAbs(f) ->
+    | TKAbs(f) ->
        let k = lambda_kind t c (binder_name f) in
        type_check ctxt (subst f k) c
-    | OAbs(f) ->
+    | TOAbs(f) ->
        let k = lambda_ordinal t c (binder_name f) in
        type_check ctxt (subst f k) c
-    | Appl(t,u) ->
+    | TAppl(t,u) ->
        let a = new_uvar () in
        type_check ctxt u a;
        type_check ctxt t (KFunc(a,c))
-    | Reco(fs) ->
+    | TReco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
         wf_subtype ctxt t (KProd(ts)) c;
         let check (l,t) =
@@ -554,15 +554,15 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
           type_check ctxt t cl
         in
         List.iter check fs
-    | Proj(t,l) ->
+    | TProj(t,l) ->
         let c' = KProd([(l,c)]) in
         type_check ctxt t c'
-    | Cons(d,v) ->
+    | TCons(d,v) ->
         let a = new_uvar () in
         let c' = KDSum([(d,a)]) in
         wf_subtype ctxt t c' c;
         type_check ctxt v a
-    | Case(t,l) ->
+    | TCase(t,l) ->
        let ts = List.map (fun (c,_) -> (c, new_uvar ())) l in
        let c' = KDSum(ts) in
        type_check ctxt t (KDSum(ts));
@@ -572,11 +572,11 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
           type_check ctxt f (KFunc(cc,c))
         in
         List.iter check l
-    | VDef(v) ->
+    | TDefi(v) ->
         wf_subtype ctxt v.value v.ttype c
-    | Prnt(_) ->
+    | TPrnt(_) ->
        wf_subtype ctxt t (KProd []) c
-    | FixY(ko,f) ->
+    | TFixY(ko,f) ->
        (* what if KUVar ? -> error ? *)
        let c0 = match ko with
          | None -> c
@@ -604,21 +604,21 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
             ctxt.calls := call :: !(ctxt.calls);
        end;
        let ctxt = { ctxt with induction_hyp = (c, c, fnum, os)::ctxt.induction_hyp } in
-       let wit = in_pos t.pos (CstY(f,c)) in
+       let wit = in_pos t.pos (TCstY(f,c)) in
        let t = subst f wit in
        (* Elimination of OAbs in front of t *)
        let rec fn t = match t.elt with
-         | OAbs f ->
+         | TOAbs f ->
             (try
               let o = List.assoc (binder_name f) ords in
               fn (subst f o)
             with Not_found -> t)
-         | _ -> t
+         | _       -> t
        in
        let t = fn t in
        type_check ctxt t c0
 
-    | CstY(_,a) ->
+    | TCstY(_,a) ->
        if List.exists (fun (c',c'',fnum,os) ->
          if a == c'' && a == c' then
            match ctxt.induction_hyp with
@@ -638,9 +638,9 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
          ()
        else
          assert false
-    | Cnst(_,a,b) ->
+    | TCnst(_,a,b) ->
        wf_subtype ctxt t a c
-    | TagI(_) ->
+    | TTInt(_) ->
        assert false (* Cannot happen. *)
     with
     | Subtype_error msg -> type_error t.pos msg

@@ -468,7 +468,7 @@ let run_command : command -> unit = function
           env := (arg_names.(i), (k, (Register(i,tdef_variance, tdef_depth), 0))) :: !env) args;
         unsugar_kind {empty_env with kinds = !env} k
       in
-      let b = mbind mk_free_tvar arg_names f in
+      let b = mbind mk_free_kvari arg_names f in
       let tdef_tex_name =
         match tex with
         | None   -> "\\mathrm{"^name^"}"

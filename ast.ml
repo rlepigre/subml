@@ -161,39 +161,39 @@ and term = term' position
 and term' =
   (**** Main term constructors ****)
   (* Type coercion. *)
-  | Coer of term * kind
+  | TCoer of term * kind
   (* Free λ-variable. *)
-  | LVar of term variable
+  | TVari of term variable
   (* λ-abstraction. *)
-  | LAbs of kind option * (term, term) binder
+  | TAbst of kind option * (term, term) binder
   (* Application. *)
-  | Appl of term * term
+  | TAppl of term * term
   (* Record. *)
-  | Reco of (string * term) list
+  | TReco of (string * term) list
   (* Projection. *)
-  | Proj of term * string
+  | TProj of term * string
   (* Variant. *)
-  | Cons of string * term
+  | TCons of string * term
   (* Case analysis. *)
-  | Case of term * (string * term) list
+  | TCase of term * (string * term) list
   (* User-defined term. *)
-  | VDef of value_def
+  | TDefi of value_def
   (* Print a string (side effect) and behave like the term. *)
-  | Prnt of string
+  | TPrnt of string
   (* Fixpoint combinator. *)
-  | FixY of kind option * (term,term) binder
+  | TFixY of kind option * (term,term) binder
   (* Lambda on a type, semantics via epsilon *)
-  | KAbs of (kind, term) binder
+  | TKAbs of (kind, term) binder
   (* Lambda on an ordinal, semantics via epsilon *)
-  | OAbs of (ordinal, term) binder
+  | TOAbs of (ordinal, term) binder
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
-  | Cnst of ((term, term) binder * kind * kind)
+  | TCnst of ((term, term) binder * kind * kind)
   (* Specific witness for recursive definitions. *)
-  | CstY of ((term, term) binder * kind)
+  | TCstY of ((term, term) binder * kind)
   (* Integer tag. *)
-  | TagI of int
+  | TTInt of int
 
 and value_def =
   (* Name of the value. *)
@@ -282,35 +282,35 @@ type ovar = ordinal variable
 type obox = ordinal bindbox
 
 (* Kind variable management. *)
-let mk_free_tvar : kind variable -> kind =
+let mk_free_kvari : kind variable -> kind =
   fun x -> KVari(x)
 
-let new_tvar : string -> kind variable =
-  new_var mk_free_tvar
+let new_kvari : string -> kind variable =
+  new_var mk_free_kvari
 
 (* Term variable management. *)
-let mk_free_lvar : pos -> term variable -> term =
-  fun p x -> in_pos p (LVar(x))
+let mk_free_tvari : pos -> term variable -> term =
+  fun p x -> in_pos p (TVari(x))
 
-let new_lvar : pos -> string -> term variable =
-  fun p -> new_var (mk_free_lvar p)
+let new_tvari : pos -> string -> term variable =
+  fun p -> new_var (mk_free_tvari p)
 
-let new_lvar' : string -> term variable =
-  new_lvar dummy_position
+let new_tvari' : string -> term variable =
+  new_tvari dummy_position
 
 (* Ordinal variable management. *)
-let mk_free_ovar : ovar -> ordinal =
+let mk_free_ovari : ovar -> ordinal =
   fun o -> OVari(o)
 
-let new_ovar : string -> ovar =
-  new_var mk_free_ovar
+let new_ovari : string -> ovar =
+  new_var mk_free_ovari
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
  ****************************************************************************)
 
 let kvari : string -> kbox =
-  fun x -> box_of_var (new_tvar x)
+  fun x -> box_of_var (new_kvari x)
 
 let kfunc : kbox -> kbox -> kbox =
   box_apply2 (fun t u -> KFunc(t,u))
@@ -327,19 +327,19 @@ let kdsum : (string * kbox) list -> kbox =
 
 let kkall : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KKAll(b)) (vbind mk_free_tvar x f)
+    box_apply (fun b -> KKAll(b)) (vbind mk_free_kvari x f)
 
 let kkexi : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KKExi(b)) (vbind mk_free_tvar x f)
+    box_apply (fun b -> KKExi(b)) (vbind mk_free_kvari x f)
 
 let koall : string -> (ovar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KOAll(b)) (vbind mk_free_ovar x f)
+    box_apply (fun b -> KOAll(b)) (vbind mk_free_ovari x f)
 
 let koexi : string -> (ovar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KOExi(b)) (vbind mk_free_ovar x f)
+    box_apply (fun b -> KOExi(b)) (vbind mk_free_ovari x f)
 
 let kdprj : tbox -> string -> kbox =
   fun t s ->
@@ -354,12 +354,12 @@ let kdefi : type_def -> kbox array -> kbox =
 
 let kfixn : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
-    let b = vbind mk_free_tvar x f in
+    let b = vbind mk_free_kvari x f in
     box_apply2 (fun o b -> KFixN(o,b)) o b
 
 let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
-    let b = vbind mk_free_tvar x f in
+    let b = vbind mk_free_kvari x f in
     box_apply2 (fun o b -> KFixM(o,b)) o b
 
 (* Unification variable management. Useful for typing. *)
@@ -388,110 +388,110 @@ let top : kind =
  *              Functional constructors with position for terms             *
  ****************************************************************************)
 
-let coer_p : pos -> term -> kind -> term =
-  fun p t k -> in_pos p (Coer(t,k))
+let tcoer_p : pos -> term -> kind -> term =
+  fun p t k -> in_pos p (TCoer(t,k))
 
-let lvar_p : pos -> term variable -> term =
-  fun p x -> in_pos p (LVar(x))
+let tvari_p : pos -> term variable -> term =
+  fun p x -> in_pos p (TVari(x))
 
-let labs_p : pos -> kind option -> (term, term) binder -> term =
-  fun p ko b -> in_pos p (LAbs(ko,b))
+let tabst_p : pos -> kind option -> (term, term) binder -> term =
+  fun p ko b -> in_pos p (TAbst(ko,b))
 
-let kabs_p : pos -> (kind, term) binder -> term =
-  fun p b -> in_pos p (KAbs b)
+let tkabs_p : pos -> (kind, term) binder -> term =
+  fun p b -> in_pos p (TKAbs(b))
 
-let oabs_p : pos -> (ordinal, term) binder -> term =
-  fun p b -> in_pos p (OAbs b)
+let toabs_p : pos -> (ordinal, term) binder -> term =
+  fun p b -> in_pos p (TOAbs(b))
 
-let appl_p : pos -> term -> term -> term =
-  fun p t u -> in_pos p (Appl(t,u))
+let tappl_p : pos -> term -> term -> term =
+  fun p t u -> in_pos p (TAppl(t,u))
 
-let reco_p : pos -> (string * term) list -> term =
-  fun p fs -> in_pos p (Reco(fs))
+let treco_p : pos -> (string * term) list -> term =
+  fun p fs -> in_pos p (TReco(fs))
 
-let proj_p : pos -> term -> string -> term =
-  fun p t l -> in_pos p (Proj(t,l))
+let tproj_p : pos -> term -> string -> term =
+  fun p t l -> in_pos p (TProj(t,l))
 
-let cons_p : pos -> string -> term -> term =
-  fun p c t -> in_pos p (Cons(c,t))
+let tcons_p : pos -> string -> term -> term =
+  fun p c t -> in_pos p (TCons(c,t))
 
-let case_p : pos -> term -> (string * term) list -> term =
-  fun p t cs -> in_pos p (Case(t,cs))
+let tcase_p : pos -> term -> (string * term) list -> term =
+  fun p t cs -> in_pos p (TCase(t,cs))
 
-let vdef_p : pos -> value_def -> term =
-  fun p v -> in_pos p (VDef(v))
+let tdefi_p : pos -> value_def -> term =
+  fun p v -> in_pos p (TDefi(v))
 
-let prnt_p : pos -> string -> term =
-  fun p s -> in_pos p (Prnt(s))
+let tprnt_p : pos -> string -> term =
+  fun p s -> in_pos p (TPrnt(s))
 
-let fixy_p : pos -> kind option -> (term, term) binder -> term =
-  fun p ko t -> in_pos p (FixY(ko,t))
+let tfixy_p : pos -> kind option -> (term, term) binder -> term =
+  fun p ko t -> in_pos p (TFixY(ko,t))
 
-let cnst_p : pos -> ((term, term) binder * kind * kind) -> term =
-  fun p c -> in_pos p (Cnst(c))
+let tcnst_p : pos -> ((term, term) binder * kind * kind) -> term =
+  fun p c -> in_pos p (TCnst(c))
 
 (****************************************************************************
  *                     Smart constructors for terms                         *
  ****************************************************************************)
 
-let coer : pos -> tbox -> kbox -> tbox =
-  fun p -> box_apply2 (coer_p p)
+let tcoer : pos -> tbox -> kbox -> tbox =
+  fun p -> box_apply2 (tcoer_p p)
 
-let lvar : pos -> term variable -> tbox =
+let tvari : pos -> term variable -> tbox =
   fun p x -> box_of_var x
 
-let labs : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
+let tabst : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
   fun p ko x f ->
-    box_apply2 (labs_p p) (box_opt ko) (vbind (lvar_p x.pos) x.elt f)
+    box_apply2 (tabst_p p) (box_opt ko) (vbind (tvari_p x.pos) x.elt f)
 
-let kabs : pos -> strpos -> (kvar -> tbox) -> tbox =
+let tkabs : pos -> strpos -> (kvar -> tbox) -> tbox =
   fun p x f ->
-    box_apply (kabs_p p) (vbind mk_free_tvar x.elt f)
+    box_apply (tkabs_p p) (vbind mk_free_kvari x.elt f)
 
-let oabs : pos -> strpos -> (ovar -> tbox) -> tbox =
+let toabs : pos -> strpos -> (ovar -> tbox) -> tbox =
   fun p o f ->
-    box_apply (oabs_p p) (vbind mk_free_ovar o.elt f)
+    box_apply (toabs_p p) (vbind mk_free_ovari o.elt f)
 
 let idt : tbox =
-  labs dummy_position None (dummy_pos "x") (fun x -> box_of_var x)
+  tabst dummy_position None (dummy_pos "x") (fun x -> box_of_var x)
 
-let appl : pos -> tbox -> tbox -> tbox =
-  fun p -> box_apply2 (appl_p p)
+let tappl : pos -> tbox -> tbox -> tbox =
+  fun p -> box_apply2 (tappl_p p)
 
-let reco : pos -> (string * tbox) list -> tbox =
+let treco : pos -> (string * tbox) list -> tbox =
   fun p fs ->
     let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
-    box_apply (fun fs -> reco_p p fs) (box_list fs)
+    box_apply (fun fs -> treco_p p fs) (box_list fs)
 
-let proj : pos -> tbox -> string -> tbox =
-  fun p t l -> box_apply (fun t -> proj_p p t l) t
+let tproj : pos -> tbox -> string -> tbox =
+  fun p t l -> box_apply (fun t -> tproj_p p t l) t
 
-let case : pos -> tbox -> (string * tbox) list -> tbox =
+let tcase : pos -> tbox -> (string * tbox) list -> tbox =
   fun p t cs ->
     let aux (c,t) = box_apply (fun t -> (c,t)) t in
-    box_apply2 (case_p p) t (box_list (List.map aux cs))
+    box_apply2 (tcase_p p) t (box_list (List.map aux cs))
 
-let cons : pos -> string -> tbox -> tbox =
-  fun p c t -> box_apply (fun t -> cons_p p c t) t
+let tcons : pos -> string -> tbox -> tbox =
+  fun p c t -> box_apply (fun t -> tcons_p p c t) t
 
-let vdef : pos -> value_def -> tbox =
-  fun p vd -> box (vdef_p p vd)
+let tdefi : pos -> value_def -> tbox =
+  fun p vd -> box (tdefi_p p vd)
 
-let prnt : pos -> string -> tbox =
-  fun p s -> box (prnt_p p s)
+let tprnt : pos -> string -> tbox =
+  fun p s -> box (tprnt_p p s)
 
-let fixy : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
-  fun p ko x f -> box_apply2 (fixy_p p) (box_opt ko)
-                    (vbind (lvar_p x.pos) x.elt f)
+let tfixy : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
+  fun p ko x f -> box_apply2 (tfixy_p p) (box_opt ko)
+                    (vbind (tvari_p x.pos) x.elt f)
 
 (* Build a constant. Useful during typing. *)
-let cnst : (term, term) binder -> kind -> kind -> term =
-  fun s a b -> dummy_pos (Cnst(s,a,b))
+let tcnst : (term, term) binder -> kind -> kind -> term =
+  fun s a b -> dummy_pos (TCnst(s,a,b))
 
-let generic_cnst : kind -> kind -> term =
+let generic_tcnst : kind -> kind -> term =
   fun a b ->
-    let f = bind (lvar_p dummy_position) "x" (fun x -> x) in
-    dummy_pos (Cnst(unbox f,a,b))
+    let f = bind (tvari_p dummy_position) "x" (fun x -> x) in
+    dummy_pos (TCnst(unbox f,a,b))
 
 (****************************************************************************
  *                  Equality of types, terms and ordinals                   *
@@ -530,35 +530,36 @@ and eq_obinder c f1 f2 = f1 == f2 ||
   eq_kind c (subst f1 i) (subst f2 i)
 
 and eq_tbinder c f1 f2 = f1 == f2 ||
-  let i = incr c; dummy_pos (TagI(!c)) in
+  let i = incr c; dummy_pos (TTInt(!c)) in
   eq_term c (subst f1 i) (subst f2 i)
 
 and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
   let rec eq_term t1 t2 =
     t1.elt == t2.elt ||
     match (t1.elt, t2.elt) with
-    | (Coer(t1,_) , _          ) -> eq_term t1 t2
-    | (_          , Coer(t2,_) ) -> eq_term t1 t2
-    | (VDef(d1)   , _          ) -> eq_term d1.value t2
-    | (_          , VDef(d2)   ) -> eq_term t1 d2.value
-    | (KAbs(f)    , _          ) -> eq_term (subst f (KProd[])) t2
-    | (_          , KAbs(f)    ) -> eq_term t1 (subst f (KProd[]))
-    | (OAbs(f)    , _          ) -> eq_term (subst f (OTInt(-1))) t2
-    | (_          , OAbs(f)    ) -> eq_term t1 (subst f (OTInt(-1)))
-    | (LVar(x1)   , LVar(x2)   ) -> eq_variables x1 x2
-    | (LAbs(_,f1) , LAbs(_,f2) )
-    | (FixY(_,f1) , FixY(_,f2) ) -> eq_tbinder c f1 f2
-    | (Appl(t1,u1), Appl(t2,u2)) -> eq_term t1 t2 && eq_term u1 u2
-    | (Reco(fs1)  , Reco(fs2)  ) -> eq_assoc eq_term fs1 fs2
-    | (Proj(t1,l1), Proj(t2,l2)) -> l1 = l2 && eq_term t1 t2
-    | (Cons(c1,t1), Cons(c2,t2)) -> c1 = c2 && eq_term t1 t2
-    | (Case(t1,l1), Case(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
-    | (Prnt(s1)   , Prnt(s2)   ) -> s1 = s2
-    | (Cnst(c1)   , Cnst(c2)   ) -> let (f1,a1,b1) = c1 and (f2,a2,b2) = c2 in
-                                    eq_tbinder c f1 f2 && eq_kind c a1 a2
-                                    && eq_kind c b1 b2
-    | (CstY(f1,a1), CstY(f2,a2)) -> eq_tbinder c f1 f2 && eq_kind c a1 a2
-    | (_          , _          ) -> false
+    | (TCoer(t1,_) , _           ) -> eq_term t1 t2
+    | (_           , TCoer(t2,_) ) -> eq_term t1 t2
+    | (TDefi(d1)   , _           ) -> eq_term d1.value t2
+    | (_           , TDefi(d2)   ) -> eq_term t1 d2.value
+    | (TKAbs(f)    , _           ) -> eq_term (subst f (KProd[])) t2
+    | (_           , TKAbs(f)    ) -> eq_term t1 (subst f (KProd[]))
+    | (TOAbs(f)    , _           ) -> eq_term (subst f (OTInt(-1))) t2
+    | (_           , TOAbs(f)    ) -> eq_term t1 (subst f (OTInt(-1)))
+    | (TVari(x1)   , TVari(x2)   ) -> eq_variables x1 x2
+    | (TAbst(_,f1) , TAbst(_,f2) )
+    | (TFixY(_,f1) , TFixY(_,f2) ) -> eq_tbinder c f1 f2
+    | (TAppl(t1,u1), TAppl(t2,u2)) -> eq_term t1 t2 && eq_term u1 u2
+    | (TReco(fs1)  , TReco(fs2)  ) -> eq_assoc eq_term fs1 fs2
+    | (TProj(t1,l1), TProj(t2,l2)) -> l1 = l2 && eq_term t1 t2
+    | (TCons(c1,t1), TCons(c2,t2)) -> c1 = c2 && eq_term t1 t2
+    | (TCase(t1,l1), TCase(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
+    | (TPrnt(s1)   , TPrnt(s2)   ) -> s1 = s2
+    | (TCnst(c1)   , TCnst(c2)   ) -> let (f1,a1,b1) = c1 in
+                                      let (f2,a2,b2) = c2 in
+                                      eq_tbinder c f1 f2 && eq_kind c a1 a2
+                                        && eq_kind c b1 b2
+    | (TCstY(f1,a1), TCstY(f2,a2)) -> eq_tbinder c f1 f2 && eq_kind c a1 a2
+    | (_           , _           ) -> false
   in eq_term t1 t2
 
 and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
@@ -634,12 +635,12 @@ let eq_head_term t u =
   let rec fn u =
     t == u || eq_term t u ||
     match u.elt with
-    | Appl(u,_)
-    | Case(u,_)
-    | Proj(u,_) -> fn u
-    | KAbs(f)   -> fn (subst f (KProd[]))
-    | OAbs(f)   -> fn (subst f (OTInt(-1)))
-    | _         -> false
+    | TAppl(u,_)
+    | TCase(u,_)
+    | TProj(u,_) -> fn u
+    | TKAbs(f)   -> fn (subst f (KProd[]))
+    | TOAbs(f)   -> fn (subst f (OTInt(-1)))
+    | _          -> false
   in fn u
 
  (***************************************************************************
@@ -649,24 +650,24 @@ let eq_head_term t u =
 let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
   let rec fn t =
     match t.elt with
-    | Coer(t,k)  -> coer t.pos (fn t) (kn k)
-    | LVar x     -> box_of_var x
-    | LAbs(ko,f) -> let ko = map_opt kn ko in
-                    labs t.pos ko (in_pos t.pos (binder_name f))
-                      (fun x -> fn (subst f (dummy_pos (LVar x))))
-    | FixY(ko,f) -> let ko = map_opt kn ko in
-                    fixy t.pos ko (in_pos t.pos (binder_name f))
-                      (fun x -> fn (subst f (dummy_pos (LVar x))))
-    | KAbs(f)    -> kabs t.pos (dummy_pos (binder_name f))
-                      (fun x -> fn (subst f (KVari x)))
-    | OAbs(f)    -> oabs t.pos (dummy_pos (binder_name f))
-                      (fun x -> fn (subst f (OVari x)))
-    | Appl(a,b)  -> appl t.pos (fn a) (fn b)
-    | Reco(fs)   -> reco t.pos (List.map (fun (s,a) -> (s, fn a)) fs)
-    | Proj(a,s)  -> proj t.pos (fn a) s
-    | Cons(s,a)  -> cons t.pos s (fn a)
-    | Case(a,fs) -> case t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
-    | u          -> box_apply (in_pos t.pos) (box u)
+    | TCoer(t,k)  -> tcoer t.pos (fn t) (kn k)
+    | TVari(x)    -> box_of_var x
+    | TAbst(ko,f) -> let ko = map_opt kn ko in
+                     tabst t.pos ko (in_pos t.pos (binder_name f))
+                       (fun x -> fn (subst f (dummy_pos (TVari x))))
+    | TFixY(ko,f) -> let ko = map_opt kn ko in
+                     tfixy t.pos ko (in_pos t.pos (binder_name f))
+                       (fun x -> fn (subst f (dummy_pos (TVari x))))
+    | TKAbs(f)    -> tkabs t.pos (dummy_pos (binder_name f))
+                       (fun x -> fn (subst f (KVari x)))
+    | TOAbs(f)    -> toabs t.pos (dummy_pos (binder_name f))
+                       (fun x -> fn (subst f (OVari x)))
+    | TAppl(a,b)  -> tappl t.pos (fn a) (fn b)
+    | TReco(fs)   -> treco t.pos (List.map (fun (s,a) -> (s, fn a)) fs)
+    | TProj(a,s)  -> tproj t.pos (fn a) s
+    | TCons(s,a)  -> tcons t.pos s (fn a)
+    | TCase(a,fs) -> tcase t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
+    | u           -> box_apply (in_pos t.pos) (box u)
   in fn t
 
 (****************************************************************************
@@ -747,22 +748,22 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | KUVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | KTInt(_)   -> assert false
   and aux2 acc t = match t.elt with
-    | Cnst(t,k1,k2) -> aux2 (aux InEps (aux InEps acc k1) k2) (subst t (dummy_pos (Reco [])))
-    | CstY(t,k)     -> aux2 (aux InEps acc k) (subst t (dummy_pos (Reco [])))
-    | Coer(t,_)
-    | Proj(t,_)
-    | Cons(_,t)     -> aux2 acc t
-    | FixY(_,f)
-    | LAbs(_,f)     -> aux2 acc (subst f (dummy_pos (Reco [])))
-    | KAbs(f)       -> aux2 acc (subst f (KProd []))
-    | OAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
-    | Appl(t1, t2)  -> aux2 (aux2 acc t1) t2
-    | Reco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
-    | Case(t,l)     -> List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
-    | LVar _
-    | VDef _
-    | Prnt _
-    | TagI _        -> acc
+    | TCnst(t,k1,k2) -> aux2 (aux InEps (aux InEps acc k1) k2) (subst t (dummy_pos (TReco [])))
+    | TCstY(t,k)     -> aux2 (aux InEps acc k) (subst t (dummy_pos (TReco [])))
+    | TCoer(t,_)
+    | TProj(t,_)
+    | TCons(_,t)     -> aux2 acc t
+    | TFixY(_,f)
+    | TAbst(_,f)     -> aux2 acc (subst f (dummy_pos (TReco [])))
+    | TKAbs(f)       -> aux2 acc (subst f (KProd []))
+    | TOAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
+    | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
+    | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
+    | TCase(t,l)     -> List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
+    | TVari(_)
+    | TDefi(_)
+    | TPrnt(_)
+    | TTInt(_)       -> acc
   and aux3 acc = function
     | OLess(o,(In(t,f)|NotIn(t,f))) -> aux InEps (aux2 (aux3 acc o) t) (subst f odummy)
     (* we keep this to ensure valid proof when simplifying useless induction
@@ -803,7 +804,7 @@ let lift_kind : kind -> kind bindbox = fun k ->
  ****************************************************************************)
 
 let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
-  unbox (bind mk_free_tvar "X" (fun x ->
+  unbox (bind mk_free_kvari "X" (fun x ->
     let rec fn k =
       match repr k with
       | KFunc(a,b) -> kfunc (fn a) (fn b)

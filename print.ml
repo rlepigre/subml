@@ -136,23 +136,23 @@ and print_kind unfold wrap ff t =
       in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
   | KKAll(f)  ->
-      let x = new_tvar (binder_name f) in
+      let x = new_kvari (binder_name f) in
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
   | KKExi(f)  ->
-      let x = new_tvar (binder_name f) in
+      let x = new_kvari (binder_name f) in
       fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
   | KOAll(f)  ->
-      let x = new_ovar (binder_name f) in
+      let x = new_ovari (binder_name f) in
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
   | KOExi(f)  ->
-      let x = new_ovar (binder_name f) in
+      let x = new_ovari (binder_name f) in
       fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
   | KFixM(o,b) ->
-      let x = new_tvar (binder_name b) in
+      let x = new_kvari (binder_name b) in
       let a = subst b (free_of x) in
       fprintf ff "μ%a%s %a" print_index_ordinal o (name_of x) pkindw a
   | KFixN(o,b) ->
-      let x = new_tvar (binder_name b) in
+      let x = new_kvari (binder_name b) in
       let a = subst b (free_of x) in
       fprintf ff "ν%a%s %a" print_index_ordinal o (name_of x) pkindw a
   | KDefi(td,args) ->
@@ -188,7 +188,7 @@ and print_occur ff = function
 and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;
   let names = mbinder_names kd.tdef_value in
-  let xs = new_mvar mk_free_tvar names in
+  let xs = new_mvar mk_free_kvari names in
   let k = msubst kd.tdef_value (Array.map free_of xs) in
   if Array.length names > 0 then
     begin
@@ -215,74 +215,74 @@ and pkind_def unfold ff kd =
 and print_term ?(in_proj=false) unfold ff t =
   let print_term = print_term unfold in
   let pkind = print_kind false false in
-  let not_def t = match t.elt with VDef _ -> false | _ -> true in
+  let not_def t = match t.elt with TDefi _ -> false | _ -> true in
   if not in_proj && not unfold && t.pos <> dummy_position && not_def t then
     fprintf ff "[%a]" position t.pos
   else match t.elt with
-  | Coer(t,a) ->
+  | TCoer(t,a) ->
       fprintf ff "(%a : %a)" print_term t pkind a
-  | LVar(x) ->
+  | TVari(x) ->
       pp_print_string ff (name_of x)
-  | LAbs(ao,b) ->
+  | TAbst(ao,b) ->
       let x = binder_name b in
-      let t = subst b (free_of (new_lvar' x)) in
+      let t = subst b (free_of (new_tvari' x)) in
       begin
         match ao with
         | None   -> fprintf ff "λ%s %a" x print_term t
         | Some a -> fprintf ff "λ(%s : %a) %a" x pkind a print_term t
       end
-  | KAbs(f) ->
+  | TKAbs(f) ->
      let x = binder_name f in
-     let t = subst f (free_of (new_tvar (binder_name f))) in
+     let t = subst f (free_of (new_kvari (binder_name f))) in
      fprintf ff "Λ%s %a" x print_term t
-  | OAbs(f) ->
+  | TOAbs(f) ->
      let x = binder_name f in
-     let t = subst f (free_of (new_ovar (binder_name f))) in
+     let t = subst f (free_of (new_ovari (binder_name f))) in
      fprintf ff "Λ%s %a" x print_term t
-  | Appl(t,u) ->
+  | TAppl(t,u) ->
       fprintf ff "(%a) %a" print_term t print_term u
-  | Reco(fs) ->
+  | TReco(fs) ->
       let pfield ff (l,t) = fprintf ff "%s = %a" l print_term t in
       fprintf ff "{%a}" (print_list pfield "; ") fs
-  | Proj(t,l) ->
+  | TProj(t,l) ->
       fprintf ff "%a.%s" print_term t l
-  | Cons(c,t) ->
+  | TCons(c,t) ->
      (match t.elt with
-     | Reco([]) -> fprintf ff "%s" c
-     | _ -> fprintf ff "%s %a" c print_term t)
-  | Case(t,l) ->
+     | TReco([]) -> fprintf ff "%s" c
+     | _         -> fprintf ff "%s %a" c print_term t)
+  | TCase(t,l) ->
      let pvariant ff (c,b) =
        match b.elt with
-       | LAbs(_,f) ->
+       | TAbst(_,f) ->
            let x = binder_name f in
-           let t = subst f (free_of (new_lvar' x)) in
+           let t = subst f (free_of (new_tvari' x)) in
            fprintf ff "| %s[%s] → %a" c x print_term t
-       | _ ->
+       | _          ->
            fprintf ff "| %s → %a" c print_term b
       in
       fprintf ff "case %a of %a" print_term t (print_list pvariant "; ") l
-  | VDef(v) ->
+  | TDefi(v) ->
      if unfold then
        print_term ff v.orig_value
      else
        pp_print_string ff v.name
-  | Prnt(s) ->
+  | TPrnt(s) ->
       fprintf ff "print(%S)" s
-  | FixY(ko,f) ->
+  | TFixY(ko,f) ->
       let x = binder_name f in
-      let t = subst f (free_of (new_lvar' x)) in
+      let t = subst f (free_of (new_tvari' x)) in
       begin
         match ko with
         | None   -> fprintf ff "fix %s → %a" x print_term t
         | Some a -> fprintf ff "fix(%s : %a) → %a" x pkind a print_term t
       end
-  | Cnst(f,a,b) ->
+  | TCnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_%d" name index
-  | CstY(f,a) ->
+  | TCstY(f,a) ->
      let name, index = search_term_tbl f a a in
      fprintf ff "%s_%d" name index
-  | TagI(i) ->
+  | TTInt(i) ->
       fprintf ff "TAG(%i)" i
 
 (****************************************************************************
@@ -308,12 +308,12 @@ let print_position ff o =
 
 let print_epsilon_tbls ff =
   List.iter (fun (f,(name,index,a,b)) ->
-    let x = new_lvar dummy_position (binder_name f) in
+    let x = new_tvari dummy_position (binder_name f) in
     let t = subst f (free_of x) in
     fprintf ff "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index
       (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_tbl;
   List.iter (fun (f,(name,index,u,is_exists)) ->
-    let x = new_tvar (binder_name f) in
+    let x = new_kvari (binder_name f) in
     let k = subst f (free_of x) in
     let symbol = if is_exists then "∈" else "∉" in
       fprintf ff "%s_%d = ϵ(%s, %a %s %a)\n" name index

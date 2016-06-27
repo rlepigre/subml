@@ -85,7 +85,7 @@ let term_variable : env -> strpos -> tbox = fun env s ->
   try List.assoc s.elt env.terms with Not_found ->
   try
     let vd = Hashtbl.find val_env s.elt in
-    vdef s.pos vd
+    tdefi s.pos vd
   with Not_found -> unbound s
 
 (* Lookup an ordinal variable in the environment. *)
@@ -182,31 +182,31 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                            let open Location in
                            { pt.pos with loc_start = x.pos.loc_start }
                          in
-                         labs pos ko x f
+                         tabst pos ko x f
                    in aux true env vs
   | PKAbs(s,f)  -> let f xk =
                      unsugar_term (add_kind s.elt (box_of_var xk) (Non, -1) env) f
-                   in kabs s.pos s f
+                   in tkabs s.pos s f
   | POAbs(s,f)  -> let f xo =
                       unsugar_term (add_ordinal s.elt (box_of_var xo) env) f
-                   in oabs s.pos s f
-  | PCoer(t,k)  -> coer pt.pos (unsugar_term env t) (unsugar_kind env k)
-  | PAppl(t,u)  -> appl pt.pos (unsugar_term env t) (unsugar_term env u)
+                   in toabs s.pos s f
+  | PCoer(t,k)  -> tcoer pt.pos (unsugar_term env t) (unsugar_kind env k)
+  | PAppl(t,u)  -> tappl pt.pos (unsugar_term env t) (unsugar_term env u)
   | PLVar(x)    -> term_variable env (in_pos pt.pos x)
-  | PPrnt(s)    -> prnt pt.pos s
+  | PPrnt(s)    -> tprnt pt.pos s
   | PCons(c,uo) -> let u =
                      match uo with
-                     | None   -> reco pt.pos []
+                     | None   -> treco pt.pos []
                      | Some u -> unsugar_term env u
-                   in cons pt.pos c u
-  | PProj(t,l)  -> proj pt.pos (unsugar_term env t) l
+                   in tcons pt.pos c u
+  | PProj(t,l)  -> tproj pt.pos (unsugar_term env t) l
   | PCase(t,cs) -> let f (c,x,t) =
                      let x = from_opt x (dummy_case_var t.pos) in
                      (c, unsugar_term env (in_pos t.pos (PLAbs([x],t))))
-                   in case pt.pos (unsugar_term env t) (List.map f cs)
+                   in tcase pt.pos (unsugar_term env t) (List.map f cs)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
-                   reco pt.pos (List.map f fs)
+                   treco pt.pos (List.map f fs)
   | PFixY(x,t)  -> let (x, ko) = x in
                    let ko = map_opt (unsugar_kind env) ko in
                    let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in
-                   fixy pt.pos ko x f
+                   tfixy pt.pos ko x f

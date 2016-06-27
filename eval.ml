@@ -3,49 +3,49 @@ open Ast
 
 let rec eval : term -> term = fun t0 ->
   match t0.elt with
-  | Coer(t,_) -> eval t
-  | LVar(_)   -> t0
-  | LAbs(_,_) -> t0
-  | KAbs(f)   -> eval (subst f (KProd []))
-  | OAbs(f)   -> eval (subst f (OTInt(-1)))
-  | Appl(t,u) ->
+  | TCoer(t,_) -> eval t
+  | TVari(_)   -> t0
+  | TAbst(_,_) -> t0
+  | TKAbs(f)   -> eval (subst f (KProd []))
+  | TOAbs(f)   -> eval (subst f (OTInt(-1)))
+  | TAppl(t,u) ->
       begin
         let u' = eval u in
         let rec fn t =
 	  let t' = eval t in
 	  match t'.elt with
-          | LAbs(_,b) -> eval (subst b u')
-          | FixY(_,f) -> fn (subst f t')
-          | t         -> dummy_pos (Appl(t',u'))
+          | TAbst(_,b) -> eval (subst b u')
+          | TFixY(_,f) -> fn (subst f t')
+          | t          -> dummy_pos (TAppl(t',u'))
 	in fn t
       end
-  | Reco(l)   -> in_pos t0.pos (Reco (List.map (fun (s,t) -> (s, eval t)) l))
-  | Proj(t,l) ->
+  | TReco(l)   -> in_pos t0.pos (TReco (List.map (fun (s,t) -> (s, eval t)) l))
+  | TProj(t,l) ->
       begin
         let t' = eval t in
         match t'.elt with
-        | Reco(fs) ->
+        | TReco(fs) ->
             begin
               try eval (List.assoc l fs)
-              with Not_found -> dummy_pos (Proj(t',l))
+              with Not_found -> dummy_pos (TProj(t',l))
             end
-        | t        -> dummy_pos (Proj(t',l))
+        | t         -> dummy_pos (TProj(t',l))
       end
-  | Cons(s,t) -> in_pos t0.pos (Cons(s, eval t))
-  | Case(t,l) ->
+  | TCons(s,t) -> in_pos t0.pos (TCons(s, eval t))
+  | TCase(t,l) ->
       begin
         let t' = eval t in
         match t'.elt with
-        | Cons(c,v) ->
+        | TCons(c,v) ->
             begin
-              try eval (dummy_pos (Appl(List.assoc c l, v)))
-              with Not_found -> dummy_pos (Case(t',l))
+              try eval (dummy_pos (TAppl(List.assoc c l, v)))
+              with Not_found -> dummy_pos (TCase(t',l))
             end
-        | t   -> dummy_pos (Case(t',l))
+        | t          -> dummy_pos (TCase(t',l))
       end
-  | VDef(v)   -> eval v.value
-  | Prnt(s)   -> Printf.printf "%s%!" s; in_pos t0.pos (Reco[])
-  | FixY(_)   -> t0
-  | Cnst(_)
-  | CstY(_)   -> invalid_arg "Constant during evaluation."
-  | TagI(_)   -> invalid_arg "Integer tag during evaluation."
+  | TDefi(v)   -> eval v.value
+  | TPrnt(s)   -> Printf.printf "%s%!" s; in_pos t0.pos (TReco [])
+  | TFixY(_)   -> t0
+  | TCnst(_)
+  | TCstY(_)   -> invalid_arg "Constant during evaluation."
+  | TTInt(_)   -> invalid_arg "Integer tag during evaluation."
