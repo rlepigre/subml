@@ -231,11 +231,10 @@ let parser is_not =
   | not_kw -> true
 
 (****************************************************************************
- *                         A parser for kinds (types)                       *
+ *                   Parsers for kinds (types) and terms                    *
  ****************************************************************************)
 
 type pkind_prio = KFunc | KProd | KAtom
-
 type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
 
 let parser pkind p =
@@ -261,59 +260,48 @@ let parser pkind p =
       -> in_pos _loc (PProd(fs))
   | "[" fs:sum_items "]" when p = KAtom
       -> in_pos _loc (PDSum(fs))
-  | t:(term TAtom) "." s:uident -> in_pos _loc (PDPrj(t,s))
+  | t:(pterm TAtom) "." s:uident -> in_pos _loc (PDPrj(t,s))
   | a:(pkind KAtom) with_kw s:uident "=" b:(pkind KAtom) when p = KAtom
       -> in_pos _loc (PWith(a,s,b))
   | "(" a:(pkind KFunc) ")" when p = KAtom
   | a:(pkind KAtom) when p = KProd
   | a:(pkind KProd) when p = KFunc
-
 and kind_list  = l:(list_sep (pkind KFunc) ",")
-and kind_prod  = l:(glist_sep'' (pkind KAtom) time) ->
-  List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and kind_prod  = l:(glist_sep'' (pkind KAtom) time)
+                   -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and sum_item   = id:uident a:{_:of_kw a:(pkind KFunc)}?
 and sum_items  = l:(list_sep sum_item "|")
 and prod_item  = id:lident ":" a:(pkind KFunc)
 and prod_items = l:(list_sep prod_item ";")
 
-and kind = (pkind KFunc)
-
-and kind_def =
-  | id:uident args:{"(" ids:(list_sep' uident ",") ")"}?[[]] "=" k:kind
-
-(****************************************************************************
- *                          A parser for expressions                        *
- ****************************************************************************)
-
 and var =
-  | id:lident                    -> (in_pos _loc_id id, None)
-  | "(" id:lident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
+  | id:lident                             -> (in_pos _loc_id id, None)
+  | "(" id:lident ":" k:(pkind KFunc) ")" -> (in_pos _loc_id id, Some k)
 
 and lvar =
-  | id:lident                    -> (in_pos _loc_id id, None)
-  | id:lident ":" k:kind         -> (in_pos _loc_id id, Some k)
+  | id:lident                     -> (in_pos _loc_id id, None)
+  | id:lident ":" k:(pkind KFunc) -> (in_pos _loc_id id, Some k)
 
-
-and term p =
-  | lambda xs:var+ dot t:(term TFunc)$ when p = TFunc ->
+and pterm p =
+  | lambda xs:var+ dot t:(pterm TFunc)$ when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
-  | fun_kw xs:var+ mapto t:(term TFunc)$ when p = TFunc ->
+  | fun_kw xs:var+ mapto t:(pterm TFunc)$ when p = TFunc ->
       in_pos _loc (PLAbs(xs,t))
-  | klam x:uident t:(term TFunc) when p = TFunc ->
+  | klam x:uident t:(pterm TFunc) when p = TFunc ->
       in_pos _loc (PKAbs(in_pos _loc_x x,t))
-  | klam x:lident t:(term TFunc) when p = TFunc ->
+  | klam x:lident t:(pterm TFunc) when p = TFunc ->
       in_pos _loc (POAbs(in_pos _loc_x x,t))
-  | t:(term TAppl) u:(term TColo) when p = TAppl ->
+  | t:(pterm TAppl) u:(pterm TColo) when p = TAppl ->
       in_pos _loc (PAppl(t,u))
-  | t:(term TAppl) ";" u:(term TSeq) when p = TSeq ->
+  | t:(pterm TAppl) ";" u:(pterm TSeq) when p = TSeq ->
       sequence _loc t u
   | "print(" - s:string_lit - ")" when p = TAtom ->
       in_pos _loc (PPrnt(s))
-  | c:uident uo:{"[" (term TFunc) "]"}?$ when p = TAtom ->
+  | c:uident uo:{"[" (pterm TFunc) "]"}?$ when p = TAtom ->
       in_pos _loc (PCons(c,uo))
-  | t:(term TAtom) "." l:lident when p = TAtom ->
+  | t:(pterm TAtom) "." l:lident when p = TAtom ->
       in_pos _loc (PProj(t,l))
-  | case_kw t:(term TFunc) of_kw "|"?$ ps:(list_sep case "|")$ when p = TFunc ->
+  | case_kw t:(pterm TFunc) of_kw "|"?$ ps:(list_sep case "|")$ when p = TFunc ->
       in_pos _loc (PCase(t,ps))
   | "{" fs:(list_sep field ";") ";"? "}" when p = TAtom ->
       in_pos _loc (PReco(fs))
@@ -322,76 +310,49 @@ and term p =
      | [] -> assert false
      | [(_,t)] -> t
      | _ -> in_pos _loc (PReco(fs)))
-  | t:(term TColo) ":" k:kind when p = TColo ->
+  | t:(pterm TColo) ":" k:(pkind KFunc) when p = TColo ->
     in_pos _loc (PCoer(t,k))
   | id:lident when p = TAtom ->
      in_pos _loc (PLVar(id))
-  | fix_kw x:var mapto u:(term TFunc) when p = TFunc ->
+  | fix_kw x:var mapto u:(pterm TFunc) when p = TFunc ->
      Printf.eprintf "fix 1 \n%!";
     in_pos _loc (PFixY(x,u))
   | "[" l:list "]" -> l
-  | let_kw r:is_rec id:lvar "=" t:(term TFunc) in_kw u:(term TFunc) when p = TFunc ->
+  | let_kw r:is_rec id:lvar "=" t:(pterm TFunc) in_kw u:(pterm TFunc) when p = TFunc ->
      let t =
        if not r then t
        else in_pos _loc_t (PFixY(id, t))
      in
      in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
-  | if_kw c:(term TFunc) then_kw t:(term TFunc) else_kw e:(term TFunc)$ ->
+  | if_kw c:(pterm TFunc) then_kw t:(pterm TFunc) else_kw e:(pterm TFunc)$ ->
      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
-  | t:(term TAtom)  when p = TColo
-  | t:(term TColo)  when p = TAppl
-  | t:(term TAppl) l:{"::" u:(term TSeq)}? when p = TSeq ->
+  | t:(pterm TAtom)  when p = TColo
+  | t:(pterm TColo)  when p = TAppl
+  | t:(pterm TAppl) l:{"::" u:(pterm TSeq)}? when p = TSeq ->
       (match l with None -> t | Some u -> list_cons _loc t u)
-  | t:(term TSeq) when p = TFunc
+  | t:(pterm TSeq) when p = TFunc
 
 and pattern =
   | c:uident x:{"[" x:var "]"}? -> (c,x)
   | "[" "]"                     -> ("Nil", None)
 
-and case = (c,x):pattern _:arrow t:(term TFunc) -> (c, x, t)
-and field   = l:lident k:{ ":" kind }?$ "=" t:(term TAppl)$ ->
+and case = (c,x):pattern _:arrow t:(pterm TFunc) -> (c, x, t)
+and field   = l:lident k:{ ":" (pkind KFunc) }?$ "=" t:(pterm TAppl)$ ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
-and tuple   = l:(glist_sep' (term TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and tuple   = l:(glist_sep' (pterm TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
 and list    = EMPTY -> list_nil _loc
-            | t:(term TFunc) "," l:list -> list_cons _loc t l
-let term = term TFunc
+            | t:(pterm TFunc) "," l:list -> list_cons _loc t l
+
+
+let kind = pkind KFunc
+let term = pterm TFunc
+
+let parser kind_def =
+  uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
 
 (****************************************************************************
- *                      High level parsing functions                        *
+ *                                LaTeX parser                              *
  ****************************************************************************)
-
-exception Finish
-
-let comment_char = black_box
-  (fun str pos ->
-    let (c, str', pos') = Input.read str pos in
-    match c with
-    | '\255' -> give_up "Unclosed comment."
-    | '*'    ->
-        let (c', _, _) = Input.read str' pos' in
-        if c' = ')' then
-          give_up "Not the place to close a comment."
-        else
-          ((), str', pos')
-    | _      -> ((), str', pos')
-  ) Charset.full_charset false "ANY"
-
-let parser enabled =
-  | "on"  -> true
-  | "off" -> false
-
-let latex_ch = ref stdout
-
-let open_latex fn =
-  if !latex_ch <> stdout then close_out !latex_ch;
-  latex_ch := open_out fn
-
-let parser opt_flag =
-  | "verbose" b:enabled -> (fun () -> verbose := b)
-  | "texfile" fn:string_lit -> (fun () -> open_latex fn)
-  | "print_term_in_subtyping" b:enabled -> (fun () -> Print.print_term_in_subtyping := b)
-
-let read_file = ref (fun _ -> assert false)
 
 let no_hash =
   Decap.test ~name:"no_hash" Charset.full_charset (fun buf pos ->
@@ -442,7 +403,24 @@ let parser latex_name_aux =
 and latex_name = "{" t:latex_name_aux* "}" -> (fun () ->
   Latex_trace.to_string (Latex_trace.List (List.map (fun f -> f ()) t)))
 
-let ignore_latex = ref false
+(****************************************************************************
+ *                       Top-level parsing functions                        *
+ ****************************************************************************)
+
+let latex_ch = ref stdout
+
+let open_latex fn =
+  if !latex_ch <> stdout then close_out !latex_ch;
+  latex_ch := open_out fn
+
+let parser enabled =
+  | "on"  -> true
+  | "off" -> false
+
+let parser opt_flag =
+  | "verbose" b:enabled -> (fun () -> verbose := b)
+  | "texfile" fn:string_lit -> (fun () -> open_latex fn)
+  | "print_term_in_subtyping" b:enabled -> (fun () -> Print.print_term_in_subtyping := b)
 
 type command =
   | NewType of (unit -> string) option * string * string list * pkind
@@ -466,6 +444,16 @@ let parser command =
   | _:include_kw fn:string_lit                     -> Include(fn)
   | latex_kw t:(change_layout latex_text latex_blank) -> Latex(t)
   | _:set_kw f:opt_flag                            -> Set(f)
+
+(****************************************************************************
+ *                       High-level parsing functions                       *
+ ****************************************************************************)
+
+exception Finish
+
+let read_file = ref (fun _ -> assert false)
+
+let ignore_latex = ref false
 
 let run_command : command -> unit = function
   (* Type definition command. *)
