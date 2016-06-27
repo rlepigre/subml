@@ -8,17 +8,13 @@ let handle_stop : bool -> unit =
   | false -> set_signal sigint Signal_default
 
 let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
-  match o with
-  | None   -> None
-  | Some e -> Some (f e)
+  match o with None -> None | Some e -> Some (f e)
 
 let from_opt : 'a option -> 'a -> 'a = fun o d ->
-  match o with
-  | None   -> d
-  | Some e -> e
+  match o with None -> d | Some e -> e
 
-let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list ->
-               ('a * 'b) list -> bool = fun eq l1 l2 ->
+let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list -> ('a * 'b) list
+                 -> bool = fun eq l1 l2 ->
   List.for_all (fun (k,_) -> List.mem_assoc k l2) l1 &&
   List.for_all (fun (k,_) -> List.mem_assoc k l1) l2 &&
   List.for_all (fun (k,e1) -> eq e1 (List.assoc k l2)) l1
@@ -36,21 +32,16 @@ module Location =
       ; loc_end   : position
       ; loc_ghost : bool }
 
-    let in_file fname =
-      let loc =
-        { pos_fname = fname
-        ; pos_lnum  = 1
-        ; pos_bol   = 0
-        ; pos_cnum  = -1 }
-      in
-      { loc_start = loc; loc_end = loc; loc_ghost = true }
+    let in_file pos_fname =
+      let loc = { pos_fname ; pos_lnum = 1 ; pos_bol = 0 ; pos_cnum = -1 } in
+      { loc_start = loc ; loc_end = loc ; loc_ghost = true }
 
     let none = in_file "_none_"
 
-    let locate str pos str' pos' =
-      let s = Input.lexing_position str pos in
-      let e = Input.lexing_position str' pos' in
-      { loc_start = s ; loc_end = e ; loc_ghost = false }
+    let locate str1 pos1 str2 pos2 =
+      let loc_start = Input.lexing_position str1 pos1 in
+      let loc_end   = Input.lexing_position str2 pos2 in
+      { loc_start ; loc_end ; loc_ghost = false }
 end
 
 type pos = Location.t
