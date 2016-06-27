@@ -178,12 +178,12 @@ and print_kind unfold wrap ff t =
       fprintf ff "!%i" n
 
 and print_occur ff = function
-  | InEps      -> pp_print_string ff "ε"
-  | Both       -> pp_print_string ff "?"
-  | Pos        -> pp_print_string ff "+"
-  | Neg        -> pp_print_string ff "-"
-  | Non        -> pp_print_string ff "="
-  | Register _ -> pp_print_string ff "R"
+  | Eps    -> pp_print_string ff "ε"
+  | All    -> pp_print_string ff "?"
+  | Pos    -> pp_print_string ff "+"
+  | Neg    -> pp_print_string ff "-"
+  | Non    -> pp_print_string ff "="
+  | Reg(_) -> pp_print_string ff "R"
 
 and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;

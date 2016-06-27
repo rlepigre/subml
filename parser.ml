@@ -465,7 +465,7 @@ let run_command : command -> unit = function
       let f args =
         let env = ref [] in
         Array.iteri (fun i k ->
-          env := (arg_names.(i), (k, (Register(i,tdef_variance, tdef_depth), 0))) :: !env) args;
+          env := (arg_names.(i), (k, (Reg(i,tdef_variance, tdef_depth), 0))) :: !env) args;
         unsugar_kind {empty_env with kinds = !env} k
       in
       let b = mbind mk_free_kvari arg_names f in

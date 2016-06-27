@@ -67,10 +67,19 @@ let dummy_pos : 'a -> 'a position = fun e -> in_pos dummy_position e
 type strpos = string position
 
 (****************************************************************************
- *                         AST for kinds (or types)                         *
+ *              AST for kinds (or types), ordinals and terms                *
  ****************************************************************************)
 
-(* Abstract syntax tree for types. *)
+(* Occurence markers for variables. *)
+type occur =
+  | Non (* Do not occur. *)
+  | Pos (* Occurs positively only. *)
+  | Neg (* Occurs negatively only. *)
+  | All (* Occurs both positively and negatively. *)
+  | Eps (* Occurs under epsilon (special case). *)
+  | Reg of int * occur array * int array (* for variance in defs *)
+
+(* Ast of kinds (or types). *)
 type kind =
   (**** Main type constructors ****)
   (* Type variable. *)
@@ -105,34 +114,6 @@ type kind =
   (* Integer tag for comparing kinds. *)
   | KTInt of int
 
-and ordinal =
-  (* Ordinal large enough to ensure convergence of all fixpoint. *)
-  | OConv
-  (* Unification variables for ordinals. *)
-  | OUVar of ordinal * ordinal option ref
-  (* Ordinal created by the μl and νr rules. *)
-  | OLess of ordinal * ord_wit
-  (* Maximum of a list of ordinals. *)
-  | OMaxi of ordinal list
-  (* Ordinal variable. *)
-  | OVari of ordinal variable
-  (* Integer tag used in decompose / recompose. *)
-  | OTInt of int
-
-and ord_wit =
-  | In     of term * (ordinal, kind) binder
-  | NotIn  of term * (ordinal, kind) binder
-  | YNotIn of term * kind
-
-(* Occurence markers for variables. *)
-and occur =
-  | Non   (* Do not occur. *)
-  | Pos   (* Occurs positively only. *)
-  | Neg   (* Occurs negatively only. *)
-  | Both  (* Occurs both positively and negatively. *)
-  | InEps (* Occurs under epsilon (special case). *)
-  | Register of int * occur array * int array (* for variance in defs *)
-
 (* Type definition (user defined type). *)
 and type_def =
   (* Name of the type constructor. *)
@@ -152,9 +133,24 @@ and uvar =
   (* Value of the variable managed as in a union-find algorithm. *)
   ; uvar_val : kind option ref }
 
-(****************************************************************************
- *                     AST for expressions (or terms)                       *
- ****************************************************************************)
+(* Abstract syntax tree for ordinals. *)
+and ordinal =
+  (* Ordinal large enough to ensure convergence of all fixpoint. *)
+  | OConv
+  (* Unification variables for ordinals. *)
+  | OUVar of ordinal * ordinal option ref
+  (* Ordinal created by the μl and νr rules. *)
+  | OLess of ordinal * ord_wit
+  (* Maximum of a list of ordinals. *)
+  | OMaxi of ordinal list
+  (* Ordinal variable. *)
+  | OVari of ordinal variable
+  (* Integer tag used in decompose / recompose. *)
+  | OTInt of int
+and ord_wit =
+  | In     of term * (ordinal, kind) binder
+  | NotIn  of term * (ordinal, kind) binder
+  | YNotIn of term * kind
 
 (* Abstract syntax tree for terms. *)
 and term = term' position
@@ -195,6 +191,7 @@ and term' =
   (* Integer tag. *)
   | TTInt of int
 
+(* Term definition (user defined term) *)
 and value_def =
   (* Name of the value. *)
   { name       : string
@@ -676,47 +673,47 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
 
 let combine oa ob =
   match (oa, ob) with
-  | (Register _,          _) -> assert false
-  | (_         , Register _) -> assert false
-  | (Non       , _         ) -> ob
-  | (_         , Non       ) -> oa
-  | (InEps     , _         ) -> InEps
-  | (_         , InEps     ) -> InEps
-  | (Both      , _         ) -> Both
-  | (_         , Both      ) -> Both
-  | (Neg       , Pos       ) -> Both
-  | (Pos       , Neg       ) -> Both
-  | (Neg       , Neg       ) -> Neg
-  | (Pos       , Pos       ) -> Pos
+  | (Reg(_), _     )
+  | (_     , Reg(_)) -> assert false
+  | (Non   , _     ) -> ob
+  | (_     , Non   ) -> oa
+  | (Eps   , _     ) -> Eps
+  | (_     , Eps   ) -> Eps
+  | (All   , _     ) -> All
+  | (_     , All   ) -> All
+  | (Neg   , Pos   ) -> All
+  | (Pos   , Neg   ) -> All
+  | (Neg   , Neg   ) -> Neg
+  | (Pos   , Pos   ) -> Pos
 
 let compose oa ob =
   match (oa, ob) with
-  | (Register _, _         ) -> assert false
-  | (_         , Register _) -> assert false
-  | (Non       , _         ) -> Non
-  | (_         , Non       ) -> Non
-  | (InEps     , _         ) -> InEps
-  | (_         , InEps     ) -> InEps
-  | (Both      , _         ) -> Both
-  | (_         , Both      ) -> Both
-  | (Neg       , Pos       ) -> Neg
-  | (Pos       , Neg       ) -> Neg
-  | (Neg       , Neg       ) -> Pos
-  | (Pos       , Pos       ) -> Pos
+  | (Reg(_), _     )
+  | (_     , Reg(_)) -> assert false
+  | (Non   , _     ) -> Non
+  | (_     , Non   ) -> Non
+  | (Eps   , _     ) -> Eps
+  | (_     , Eps   ) -> Eps
+  | (All   , _     ) -> All
+  | (_     , All   ) -> All
+  | (Neg   , Pos   ) -> Neg
+  | (Pos   , Neg   ) -> Neg
+  | (Neg   , Neg   ) -> Pos
+  | (Pos   , Pos   ) -> Pos
 
 let compose2 (oa,da) (ob,db) =
   let o =
     match (oa, ob) with
-    | (Register(i,a,d), p) -> a.(i) <- combine a.(i) p;
-                              d.(i) <- min d.(i) (db - da); Non
-    | _                    -> compose oa ob
+    | (Reg(i,a,d), p) -> a.(i) <- combine a.(i) p;
+                         d.(i) <- min d.(i) (db - da); Non
+    | _               -> compose oa ob
   in (o, da + db)
 
 let neg = function
-  | Register _ -> assert false
-  | Neg        -> Pos
-  | Pos        -> Neg
-  | o          -> o
+  | Reg(_) -> assert false
+  | Neg    -> Pos
+  | Pos    -> Neg
+  | o      -> o
 
 (* FIXME: should memoize this function, because a lot of sub-term are shared
    and we traverse all constants ... One could also precompute the
@@ -744,12 +741,12 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
          acc := aux (compose occ d.tdef_variance.(i)) !acc k) a;
        !acc
     | KUCst(t,f)
-    | KECst(t,f) -> let a = subst f kdummy in aux2 (aux InEps acc a) t
+    | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
     | KUVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | KTInt(_)   -> assert false
   and aux2 acc t = match t.elt with
-    | TCnst(t,k1,k2) -> aux2 (aux InEps (aux InEps acc k1) k2) (subst t (dummy_pos (TReco [])))
-    | TCstY(t,k)     -> aux2 (aux InEps acc k) (subst t (dummy_pos (TReco [])))
+    | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (dummy_pos (TReco [])))
+    | TCstY(t,k)     -> aux2 (aux Eps acc k) (subst t (dummy_pos (TReco [])))
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
@@ -765,7 +762,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | TPrnt(_)
     | TTInt(_)       -> acc
   and aux3 acc = function
-    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux InEps (aux2 (aux3 acc o) t) (subst f odummy)
+    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc
@@ -890,7 +887,7 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
        kfixn (binder_name f) (box_of_var o) (fun x -> fn pos (subst f (KVari x)))
     | KFixM(o,f) ->
        let o =
-         if o <> OConv && pos <> InEps then search o
+         if o <> OConv && pos <> Eps then search o
          else if o = OConv && pos = Neg then (match fix with
            None -> o
          | Some w ->
@@ -900,7 +897,7 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
        kfixm (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        let o =
-         if o <> OConv && pos <> InEps then search o
+         if o <> OConv && pos <> Eps then search o
          else if o = OConv && pos = Pos then (match fix with
            None -> o
          | Some w ->
@@ -909,8 +906,8 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
        in
        kfixn (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
     | KDefi(d,a) -> fn pos (msubst d.tdef_value a)
-    | KDPrj(t,s) -> kdprj (map_term (fn InEps) t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn InEps a)
+    | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn Eps a)
     | KVari(x)   -> box_of_var x
     | t          -> box t
   in
