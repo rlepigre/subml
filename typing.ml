@@ -237,7 +237,7 @@ let lower_kind k1 k2 =
     (* Handling of unification variables (immitation). *)
     | (KUVar(ua)    , KUVar(ub)    ) when ua == ub -> true
     | (KUVar ua as a,(KUVar _ as b)) ->
-        if !debug then io.log "  set %a <- %a\n%!" (print_kind false) a (print_kind false) b;
+        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) b;
         set_kuvar ua b; true
     | (KUVar ua as a, b           ) when true || first ->
         let k =
@@ -246,7 +246,7 @@ let lower_kind k1 k2 =
           | Pos -> KFixM(OConv,bind_uvar ua k02)
           | _   -> bot
         in
-        if !debug then io.log "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
+        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) k;
         set_kuvar ua k; true
     | (a           ,(KUVar ub as b)) when true || first ->
         let k =
@@ -255,7 +255,7 @@ let lower_kind k1 k2 =
           | Pos -> KFixM(OConv,bind_uvar ub k01)
           | _   -> top
         in
-        if !debug then io.log "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
+        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) b (print_kind false) k;
         set_kuvar ub k; true
     | (KTInt(ia)    , KTInt(ib)    ) -> ia = ib
     | (_            , _            ) -> false
@@ -325,14 +325,20 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
     let a = full_repr a0 in
     let b = full_repr b0 in
     if !debug then
-      io.log "%a ⊂ %a (∋ %a) (0 < %a)\n%!" (print_kind false) a
-        (print_kind false) b (print_term false) t
-        (fun ch l -> List.iter (fun (o,_) -> io.log " %a" (print_ordinal false) o) l) ctxt.positive_ordinals;
+      begin
+        io.log "%a\n" (print_term false) t;
+        io.log "  ∈ %a\n" (print_kind false) a;
+        io.log "  ⊂ %a\n" (print_kind false) b;
+        let p_aux ch (o,_) = print_ordinal false ch o in
+        match ctxt.positive_ordinals with
+        | [] -> io.log "\n%!"
+        | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
+      end;
     (try
      if lower_kind a b then
        let _ = trace_subtyping t a0 b0 in
        trace_sub_pop NRefl;
-       if !debug then io.log "%a <= %a (∋ %a) (0 < %a)\n%!" (print_kind false)
+       if !debug then io.log "%a <= %a (∋ %a) (0 < %a)\n\n%!" (print_kind false)
          a (print_kind false) b (print_term false) t (fun ch l -> List.iter (fun (o,_) -> io.log " %a" (print_ordinal false) o) l) ctxt.positive_ordinals;
        []
     else begin
@@ -518,16 +524,21 @@ and wf_subtype : subtype_ctxt -> term -> kind -> kind -> unit = fun ctxt t a b -
 
 and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
   let c = repr c in
-    if !debug then io.log "%a : %a (0 < %a)\n%!" (print_term false) t (print_kind false) c
-      (fun ch l -> List.iter (fun (o,_) -> io.log " %a" (print_ordinal false) o) l) ctxt.positive_ordinals;
-    trace_typing t c;
+  if !debug then
     begin
+      io.log "%a :\n" (print_term false) t;
+      io.log "  %a\n" (print_kind false) c;
+      let p_aux ch (o,_) = print_ordinal false ch o in
+      match ctxt.positive_ordinals with
+      | [] -> io.log "\n%!"
+      | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
+    end;
+  trace_typing t c;
+  begin
     try match t.elt with
     | TCoer(t,a) ->
         wf_subtype ctxt t a c;
         type_check ctxt t a
-    | TVari(_) ->
-        type_error t.pos "Cannot type-check open terms..."
     | TAbst(ao,f) ->
         let a = match ao with None -> new_uvar () | Some a -> a in
         let b = new_uvar () in
@@ -640,14 +651,13 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
          assert false
     | TCnst(_,a,b) ->
        wf_subtype ctxt t a c
-    | TTInt(_) ->
-       assert false (* Cannot happen. *)
+    | TTInt(_) -> assert false (* Cannot happen. *)
+    | TVari(_) -> assert false (* Cannot happen. *)
     with
     | Subtype_error msg -> type_error t.pos msg
-    | Stopped -> type_error t.pos "subtype interrupted (loop?)"
-    end;
-    trace_typ_pop ()
-
+    | Stopped           -> type_error t.pos "subtype interrupted (loop?)"
+  end;
+  trace_typ_pop ()
 
 let type_check t c =
   let calls = ref [] in
