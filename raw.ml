@@ -45,6 +45,11 @@ let list_cons _loc t l =
 let dummy_case_var _loc =
   (in_pos _loc "_", Some(dummy_pos (PProd [])))
 
+(* "t; u" := "(fun (_ : unit) ↦ u) t" *)
+let sequence _loc t u =
+  let dum = (in_pos _loc "_", Some(in_pos _loc (PProd []))) in
+  in_pos _loc (PAppl(in_pos _loc (PLAbs([dum],u)), t))
+
 (****************************************************************************
  *                         Environment management                           *
  ****************************************************************************)

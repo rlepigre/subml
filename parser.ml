@@ -1,6 +1,7 @@
 open Decap
 open Bindlib
 open Ast
+open Location
 open Print
 open Eval
 open Typing
@@ -9,9 +10,20 @@ open Print_trace
 open Raw
 open Io
 
-let locate = Location.locate
-
 #define LOCATE locate
+
+let int_of_chars s =
+  let f acc c = acc * 10 + (Char.code c - Char.code '0') in
+  List.fold_left f 0 (List.rev s)
+
+let string_of_chars s =
+  let s = Array.of_list s in
+  let res = String.make (Array.length s) ' ' in
+  Array.iteri (fun i c -> res.[i] <- c) s; res
+
+(****************************************************************************
+ *                       Handling of blanks and comments                    *
+ ****************************************************************************)
 
 exception Unclosed_comment of bool * string * int * int
 
@@ -50,7 +62,6 @@ let subml_blank buf pos =
     | (`Ini      , []  , _       ) -> curr
     | (`Opn(p)   , _   , '*'     ) -> fn `Ini (p::stack) curr next
     | (`Opn(_)   , _::_, '"'     ) -> fn (`Str(curr)) stack curr next (*#*)
-    | (`Opn(_)   , _::_, '{'     ) -> fn (`SOp([],curr)) stack curr next (*#*)
     | (`Opn(_)   , []  , _       ) -> prev
     | (`Opn(_)   , _   , _       ) -> fn `Ini stack curr next
     (* String litteral in a comment (including the # rules). *)
@@ -62,27 +73,6 @@ let subml_blank buf pos =
     | (`Str(_)   , _::_, _       ) -> fn state stack curr next
     | (`Str(_)   , []  , _       ) -> assert false (* Impossible. *)
     | (`Esc(_)   , []  , _       ) -> assert false (* Impossible. *)
-    (* Delimited string litteral in a comment. *)
-    | (`Ini      , _::_, '{'     ) -> fn (`SOp([],curr)) stack curr next
-    | (`SOp(l,p) , _::_, 'a'..'z')
-    | (`SOp(l,p) , _::_, '_'     ) -> fn (`SOp(c::l,p)) stack curr next
-    | (`SOp(_,_) , p::_, '\255'  ) -> unclosed_comment p
-    | (`SOp(l,p) , _::_, '|'     ) -> fn (`SIn(List.rev l,p)) stack curr next
-    | (`SOp(_,_) , _::_, _       ) -> fn `Ini stack curr next
-    | (`SIn(l,p) , _::_, '|'     ) -> fn (`SCl(l,(l,p))) stack curr next
-    | (`SIn(_,p) , _::_, '\255'  ) -> unclosed_comment_string p
-    | (`SIn(_,_) , _::_, _       ) -> fn state stack curr next
-    | (`SCl([],b), _::_, '}'     ) -> fn `Ini stack curr next
-    | (`SCl([],b), _::_, '\255'  ) -> unclosed_comment_string (snd b)
-    | (`SCl([],b), _::_, _       ) -> fn (`SIn(b)) stack curr next
-    | (`SCl(l,b) , _::_, c       ) -> if c = List.hd l then
-                                        let l = List.tl l in
-                                        fn (`SCl(l, b)) stack curr next
-                                      else
-                                        fn (`SIn(b)) stack curr next
-    | (`SOp(_,_) , []  , _       ) -> assert false (* Impossible. *)
-    | (`SIn(_,_) , []  , _       ) -> assert false (* Impossible. *)
-    | (`SCl(_,_) , []  , _       ) -> assert false (* Impossible. *)
     (* Comment closing. *)
     | (`Ini      , _::_, '*'     ) -> fn `Cls stack curr next
     | (`Cls      , _::_, '*'     ) -> fn `Cls stack curr next
@@ -103,7 +93,10 @@ let latex_blank buf pos =
     if List.mem c ['\t'; ' '; '\n'] then fn next else curr
   in fn (buf,pos)
 
-(* Keyword management. *)
+(****************************************************************************
+ *                             Keyword management                           *
+ ****************************************************************************)
+
 let keywords = Hashtbl.create 20
 
 let is_keyword : string -> bool = Hashtbl.mem keywords
@@ -114,34 +107,34 @@ let check_not_keyword : string -> unit = fun s ->
 
 let new_keyword : string -> unit grammar = fun s ->
   let ls = String.length s in
-  if ls < 1 then
-    raise (Invalid_argument "invalid keyword");
-  if Hashtbl.mem keywords s then
-    raise (Invalid_argument "keyword already defied");
+  if ls < 1 then raise (Invalid_argument "invalid keyword");
+  if is_keyword s then raise (Invalid_argument "keyword already defied");
   Hashtbl.add keywords s s;
+  let fail () = give_up ("The keyword "^s^" was expected...") in
   let f str pos =
     let str = ref str in
     let pos = ref pos in
     for i = 0 to ls - 1 do
       let (c,str',pos') = Input.read !str !pos in
-      if c <> s.[i] then
-        give_up ("The keyword "^s^" was expected...");
+      if c <> s.[i] then fail ();
       str := str'; pos := pos'
     done;
     let (c,_,_) = Input.read !str !pos in
     match c with
-    | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' ->
-        give_up ("The keyword "^s^" was expected...")
+    | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> fail ()
     | _                                           -> ((), !str, !pos)
   in
   black_box f (Charset.singleton s.[0]) false s
 
-(* Some combinators. *)
-let glist_sep elt sep = parser
-  | EMPTY -> []
+(****************************************************************************
+ *                   Some combinators and atomic parsers                    *
+ ****************************************************************************)
+
+let glist_sep   elt sep = parser
+  | EMPTY                   -> []
   | e:elt es:{_:sep e:elt}* -> e::es
 
-let glist_sep' elt sep = parser
+let glist_sep'  elt sep = parser
   | e:elt es:{_:sep e:elt}* -> e::es
 
 let glist_sep'' elt sep = parser
@@ -151,57 +144,44 @@ let list_sep   elt sep = glist_sep   elt (string sep ())
 let list_sep'  elt sep = glist_sep'  elt (string sep ())
 let list_sep'' elt sep = glist_sep'' elt (string sep ())
 
-
-let parser string_char =
-  | "\\\"" -> "\""
-  | "\\\\" -> "\\"
-  | "\\n"  -> "\n"
-  | "\\t"  -> "\t"
-  | c:ANY  -> if c = '\\' || c = '"' || c = '\r' then give_up "";
-              String.make 1 c
-
-let string_lit =
-  let slit = parser "\"" cs:string_char* "\"" -> String.concat "" cs in
-  change_layout slit no_blank
-
-let int_of_chars s =
-  List.fold_left (fun acc c -> acc * 10 + (Char.code c - Char.code '0')) 0 (List.rev s)
-
-let string_of_chars s =
-  let s = Array.of_list s in
-  let res = String.make (Array.length s) ' ' in
-  Array.iteri (fun i c -> res.[i] <- c) s;
-  res
-
-let digit     = Charset.range '0' '9'
-let lowercase = Charset.range 'a' 'z'
-let uppercase = Charset.range 'A' 'Z'
-let underscore = Charset.singleton '_'
-let identany  = Charset.union (Charset.union lowercase uppercase) (Charset.union digit underscore)
+let digit       = Charset.range '0' '9'
+let lowercase   = Charset.range 'a' 'z'
+let uppercase   = Charset.range 'A' 'Z'
+let underscore  = Charset.singleton '_'
+let letter      = Charset.union lowercase uppercase
+let identany    = Charset.union letter (Charset.union digit underscore)
 let lidentfirst = Charset.union lowercase (Charset.union digit underscore)
 
+let string_lit =
+  let normal = in_charset
+    (List.fold_left Charset.del Charset.full_charset ['\\'; '"'; '\r'])
+  in
+  let schar = parser
+    | "\\\""   -> "\""
+    | "\\\\"   -> "\\"
+    | "\\n"    -> "\n"
+    | "\\t"    -> "\t"
+    | c:normal -> String.make 1 c
+  in
+  change_layout (parser "\"" cs:schar* "\"" -> String.concat "" cs) no_blank
+
 let int_lit = change_layout (
-    parser s:(in_charset digit)* -> int_of_chars s
+    parser s:(in_charset digit)+ -> int_of_chars s
   ) no_blank
 
-let parser lident =
-  id:(change_layout (
-       parser c:(in_charset lidentfirst) s:(in_charset identany)* s':'\''*
-         -> string_of_chars (c::s@s')
-     ) no_blank) -> check_not_keyword id; id
+let ident first =
+  let first = in_charset first and any = in_charset identany in
+  let lident = parser c:first s:any* ps:'\''* -> string_of_chars (c::s@ps) in
+  let lident = change_layout lident no_blank in
+  Decap.apply (fun id -> check_not_keyword id; id) lident
 
-let parser uident =
-  id:(change_layout (
-       parser c:(in_charset uppercase)  s:(in_charset identany)* s':'\''*
-         -> string_of_chars (c::s@s')
-     ) no_blank) -> check_not_keyword id; id
+let lident = ident lidentfirst
+let uident = ident uppercase
 
-(* t ; u => (fun (x : unit) -> u) t *)
-let sequence pos t u =
-  let dum = (in_pos pos "_", Some(in_pos pos (PProd []))) in
-  in_pos pos (PAppl(in_pos pos (PLAbs([dum],u)), t))
+(****************************************************************************
+ *                                Basic tokens                              *
+ ****************************************************************************)
 
-(* Basic tokens. *)
 let case_kw = new_keyword "case"
 let rec_kw  = new_keyword "rec"
 let let_kw  = new_keyword "let"
@@ -554,7 +534,7 @@ let run_command : command -> unit = function
         ; orig_value = t
         ; ttype = k
         ; proof = prf
-	; calls
+        ; calls
         }
   (* Check subtyping. *)
   | Check(n,a,b) ->
