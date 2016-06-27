@@ -72,12 +72,18 @@ type strpos = string position
 
 (* Occurence markers for variables. *)
 type occur =
-  | Non (* Do not occur. *)
-  | Pos (* Occurs positively only. *)
-  | Neg (* Occurs negatively only. *)
-  | All (* Occurs both positively and negatively. *)
-  | Eps (* Occurs under epsilon (special case). *)
-  | Reg of int * occur array * int array (* for variance in defs *)
+  (* The variable does not occur. *)
+  | Non
+  (* The variable occurs only positively. *)
+  | Pos
+  (* The variable occurs only negatively. *)
+  | Neg
+  (* The variable occurs both positively and negatively. *)
+  | All
+  (* The variable occurs under an epsilon witness (special case). *)
+  | Eps
+  (* Special constructor for constructing the variance of definitions. *)
+  | Reg of int * occur array * int array
 
 (* Ast of kinds (or types). *)
 type kind =
