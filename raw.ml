@@ -124,7 +124,7 @@ and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
   match pk.elt with
   | PFunc(a,b)   ->
      let (o,d) = pos in
-     func (unsugar_kind ~pos:(neg o, d+1) env a) (unsugar_kind ~pos:(neg o, d) env b)
+     func (unsugar_kind ~pos:(neg o, d+1) env a) (unsugar_kind ~pos:(o, d) env b)
   | PTVar(s,ks)  ->
      kind_variable pos env (in_pos pk.pos s) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =

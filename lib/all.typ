@@ -1,5 +1,3 @@
-include "lib/prelude.typ"
-
 (* Standard library. *)
 include "lib/nat.typ"
 include "lib/list.typ"

@@ -347,12 +347,14 @@ and term p =
   | id:lident when p = TAtom ->
      in_pos _loc (PLVar(id))
   | fix_kw x:var mapto u:(term TFunc) when p = TFunc ->
+     Printf.eprintf "fix 1 \n%!";
     in_pos _loc (PFixY(x,u))
   | "[" l:list "]" -> l
   | let_kw r:is_rec id:lvar "=" t:(term TFunc) in_kw u:(term TFunc) when p = TFunc ->
      let t =
-       if r then t
-       else in_pos _loc_t (PFixY(id, t)) in
+       if not r then t
+       else in_pos _loc_t (PFixY(id, t))
+     in
      in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
   | if_kw c:(term TFunc) then_kw t:(term TFunc) else_kw e:(term TFunc)$ ->
      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
@@ -607,7 +609,8 @@ let parser file_contents =
 
 let eval_file fn =
   let buf = io.files fn in
+  io.stdout "## loading %S\n%!" fn;
   parse_buffer file_contents subml_blank buf;
-  io.stdout "## file Loaded %S\n%!" fn
+  io.stdout "## file loaded %S\n%!" fn
 
 let _ = read_file := eval_file

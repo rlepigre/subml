@@ -38,6 +38,7 @@ let handle_exception fn v =
   | Finish               -> exit 0
   | Stopped              -> io.stderr "Stopped\n%!"; true
   | Arity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
+  | Positivity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
                          -> io.stderr "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
   | Unbound(s)           -> io.stderr "%a:\nUnbound: %s\n%!" print_position s.pos s.elt; false

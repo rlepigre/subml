@@ -200,9 +200,9 @@ let lower_kind k1 k2 =
   (*positive integer are for eq_kind and alike *)
   let new_kint () = incr i; TInt(-(!i)) in
   let new_oint () = incr i; OTInt(-(!i)) in
-  let rec lower_kind first k1 k2 =
+  let rec lower_kind first k01 k02 =
     (*if !debug then Printf.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;*)
-    match (full_repr k1, full_repr k2) with
+    match (full_repr k01, full_repr k02) with
     | (k1          , k2          ) when k1 == k2 -> true
     | (TVar(_)     , TVar(_)     ) -> assert false
     | (Func(a1,b1) , Func(a2,b2) ) -> lower_kind false a2 a1 && lower_kind false b1 b2
@@ -243,8 +243,8 @@ let lower_kind k1 k2 =
     | (UVar ua as a, b           ) when true || first ->
         let k =
           match uvar_occur ua b with
-          | Non -> b
-          | Pos -> FixM(OConv,bind_uvar ua b)
+          | Non -> k02
+          | Pos -> FixM(OConv,bind_uvar ua k02)
           | _   -> bot
         in
         if !debug then io.log "  set %a <- %a\n%!" (print_kind false) a (print_kind false) k;
@@ -252,8 +252,8 @@ let lower_kind k1 k2 =
     | (a           ,(UVar ub as b)) when true || first ->
         let k =
           match uvar_occur ub a with
-          | Non -> a
-          | Pos -> FixM(OConv,bind_uvar ub a)
+          | Non -> k01
+          | Pos -> FixM(OConv,bind_uvar ub k01)
           | _   -> top
         in
         if !debug then io.log "  set %a <- %a\n%!" (print_kind false) b (print_kind false) k;
@@ -596,13 +596,13 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
            (c,c0,os))
        in
        let fnum = new_function (List.length os) in
-       if !debug then io.log "adding induction hyp %d:%a => %a\n%!" fnum (print_kind false) c0 (print_kind false) c;
+       if !debug then io.log "adding induction hyp %d:%a => %a %a\n%!" fnum (print_kind false) c0 (print_kind false) c (print_term true) t;
        begin match ctxt.induction_hyp with
            [] -> ()
        | (_,_,cur,os0)::_   ->
             let cmp, ind = find_indexes os os0 in
-          let call = (fnum, cur, cmp, ind) in
-          ctxt.calls := call :: !(ctxt.calls);
+            let call = (fnum, cur, cmp, ind) in
+            ctxt.calls := call :: !(ctxt.calls);
        end;
        let ctxt = { ctxt with induction_hyp = (c, c, fnum, os)::ctxt.induction_hyp } in
        let wit = in_pos t.pos (CstY(f,c)) in
