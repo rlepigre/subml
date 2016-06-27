@@ -190,15 +190,12 @@ and term' =
 
 (* Term definition (user defined term) *)
 and value_def =
-  (* Name of the value. *)
-  { name       : string
-  ; tex_name   : string
-  (* The corresponding term. *)
-  ; value      : term  (* evaluated *)
-  ; orig_value : term (* original definition *)
-  (* Raw version of the term (i.e. no anotations). *)
-  ; ttype      : kind
-  ; proof      : typ_proof
+  { name       : string    (* Name of the term. *)
+  ; tex_name   : string    (* Latex name of the term. *)
+  ; value      : term      (* Evaluated term. *)
+  ; orig_value : term      (* Original term (not evaluated). *)
+  ; ttype      : kind      (* Type of the term. *)
+  ; proof      : typ_proof (* Typing proof. *)
   ; calls      : ((int * int) list * Sct.calls) list }
 
 and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd
