@@ -597,7 +597,7 @@ and leq_ordinal c o1 o2 =
 and less_ordinal c o1 o2 =
   let o1 = orepr o1 and o2 = orepr o2 in
   match o1 with
-  | OLess(o,_)  -> o2 = OConv || leq_ordinal c o o2
+  | OLess(o,_)  -> leq_ordinal c o o2
   | OUVar(o, p) -> leq_ordinal  c o o2
   | OMaxi(l1)   -> List.for_all (fun o1 -> less_ordinal c o1 o2) l1
   | _           -> false
@@ -843,11 +843,11 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
   let search o =
     try
       match o with
-	OLess _ -> OTInt (List.assq o !res)
+        OLess _ -> OTInt (List.assq o !res)
       | _ -> raise Not_found
     with
       Not_found ->
-	let n = !i in incr i; res := (o, n) :: !res; OTInt n
+        let n = !i in incr i; res := (o, n) :: !res; OTInt n
   in
   let create o =
     let n = !i in incr i; res := (o, n) :: !res; OTInt n
@@ -881,28 +881,28 @@ let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * 
        fn pos a'
     | FixM(OVari o,f) ->
        fixm (binder_name f) (box_of_var o)
-	 (fun x -> fn pos (subst f (TVar x)))
+         (fun x -> fn pos (subst f (TVar x)))
     | FixN(OVari o,f) ->
        fixn (binder_name f) (box_of_var o)
-	 (fun x -> fn pos (subst f (TVar x)))
+         (fun x -> fn pos (subst f (TVar x)))
     | FixM(o,f) ->
        let o =
-	 if o <> OConv && pos <> InEps then search o
-	 else if o = OConv && pos = Neg then (match fix with
-	   None -> o
-	 | Some w ->
-	    let o' = OLess(o,w) in create o')
-	 else o
+         if o <> OConv && pos <> InEps then search o
+         else if o = OConv && pos = Neg then (match fix with
+           None -> o
+         | Some w ->
+            let o' = OLess(o,w) in create o')
+         else o
        in
        fixm (binder_name f) (box o) (fun x -> fn pos (subst f (TVar x)))
     | FixN(o,f) ->
        let o =
-	 if o <> OConv && pos <> InEps then search o
-	 else if o = OConv && pos = Pos then (match fix with
-	   None -> o
-	 | Some w ->
-	    let o' = OLess(o,w) in create o')
-	 else o
+         if o <> OConv && pos <> InEps then search o
+         else if o = OConv && pos = Pos then (match fix with
+           None -> o
+         | Some w ->
+            let o' = OLess(o,w) in create o')
+         else o
        in
        fixn (binder_name f) (box o) (fun x -> fn pos (subst f (TVar x)))
     | TDef(d,a) -> fn pos (msubst d.tdef_value a)
