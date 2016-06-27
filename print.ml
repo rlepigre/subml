@@ -119,10 +119,12 @@ and print_kind unfold wrap ff t =
       if wrap then pp_print_string ff ")"
   | Prod(fs) ->
      if is_tuple fs && List.length fs > 0 then begin
+       if wrap then pp_print_string ff "(";
        for i = 1 to List.length fs do
-         if i = 2 then fprintf ff "×";
+         if i >= 2 then fprintf ff " × ";
          fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
-       done
+       done;
+       if wrap then pp_print_string ff ")"
      end else begin
        let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
        fprintf ff "{%a}" (print_list pfield "; ") fs
@@ -175,13 +177,26 @@ and print_kind unfold wrap ff t =
   | TInt(n) ->
       fprintf ff "!%i" n
 
+and print_occur ff = function
+  | InEps      -> pp_print_string ff "ε"
+  | Both       -> pp_print_string ff "?"
+  | Pos        -> pp_print_string ff "+"
+  | Neg        -> pp_print_string ff "-"
+  | Non        -> pp_print_string ff "="
+  | Register _ -> pp_print_string ff "R"
+
 and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_name;
   let names = mbinder_names kd.tdef_value in
   let xs = new_mvar mk_free_tvar names in
   let k = msubst kd.tdef_value (Array.map free_of xs) in
   if Array.length names > 0 then
-    fprintf ff "(%a)" (print_array pp_print_string ",") names;
+    begin
+      assert(Array.length names = Array.length kd.tdef_variance);
+      let names = Array.mapi (fun i n -> (n, kd.tdef_variance.(i))) names in
+      let print_elt ff (n,v) = fprintf ff "%s%a" n print_occur v in
+      fprintf ff "(%a)" (print_array print_elt ",") names;
+    end;
   fprintf ff " = %a" (print_kind unfold false) k
 
 

@@ -478,6 +478,7 @@ let run_command : command -> unit = function
         { tdef_name = name ; tdef_tex_name ; tdef_arity ; tdef_variance
         ; tdef_depth ; tdef_value = unbox b }
       in
+      if !verbose then io.stdout "%a\n%!" (print_kind_def false) td;
       Hashtbl.add typ_env name td
   (* Unfold a type definition. *)
   | UnfoldK(k) ->
