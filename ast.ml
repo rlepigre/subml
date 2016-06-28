@@ -128,7 +128,8 @@ and uvar =
   (* Unique key identifying the variable. *)
   { uvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
-  ; uvar_val : kind option ref }
+  ; uvar_val : kind option ref
+  ; uvar_hook : (kind -> unit) ref }
 
 (* Abstract syntax tree for ordinals. *)
 and ordinal =
@@ -198,10 +199,10 @@ and value_def =
   ; proof      : typ_proof (* Typing proof. *)
   ; calls      : ((int * int) list * Sct.calls) list }
 
-and srule_name = NInd of int | NUseInd of int | NRefl | NArrow | NSum | NProd
-  | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft | NMuLeftInf
-  | NMuRightInf | NNuLeftInf | NNuRight | NNuRightInf | NUnknown | NProjLeft
-  | NProjRight | NWithRight | NWithLeft
+and srule_name = NUseInd of int | NRefl | NArrow | NSum | NProd
+  | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft of int
+  | NMuRightInf | NNuLeftInf | NNuRight of int | NMuRight | NNuLeft
+  | NUnknown | NProjLeft | NProjRight | NWithRight | NWithLeft
 
 and sub_proof =
   { sterm             : term
@@ -234,7 +235,9 @@ let rec orepr = function
 
 let set_kuvar v k =
   assert (!(v.uvar_val) = None);
-  Timed.(v.uvar_val := Some k)
+  Timed.(v.uvar_val := Some k);
+  !(v.uvar_hook) k;
+  Timed.(v.uvar_hook := (fun _ -> ()))
 
 let set_ouvar v o =
   assert(!v = None);
@@ -361,7 +364,11 @@ let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
-  let new_uvar () = KUVar {uvar_key = (incr c; !c); uvar_val = ref None} in
+  let new_uvar () = KUVar {
+    uvar_key = (incr c; !c);
+    uvar_val = ref None;
+    uvar_hook = ref (fun k -> ());
+  } in
   let reset_uvar () = c := 0 in
   (new_uvar, reset_uvar)
 

@@ -62,6 +62,15 @@ let trace_sub_pop rn =
   | SubTyping prf::s -> prf.rule_name <- rn;  trace_state.proof <- s
   | _ -> assert false
 
+let trace_get_pop () =
+  match trace_state.proof with
+  | [SubTyping prf] -> trace_state.proof <- [EndSubTyping prf]; prf
+  | SubTyping prf::s -> trace_state.proof <- s; prf
+  | _ -> assert false
+
+let trace_restore prf =
+  trace_state.proof <- SubTyping prf :: trace_state.proof
+
 let trace_typ_pop () =
   match trace_state.proof with
   | [Typing prf] -> trace_state.proof <- [EndTyping prf]
