@@ -178,6 +178,8 @@ let ident first =
 let lident = ident lidentfirst
 let uident = ident uppercase
 
+let to_tuple = List.mapi (fun i x -> (string_of_int (i+1), x))
+
 (****************************************************************************
  *                                Basic tokens                              *
  ****************************************************************************)
@@ -319,10 +321,7 @@ and pterm p =
     in_pos _loc (PFixY(x,u))
   | "[" l:list "]" -> l
   | let_kw r:is_rec id:lvar "=" t:(pterm TFunc) in_kw u:(pterm TFunc) when p = TFunc ->
-     let t =
-       if not r then t
-       else in_pos _loc_t (PFixY(id, t))
-     in
+     let t = if not r then t else in_pos _loc_t (PFixY(id, t)) in
      in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
   | if_kw c:(pterm TFunc) then_kw t:(pterm TFunc) else_kw e:(pterm TFunc)$ ->
      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
@@ -339,7 +338,7 @@ and pattern =
 and case = (c,x):pattern _:arrow t:(pterm TFunc) -> (c, x, t)
 and field   = l:lident k:{ ":" (pkind KFunc) }?$ "=" t:(pterm TAppl)$ ->
     (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
-and tuple   = l:(glist_sep' (pterm TFunc) comma) -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
+and tuple   = l:(glist_sep' (pterm TFunc) comma) -> to_tuple l
 and list    = EMPTY -> list_nil _loc
             | t:(pterm TFunc) "," l:list -> list_cons _loc t l
 
@@ -359,6 +358,8 @@ let no_hash =
     let c,buf,pos = Input.read buf pos in
     if c <> '#' then ((), true) else ((), false))
 
+let tex_normal = Charset.(List.fold_left del full_charset ['}';'{';'@';'#'])
+
 let parser hash = "#" no_hash
 
 let parser latex_atom =
@@ -368,7 +369,7 @@ let parser latex_atom =
      (fun () -> Latex_trace.Kind (br,u<>None, unbox (unsugar_kind empty_env k)))
   | "@" br:int_lit?[0] u:"!"? t:term "@" ->
      (fun () -> Latex_trace.Term (br,u<>None, unbox (unsugar_term empty_env t)))
-  | t:(Decap.(change_layout (parser (in_charset Charset.(List.fold_left del full_charset ['}';'{';'@';'#']))+) no_blank)) ->
+  | t:(Decap.(change_layout (parser (in_charset tex_normal)+) no_blank)) ->
      (fun () -> Latex_trace.Text (string_of_chars t))
   | l:latex_text          -> l
   | hash "check" a:kind subset b:kind "#" -> (fun () ->
@@ -397,8 +398,10 @@ and latex_text = "{" l:latex_atom* "}" -> (fun () ->
   Latex_trace.List (List.map (fun f -> f ()) l))
 
 let parser latex_name_aux =
-  | t:(Decap.(change_layout (parser (in_charset Charset.(List.fold_left del full_charset ['}';'{';'@';'#']))+) no_blank)) -> (fun () -> Latex_trace.Text (string_of_chars t))
-  | "{" l:latex_name_aux* "}" -> (fun () -> Latex_trace.List (List.map (fun f -> f ()) l))
+  | t:(Decap.(change_layout (parser (in_charset tex_normal)+) no_blank)) ->
+      (fun () -> Latex_trace.Text (string_of_chars t))
+  | "{" l:latex_name_aux* "}" ->
+      (fun () -> Latex_trace.List (List.map (fun f -> f ()) l))
 
 and latex_name = "{" t:latex_name_aux* "}" -> (fun () ->
   Latex_trace.to_string (Latex_trace.List (List.map (fun f -> f ()) t)))
@@ -464,8 +467,11 @@ let run_command : command -> unit = function
       let tdef_depth = Array.make tdef_arity max_int in
       let f args =
         let env = ref [] in
-        Array.iteri (fun i k ->
-          env := (arg_names.(i), (k, (Reg(i,tdef_variance, tdef_depth), 0))) :: !env) args;
+        let f i k =
+          let v = (k, (Reg(i,tdef_variance, tdef_depth), 0)) in
+          env := (arg_names.(i), v) :: !env
+        in
+        Array.iteri f args;
         unsugar_kind {empty_env with kinds = !env} k
       in
       let b = mbind mk_free_kvari arg_names f in
@@ -515,16 +521,13 @@ let run_command : command -> unit = function
         with e -> trace_backtrace (); raise e
       in
       reset_all ();
-      let tn = eval t in
+      let value = eval t in
+      let tex_name =
+        match tex with None -> "\\mathrm{"^id^"}" | Some s -> s ()
+      in
       Hashtbl.add val_env id
-        { name = id
-        ; tex_name = (match tex with None -> "\\mathrm{"^id^"}" | Some s -> s ())
-        ; value = tn
-        ; orig_value = t
-        ; ttype = k
-        ; proof = prf
-        ; calls
-        }
+        { name = id ; tex_name ; value ; orig_value = t ; ttype = k
+        ; proof = prf ; calls }
   (* Check subtyping. *)
   | Check(n,a,b) ->
       let a = unbox (unsugar_kind empty_env a) in

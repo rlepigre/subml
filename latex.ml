@@ -18,9 +18,13 @@ let rec print_ordinal unfold ff o =
      let n = search_ordinal_tbl o in
      match o with
      | OLess(o,In(t,a)) as o0 when unfold && not !simplified_ordinals ->
-        fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) (subst a o0)
+        fprintf ff "\\kappa_{{<}%a}" (print_ordinal false) o;
+        fprintf ff "(%a \\in %a)" (print_term false 0) t
+          (print_kind false false) (subst a o0)
      | OLess(o,NotIn(t,a)) as o0 when unfold && not !simplified_ordinals ->
-        fprintf ff "\\kappa_{{<}%a}(%a \\in %a)" (print_ordinal false) o (print_term false 0) t (print_kind false false) (subst a o0)
+        fprintf ff "\\kappa_{{<}%a}" (print_ordinal false) o;
+        fprintf ff "(%a \\in %a)" (print_term false 0) t
+          (print_kind false false) (subst a o0)
      | OLess(o,_) when unfold && !simplified_ordinals ->
        fprintf ff "\\alpha_{%d<%a}" n (print_ordinal false) o
      | OLess(_) when !simplified_ordinals -> fprintf ff "\\alpha_{%d}" n
@@ -67,8 +71,9 @@ and print_kind unfold wrap ff t =
        end else begin
          decr break_hint;
          let pfield ff (l,a) = fprintf ff "\\mathrm{%s} &: %a" l pkind a in
-         fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}\\begin{array}{ll}%a\\end{array}\\right\\}"
-           (print_list pfield ";\\\\\n")fs
+         fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
+         fprintf ff "\\begin{array}{ll}%a" (print_list pfield ";\\\\\n") fs;
+         fprintf ff "\\end{array}\\right\\}"
        end
   | KDSum(cs) ->
      let pvariant ff (c,a) =
@@ -222,7 +227,9 @@ and print_term unfold lvl ff t =
            let t, pt = fn ":" t in
            fprintf ff "\\mathrm{%s} %a &= %a" l pt () (print_term 0) t
          in
-         fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}\\begin{array}{ll}%a\\end{array}\\right\\}" (print_list pfield ";\\\\\n") fs
+         fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
+         fprintf ff "\\begin{array}{ll}%a" (print_list pfield ";\\\\\n") fs;
+         fprintf ff "\\end{array}\\right\\}"
        end
      end
   | TProj(t,l) ->

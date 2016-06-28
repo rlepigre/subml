@@ -833,7 +833,8 @@ let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
-let decompose : ord_wit option -> occur -> kind -> kind -> kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
+let decompose : ord_wit option -> occur -> kind -> kind ->
+                  kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
   let search o =

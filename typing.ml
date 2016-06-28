@@ -276,7 +276,8 @@ type loop = int * (int * ordinal) list
 type loops = loop list
 exception Induction_hypothesis of loop
 
-let check_rec : term -> subtype_ctxt -> kind -> kind -> term * subtype_ctxt * (int * ordinal) list * int option =
+let check_rec : term -> subtype_ctxt -> kind -> kind ->
+                  term * subtype_ctxt * (int * ordinal) list * int option =
   fun t ctxt a b ->
     (* FIXME: most comments in check_rec are probably obsolete ... *)
     (* the test (has_uvar a || has_uvar b) is important to
@@ -338,8 +339,15 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> loops = fun ctxt t a b
      if lower_kind a b then
        let _ = trace_subtyping t a0 b0 in
        trace_sub_pop NRefl;
-       if !debug then io.log "%a <= %a (∋ %a) (0 < %a)\n\n%!" (print_kind false)
-         a (print_kind false) b (print_term false) t (fun ch l -> List.iter (fun (o,_) -> io.log " %a" (print_ordinal false) o) l) ctxt.positive_ordinals;
+       if !debug then
+         begin
+           io.log "%a ≤ %a" (print_kind false) a (print_kind false) b;
+           io.log "(∋ %a)\n" (print_term false) t;
+           let p_aux ch (o,_) = print_ordinal false ch o in
+           match ctxt.positive_ordinals with
+           | [] -> io.log "\n%!"
+           | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
+         end;
        []
     else begin
       let (t, ctxt, os, index) = check_rec t ctxt a b in
@@ -606,7 +614,12 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
            (c,c0,os))
        in
        let fnum = new_function (List.length os) in
-       if !debug then io.log "adding induction hyp %d:%a => %a %a\n%!" fnum (print_kind false) c0 (print_kind false) c (print_term true) t;
+       if !debug then
+         begin
+           io.log "Adding induction hyp %d:\n" fnum;
+           io.log "  %a => %a %a\n%!" (print_kind false) c0
+             (print_kind false) c (print_term true) t;
+         end;
        begin match ctxt.induction_hyp with
            [] -> ()
        | (_,_,cur,os0)::_   ->
@@ -637,10 +650,20 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
            | (_,_,cur,os0)::_   ->
               let ovars = List.map (fun (i,_) -> (i,OUVar(OConv,ref None))) os in
               let a = recompose a ovars in
-              if !debug then io.log "searching induction hyp (1) %d:%a => %a\n%!" fnum (print_kind false) a (print_kind false) c;
+              if !debug then
+                begin
+                  io.log "searching induction hyp (1) %d:\n" fnum;
+                  io.log "  %a => %a\n%!" (print_kind false) a
+                    (print_kind false) c
+                end;
               wf_subtype ctxt t a c;
               delayed := (fun () ->
-                if !debug then io.log "searching induction hyp (2) %d:%a => %a\n%!" fnum (print_kind false) a (print_kind false) c;
+                if !debug then
+                  begin
+                    io.log "searching induction hyp (2) %d:\n" fnum;
+                    io.log "  %a => %a\n%!" (print_kind false) a
+                      (print_kind false) c
+                  end;
                 let cmp, ind = find_indexes ovars os0 in
                 let call = (fnum, cur, cmp, ind) in
                 ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
