@@ -5,6 +5,12 @@ open Bindlib
  *                              Parser level AST                            *
  ****************************************************************************)
 
+type pordinal = pordinal' position
+and pordinal' =
+  | PConv
+  | PMaxi of pordinal list
+  | PVari of string
+
 type pkind = pkind' position
 and pkind' =
   | PTVar of string * pkind list
@@ -15,8 +21,8 @@ and pkind' =
   | PKExi of string * pkind
   | POAll of string * pkind
   | POExi of string * pkind
-  | PFixM of string option * string * pkind
-  | PFixN of string option * string * pkind
+  | PFixM of pordinal * string * pkind
+  | PFixN of pordinal * string * pkind
   | PDPrj of pterm  * string
   | PWith of pkind * string * pkind
 
@@ -124,6 +130,12 @@ let rec kind_variable : (occur * int) -> env -> strpos -> pkind array -> kbox =
  *                           Desugaring functions                           *
  ****************************************************************************)
 
+and unsugar_ordinal : env -> pordinal -> obox = fun env po ->
+  match po.elt with
+  | PConv   -> oconv
+  | PVari s -> ordinal_variable env (in_pos po.pos s)
+  | PMaxi l -> omaxi (List.map (unsugar_ordinal env) l)
+
 and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
   fun ?(pos=(Pos,0)) (env:env) pk ->
   match pk.elt with
@@ -144,19 +156,11 @@ and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
   | POExi(o,k)   -> let f xo =
                       unsugar_kind (add_ordinal o (box_of_var xo) env) k
                     in koexi o f
-  | PFixM(o,x,k) -> let o =
-                      match o with
-                      | None   -> box OConv
-                      | Some o -> ordinal_variable env (in_pos pk.pos o)
-                    in
+  | PFixM(o,x,k) -> let o = unsugar_ordinal env o in
                     let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
                     in kfixm x o f
-  | PFixN(o,x,k) -> let o =
-                      match o with
-                      | None   -> box OConv
-                      | Some o -> ordinal_variable env (in_pos pk.pos o)
-                    in
+  | PFixN(o,x,k) -> let o = unsugar_ordinal env o in
                     let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
                     in kfixn x o f

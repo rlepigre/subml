@@ -16,6 +16,7 @@ include "lib/polyrec.typ"
 
 (* Subtyping tests. *)
 include "lib/tests.typ"
+include "lib/max.typ"
 
 (* Mixed induction and coinduction. *)
 include "lib/munu/munu2.typ"

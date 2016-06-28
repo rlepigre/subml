@@ -144,3 +144,19 @@ type T11 = μX F(X,νY F(Y,μZ F(X,Z)))
 
 check T10 ⊂ T11
 check not T11 ⊂ T10
+
+type F(X) = [ Z | S of X ]
+
+val if_max
+  : ∀o1∀o2 Bool → (μo1 X F(X)) → (μo2 X F(X)) → μmax(o1,o2) X F(X)
+  = fun b n m → if b then n else m
+
+val rec max_max
+  : ∀o1∀o2 (μo1 X F(X)) → (μo2 X F(X)) → μmax(o1,o2) X F(X)
+  = fun n m →
+    case n of
+    | Z → m
+    | S[n'] →
+      case m of
+      | Z → n
+      | S[m'] → S[max_max n' m']

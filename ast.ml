@@ -296,6 +296,11 @@ let mk_free_ovari : ovar -> ordinal =
 let new_ovari : string -> ovar =
   new_var mk_free_ovari
 
+(* sugaring for ordinals *)
+let oconv = box OConv
+
+let omaxi l = box_apply (fun o -> OMaxi o) (box_list l)
+
 (****************************************************************************
  *                     Smart constructors for kinds                         *
  ****************************************************************************)
@@ -602,7 +607,7 @@ and less_ordinal c o1 o2 =
 let omax = function
   | []  -> assert false
   | [o] -> o
-  | l   -> Printf.eprintf "USE MAX\n%!"; OMaxi l
+  | l   -> OMaxi l
 
 let eq_kind : kind -> kind -> bool =
   fun k1 k2 -> eq_kind (ref 0) k1 k2

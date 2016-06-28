@@ -199,6 +199,7 @@ let with_kw = new_keyword "with"
 let when_kw = new_keyword "when"
 let type_kw = new_keyword "type"
 let not_kw  = new_keyword "not"
+let max_kw  = new_keyword "max"
 
 let unfold_kw  = new_keyword "unfold"
 let clear_kw   = new_keyword "clear"
@@ -223,6 +224,7 @@ let parser dot    : unit grammar = "."
 let parser mapto  : unit grammar = "->" | "→" | "↦"
 let parser comma  : unit grammar = ","
 let parser subset : unit grammar = "⊂" | "⊆" | "<"
+let parser infty  : unit grammar = "∞"
 
 let parser is_rec =
   | EMPTY  -> false
@@ -231,6 +233,18 @@ let parser is_rec =
 let parser is_not =
   | EMPTY  -> false
   | not_kw -> true
+
+(****************************************************************************
+ *                           Parsers for ordinals                           *
+ ****************************************************************************)
+
+let parser ordinal =
+  | EMPTY -> in_pos _loc PConv
+  | infty -> in_pos _loc PConv
+  | s:lident -> in_pos _loc (PVari(s))
+  | max_kw '(' l:ordinal_list ')' -> in_pos _loc (PMaxi(l))
+
+and ordinal_list  = l:(list_sep ordinal ",")
 
 (****************************************************************************
  *                   Parsers for kinds (types) and terms                    *
@@ -252,9 +266,9 @@ let parser pkind p =
       -> in_pos _loc (POAll(id,a))
   | exists id:lident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (POExi(id,a))
-  | mu o:lident? id:uident a:(pkind KFunc) when p = KFunc
+  | mu o:ordinal id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFixM(o,id,a))
-  | nu o:lident? id:uident a:(pkind KFunc) when p = KFunc
+  | nu o:ordinal id:uident a:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFixN(o,id,a))
   | "{" fs:prod_items "}" when p = KAtom
       -> in_pos _loc (PProd(fs))
@@ -581,7 +595,6 @@ let parser file_contents =
 
 let eval_file fn =
   let buf = io.files fn in
-  io.stdout "## loading %S\n%!" fn;
   parse_buffer file_contents subml_blank buf;
   io.stdout "## file loaded %S\n%!" fn
 
