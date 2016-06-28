@@ -522,13 +522,6 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         subtype_error "Subtyping clash (no rule apply)."
   in (t, a, b, r)
 
-and generic_subtype : kind -> kind -> sub_prf = fun a b ->
-  let calls = ref [] in
-  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
-  let wit = generic_tcnst a b in
-  let p = subtype ctxt wit a b in
-  if not (sct !calls)  then subtype_error "loop"; p
-
 and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
   if !debug then
@@ -689,10 +682,19 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TVari(_) -> assert false (* Cannot happen. *)
   in (t, c, r)
 
-let type_check : term -> kind -> typ_prf = fun t c ->
+let subtype : term -> kind -> kind -> sub_prf * calls = fun t a b ->
+  let calls = ref [] in
+  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
+  let p = subtype ctxt t a b in
+  if not (sct !calls) then subtype_error "loop"; (p, !calls)
+
+let generic_subtype : kind -> kind -> sub_prf * calls = fun a b ->
+  subtype (generic_tcnst a b) a b
+
+let type_check : term -> kind -> typ_prf * calls = fun t c ->
   let calls = ref [] in
   let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
   let p = type_check ctxt t c in
   List.iter (fun f -> f ()) !delayed;
   delayed := [];
-  if not (sct !calls) then subtype_error "loop"; p
+  if not (sct !calls) then subtype_error "loop"; (p, !calls)

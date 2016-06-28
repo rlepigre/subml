@@ -387,7 +387,7 @@ let parser latex_atom =
   | hash "check" a:kind subset b:kind "#" -> (fun () ->
      let a = unbox (unsugar_kind empty_env a) in
      let b = unbox (unsugar_kind empty_env b) in
-     let prf = generic_subtype a b in
+     let (prf, calls) = generic_subtype a b in
      let calls = assert false in (* FIXME *)
      let calls = match calls with
      | [c] -> c | _ -> assert false
@@ -518,7 +518,7 @@ let run_command : command -> unit = function
       in
       let t = unbox (unsugar_term empty_env t) in
       let k = unbox (unsugar_kind empty_env k) in
-      let prf = type_check t k in
+      let (prf, calls) = type_check t k in
       let calls = assert false in (* FIXME *)
       reset_all ();
       let value = eval t in
