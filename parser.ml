@@ -5,8 +5,6 @@ open Location
 open Print
 open Eval
 open Typing
-open Proof_trace
-open Print_trace
 open Raw
 open Io
 
@@ -389,8 +387,8 @@ let parser latex_atom =
   | hash "check" a:kind subset b:kind "#" -> (fun () ->
      let a = unbox (unsugar_kind empty_env a) in
      let b = unbox (unsugar_kind empty_env b) in
-     generic_subtype a b;
-     let prf, calls = collect_subtyping_proof () in
+     let prf = generic_subtype a b in
+     let calls = assert false in (* FIXME *)
      let calls = match calls with
      | [c] -> c | _ -> assert false
      in
@@ -466,8 +464,6 @@ let parser command =
  *                       High-level parsing functions                       *
  ****************************************************************************)
 
-exception Finish
-
 let read_file = ref (fun _ -> assert false)
 
 let ignore_latex = ref false
@@ -511,11 +507,7 @@ let run_command : command -> unit = function
   (* Evaluate a term. *)
   | Eval(t) ->
       let t = unbox (unsugar_term empty_env t) in
-      begin
-        try type_check t (new_uvar ());
-        with e -> trace_backtrace (); raise e
-      end;
-      let _ = collect_typing_proof () in
+      let _ = type_check t (new_uvar ()) in
       reset_all ();
       io.stdout "%a\n%!" (print_term true) (eval t)
   (* Typed value definition. *)
@@ -526,14 +518,8 @@ let run_command : command -> unit = function
       in
       let t = unbox (unsugar_term empty_env t) in
       let k = unbox (unsugar_kind empty_env k) in
-      let prf, calls =
-        try
-          type_check t k;
-          let prf, calls = collect_typing_proof () in
-          if !verbose then print_typing_proof prf;
-          prf, calls
-        with e -> trace_backtrace (); raise e
-      in
+      let prf = type_check t k in
+      let calls = assert false in (* FIXME *)
       reset_all ();
       let value = eval t in
       let tex_name =
@@ -548,20 +534,20 @@ let run_command : command -> unit = function
       let b = unbox (unsugar_kind empty_env b) in
       begin
         try
-          generic_subtype a b;
-          let prf, _ = collect_subtyping_proof () in
+          let prf = generic_subtype a b in
+          (* FIXME
           if !verbose || not n then (
             io.stdout "MUST FAIL\n%!";
             print_subtyping_proof prf;
             failwith "check"
           );
+          *)
           reset_epsilon_tbls ()
         with
         | Subtype_error s when n ->
            io.stdout "CHECK FAILED: OK %s\n%!" s;
            failwith "check"
         | Subtype_error s ->
-           reset trace_state;
            reset_epsilon_tbls ();
         | e ->
            io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
@@ -575,7 +561,10 @@ let run_command : command -> unit = function
       ignore_latex := save
   (* Latex. *)
   | Latex(t) ->
+      assert false
+      (* FIXME
       if not !ignore_latex then Latex_trace.output !latex_ch (t ())
+      *)
   (* Set a flag. *)
   | Set(f) -> f ()
 
@@ -585,7 +574,7 @@ let parser toplevel =
   (* Clear the screen. *)
   | clear_kw EOF            -> ignore (Sys.command "clear")
   (* Exit the program. *)
-  | {quit_kw | exit_kw} EOF -> raise Finish
+  | {quit_kw | exit_kw} EOF -> raise End_of_file
 
 let toplevel_of_string : string -> unit = fun s ->
   parse_string toplevel subml_blank s

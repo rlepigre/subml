@@ -1,24 +1,23 @@
 open Ast
 open Print
 open Latex
-open Proof_trace
 open Bindlib
 
 type latex_output =
-  | Kind of int * bool * kind
+  | Kind    of int * bool * kind
   | KindDef of int * type_def
-  | Term of int * bool * term
-  | Text of string
-  | List of latex_output list
-  | SProof of sub_proof * ((int * int) list * Sct.calls)
-  | TProof of typ_proof
-  | Sct of ((int * int) list * Sct.calls) list
+  | Term    of int * bool * term
+  | Text    of string
+  | List    of latex_output list
+  | SProof  of sub_prf * ((int * int) list * Sct.calls)
+  | TProof  of typ_prf
+  | Sct     of ((int * int) list * Sct.calls) list
   | Witnesses
 
 let rec to_string = function
-  | Text t -> t
+  | Text(t) -> t
   | List(l) -> "{" ^ String.concat "" (List.map to_string l) ^"}"
-  | _ -> assert false
+  | _       -> assert false
 
 let print_rule_name ff rn =
   let open Printf in
@@ -72,6 +71,7 @@ let print_calls ch arities calls =
   List.iter (print_call arities) calls;
   Printf.fprintf ch "  }\n\\end{dot2tex}\n"
 
+(*
 let print_subtyping_proof, print_typing_proof =
   let rec fn ch (p:sub_proof) =
     let rn, strees = Print_trace.filter_rule p in
@@ -145,3 +145,4 @@ let rec output ch = function
      break_hint := 0
   | Sct ls ->
      List.iter (fun (tt,calls) -> print_calls ch tt calls) ls
+*)

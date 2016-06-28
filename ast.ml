@@ -191,12 +191,12 @@ and term' =
 
 (* Term definition (user defined term) *)
 and value_def =
-  { name       : string    (* Name of the term. *)
-  ; tex_name   : string    (* Latex name of the term. *)
-  ; value      : term      (* Evaluated term. *)
-  ; orig_value : term      (* Original term (not evaluated). *)
-  ; ttype      : kind      (* Type of the term. *)
-  ; proof      : typ_proof (* Typing proof. *)
+  { name       : string  (* Name of the term. *)
+  ; tex_name   : string  (* Latex name of the term. *)
+  ; value      : term    (* Evaluated term. *)
+  ; orig_value : term    (* Original term (not evaluated). *)
+  ; ttype      : kind    (* Type of the term. *)
+  ; proof      : typ_prf (* Typing proof. *)
   ; calls      : ((int * int) list * Sct.calls) list }
 
 and srule_name = NUseInd of int | NRefl | NArrow | NSum | NProd
@@ -204,19 +204,53 @@ and srule_name = NUseInd of int | NRefl | NArrow | NSum | NProd
   | NMuRightInf | NNuLeftInf | NNuRight of int | NMuRight | NNuLeft
   | NUnknown | NProjLeft | NProjRight | NWithRight | NWithLeft
 
-and sub_proof =
-  { sterm             : term
-  ; left              : kind
-  ; right             : kind
-  ; mutable unused    : ordinal list
-  ; mutable strees    : sub_proof list
-  ; mutable rule_name : srule_name }
+and typ_jdg = term * kind
+and sub_jdg = term * kind * kind
 
-and typ_proof =
-  { tterm          : term
-  ; typ            : kind
-  ; mutable strees : sub_proof list
-  ; mutable ttrees : typ_proof list }
+and sub_rule =
+  | Sub_Dummy
+  | Sub_Delay  of sub_prf ref
+  | Sub_Lower
+  | Sub_Func   of sub_prf * sub_prf
+  | Sub_Prod   of sub_prf list
+  | Sub_DSum   of sub_prf list
+  | Sub_DPrj_l of typ_prf * sub_prf
+  | Sub_DPrj_r of typ_prf * sub_prf
+  | Sub_With_l of sub_prf
+  | Sub_With_r of sub_prf
+  | Sub_KAll_r of sub_prf
+  | Sub_KAll_l of sub_prf
+  | Sub_KExi_l of sub_prf
+  | Sub_KExi_r of sub_prf
+  | Sub_OAll_r of sub_prf
+  | Sub_OAll_l of sub_prf
+  | Sub_OExi_l of sub_prf
+  | Sub_OExi_r of sub_prf
+  | Sub_FixM_r of sub_prf
+  | Sub_FixN_l of sub_prf
+  | Sub_TODO      (* FIXME *)
+and sub_prf =
+  term * kind * kind * sub_rule
+
+and typ_rule =
+  | Typ_Coer   of sub_prf * typ_prf
+  | Typ_KAbs   of typ_prf
+  | Typ_OAbs   of typ_prf
+  | Typ_Defi   of sub_prf
+  | Typ_Prnt   of sub_prf
+  | Typ_Cnst   of sub_prf
+  | Typ_Func_i of sub_prf * typ_prf
+  | Typ_Func_e of typ_prf * typ_prf
+  | Typ_Prod_i of sub_prf * typ_prf list
+  | Typ_Prod_e of typ_prf
+  | Typ_DSum_i of sub_prf * typ_prf
+  | Typ_DSum_e of typ_prf * typ_prf list
+  | Typ_TODO      (* FIXME *)
+and typ_prf =
+  term * kind * typ_rule
+
+
+
 
 (* Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function
