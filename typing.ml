@@ -203,18 +203,18 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
 	  match ctxt.induction_hyp with
 	  | (_,_,index',os')::_ ->
-	     let a,b = find_indexes os os' in
-	     ctxt.calls := (index, index', a, b) :: !(ctxt.calls);
-	     trace_sub_pop (NUseInd index);
-	     raise Induction_hypothesis
+	     delayed := (fun () ->
+	       let m = find_indexes index index' os os' in
+	       ctxt.calls := (index, index', m) :: !(ctxt.calls)) :: !delayed;
+	     raise Induction_hyp
 	  | _ -> assert false
  	)) ctxt.induction_hyp;
       let fnum = new_function (List.length os) in
       (match ctxt.induction_hyp with
       | (_,_,index',os')::_ ->
-	   (*delayed := (fun () ->*)
-	   let a,b = find_indexes os os' in
-	   ctxt.calls := (fnum, index', a, b) :: !(ctxt.calls)(* ) :: !delayed;*)
+	   delayed := (fun () ->
+	     let m = find_indexes fnum index' os os' in
+	     ctxt.calls := (fnum, index', m) :: !(ctxt.calls)) :: !delayed;
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (a', b', fnum, os)::ctxt.induction_hyp } in
       (false, ctxt)
@@ -330,11 +330,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     if lower_kind a b then Sub_Lower else
     let (ind_hyp, ctxt) = check_rec t ctxt a b in
     if ind_hyp then Sub_TODO (* FIXME *) else
-     match (a,b) with
-    (* Directly comparable types. *)
-    | (a           , b           ) when lower_kind a b ->
-        Sub_Lower
-
+    match (a,b) with
     (* Delayed unification. *)
     | (KUVar(ua)   , KProd(_)    ) ->
         let r = ref (t,a,b,Sub_Dummy) in
@@ -600,8 +596,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
            [] -> ()
        | (_,_,cur,os0)::_   ->
           delayed := (fun () ->
-	    let cmp, ind = find_indexes os os0 in
-            let call = (fnum, cur, cmp, ind) in
+	    let m = find_indexes fnum cur os os0 in
+            let call = (fnum, cur, m) in
             ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
        end;
        let ctxt = { ctxt with induction_hyp = (c, c, fnum, os)::ctxt.induction_hyp } in
@@ -642,9 +638,9 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                     io.log "  %a => %a\n%!" (print_kind false) a
                       (print_kind false) c
                   end;
-                let cmp, ind = find_indexes ovars os0 in
-                let call = (fnum, cur, cmp, ind) in
-		Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp;
+                let m = find_indexes fnum cur ovars os0 in
+                let call = (fnum, cur, m) in
+                (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
                 ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
               true
          else false) ctxt.induction_hyp then
@@ -661,7 +657,24 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
 let subtype : term -> kind -> kind -> sub_prf * calls = fun t a b ->
   let calls = ref [] in
   let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
-  type_check ctxt t c;
-  List.iter (fun f -> f ()) !delayed;
-  delayed := [];
-  if not (sct !calls)  then subtype_error "loop"
+  try
+    let p = subtype ctxt t a b in
+    List.iter (fun f -> f ()) !delayed;
+    delayed := [];
+    calls := inline !calls;
+    if not (sct !calls) then subtype_error "loop"; (p, !calls)
+  with e -> delayed := []; raise e
+
+let generic_subtype : kind -> kind -> sub_prf * calls = fun a b ->
+  subtype (generic_tcnst a b) a b
+
+let type_check : term -> kind -> typ_prf * calls = fun t c ->
+  let calls = ref [] in
+  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
+  try
+    let p = type_check ctxt t c in
+    List.iter (fun f -> f ()) !delayed;
+    delayed := [];
+    calls := inline !calls;
+    if not (sct !calls) then subtype_error "loop"; (p, !calls)
+  with e -> delayed := []; raise e
