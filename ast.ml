@@ -191,13 +191,13 @@ and term' =
 
 (* Term definition (user defined term) *)
 and value_def =
-  { name       : string  (* Name of the term. *)
-  ; tex_name   : string  (* Latex name of the term. *)
-  ; value      : term    (* Evaluated term. *)
-  ; orig_value : term    (* Original term (not evaluated). *)
-  ; ttype      : kind    (* Type of the term. *)
-  ; proof      : typ_prf (* Typing proof. *)
-  ; calls      : ((int * int) list * Sct.calls) list }
+  { name       : string      (* Name of the term. *)
+  ; tex_name   : string      (* Latex name of the term. *)
+  ; value      : term        (* Evaluated term. *)
+  ; orig_value : term        (* Original term (not evaluated). *)
+  ; ttype      : kind        (* Type of the term. *)
+  ; proof      : typ_prf     (* Typing proof. *)
+  ; calls      : Sct.calls } (* SCT instance. *)
 
 and srule_name = NUseInd of int | NRefl | NArrow | NSum | NProd
   | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft of int

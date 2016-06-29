@@ -388,10 +388,6 @@ let parser latex_atom =
      let a = unbox (unsugar_kind empty_env a) in
      let b = unbox (unsugar_kind empty_env b) in
      let (prf, calls) = generic_subtype a b in
-     let calls = assert false in (* FIXME *)
-     let calls = match calls with
-     | [c] -> c | _ -> assert false
-     in
      Latex_trace.SProof (prf, calls))
   | hash br:int_lit?[0] ":" id:lident "#"    -> (fun () ->
      let t = Hashtbl.find val_env id in
@@ -519,7 +515,6 @@ let run_command : command -> unit = function
       let t = unbox (unsugar_term empty_env t) in
       let k = unbox (unsugar_kind empty_env k) in
       let (prf, calls) = type_check t k in
-      let calls = assert false in (* FIXME *)
       reset_all ();
       let value = eval t in
       let tex_name =

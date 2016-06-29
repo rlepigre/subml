@@ -6,9 +6,9 @@ type latex_output =
   | Term    of int * bool * term
   | Text    of string
   | List    of latex_output list
-  | SProof  of sub_prf * ((int * int) list * Sct.calls)
+  | SProof  of sub_prf * Sct.calls (* sub_prf * ((int * int) list * Sct.calls) *)
   | TProof  of typ_prf
-  | Sct     of ((int * int) list * Sct.calls) list
+  | Sct     of Sct.calls (* ((int * int) list * Sct.calls) list *)
   | Witnesses
 
 val to_string : latex_output -> string
