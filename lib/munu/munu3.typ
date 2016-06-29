@@ -50,7 +50,7 @@ type TCba = νC μB μA [C0 | C1 of A | C2 of B | C3 of C]
 type TCbA = νC μB νA [C0 | C1 of A | C2 of B | C3 of C]
 type TCBa = νC νB μA [C0 | C1 of A | C2 of B | C3 of C]
 type TCBA = νC νB νA [C0 | C1 of A | C2 of B | C3 of C]
-
+(*
 (* The tests. *)
 check Tabc ⊂ Tabc
 check Tabc ⊂ TabC
@@ -167,8 +167,9 @@ check TaBc ⊂ TACB
 check not TaBc ⊂ Tbac
 check not TaBc ⊂ TbaC
 check not TaBc ⊂ TbAc
-check not TaBc ⊂ TbAC
+check not TaBc ⊂ TbAC*)
 check TaBc ⊂ TBac
+(*
 check TaBc ⊂ TBaC
 check TaBc ⊂ TBAc
 check TaBc ⊂ TBAC
@@ -436,3 +437,4 @@ check not TABC ⊂ TCba
 check not TABC ⊂ TCbA
 check not TABC ⊂ TCBa
 check TABC ⊂ TCBA
+*)

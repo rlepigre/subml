@@ -200,8 +200,8 @@ and value_def =
   ; calls      : Sct.calls } (* SCT instance. *)
 
 and srule_name = NUseInd of int | NRefl | NArrow | NSum | NProd
-  | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft of int
-  | NMuRightInf | NNuLeftInf | NNuRight of int | NMuRight | NNuLeft
+  | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft
+  | NMuRightInf | NNuLeftInf | NNuRight | NMuRight | NNuLeft
   | NUnknown | NProjLeft | NProjRight | NWithRight | NWithLeft
 
 and typ_jdg = term * kind
@@ -651,22 +651,22 @@ let omax = function
   | l   -> OMaxi l
 
 let eq_kind : kind -> kind -> bool =
-  fun k1 k2 -> eq_kind (ref 0) k1 k2
+  fun k1 k2 -> Timed.pure_test (eq_kind (ref 0) k1) k2
 
 let eq_term : term -> term -> bool =
-  fun t1 t2 -> eq_term (ref 0) t1 t2
+  fun t1 t2 -> Timed.pure_test (eq_term (ref 0) t1) t2
 
 let eq_ordinal : ordinal -> ordinal -> bool =
-  fun t1 t2 -> eq_ordinal (ref 0) t1 t2
+  fun t1 t2 -> Timed.pure_test (eq_ordinal (ref 0) t1) t2
 
 let eq_ord_wit : ord_wit -> ord_wit -> bool =
-  fun t1 t2 -> eq_ord_wit (ref 0) t1 t2
+  fun t1 t2 -> Timed.pure_test (eq_ord_wit (ref 0) t1) t2
 
 let leq_ordinal : ordinal -> ordinal -> bool =
-  fun t1 t2 -> leq_ordinal (ref 0) t1 t2
+  fun t1 t2 -> Timed.pure_test (leq_ordinal (ref 0) t1) t2
 
 let less_ordinal : ordinal -> ordinal -> bool =
-  fun t1 t2 -> less_ordinal (ref 0) t1 t2
+  fun t1 t2 -> Timed.pure_test (less_ordinal (ref 0) t1) t2
 
 let eq_head_term t u =
   let rec fn u =

@@ -21,7 +21,7 @@ val tl : ∀A (List(A) → Option(List(A))) = fun l ↦
 val rec length : ∀A (List(A) → Nat) = fun l ↦
   case l of
   | []      → Z
-  | Cons[x] → S[length x.tl]
+  | Cons[l] → S[length l.tl]
 
 val rec nth : ∀A (List(A) → Nat → Option(A)) = fun l n ↦
   case n of

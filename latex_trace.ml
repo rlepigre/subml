@@ -31,14 +31,12 @@ let print_rule_name ff rn =
   | NAllRight -> fprintf ff "\\forall_r"
   | NExistsLeft -> fprintf ff "\\exists_l"
   | NExistsRight -> fprintf ff "\\exists_r"
-  | NMuLeft (-1) -> fprintf ff "\\mu_l"
-  | NMuLeft n -> fprintf ff "\\mu_l(%d)" n
+  | NMuLeft -> fprintf ff "\\mu_l"
   | NMuRightInf -> fprintf ff "\\mu_r^\\infty"
   | NNuLeftInf -> fprintf ff "\\nu_l^\\infty"
   | NMuRight -> fprintf ff "\\mu_r"
   | NNuLeft -> fprintf ff "\\nu_l"
-  | NNuRight (-1) -> fprintf ff "\\nu_r"
-  | NNuRight n -> fprintf ff "\\nu_r(%d)" n
+  | NNuRight -> fprintf ff "\\nu_r"
   | NProjLeft -> fprintf ff "\\pi_l"
   | NProjRight -> fprintf ff "\\pi_r"
   | NWithLeft -> fprintf ff "w_l"

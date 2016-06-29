@@ -531,18 +531,18 @@ let run_command : command -> unit = function
         try
           let prf = generic_subtype a b in
           (* FIXME
-          if !verbose || not n then (
+          if not n then (
             io.stdout "MUST FAIL\n%!";
             print_subtyping_proof prf;
             failwith "check"
           );
-          *)
           reset_epsilon_tbls ()
         with
         | Subtype_error s when n ->
            io.stdout "CHECK FAILED: OK %s\n%!" s;
            failwith "check"
         | Subtype_error s ->
+           reset trace_state;
            reset_epsilon_tbls ();
         | e ->
            io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);

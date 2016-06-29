@@ -21,20 +21,20 @@ val rec compare : Nat → Nat → Cmp = fun n m ↦
   | Z    → (case m of Z → Eq | S[m] → Ls)
   | S[n] → (case m of Z → Gt | S[m] → compare n m)
 
-val rec eq  : Nat → Nat → Bool = fun n m ↦
+val eq  : Nat → Nat → Bool = fun n m ↦
   case compare n m of Ls → fls | Eq → tru | Gt → fls
 
-val rec neq : Nat → Nat → Bool = fun n m ↦
+val neq : Nat → Nat → Bool = fun n m ↦
   case compare n m of Ls → tru | Eq → fls | Gt → tru
 
-val rec ls  : Nat → Nat → Bool = fun n m ↦
+val ls  : Nat → Nat → Bool = fun n m ↦
   case compare n m of Ls → tru | Eq → fls | Gt → fls
 
-val rec leq : Nat → Nat → Bool = fun n m ↦
+val leq : Nat → Nat → Bool = fun n m ↦
   case compare n m of Ls → tru | Eq → tru | Gt → fls
 
-val rec gt  : Nat → Nat → Bool = fun n m ↦
+val gt  : Nat → Nat → Bool = fun n m ↦
   case compare n m of Ls → fls | Eq → fls | Gt → tru
 
-val rec geq : Nat → Nat → Bool = fun n m ↦
+val geq : Nat → Nat → Bool = fun n m ↦
   case compare n m of Ls → fls | Eq → tru | Gt → tru
