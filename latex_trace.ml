@@ -59,12 +59,12 @@ let print_calls ch arities calls =
   Printf.fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
   List.iter (fun (i,_) ->
     Printf.fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" i i print_args i) (List.filter (fun (i,_) ->
-       List.exists (fun (j,k,_,_) -> i = j || i =k) calls) arities);
-  let print_call arities (i,j,c,a) =
+       List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
+  let print_call arities (i,j,m) = () (*
     Printf.fprintf ch "    N%d -> N%d [label = \"(" j i;
     Array.iteri (fun i c ->
       Printf.fprintf ch "%s%ax_%d" (if i = 0 then "" else ",") print_cmp c a.(i)) c;
-    Printf.fprintf ch ")\"]\n%!"
+				     Printf.fprintf ch ")\"]\n%!"*)
   in
   List.iter (print_call arities) calls;
   Printf.fprintf ch "  }\n\\end{dot2tex}\n"

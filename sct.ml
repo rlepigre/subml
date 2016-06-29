@@ -13,41 +13,28 @@ type cmp = Less | Leq | Unknown
    to the function numbered i inside the function numbered j.
    a indicates which parameters of j are used in the call.
    c indicates the relation with this parameter *)
-type call = int * int * cmp array * int array
+type call = int * int * cmp array array
+  (* index of the caller for lines *)
+
+let compose c1 c2 = match c1, c2 with
+  | Unknown, _ | _, Unknown -> Unknown
+  | Less, _ | _, Less -> Less
+  | Leq, Leq -> Leq
 
 type calls = call list
 
 let debug_sct = ref false
 let summary_sct = ref false
 
-(* call composition *)
-let compose_arg a1 a2 =
-  Array.map (fun i -> if i = -1 then -1 else a2.(i)) a1
-
-let compose_cmp c1 a1 c2 =
-  Array.mapi (fun i c ->
-    if a1.(i) = -1 then Unknown else
-      match c, c2.(a1.(i)) with
-      | Unknown, _ | _, Unknown -> Unknown
-      | Less, _ | _, Less -> Less
-      | _ -> Leq) c1
-
-let compose c1 a1 c2 a2 =
-  (compose_cmp c1 a1 c2, compose_arg a1 a2)
-
-(* maximum of two call relation for subsumption
-   max c1 c2 returns true if it returns c1  *)
-let max c1 c2 =
-  let changed = ref false in
-  let c = Array.mapi (fun i c1 ->
-    match c1, c2.(i) with
-    | Unknown, _ -> Unknown
-    | _, Unknown -> changed := true; Unknown
-    | Leq, _    -> Leq
-    | _, Leq -> changed := true; Leq
-    | Less, _   -> Less) c1
-  in
-  !changed, c
+let mat_prod l1 c1 c2 m1 m2 =
+  Array.init l1 (fun i ->
+    Array.init c2 (fun j ->
+      let r = ref Unknown in
+      for k = 0 to c1 - 1 do
+	r := min !r (compose m1.(i).(k) m2.(k).(j))
+      done;
+      !r
+    ))
 
 (* printing function for debugging *)
 let print_cmp ff c =
@@ -56,7 +43,7 @@ let print_cmp ff c =
   | Less -> fprintf ff "<"
   | Leq  -> fprintf ff "="
 
-let print_call tbl ff (i,j,c,a) =
+let print_call tbl ff (i,j,m) =
   let print_args ff i =
     let a = try List.assoc i tbl with Not_found -> assert false in
     for i = 0 to a - 1 do
@@ -64,8 +51,11 @@ let print_call tbl ff (i,j,c,a) =
     done
   in
   fprintf ff "F%d(%a) <- F%d(" j print_args j i;
-  Array.iteri (fun i c ->
-    fprintf ff "%s%aX%d" (if i = 0 then "" else ",") print_cmp c a.(i)) c;
+  Array.iteri (fun i l ->
+    if i > 0 then fprintf ff ",";
+    Array.iteri (fun j c ->
+      (*      if c <> Unknown then*)
+      fprintf ff "%aX%d " print_cmp c j) l) m;
   fprintf ff ")%!"
 
 let print_calls tbl ff (l:calls) =
@@ -73,12 +63,12 @@ let print_calls tbl ff (l:calls) =
 
 (* check is a call (supposed idempotnent) is
    decreasing *)
-let decrease c a =
+let decrease m =
   try
-    Array.iteri (fun i c ->
-    match c with
-    | Less when a.(i) = i -> raise Exit
-    | _ -> ()) c;
+    Array.iteri (fun i l ->
+      match l.(i) with
+      | Less -> raise Exit
+      | _ -> ()) m;
     false
   with
     Exit -> true
@@ -92,7 +82,7 @@ module IAMap = Map.Make(IntArray)
 
 (* function needs to be declared. calling sct will
    reset the function table *)
-let (new_function : int -> int), reset_function, pr_call, arities =
+let (new_function : int -> int), reset_function, pr_call, arities, arity =
   let count = ref 0 in
   let fun_table = ref [] in (* the table is only used for debugging messages *)
   (fun arity ->
@@ -107,33 +97,43 @@ let (new_function : int -> int), reset_function, pr_call, arities =
     res),
   (fun ch ->
     print_call !fun_table ch),
-  (fun () -> !fun_table)
+  (fun () -> !fun_table),
+  (fun i -> try List.assoc i !fun_table with Not_found -> assert false)
+
+let subsume m1 m2 =
+  try
+    Array.iteri (fun i l1 ->
+      Array.iteri (fun j x ->
+	if not (x >= m2.(i).(j)) then raise Exit) l1) m1;
+    true
+  with
+    Exit -> false
 
 (* the main function *)
 let sct: call list -> bool = fun ls ->
   if !debug_sct then eprintf "SCT starts...\n%!";
   let num_fun, arities = reset_function () in
-  let tbl = Array.init num_fun (fun _ -> Array.make num_fun IAMap.empty) in
+  let tbl = Array.init num_fun (fun _ -> Array.make num_fun []) in
   let print_call = print_call arities in
   (* counters to count added and composed edges *)
   let added = ref 0 and composed = ref 0 in
   (* function adding an edge, return a boolean indicating
      if the edge is new or not *)
-  let add_edge i j c a =
+  let add_edge i j m =
     (* test idempotent edges as soon as they are discovered *)
-    if i = j && compose c a c a = (c,a) && not (decrease c a) then begin
-      if !debug_sct then eprintf "edge %a idempotent and looping\n%!" print_call (i,j,c,a);
+    let a = List.assoc i arities in
+    if i = j && mat_prod a a a m m = m && not (decrease m) then begin
+      if !debug_sct then eprintf "edge %a idempotent and looping\n%!" print_call (i,j,m);
       raise Exit;
     end;
     let ti = tbl.(i) in
-    try
-      let c' = IAMap.find a ti.(j) in
-      let changed, c'' = max c' c in
-      ti.(j) <- IAMap.add a c'' ti.(j);
-      changed
-    with Not_found ->
-      ti.(j) <- IAMap.add a c ti.(j);
-      true
+    let ms = ti.(j) in
+    if List.exists (fun m' -> subsume m' m) ms then
+      false
+    else (
+      let ms = m :: List.filter (fun m' -> not (subsume m m')) ms in
+      ti.(j) <- ms;
+      true)
   in
   (* adding initial edges *)
   try
@@ -146,24 +146,29 @@ let sct: call list -> bool = fun ls ->
     let rec fn () =
       match !new_edges with
 	[] -> ()
-      | (i,j,c,a)::l ->
+      | (i,j,m)::l ->
 	 new_edges := l;
-	if add_edge i j c a then begin
-	  if !debug_sct then eprintf "\tedge %a added\n%!" print_call (i,j,c,a);
+	if add_edge i j m then begin
+	  if !debug_sct then eprintf "\tedge %a added\n%!" print_call (i,j,m);
 	  incr added;
 	  let t' = tbl.(j) in
-	  Array.iteri (fun k t -> IAMap.iter (fun a' c' ->
-	    let (c'',a'') = compose c a c' a' in
-	    incr composed;
-	    new_edges := (i,k,c'',a'') :: !new_edges;
+	  Array.iteri (fun k t -> List.iter (fun m' ->
 	    if !debug_sct then
-	      eprintf "\tcompose: %a * %a = %a\n%!"
-		print_call (i,j,c,a)
-		print_call (j,k,c',a')
-		print_call (i,k,c'',a'');
+	      eprintf "\tcompose: %a * %a = %!"
+		print_call (i,j,m)
+		print_call (j,k,m');
+	    let a = List.assoc k arities in
+	    let b = List.assoc j arities in
+	    let c = List.assoc i arities in
+	    let m'' = mat_prod a b c m' m in
+	    incr composed;
+	    new_edges := (i,k,m'') :: !new_edges;
+	    if !debug_sct then
+	      eprintf "%a\n%!"
+		print_call (i,k,m'');
 	  ) t) t'
 	end else
-	  if !debug_sct then eprintf "\tedge %a is old\n%!" print_call (i,j,c,a);
+	  if !debug_sct then eprintf "\tedge %a is old\n%!" print_call (i,j,m);
 	fn ()
     in
     fn ();

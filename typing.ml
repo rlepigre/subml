@@ -21,21 +21,19 @@ type subtype_ctxt =
 
 exception Found of cmp * int
 
-let find_index a o =
-  try
-    let o = orepr o in
-    List.iter (fun (i, o') -> if less_ordinal o o' then raise (Found(Less,i))
-      else if leq_ordinal o o' then raise (Found(Leq,i))) a;
-    (Unknown, -1)
-  with Found(c,i) -> (c, i)
 
-let find_indexes a b =
-  let arity = List.length a in
-  let indexes = Array.make arity 0 in
-  let cmps = Array.make arity Unknown in
-  List.iter (fun (i, o) -> let (c,j) = find_index b o in indexes.(i) <- j; cmps.(i) <- c) a;
-  cmps, indexes
+let find_indexes index index' a b =
+  let c = Sct.arity index and l = Sct.arity index' in
+  let m = Array.init l (fun _ -> Array.make c Unknown) in
 
+  List.iter (fun (j,o') ->
+    List.iter (fun (i,o) ->
+      if less_ordinal o o' then m.(j).(i) <- Less
+      else if leq_ordinal o o' then m.(j).(i) <- min m.(j).(i) Leq
+    ) a) b;
+  m
+
+(*
 let try_inline ctxt num =
   let calls = ctxt.calls in
   let count, call = List.fold_left (
@@ -50,7 +48,7 @@ let try_inline ctxt num =
          let c'',a'' = compose c' a' c a in
          (i,j,c'',a'') else call) !calls
   | _ -> ()
-
+*)
 
 let rec find_positive ctxt o =
   let o = orepr o in
@@ -220,20 +218,20 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
          Printf.eprintf "(%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
       List.iter (fun (a0,b0,index,os0) ->
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
-          match ctxt.induction_hyp with
-          | (_,_,index',os')::_ ->
-             delayed := (fun () ->
-               let a,b = find_indexes os os' in
-               ctxt.calls := (index, index', a, b) :: !(ctxt.calls)) :: !delayed;
-             raise Induction_hyp
-          | _ -> assert false
-         )) ctxt.induction_hyp;
+	  match ctxt.induction_hyp with
+	  | (_,_,index',os')::_ ->
+	     let a,b = find_indexes os os' in
+	     ctxt.calls := (index, index', a, b) :: !(ctxt.calls);
+	     trace_sub_pop (NUseInd index);
+	     raise Induction_hypothesis
+	  | _ -> assert false
+ 	)) ctxt.induction_hyp;
       let fnum = new_function (List.length os) in
       (match ctxt.induction_hyp with
       | (_,_,index',os')::_ ->
-           (*delayed := (fun () ->*)
-           let a,b = find_indexes os os' in
-           ctxt.calls := (fnum, index', a, b) :: !(ctxt.calls)(* ) :: !delayed;*)
+	   (*delayed := (fun () ->*)
+	   let a,b = find_indexes os os' in
+	   ctxt.calls := (fnum, index', a, b) :: !(ctxt.calls)(* ) :: !delayed;*)
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (a', b', fnum, os)::ctxt.induction_hyp } in
       (false, ctxt)
@@ -349,7 +347,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     if lower_kind a b then Sub_Lower else
     let (ind_hyp, ctxt) = check_rec t ctxt a b in
     if ind_hyp then Sub_TODO (* FIXME *) else
-    match (a,b) with
+     match (a,b) with
+    (* Directly comparable types. *)
+    | (a           , b           ) when lower_kind a b ->
+        Sub_Lower
+
     (* Delayed unification. *)
     | (KUVar(ua)   , KProd(_)    ) ->
         let r = ref (t,a,b,Sub_Dummy) in
@@ -615,7 +617,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
            [] -> ()
        | (_,_,cur,os0)::_   ->
           delayed := (fun () ->
-            let cmp, ind = find_indexes os os0 in
+	    let cmp, ind = find_indexes os os0 in
             let call = (fnum, cur, cmp, ind) in
             ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
        end;
@@ -659,7 +661,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                   end;
                 let cmp, ind = find_indexes ovars os0 in
                 let call = (fnum, cur, cmp, ind) in
-                (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
+		Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp;
                 ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
               true
          else false) ctxt.induction_hyp then
