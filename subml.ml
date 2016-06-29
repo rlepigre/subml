@@ -24,6 +24,7 @@ let spec =
     ("--simple-ordinals", Arg.Set Print.simplified_ordinals, "Print inductive ordinals with <= constraints");
     ("--tex-file", Arg.String (fun s -> open_latex s), "Choose tex file output");
     ("--no-prelude", Arg.Clear prelude, "Do not load the prelude");
+    ("--no-inline", Arg.Clear Sct.do_inline, "Do not optimize call graph by inlining");
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
 

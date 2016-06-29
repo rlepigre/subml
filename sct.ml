@@ -53,9 +53,14 @@ let print_call tbl ff (i,j,m) =
   fprintf ff "F%d(%a) <- F%d(" j print_args j i;
   Array.iteri (fun i l ->
     if i > 0 then fprintf ff ",";
+    let some = ref false in
     Array.iteri (fun j c ->
-      (*      if c <> Unknown then*)
-      fprintf ff "%aX%d " print_cmp c j) l) m;
+      if c <> Unknown then (
+	let sep = if !some then " " else "" in
+	fprintf ff "%s%aX%d" sep print_cmp c j;
+	some := true
+      )) l;
+      if not !some then fprintf ff "?") m;
   fprintf ff ")%!"
 
 let print_calls tbl ff (l:calls) =
@@ -179,3 +184,44 @@ let sct: call list -> bool = fun ls ->
     if !debug_sct || !summary_sct then
       eprintf "SCT failed (%5d edges added, %6d composed)\t%!" !added !composed;
     false
+
+
+type count = Zero | One of call | More
+
+let add_call n call = match n with
+  | Zero -> One call
+  | _ -> More
+
+let do_inline = ref true
+
+(* inline function that call only one function.
+   TODO: inline function that are called at most once *)
+let inline calls =
+  if not !do_inline then calls else
+  (* eprintf "before inlining\n";
+     List.iter (eprintf "%a\n%!" pr_call) calls; *)
+  let tbl = Hashtbl.create 31 in
+  List.iter (
+    fun (i,j,_ as call) ->
+      let old = try Hashtbl.find tbl i with Not_found -> Zero in
+      let n = if i = j then More else add_call old call in
+      Hashtbl.replace tbl i n) calls;
+  let new_calls = ref [] in
+  let rec fn (j,i,m as call) =
+    try
+      match Hashtbl.find tbl i with
+      | One (_,k,m') ->
+	 let a = arity k in
+	 let b = arity i in
+	 let c = arity j in
+	 let call = (j,k,mat_prod a b c m' m) in
+	 if j = k && Hashtbl.find tbl j <> More then (new_calls := call :: !new_calls; call)
+	 else fn call
+      | _ -> call
+    with Not_found -> call
+  in
+  let calls = List.map fn calls in
+  let calls = !new_calls @ List.filter (fun (i,_,_) -> Hashtbl.find tbl i = More) calls in
+  (* eprintf "after inlining\n";
+     List.iter (eprintf "%a\n%!" pr_call) calls;*)
+  calls

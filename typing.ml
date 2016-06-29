@@ -33,23 +33,6 @@ let find_indexes index index' a b =
     ) a) b;
   m
 
-(*
-let try_inline ctxt num =
-  let calls = ctxt.calls in
-  let count, call = List.fold_left (
-    fun (n,_ as acc) (i,j,c,a as call) ->
-      if i = j then (2, None) else
-      if i = num then (n + 1, Some call) else acc) (0,None) !calls in
-  match count, call with
-  | 1, Some(_,j,c,a) -> (* one use: do inlining *)
-     calls := List.filter (fun (i,_,_,_) -> i <> num) !calls;
-     calls := List.map (fun (i,k,c',a' as call) ->
-       if k = num then
-         let c'',a'' = compose c' a' c a in
-         (i,j,c'',a'') else call) !calls
-  | _ -> ()
-*)
-
 let rec find_positive ctxt o =
   let o = orepr o in
   (*  Printf.eprintf "find positive %a\n%!" (print_ordinal false) o;*)
@@ -677,23 +660,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
 
 let subtype : term -> kind -> kind -> sub_prf * calls = fun t a b ->
   let calls = ref [] in
-  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
-  try
-    let p = subtype ctxt t a b in
-    List.iter (fun f -> f ()) !delayed;
-    delayed := [];
-    if not (sct !calls) then subtype_error "loop"; (p, !calls)
-  with e -> delayed := []; raise e
-
-let generic_subtype : kind -> kind -> sub_prf * calls = fun a b ->
-  subtype (generic_tcnst a b) a b
-
-let type_check : term -> kind -> typ_prf * calls = fun t c ->
-  let calls = ref [] in
-  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
-  try
-    let p = type_check ctxt t c in
-    List.iter (fun f -> f ()) !delayed;
-    delayed := [];
-    if not (sct !calls) then subtype_error "loop"; (p, !calls)
-  with e -> delayed := []; raise e
+  let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
+  type_check ctxt t c;
+  List.iter (fun f -> f ()) !delayed;
+  delayed := [];
+  if not (sct !calls)  then subtype_error "loop"
