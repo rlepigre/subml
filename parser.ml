@@ -529,20 +529,24 @@ let run_command : command -> unit = function
       let b = unbox (unsugar_kind empty_env b) in
       begin
         try
-          let prf = generic_subtype a b in
+          let (prf, _) = generic_subtype a b in
           (* FIXME
           if not n then (
             io.stdout "MUST FAIL\n%!";
             print_subtyping_proof prf;
             failwith "check"
           );
+          *)
+          if !verbose then
+            io.stderr "check %a < %a passed\n%!" (print_kind false) a (print_kind false) b;
           reset_epsilon_tbls ()
         with
         | Subtype_error s when n ->
            io.stdout "CHECK FAILED: OK %s\n%!" s;
            failwith "check"
         | Subtype_error s ->
-           reset trace_state;
+            if !verbose then
+              io.stderr "check not %a < %a passed\n%!" (print_kind false) a (print_kind false) b;
            reset_epsilon_tbls ();
         | e ->
            io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);

@@ -221,9 +221,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> subtype_ctxt =
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
 	  match ctxt.induction_hyp with
 	  | (_,_,index',os')::_ ->
-	     let a,b = find_indexes os os' in
-	     ctxt.calls := (index, index', a, b) :: !(ctxt.calls);
-	     trace_sub_pop (NUseInd index);
+	     delayed := (fun () ->
+	       let a,b = find_indexes os os' in
+	       ctxt.calls := (index, index', a, b) :: !(ctxt.calls)) :: !delayed;
 	     raise Induction_hypothesis
 	  | _ -> assert false
  	)) ctxt.induction_hyp;
@@ -332,40 +332,23 @@ let lower_kind k1 k2 =
   in
   Timed.pure_test (lower_kind true k1) k2
 
-let rec subtype : subtype_ctxt -> term -> kind -> kind -> unit = fun ctxt t a b ->
-  let rec subtype ctxt t a0 b0 : unit =
-    let a = full_repr a0 in
-    let b = full_repr b0 in
-    if !debug then
-      begin
-        io.log "%a\n" (print_term false) t;
-        io.log "  ∈ %a\n" (print_kind false) a;
-        io.log "  ⊂ %a\n" (print_kind false) b;
-        let p_aux ch (o,_) = print_ordinal false ch o in
-        match ctxt.positive_ordinals with
-        | [] -> io.log "\n%!"
-        | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
-      end;
-    if lower_kind a b then
-      let _ = trace_subtyping t a0 b0 in
-      trace_sub_pop NRefl;
-      if !debug then
-        begin
-          io.log "%a ≤ %a" (print_kind false) a (print_kind false) b;
-          io.log "(∋ %a)\n" (print_term false) t;
-          let p_aux ch (o,_) = print_ordinal false ch o in
-          match ctxt.positive_ordinals with
-          | [] -> io.log "\n%!"
-          | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
-        end;
-    else begin
-    let _ = trace_subtyping t a0 b0 in
+let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a0 b0 ->
+  let a = full_repr a0 in
+  let b = full_repr b0 in
+  if !debug then
+    begin
+      io.log "%a\n" (print_term false) t;
+      io.log "  ∈ %a\n" (print_kind false) a;
+      io.log "  ⊂ %a\n" (print_kind false) b;
+      let p_aux ch (o,_) = print_ordinal false ch o in
+      match ctxt.positive_ordinals with
+      | [] -> io.log "\n%!"
+      | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
+    end;
+  let r =
+    if lower_kind a b then Sub_Lower else
     let ctxt = check_rec t ctxt a b in
-     match (a,b) with
-    (* Directly comparable types. *)
-    | (a           , b           ) when lower_kind a b ->
-        Sub_Lower
-
+    match (a,b) with
     (* Delayed unification. *)
     | (KUVar(ua)   , KProd(_)    ) ->
         let r = ref (t,a,b,Sub_Dummy) in
@@ -380,7 +363,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> unit = fun ctxt t a b 
         let hook = !(ub.uvar_hook) in
         ub.uvar_hook := (fun k -> r := subtype ctxt t a0 k; hook k);
         Sub_Delay(r)
-  
+
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
         let f x = tappl dummy_position (box t) x in
@@ -394,7 +377,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> unit = fun ctxt t a b 
           let p1 = subtype ctxt wit a2 a1 in
           let p2 = subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2 in
         Sub_Func(p1, p2)
-  
+
     (* Product type. *)
     | (KProd(fsa)  , KProd(fsb)  ) ->
         let check_field (l,b) =
@@ -406,7 +389,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> unit = fun ctxt t a b 
         in
         let ps = List.map check_field fsb in
         Sub_Prod(ps)
-  
+
     (* Sum type. *)
     | (KDSum(csa)  , KDSum(csb)  ) ->
         let check_variant (c,a) =
@@ -415,134 +398,119 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> unit = fun ctxt t a b 
             try List.assoc c csb
             with Not_found -> subtype_error ("Constructor clash: " ^ c)
           in
-          subtype ctxt t a b 
+          subtype ctxt t a b
         in
         let ps = List.map check_variant csa in
         Sub_DSum(ps)
-  
+
     (* Dot projection. *)
     | (KDPrj(t0,s) , _           ) ->
         let u = new_uvar () in
         let p1 = type_check ctxt t0 u in
         let p2 = subtype ctxt t (dot_proj t0 u s) b0 in
         Sub_DPrj_l(p1, p2)
-  
+
     | (_           , KDPrj(t0,s) ) ->
         let u = new_uvar () in
         let p1 = type_check ctxt t0 u in
         let p2 = subtype ctxt t a0 (dot_proj t0 u s) in
         Sub_DPrj_r(p1, p2)
-  
+
     (* KWith clause. *)
-    | (KWith(a,e), _         ) ->
-       subtype ctxt t (with_clause a e) b0;
-       trace_sub_pop NWithLeft
+    | (KWith(a,e)  , _           ) ->
+        let p = subtype ctxt t (with_clause a e) b0 in
+        Sub_With_l(p)
 
-    | (_        , KWith(b,e) ) ->
-       subtype ctxt t a0 (with_clause b e);
-       trace_sub_pop NWithRight
+    | (_           , KWith(b,e)  ) ->
+        let p = subtype ctxt t a0 (with_clause b e) in
+        Sub_With_r(p)
 
-    (* Universal quantifier. *)
-    | (_        , KKAll(f)   ) ->
-       let b' = subst f (KUCst(t,f)) in
-       subtype ctxt t a0 b';
-       trace_sub_pop NAllRight
+    (* Universal quantification over kinds. *)
+    | (_           , KKAll(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (KUCst(t,f))) in
+        Sub_KAll_r(p)
 
-    | (KKAll(f)  , _         ) ->
-       subtype ctxt t (subst f (new_uvar ())) b0;
-       trace_sub_pop NAllLeft
+    | (KKAll(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (new_uvar ())) b0 in
+        Sub_KAll_l(p)
 
-    (* Existantial quantifier. *)
-    | (KKExi(f)  , _         ) ->
-       let a' = subst f (KECst(t,f)) in
-       subtype ctxt t a' b0;
-       trace_sub_pop NExistsLeft
+    (* Existantial quantification over kinds. *)
+    | (KKExi(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (KECst(t,f))) b0 in
+        Sub_KExi_l(p)
 
-    | (_        , KKExi(f)   ) ->
-       subtype ctxt t a0 (subst f (new_uvar ()));
-       trace_sub_pop NExistsRight
+    | (_           , KKExi(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (new_uvar ())) in
+        Sub_KExi_r(p)
 
-    (* Universal quantifier. *)
-    | (_        , KOAll(f)   ) ->
-       let b' = subst f (OLess(OConv,NotIn(t,f))) in
-       subtype ctxt t a0 b';
-       trace_sub_pop NAllRight
+    (* Universal quantification over ordinals. *)
+    | (_           , KOAll(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (OLess(OConv,NotIn(t,f)))) in
+        Sub_OAll_r(p)
 
-    | (KOAll(f)  , _         ) ->
-       subtype ctxt t (subst f (OUVar(OConv, ref None))) b0;
-       trace_sub_pop NAllLeft
+    | (KOAll(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (OUVar(OConv, ref None))) b0 in
+        Sub_OAll_l(p)
 
-    (* Existantial quantifier. *)
-    | (KOExi(f)  , _         ) ->
-       let a' = subst f (OLess(OConv,In(t,f))) in
-       subtype ctxt t a' b0;
-       trace_sub_pop NExistsLeft
+    (* Existantial quantification over ordinals. *)
+    | (KOExi(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (OLess(OConv,In(t,f)))) b0 in
+        Sub_OExi_l(p)
 
-    | (_        , KOExi(f)   ) ->
-       subtype ctxt t a0 (subst f (OUVar(OConv, ref None)));
-       trace_sub_pop NExistsRight
+    | (_           , KOExi(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (OUVar(OConv, ref None))) in
+        Sub_OExi_r(p)
 
-    (* μ and ν - least and greatest fixpoint. *)
-    | (_          , KFixN(o,f)) ->
-     (try
-       let ctxt, num = check_rec t ctxt a b in
-       let g = bind mk_free_ovari (binder_name f) (fun o ->
-         bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
-       in
-       let o' = OLess (o,NotIn(t,unbox g)) in
-       let ctxt = add_pos ctxt o o' in
-       if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
-       let cst = KFixN(o', f) in
-       subtype ctxt t a0 (subst f cst);
-       trace_sub_pop (NNuRight num)
-      with Induction_hypothesis ->
-       ()
-     )
+    (* μl and νr rules. *)
+    | (_           , KFixN(o,f)  ) ->
+        let g = bind mk_free_ovari (binder_name f) (fun o ->
+          bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
+        in
+        let o' = OLess (o,NotIn(t,unbox g)) in
+        let ctxt = add_pos ctxt o o' in
+        if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+        let cst = KFixN(o', f) in
+        subtype ctxt t a0 (subst f cst);
+        Sub_TODO (* FIXME *)
 
-   | (KFixM(o,f)  , _        ) ->
-    (try
-       let ctxt, num = check_rec t ctxt a b in
-       let g = bind mk_free_ovari (binder_name f) (fun o ->
-         bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
-       in
-       let o' = OLess (o,In(t,unbox g)) in
-       let ctxt = add_pos ctxt o o' in
-       if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
-       let cst = KFixM(o', f) in
-       subtype ctxt t (subst f cst) b0;
-       trace_sub_pop (NMuLeft num)
-     with Induction_hypothesis -> ())
+   | (KFixM(o,f)   , _           ) ->
+        let g = bind mk_free_ovari (binder_name f) (fun o ->
+          bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
+        in
+        let o' = OLess (o,In(t,unbox g)) in
+        let ctxt = add_pos ctxt o o' in
+        if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+        let cst = KFixM(o', f) in
+        subtype ctxt t (subst f cst) b0;
+        Sub_TODO (* FIXME *)
 
-    | (KFixN(o,f)  , _        ) ->
-       (try
-          let o' = find_positive ctxt o in
-          let a = if o' = o then a else KFixN(o',f) in
-          subtype ctxt t (subst f a) b0;
-          trace_sub_pop (if o = OConv then NNuLeftInf else NNuLeft)
-        with Not_found ->  subtype_error "Subtyping clash (no rule apply).")
+    (* μr and νl rules. *)
+    | (KFixN(o,f)  , _           ) ->
+        begin
+          try
+            let o' = find_positive ctxt o in
+            let a = if o' = o then a else KFixN(o',f) in
+            let p = subtype ctxt t (subst f a) b0 in
+            Sub_FixM_r(p)
+          with Not_found -> subtype_error "Subtyping clash (no rule apply)."
+        end
 
-    | (_          , KFixM(o,f)) ->
-       (try
-          let o' = find_positive ctxt o in
-          let b = if o' = o then b else KFixM(o',f) in
-          subtype ctxt t a0 (subst f b);
-          trace_sub_pop (if o = OConv then NMuRightInf else NMuRight)
-        with Not_found ->  subtype_error "Subtyping clash (no rule apply).")
+    | (_           , KFixM(o,f)  ) ->
+        begin
+          try
+            let o' = find_positive ctxt o in
+            let b = if o' = o then b else KFixM(o',f) in
+            let p = subtype ctxt t a0 (subst f b) in
+            Sub_FixN_l(p)
+          with Not_found -> subtype_error "Subtyping clash (no rule apply)."
+        end
 
     (* Subtype clash. *)
-    | (_, _) -> subtype_error "Subtyping clash (no rule apply)."
-    end;
-  in
-  subtype ctxt t a b
+    | (_           , _           ) ->
+        subtype_error "Subtyping clash (no rule apply)."
+  in (t, a, b, r)
 
-and generic_subtype : kind -> kind -> unit = fun a b ->
-  let calls = ref [] in
-  let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
-  let wit = generic_tcnst a b in
-  let _ = subtype ctxt wit a b in
-  if not (sct !calls)  then subtype_error "loop"
-
-and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
+and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
   if !debug then
     begin
@@ -706,8 +674,23 @@ and type_check : subtype_ctxt -> term -> kind -> unit = fun ctxt t c ->
 
 let subtype : term -> kind -> kind -> sub_prf * calls = fun t a b ->
   let calls = ref [] in
-  let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
-  type_check ctxt t c;
-  List.iter (fun f -> f ()) !delayed;
-  delayed := [];
-  if not (sct !calls)  then subtype_error "loop"
+  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
+  try
+    let p = subtype ctxt t a b in
+    List.iter (fun f -> f ()) !delayed;
+    delayed := [];
+    if not (sct !calls) then subtype_error "loop"; (p, !calls)
+  with e -> delayed := []; raise e
+
+let generic_subtype : kind -> kind -> sub_prf * calls = fun a b ->
+  subtype (generic_tcnst a b) a b
+
+let type_check : term -> kind -> typ_prf * calls = fun t c ->
+  let calls = ref [] in
+  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
+  try
+    let p = type_check ctxt t c in
+    List.iter (fun f -> f ()) !delayed;
+    delayed := [];
+    if not (sct !calls) then subtype_error "loop"; (p, !calls)
+  with e -> delayed := []; raise e
