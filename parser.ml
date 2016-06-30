@@ -529,7 +529,7 @@ let run_command : command -> unit = function
       let b = unbox (unsugar_kind empty_env b) in
       begin
         try
-          let (prf, _) = generic_subtype a b in
+          let (_prf, _) = generic_subtype a b in
           (* FIXME
           if not n then (
             io.stdout "MUST FAIL\n%!";

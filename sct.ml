@@ -7,13 +7,19 @@ open Format
 type cmp = Less | Leq | Unknown
 
 (* a call g(x0-1,x1,x1-1) inside f(x0,x1) is
-   represented by (g_n, f_n, [|Less;Leq;Less|] [|0;1;1|])
+   represented by (g_n, f_n, [|[| Less; Unknown; Unknown |];
+                               [| Unknown; Leq; Less  |]|], b)
 
-   more precisely, a call (i,j,c,a) represents a call
+   more precisely, a call (i,j,m) represents a call
    to the function numbered i inside the function numbered j.
-   a indicates which parameters of j are used in the call.
-   c indicates the relation with this parameter *)
+   m is a matrix. the coefficient m.(i).(j) give the relation
+   between the i-th parameter of the caller and the j-th argument
+   of the called function.
+
+   The boolean in pre_call indicates a recursive call, that must no be
+   removed by inlining.  *)
 type call = int * int * cmp array array
+type pre_call = int * int * cmp array array * bool
   (* index of the caller for lines *)
 
 let compose c1 c2 = match c1, c2 with
@@ -22,6 +28,7 @@ let compose c1 c2 = match c1, c2 with
   | Leq, Leq -> Leq
 
 type calls = call list
+type pre_calls = pre_call list
 
 let debug_sct = ref false
 let summary_sct = ref false
@@ -197,31 +204,31 @@ let do_inline = ref true
 (* inline function that call only one function.
    TODO: inline function that are called at most once *)
 let inline calls =
-  if not !do_inline then calls else
+  if not !do_inline then
+    List.map (fun (i,j,m,_) -> (i,j,m)) calls
+  else
   (* eprintf "before inlining\n";
      List.iter (eprintf "%a\n%!" pr_call) calls; *)
   let tbl = Hashtbl.create 31 in
   List.iter (
-    fun (i,j,_ as call) ->
+    fun (i,j,m,rec_call) ->
       let old = try Hashtbl.find tbl i with Not_found -> Zero in
-      let n = if i = j then More else add_call old call in
+      let n = if rec_call then More else add_call old (i,j,m) in
       Hashtbl.replace tbl i n) calls;
-  let new_calls = ref [] in
-  let rec fn (j,i,m as call) =
+  let rec fn (j,i,m,r) =
     try
       match Hashtbl.find tbl i with
       | One (_,k,m') ->
 	 let a = arity k in
 	 let b = arity i in
 	 let c = arity j in
-	 let call = (j,k,mat_prod a b c m' m) in
-	 if j = k && Hashtbl.find tbl j <> More then (new_calls := call :: !new_calls; call)
-	 else fn call
-      | _ -> call
-    with Not_found -> call
+	 let call = (j,k,mat_prod a b c m' m,r) in
+	 fn call
+      | _ -> (j,i,m)
+    with Not_found -> (j,i,m)
   in
+  let calls = List.filter (fun (i,_,_,_) -> Hashtbl.find tbl i = More) calls in
   let calls = List.map fn calls in
-  let calls = !new_calls @ List.filter (fun (i,_,_) -> Hashtbl.find tbl i = More) calls in
   (* eprintf "after inlining\n";
      List.iter (eprintf "%a\n%!" pr_call) calls;*)
   calls

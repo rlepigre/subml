@@ -16,7 +16,7 @@ let subtype_error : string -> 'a =
 
 type subtype_ctxt =
   { induction_hyp     : (kind * kind * int * (int * ordinal) list) list
-  ; calls             : calls ref
+  ; calls             : pre_calls ref
   ; positive_ordinals : (ordinal * ordinal list) list }
 
 exception Found of cmp * int
@@ -205,7 +205,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
 	  | (_,_,index',os')::_ ->
 	     delayed := (fun () ->
 	       let m = find_indexes index index' os os' in
-	       ctxt.calls := (index, index', m) :: !(ctxt.calls)) :: !delayed;
+	       ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed;
 	     raise Induction_hyp
 	  | _ -> assert false
  	)) ctxt.induction_hyp;
@@ -214,7 +214,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
       | (_,_,index',os')::_ ->
 	   delayed := (fun () ->
 	     let m = find_indexes fnum index' os os' in
-	     ctxt.calls := (fnum, index', m) :: !(ctxt.calls)) :: !delayed;
+	     ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed;
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (a', b', fnum, os)::ctxt.induction_hyp } in
       (false, ctxt)
@@ -599,7 +599,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        | (_,_,cur,os0)::_   ->
           delayed := (fun () ->
 	    let m = find_indexes fnum cur os os0 in
-            let call = (fnum, cur, m) in
+            let call = (fnum, cur, m, false) in
             ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
        end;
        let ctxt = { ctxt with induction_hyp = (c1, c1, fnum, os)::ctxt.induction_hyp } in
@@ -641,7 +641,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                       (print_kind false) c
                   end;
                 let m = find_indexes fnum cur ovars os0 in
-                let call = (fnum, cur, m) in
+                let call = (fnum, cur, m, true) in
                 (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
                 ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
               true
@@ -663,8 +663,8 @@ let subtype : term -> kind -> kind -> sub_prf * calls = fun t a b ->
     let p = subtype ctxt t a b in
     List.iter (fun f -> f ()) !delayed;
     delayed := [];
-    calls := inline !calls;
-    if not (sct !calls) then subtype_error "loop"; (p, !calls)
+    let calls = inline !calls in
+    if not (sct calls) then subtype_error "loop"; (p, calls)
   with e -> delayed := []; raise e
 
 let generic_subtype : kind -> kind -> sub_prf * calls = fun a b ->
@@ -677,6 +677,6 @@ let type_check : term -> kind -> typ_prf * calls = fun t c ->
     let p = type_check ctxt t c in
     List.iter (fun f -> f ()) !delayed;
     delayed := [];
-    calls := inline !calls;
-    if not (sct !calls) then subtype_error "loop"; (p, !calls)
+    let calls = inline !calls in
+    if not (sct calls) then subtype_error "loop"; (p, calls)
   with e -> delayed := []; raise e
