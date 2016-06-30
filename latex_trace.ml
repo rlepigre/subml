@@ -61,7 +61,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_Coer(p1,p2)   -> binaryN "$\\subset$" c (sub2proof p1) (typ2proof p2)
   | Typ_KAbs(p)       -> unaryN "$\\Lambda$" c (typ2proof p)
   | Typ_OAbs(p)       -> unaryN "$\\Lambda_o$" c (typ2proof p)
-  | Typ_Defi(p)       -> assert false (* TODO *)
+  | Typ_Defi(p)       -> hyp ""
   | Typ_Prnt(p)       -> unaryN "$print$" c (sub2proof p)
   | Typ_Cnst(p)       -> unaryN "$=$" c (sub2proof p)
   | Typ_Func_i(p1,p2) -> binaryN "$\\to_i$" c (sub2proof p1) (typ2proof p2)
@@ -105,7 +105,7 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_FixN_l(p)     -> unaryN "$\\nu_l$" c (sub2proof p)
   | Sub_FixM_l(p)     -> unaryN "$\\mu_l$" c (sub2proof p)
   | Sub_FixN_r(p)     -> unaryN "$\\nu_r$" c (sub2proof p)
-  | Sub_Ind(n)        -> hyp (Printf.sprintf "$H_%d" n)
+  | Sub_Ind(n)        -> hyp (Printf.sprintf "$H_%d$" n)
   | Sub_Dummy         -> assert false (* Should not happen. *)
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
@@ -117,9 +117,7 @@ let rec output ch = function
   | Text(t)        -> Printf.fprintf ch "%s" t
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof (p,(arities,calls)) ->
-     Printf.fprintf ch "\\begin{prooftree}\n";
      print_subtyping_proof ch p;
-     Printf.fprintf ch "\\end{prooftree}\n%!";
      Printf.fprintf ch "\\begin{center}\n";
      if calls <> [] then print_calls ch arities calls;
      Printf.fprintf ch "\\end{center}\n%!";
