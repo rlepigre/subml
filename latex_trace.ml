@@ -19,36 +19,12 @@ let rec to_string = function
   | List(l) -> "{" ^ String.concat "" (List.map to_string l) ^"}"
   | _       -> assert false
 
-let print_rule_name ff rn =
-  let open Printf in
-  match rn with
-  | NUseInd n -> fprintf ff "H(%d)" n
-  | NRefl -> fprintf ff "="
-  | NArrow -> fprintf ff "\\to"
-  | NSum -> fprintf ff "+"
-  | NProd -> fprintf ff "\\times"
-  | NAllLeft -> fprintf ff "\\forall_l"
-  | NAllRight -> fprintf ff "\\forall_r"
-  | NExistsLeft -> fprintf ff "\\exists_l"
-  | NExistsRight -> fprintf ff "\\exists_r"
-  | NMuLeft -> fprintf ff "\\mu_l"
-  | NMuRightInf -> fprintf ff "\\mu_r^\\infty"
-  | NNuLeftInf -> fprintf ff "\\nu_l^\\infty"
-  | NMuRight -> fprintf ff "\\mu_r"
-  | NNuLeft -> fprintf ff "\\nu_l"
-  | NNuRight -> fprintf ff "\\nu_r"
-  | NProjLeft -> fprintf ff "\\pi_l"
-  | NProjRight -> fprintf ff "\\pi_r"
-  | NWithLeft -> fprintf ff "w_l"
-  | NWithRight -> fprintf ff "w_r"
-  | NUnknown -> fprintf ff "?"
-
 let print_calls ch arities calls =
   let print_cmp ch c =
     match c with
     | Sct.Unknown -> Printf.fprintf ch "?"
-    | Sct.Less -> Printf.fprintf ch "<"
-    | Sct.Leq  -> Printf.fprintf ch "="
+    | Sct.Less    -> Printf.fprintf ch "<"
+    | Sct.Leq     -> Printf.fprintf ch "="
   in
   let print_args ch i =
     let a = try List.assoc i arities with Not_found -> assert false in
