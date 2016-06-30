@@ -9,6 +9,9 @@ include "lib/church/bool.typ"
 include "lib/church/nat.typ"
 include "lib/church/data.typ"
 
+(* Scott encoding. *)
+include "lib/scott/nat.typ"
+
 (* Test files. *)
 include "lib/dotproj.typ"
 include "lib/tree.typ"

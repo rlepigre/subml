@@ -509,6 +509,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
   let r =
+    try
     match t.elt with
     | TCoer(t,a) ->
         let p1 = subtype ctxt t a c in
@@ -659,6 +660,9 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Cnst(p)
     | TTInt(_) -> assert false (* Cannot happen. *)
     | TVari(_) -> assert false (* Cannot happen. *)
+    with Subtype_error msg ->
+      Format.eprintf "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
+      exit 1
   in (t, c, r)
 
 let subtype : term -> kind -> kind -> sub_prf * calls_graph

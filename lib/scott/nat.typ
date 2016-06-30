@@ -31,9 +31,9 @@ check SNat ⊂ SNat'
 
 val iter : ∀P P → (P → P) → SNat → P = ΛP fun a f n ↦
   (n : SNat')
-    (fun p r ↦ f (p r ((fun r ↦ a) : U(P)) r))
+    (fun p r ↦ f (p r (fun r ↦ a) r)):T(P)
     (fun r ↦ a)
-    (fun p r ↦ f (p r ((fun r ↦ a) : U(P)) r))
+    (fun p r ↦ f (p r (fun r ↦ a) r)):T(P)
 
 (* Common functions. *)
 val add : SNat → SNat → SNat = fun n m ↦ iter n s m
@@ -52,9 +52,9 @@ type T(P) = ∀Y (Y → U(P) → Y → SNat → P) → Y → SNat → P
 
 val recu : ∀P P → (SNat → P → P) → SNat → P = ΛP fun a f n ↦
   (n : ∀P T(P) → U(P) → T(P) → SNat → P)
-     (fun p r q ↦ f q (p r (fun r q ↦ a) r (pred q)))
+     (fun p r q ↦ f q (p r (fun r q ↦ a) r (pred q))):T(P)
      (fun r q ↦ a)
-     (fun p r q ↦ f q (p r (fun r q ↦ a) r (pred q)))
+     (fun p r q ↦ f q (p r (fun r q ↦ a) r (pred q))):T(P)
      (pred n)
 
 (* Specialized fixpoint. *)

@@ -324,7 +324,7 @@ and pterm p =
      | [] -> assert false
      | [(_,t)] -> t
      | _ -> in_pos _loc (PReco(fs)))
-  | t:(pterm TColo) ":" k:(pkind KFunc) when p = TColo ->
+  | t:(pterm TColo) ":" k:(pkind KFunc)$ when p = TColo ->
     in_pos _loc (PCoer(t,k))
   | id:lident when p = TAtom ->
      in_pos _loc (PLVar(id))
