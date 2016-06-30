@@ -105,7 +105,7 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_FixN_l(p)     -> unaryN "$\\nu_l$" c (sub2proof p)
   | Sub_FixM_l(p)     -> unaryN "$\\mu_l$" c (sub2proof p)
   | Sub_FixN_r(p)     -> unaryN "$\\nu_r$" c (sub2proof p)
-  | Sub_Ind(n)        -> hyp (Printf.sprintf "$H_%d$" n)
+  | Sub_Ind(n)        -> axiomN (Printf.sprintf "$H_%d$" n) c
   | Sub_Dummy         -> assert false (* Should not happen. *)
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
