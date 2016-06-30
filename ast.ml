@@ -129,7 +129,10 @@ and uvar =
   { uvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
   ; uvar_val : kind option ref
-  ; uvar_hook : (kind -> unit) ref }
+  ; uvar_hook : (kind -> unit) ref
+  ; uvar_state : uvar_state ref }
+
+and uvar_state = Free | Sum | Prod
 
 (* Abstract syntax tree for ordinals. *)
 and ordinal =
@@ -227,9 +230,12 @@ and sub_rule =
   | Sub_OExi_r of sub_prf
   | Sub_FixM_r of sub_prf
   | Sub_FixN_l of sub_prf
-  | Sub_TODO      (* FIXME *)
+  | Sub_FixM_l of sub_prf
+  | Sub_FixN_r of sub_prf
+  | Sub_Ind    of int
 and sub_prf =
-  term * kind * kind * sub_rule
+  (* the integer is referenced by induction hyp *)
+  term * kind * kind * int option * sub_rule
 
 and typ_rule =
   | Typ_Coer   of sub_prf * typ_prf
@@ -244,8 +250,8 @@ and typ_rule =
   | Typ_Prod_e of typ_prf
   | Typ_DSum_i of sub_prf * typ_prf
   | Typ_DSum_e of typ_prf * typ_prf list
-  | Typ_Y      of sub_prf * sub_prf * typ_prf
-  | Typ_TODO      (* FIXME *)
+  | Typ_Y      of int * sub_prf * sub_prf * typ_prf
+  | Typ_YH     of int * sub_prf
 and typ_prf =
   term * kind * typ_rule
 
@@ -402,6 +408,7 @@ let (new_uvar, reset_uvar) =
     uvar_key = (incr c; !c);
     uvar_val = ref None;
     uvar_hook = ref (fun k -> ());
+    uvar_state = ref Free;
   } in
   let reset_uvar () = c := 0 in
   (new_uvar, reset_uvar)

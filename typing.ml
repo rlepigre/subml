@@ -181,12 +181,12 @@ let add_pos ctxt o o' =
     { ctxt with positive_ordinals = (o, o'::l) ::
         (List.filter (fun (o1,_) -> o1 != o) ctxt.positive_ordinals) }
 
-exception Induction_hyp
+exception Induction_hyp of int
 
 let delayed = ref []
 
 (* The boolean is true if we can apply the induction hypothesis. *)
-let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
+let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option * subtype_ctxt =
   fun t ctxt a b ->
     (* the test (has_uvar a || has_uvar b) is important to
        - avoid occur chek for induction variable
@@ -206,7 +206,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
 	     delayed := (fun () ->
 	       let m = find_indexes index index' os os' in
 	       ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed;
-	     raise Induction_hyp
+	     raise (Induction_hyp index)
 	  | _ -> assert false
  	)) ctxt.induction_hyp;
       let fnum = new_function (List.length os) in
@@ -217,8 +217,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
 	     ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed;
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (a', b', fnum, os)::ctxt.induction_hyp } in
-      (false, ctxt)
-    with Exit -> (false, ctxt) | Induction_hyp -> (true, ctxt)
+      (Some fnum, None, ctxt)
+    with Exit -> (None, None, ctxt)
+       | Induction_hyp n -> (None, Some n, ctxt)
 
 let collect_pos ctxt w c c' =
   let (_,_,os) = decompose false Pos c c' in
@@ -326,24 +327,28 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
       | [] -> io.log "\n%!"
       | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
+  let (ind_ref, ind_hyp, ctxt) = check_rec t ctxt a b in
   let r =
     if lower_kind a b then Sub_Lower else
-    let (ind_hyp, ctxt) = check_rec t ctxt a b in
-    if ind_hyp then Sub_TODO (* FIXME *) else
+    match ind_hyp with
+    | Some n -> Sub_Ind n
+    | _ ->
     match (a,b) with
     (* Delayed unification. *)
-    | (KUVar(ua)   , KProd(_)    ) ->
-        let r = ref (t,a,b,Sub_Dummy) in
+    | (KUVar(ua)   , KProd(_)    ) when !(ua.uvar_state) <> Sum ->
+        let r = ref (t,a,b,None,Sub_Dummy) in
         let open Timed in
         let hook = !(ua.uvar_hook) in
         ua.uvar_hook := (fun k -> r := subtype ctxt t k b0; hook k);
+	ua.uvar_state := Prod;
         Sub_Delay(r)
 
-    | (KDSum(_)    , KUVar(ub)   ) ->
-        let r = ref (t,a,b,Sub_Dummy) in
+    | (KDSum(_)    , KUVar(ub)   ) when !(ub.uvar_state) <> Prod  ->
+        let r = ref (t,a,b,None,Sub_Dummy) in
         let open Timed in
         let hook = !(ub.uvar_hook) in
         ub.uvar_hook := (fun k -> r := subtype ctxt t a0 k; hook k);
+	ub.uvar_state := Sum;
         Sub_Delay(r)
 
     (* Arrow type. *)
@@ -452,8 +457,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let ctxt = add_pos ctxt o o' in
         if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixN(o', f) in
-        subtype ctxt t a0 (subst f cst);
-        Sub_TODO (* FIXME *)
+        let prf = subtype ctxt t a0 (subst f cst) in
+        Sub_FixN_r prf
 
    | (KFixM(o,f)   , _           ) ->
         let g = bind mk_free_ovari (binder_name f) (fun o ->
@@ -463,8 +468,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let ctxt = add_pos ctxt o o' in
         if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixM(o', f) in
-        subtype ctxt t (subst f cst) b0;
-        Sub_TODO (* FIXME *)
+        let prf = subtype ctxt t (subst f cst) b0 in
+        Sub_FixM_l prf
 
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
@@ -490,7 +495,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (* Subtype clash. *)
     | (_           , _           ) ->
         subtype_error "Subtyping clash (no rule apply)."
-  in (t, a, b, r)
+  in (t, a, b, ind_ref, r)
 
 and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
@@ -616,39 +621,39 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        in
        let t = fn t in
        let p = type_check ctxt t c0 in
-       Typ_Y(p1,p2,p)
+       Typ_Y(fnum,p1,p2,p)
 
     | TCstY(_,a) ->
-       if List.exists (fun (c',c'',fnum,os) ->
-         if a == c'' && a == c' then
-           match ctxt.induction_hyp with
-               [] -> assert false
-           | (_,_,cur,os0)::_   ->
-              let ovars = List.map (fun (i,_) -> (i,OUVar(OConv,ref None))) os in
-              let a = recompose a ovars in
-              if !debug then
-                begin
-                  io.log "searching induction hyp (1) %d:\n" fnum;
-                  io.log "  %a => %a\n%!" (print_kind false) a
-                    (print_kind false) c
-                end;
-              subtype ctxt t a c;
-              delayed := (fun () ->
-                if !debug then
-                  begin
-                    io.log "searching induction hyp (2) %d:\n" fnum;
-                    io.log "  %a => %a\n%!" (print_kind false) a
-                      (print_kind false) c
-                  end;
-                let m = find_indexes fnum cur ovars os0 in
-                let call = (fnum, cur, m, true) in
+       let (c',c'',fnum,os) =
+	 try List.find (fun (c',c'',_,_) -> a == c'' && a == c')
+               ctxt.induction_hyp
+	 with Not_found -> assert false
+       in
+       (match ctxt.induction_hyp with
+       | [] -> assert false
+       | (_,_,cur,os0)::_   ->
+          let ovars = List.map (fun (i,_) -> (i,OUVar(OConv,ref None))) os in
+          let a = recompose a ovars in
+          if !debug then
+            begin
+              io.log "searching induction hyp (1) %d:\n" fnum;
+              io.log "  %a => %a\n%!" (print_kind false) a
+                (print_kind false) c
+            end;
+          let prf = subtype ctxt t a c in
+          delayed := (fun () ->
+            if !debug then
+              begin
+                io.log "searching induction hyp (2) %d:\n" fnum;
+                io.log "  %a => %a\n%!" (print_kind false) a
+                  (print_kind false) c
+              end;
+            let m = find_indexes fnum cur ovars os0 in
+            let call = (fnum, cur, m, true) in
                 (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
-                ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
-              true
-         else false) ctxt.induction_hyp then
-         Typ_TODO (* TODO *)
-       else
-         assert false
+            ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
+          Typ_YH(fnum,prf))
+
     | TCnst(_,a,b) ->
         let p = subtype ctxt t a c in
         Typ_Cnst(p)

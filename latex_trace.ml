@@ -72,9 +72,14 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_DSum_i(p1,p2) -> binaryN "$+_i$" c (sub2proof p1) (typ2proof p2)
   | Typ_DSum_e(p,ps)  -> n_aryN "$+_e$" c
                            (typ2proof p :: List.map typ2proof ps)
-  | Typ_TODO          -> assert false (* Should not happen. *)
+  | Typ_YH(n,p)          ->
+     let name = Printf.sprintf "$H_%d$" n in
+     unaryN name c (sub2proof p)
+  | Typ_Y(n,p1,p2,p)     ->
+     let name = Printf.sprintf "$I_%d$" n in
+     ternaryN name c (sub2proof p1) (sub2proof p2) (typ2proof p)
 
-and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,r) ->
+and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let open Proof in
   let t2s = term_to_string false and k2s = kind_to_string false in
   let c = Printf.sprintf "$%s \\in %s \\subset %s$" (t2s t) (k2s a) (k2s b) in
@@ -98,8 +103,10 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,r) ->
   | Sub_OExi_r(p)     -> unaryN "$\\exists_{or}$" c (sub2proof p)
   | Sub_FixM_r(p)     -> unaryN "$\\mu_r$" c (sub2proof p)
   | Sub_FixN_l(p)     -> unaryN "$\\nu_l$" c (sub2proof p)
+  | Sub_FixM_l(p)     -> unaryN "$\\mu_l$" c (sub2proof p)
+  | Sub_FixN_r(p)     -> unaryN "$\\nu_r$" c (sub2proof p)
+  | Sub_Ind(n)        -> hyp (Printf.sprintf "$H_%d" n)
   | Sub_Dummy         -> assert false (* Should not happen. *)
-  | Sub_TODO          -> assert false (* Should not happen. *)
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
 let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
@@ -136,7 +143,7 @@ let rec output ch = function
      break_hint := n;
      Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
      break_hint := 0
-     (*
+(*
   | Sct ls ->
      List.iter (fun (tt,calls) -> print_calls ch tt calls) ls
-     *)
+*)
