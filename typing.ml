@@ -576,21 +576,15 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        (* Elimination of KOAll in front of c0, keep ordinals to
           eliminate OAbs below Y *)
        let ords, c0 = elim_ord_quantifier t c0 in
-       let (c1,c0,c2,os) =
-         let (_, c, os) = decompose false Pos (KProd []) c0 in
-         if os <> [] then c,c0,c0,os
-         else (
-           let (_, c, os) = decompose true Pos (KProd []) c0 in
-           let c0 = recompose c os in
-	   let c2 = List.fold_left (fun acc (_,ov) ->
-	     match ov with OUVar(_,ptr) ->
-	       KOAll(bind_ovar ptr acc)
-	     | _ -> acc) c0 os
-	   in
-	   let _, c0 = elim_ord_quantifier t c2 in
-           let (_, c, os) = decompose false Pos (KProd []) c0 in
-           (c,c0,c2,os))
+       let (_, c1, os) = decompose true Pos (KProd []) c0 in
+       let c0 = recompose c1 os in
+       let c2 = List.fold_left (fun acc (_,ov) ->
+	 match ov with OUVar(_,ptr) ->
+	     KOAll(bind_ovar ptr acc)
+	   | _ -> acc) c0 os
        in
+       let _, c0 = elim_ord_quantifier t c2 in
+       let (_, c1, os) = decompose false Pos (KProd []) c0 in
        let p1 = subtype ctxt t c0 c2 in
        let p2 = subtype ctxt t c2 c in
        let fnum = new_function (List.length os) in
