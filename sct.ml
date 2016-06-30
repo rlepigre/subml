@@ -20,7 +20,6 @@ type cmp = Less | Leq | Unknown
    removed by inlining.  *)
 type call = int * int * cmp array array
 type pre_call = int * int * cmp array array * bool
-  (* index of the caller for lines *)
 
 let compose c1 c2 = match c1, c2 with
   | Unknown, _ | _, Unknown -> Unknown
@@ -29,6 +28,8 @@ let compose c1 c2 = match c1, c2 with
 
 type calls = call list
 type pre_calls = pre_call list
+type arities = (int * int) list
+type calls_graph = arities * calls
 
 let debug_sct = ref false
 let summary_sct = ref false
@@ -122,7 +123,7 @@ let subsume m1 m2 =
     Exit -> false
 
 (* the main function *)
-let sct: call list -> bool = fun ls ->
+let sct: calls -> bool = fun ls ->
   if !debug_sct then eprintf "SCT starts...\n%!";
   let num_fun, arities = reset_function () in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun []) in
@@ -227,7 +228,9 @@ let inline calls =
       | _ -> (j,i,m)
     with Not_found -> (j,i,m)
   in
-  let calls = List.filter (fun (i,_,_,_) -> Hashtbl.find tbl i = More) calls in
+  let calls =
+    List.filter (fun (i,_,_,_) -> Hashtbl.find tbl i = More) calls
+  in
   let calls = List.map fn calls in
   (* eprintf "after inlining\n";
      List.iter (eprintf "%a\n%!" pr_call) calls;*)

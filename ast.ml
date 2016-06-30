@@ -199,7 +199,7 @@ and value_def =
   ; orig_value : term        (* Original term (not evaluated). *)
   ; ttype      : kind        (* Type of the term. *)
   ; proof      : typ_prf     (* Typing proof. *)
-  ; calls      : Sct.calls } (* SCT instance. *)
+  ; calls_graph: Sct.calls_graph } (* SCT instance. *)
 
 and srule_name = NUseInd of int | NRefl | NArrow | NSum | NProd
   | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft

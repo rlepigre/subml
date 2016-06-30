@@ -661,7 +661,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TVari(_) -> assert false (* Cannot happen. *)
   in (t, c, r)
 
-let subtype : term -> kind -> kind -> sub_prf * calls = fun t a b ->
+let subtype : term -> kind -> kind -> sub_prf * calls_graph
+  = fun t a b ->
   let calls = ref [] in
   let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
   try
@@ -669,13 +670,14 @@ let subtype : term -> kind -> kind -> sub_prf * calls = fun t a b ->
     List.iter (fun f -> f ()) !delayed;
     delayed := [];
     let calls = inline !calls in
-    if not (sct calls) then subtype_error "loop"; (p, calls)
+    let arities = Sct.arities () in
+    if not (sct calls) then subtype_error "loop"; (p, (arities, calls))
   with e -> delayed := []; raise e
 
-let generic_subtype : kind -> kind -> sub_prf * calls = fun a b ->
+let generic_subtype : kind -> kind -> sub_prf * calls_graph = fun a b ->
   subtype (generic_tcnst a b) a b
 
-let type_check : term -> kind -> typ_prf * calls = fun t c ->
+let type_check : term -> kind -> typ_prf * calls_graph = fun t c ->
   let calls = ref [] in
   let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
   try
@@ -683,5 +685,6 @@ let type_check : term -> kind -> typ_prf * calls = fun t c ->
     List.iter (fun f -> f ()) !delayed;
     delayed := [];
     let calls = inline !calls in
-    if not (sct calls) then subtype_error "loop"; (p, calls)
+    let arities = Sct.arities () in
+    if not (sct calls) then subtype_error "loop"; (p, (arities, calls))
   with e -> delayed := []; raise e

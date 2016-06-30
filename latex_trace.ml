@@ -9,9 +9,9 @@ type latex_output =
   | Term    of int * bool * term
   | Text    of string
   | List    of latex_output list
-  | SProof  of sub_prf * Sct.calls (* sub_prf * ((int * int) list * Sct.calls) *)
+  | SProof  of sub_prf * Sct.calls_graph
   | TProof  of typ_prf
-  | Sct     of Sct.calls (* ((int * int) list * Sct.calls) list *)
+  | Sct     of Sct.calls_graph
   | Witnesses
 
 let rec to_string = function
@@ -143,7 +143,5 @@ let rec output ch = function
      break_hint := n;
      Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
      break_hint := 0
-(*
-  | Sct ls ->
-     List.iter (fun (tt,calls) -> print_calls ch tt calls) ls
-*)
+  | Sct (arities,calls) ->
+      print_calls ch arities calls

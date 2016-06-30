@@ -387,8 +387,8 @@ let parser latex_atom =
   | hash "check" a:kind subset b:kind "#" -> (fun () ->
      let a = unbox (unsugar_kind empty_env a) in
      let b = unbox (unsugar_kind empty_env b) in
-     let (prf, calls) = generic_subtype a b in
-     Latex_trace.SProof (prf, calls))
+     let (prf, cg) = generic_subtype a b in
+     Latex_trace.SProof (prf, cg))
   | hash br:int_lit?[0] ":" id:lident "#"    -> (fun () ->
      let t = Hashtbl.find val_env id in
      Latex_trace.Kind (br, false, t.ttype))
@@ -400,7 +400,7 @@ let parser latex_atom =
      Latex_trace.TProof t.proof)
   | "#!" id:lident "#" -> (fun () ->
      let t = Hashtbl.find val_env id in
-     Latex_trace.Sct t.calls)
+     Latex_trace.Sct t.calls_graph)
 
 and latex_text = "{" l:latex_atom* "}" -> (fun () ->
   Latex_trace.List (List.map (fun f -> f ()) l))
@@ -514,7 +514,7 @@ let run_command : command -> unit = function
       in
       let t = unbox (unsugar_term empty_env t) in
       let k = unbox (unsugar_kind empty_env k) in
-      let (prf, calls) = type_check t k in
+      let (prf, calls_graph) = type_check t k in
       reset_all ();
       let value = eval t in
       let tex_name =
@@ -522,7 +522,7 @@ let run_command : command -> unit = function
       in
       Hashtbl.add val_env id
         { name = id ; tex_name ; value ; orig_value = t ; ttype = k
-        ; proof = prf ; calls }
+        ; proof = prf ; calls_graph }
   (* Check subtyping. *)
   | Check(n,a,b) ->
       let a = unbox (unsugar_kind empty_env a) in
