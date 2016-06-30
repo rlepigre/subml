@@ -13,6 +13,4 @@ type latex_output =
 
 val to_string : latex_output -> string
 
-(*
 val output : out_channel -> latex_output -> unit
-*)

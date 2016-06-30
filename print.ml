@@ -75,7 +75,6 @@ let print_term_in_subtyping = ref false
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
-let simplified_ordinals = ref false
 
 let rec print_ordinal unfold ff o =
   let o = orepr o in
@@ -85,15 +84,14 @@ let rec print_ordinal unfold ff o =
   | _       ->
     let n = search_ordinal_tbl o in
     match orepr o with
-    | OLess(o,In(t,a)) as o0 when unfold && not !simplified_ordinals ->
+    | OLess(o,In(t,a)) as o0 when unfold ->
        fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
 	 (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(o,NotIn(t,a)) as o0 when unfold && not !simplified_ordinals ->
+    | OLess(o,NotIn(t,a)) as o0 when unfold ->
        fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
 	 (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(o,_) when unfold && !simplified_ordinals ->
+    | OLess(o,_) when unfold ->
        fprintf ff "α(%d<%a)" n (print_ordinal false) o
-    | OLess(o,_) when !simplified_ordinals -> fprintf ff "α%d" n
     | OLess(o,_) -> fprintf ff "κ%d" n
     | OMaxi(l) ->
        fprintf ff "max(%a)" (print_list (print_ordinal false) ";") l
@@ -104,7 +102,7 @@ let rec print_ordinal unfold ff o =
 
 and print_index_ordinal ff = function
   | OConv -> ()
-  | o -> fprintf ff "[%a]" (print_ordinal !simplified_ordinals) o
+  | o -> fprintf ff "[%a]" (print_ordinal false) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in

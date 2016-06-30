@@ -21,7 +21,6 @@ let spec =
     ("--debug", Arg.Set Typing.debug, "Activate verbose mode");
     ("--no-contraction", Arg.Clear Ast.contract_mu, "Activate verbose mode");
     ("--debug-sct", Arg.Set Sct.debug_sct, "Activate sct verbose mode");
-    ("--simple-ordinals", Arg.Set Print.simplified_ordinals, "Print inductive ordinals with <= constraints");
     ("--tex-file", Arg.String (fun s -> open_latex s), "Choose tex file output");
     ("--no-prelude", Arg.Clear prelude, "Do not load the prelude");
     ("--no-inline", Arg.Clear Sct.do_inline, "Do not optimize call graph by inlining");

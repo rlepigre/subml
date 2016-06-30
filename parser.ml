@@ -560,10 +560,7 @@ let run_command : command -> unit = function
       ignore_latex := save
   (* Latex. *)
   | Latex(t) ->
-      assert false
-      (* FIXME
       if not !ignore_latex then Latex_trace.output !latex_ch (t ())
-      *)
   (* Set a flag. *)
   | Set(f) -> f ()
 

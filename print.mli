@@ -8,9 +8,6 @@ val print_list : (formatter -> 'a -> unit) -> string -> formatter -> 'a list -> 
 val print_array : (formatter -> 'a -> unit) -> string -> formatter -> 'a array -> unit
 val is_tuple : (string * 'a) list -> bool
 
-(* when true, print_ordinal as variables (as if they were no witnesses *)
-val simplified_ordinals : bool ref
-
 (* function to search, print and reset tables of ordinals and epsilon,
    this allow to print a simple name, and latex the long definition.
    without this, printing is unreadable *)

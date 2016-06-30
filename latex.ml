@@ -17,24 +17,23 @@ let rec print_ordinal unfold ff o =
   | o       ->
      let n = search_ordinal_tbl o in
      match o with
-     | OLess(o,In(t,a)) as o0 when unfold && not !simplified_ordinals ->
+     | OLess(o,In(t,a)) as o0 when unfold ->
         fprintf ff "\\kappa_{{<}%a}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
-     | OLess(o,NotIn(t,a)) as o0 when unfold && not !simplified_ordinals ->
+     | OLess(o,NotIn(t,a)) as o0 when unfold ->
         fprintf ff "\\kappa_{{<}%a}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
-     | OLess(o,_) when unfold && !simplified_ordinals ->
+     | OLess(o,_) when unfold ->
        fprintf ff "\\alpha_{%d<%a}" n (print_ordinal false) o
-     | OLess(_) when !simplified_ordinals -> fprintf ff "\\alpha_{%d}" n
      | OLess(_) -> fprintf ff "\\kappa_{%d}" n
      | OVari(x) -> fprintf ff "%s" (name_of x)
      | _ -> assert false
 
 and print_index_ordinal ff o = match orepr o with
   | OConv -> ()
-  | o -> fprintf ff "_{%a}" (print_ordinal !simplified_ordinals) o
+  | o -> fprintf ff "_{%a}" (print_ordinal false) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
@@ -49,7 +48,7 @@ and print_kind unfold wrap ff t =
     | [] -> fprintf ff "%s" d.tdef_tex_name
     | _  -> fprintf ff "%s_{%a}" d.tdef_tex_name
        (fun ff l -> List.iter (fun (i, o) -> fprintf ff "%s%a" (if i <> 0 then "," else "")
-         (print_ordinal !simplified_ordinals) o) l) ords
+         (print_ordinal false) o) l) ords
   with Not_found ->
   match t with
   | KVari(x) ->
