@@ -116,15 +116,13 @@ let rec output ch = function
   | Term(n,unfold,t) -> break_hint := n; print_term unfold ch t; break_hint := 0
   | Text(t)        -> Printf.fprintf ch "%s" t
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
-  (*
-  | SProof (p,(tt,sct)) ->
+  | SProof (p,(arities,calls)) ->
      Printf.fprintf ch "\\begin{prooftree}\n";
      print_subtyping_proof ch p;
      Printf.fprintf ch "\\end{prooftree}\n%!";
      Printf.fprintf ch "\\begin{center}\n";
-     if sct <> [] then print_calls ch tt sct;
+     if calls <> [] then print_calls ch arities calls;
      Printf.fprintf ch "\\end{center}\n%!";
-     *)
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(n,t)     ->
