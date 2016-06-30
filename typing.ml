@@ -84,7 +84,7 @@ let rec elim_ord_quantifier t k =
        let o = OLess(OConv,NotIn(t,f)) in
        l := (binder_name f, o)::!l;
        fn (subst f o)
-    | KKAll(f) -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+    | KKAll(f) -> fn (subst f (KUCst(t,f)))
     | KKExi(f) -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
   (* fixme: more cases to search below mu and nu ? *)
     | _ -> lift_kind k
@@ -196,7 +196,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
        existential witnesses otherwise some dot projection fail *)
     try
       if has_uvar a || has_uvar b || has_leading_exists a then raise Exit;
-      let (a', b', os) = decompose None Pos a b in
+      let (a', b', os) = decompose false Pos a b in
       (* Printf.eprintf "len(os') = %d\n%!" (List.length os');
          Printf.eprintf "(%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
       List.iter (fun (a0,b0,index,os0) ->
@@ -221,7 +221,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> bool * subtype_ctxt =
     with Exit -> (false, ctxt) | Induction_hyp -> (true, ctxt)
 
 let collect_pos ctxt w c c' =
-  let (_,_,os) = decompose None Pos c c' in
+  let (_,_,os) = decompose false Pos c c' in
   let rec fn ctxt o =
     match orepr o with
     | OLess(o',w') ->
@@ -571,26 +571,34 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        (* what if KUVar ? -> error ? *)
        let c0 = match ko with
          | None -> c
-         | Some k -> subtype ctxt t k c; k
+         | Some k -> k
        in
        (* Elimination of KOAll in front of c0, keep ordinals to
           eliminate OAbs below Y *)
        let ords, c0 = elim_ord_quantifier t c0 in
-       let (c,c0,os) =
-         let (_, c, os) = decompose None Pos (KProd []) c0 in
-         if os <> [] then c,c0,os
+       let (c1,c0,c2,os) =
+         let (_, c, os) = decompose false Pos (KProd []) c0 in
+         if os <> [] then c,c0,c0,os
          else (
-           (* Printf.eprintf "decompose\n%!"; *)
-           let (_, c, os) = decompose (Some(YNotIn(t,c0))) Pos (KProd []) c0 in
+           let (_, c, os) = decompose true Pos (KProd []) c0 in
            let c0 = recompose c os in
-           (c,c0,os))
+	   let c2 = List.fold_left (fun acc (_,ov) ->
+	     match ov with OUVar(_,ptr) ->
+	       KOAll(bind_ovar ptr acc)
+	     | _ -> acc) c0 os
+	   in
+	   let _, c0 = elim_ord_quantifier t c2 in
+           let (_, c, os) = decompose false Pos (KProd []) c0 in
+           (c,c0,c2,os))
        in
+       let p1 = subtype ctxt t c0 c2 in
+       let p2 = subtype ctxt t c2 c in
        let fnum = new_function (List.length os) in
        if !debug then
          begin
            io.log "Adding induction hyp %d:\n" fnum;
            io.log "  %a => %a %a\n%!" (print_kind false) c0
-             (print_kind false) c (print_term true) t;
+             (print_kind false) c1 (print_term true) t;
          end;
        begin match ctxt.induction_hyp with
            [] -> ()
@@ -600,8 +608,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
             let call = (fnum, cur, m) in
             ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
        end;
-       let ctxt = { ctxt with induction_hyp = (c, c, fnum, os)::ctxt.induction_hyp } in
-       let wit = in_pos t.pos (TCstY(f,c)) in
+       let ctxt = { ctxt with induction_hyp = (c1, c1, fnum, os)::ctxt.induction_hyp } in
+       let wit = in_pos t.pos (TCstY(f,c1)) in
        let t = subst f wit in
        (* Elimination of OAbs in front of t *)
        let rec fn t = match t.elt with
@@ -613,8 +621,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          | _       -> t
        in
        let t = fn t in
-       type_check ctxt t c0
-       ;Typ_TODO (* TODO *)
+       let p = type_check ctxt t c0 in
+       Typ_Y(p1,p2,p)
 
     | TCstY(_,a) ->
        if List.exists (fun (c',c'',fnum,os) ->

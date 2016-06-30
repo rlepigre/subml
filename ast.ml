@@ -148,7 +148,6 @@ and ordinal =
 and ord_wit =
   | In     of term * (ordinal, kind) binder
   | NotIn  of term * (ordinal, kind) binder
-  | YNotIn of term * kind
 
 (* Abstract syntax tree for terms. *)
 and term = term' position
@@ -245,6 +244,7 @@ and typ_rule =
   | Typ_Prod_e of typ_prf
   | Typ_DSum_i of sub_prf * typ_prf
   | Typ_DSum_e of typ_prf * typ_prf list
+  | Typ_Y      of sub_prf * sub_prf * typ_prf
   | Typ_TODO      (* FIXME *)
 and typ_prf =
   term * kind * typ_rule
@@ -264,7 +264,7 @@ let rec full_repr : kind -> kind = function
   | k                                      -> k
 
 let rec orepr = function
-  | OUVar(_, {contents = Some o}) -> orepr o
+  | OUVar(_, {contents = Some o})
   | o                             -> o
 
 let set_kuvar v k =
@@ -619,12 +619,11 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
 and eq_ord_wit c w1 w2 = match w1, w2 with
   | (In(t1,f1)    , In(t2,f2)    )
   | (NotIn(t1,f1) , NotIn(t2,f2) ) -> eq_term c t1 t2 && eq_obinder c f1 f2
-  | (YNotIn(t1,k1), YNotIn(t2,k2)) -> eq_term c t1 t2 && eq_kind c k1 k2
   | (_            , _            ) -> false
 
 and leq_ordinal c o1 o2 =
   match (orepr o1, orepr o2) with
-  | (o1         , o2        ) when o1 == o2 -> true
+  | (o1         , o2        ) when eq_ordinal c o1 o2 -> true
   | (_          , OConv     ) -> true
   | (OUVar(o, p), o2        ) -> Timed.pure_test (leq_ordinal c o) o2 || (
                                    Timed.pure_test (less_ordinal c o2) o &&
@@ -867,6 +866,37 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
     fn k))
 
 (****************************************************************************
+ *                 Binding a unification variable in a type                 *
+ ****************************************************************************)
+
+let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k ->
+  unbox (bind mk_free_ovari "o" (fun x ->
+    let rec fn k =
+      match repr k with
+      | KFunc(a,b) -> kfunc (fn a) (fn b)
+      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KUVar(u)   -> assert(!(u.uvar_val) = None); box k
+      | KVari(x)   -> box_of_var x
+      | KDefi(d,a) -> kdefi d (Array.map fn a)
+      | KDPrj(t,s) -> kdprj (map_term fn t) s
+      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+      | t         -> box t
+    and gn o =
+      match orepr o with
+      | OVari x -> box_of_var x
+      | OUVar(_,ov) -> assert(!ov = None); if ov == ov0 then x else box o
+      | o -> box o
+    in
+    fn k))
+
+(****************************************************************************
  *                    Decomposition type, ordinals                          *
  *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
@@ -879,7 +909,7 @@ let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
-let decompose : ord_wit option -> occur -> kind -> kind ->
+let decompose : bool -> occur -> kind -> kind ->
                   kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
@@ -929,20 +959,20 @@ let decompose : ord_wit option -> occur -> kind -> kind ->
     | KFixM(o,f) ->
        let o =
          if o <> OConv && pos <> Eps then search o
-         else if o = OConv && pos = Neg then (match fix with
-           None -> o
-         | Some w ->
-            let o' = OLess(o,w) in create o')
+         else if o = OConv && pos = Neg then (
+	   if fix then
+	     let o' = OUVar(OConv,ref None) in create o'
+	   else o)
          else o
        in
        kfixm (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        let o =
          if o <> OConv && pos <> Eps then search o
-         else if o = OConv && pos = Pos then (match fix with
-           None -> o
-         | Some w ->
-            let o' = OLess(o,w) in create o')
+         else if o = OConv && pos = Pos then  (
+	   if fix then
+	     let o' = OUVar(OConv,ref None) in create o'
+	   else o)
          else o
        in
        kfixn (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))

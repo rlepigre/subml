@@ -40,7 +40,7 @@ and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
   let pkindw = print_kind false true in
   let t = repr t in
-  let key, _, ords = decompose None All t (KProd[]) in
+  let key, _, ords = decompose false All t (KProd[]) in
   try
     if unfold then raise Not_found;
     let d = find_tdef key in
