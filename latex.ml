@@ -282,6 +282,14 @@ and print_term unfold lvl ff t =
  *                          Interface functions                             *
  ****************************************************************************)
 
+let term_to_string unfold t =
+  print_term unfold 0 str_formatter t;
+  flush_str_formatter ()
+
+let kind_to_string unfold k =
+  print_kind unfold false str_formatter k;
+  flush_str_formatter ()
+
 let print_term unfold ch t =
   let ff = formatter_of_out_channel ch in
   print_term unfold 0 ff t; pp_print_flush ff (); flush ch

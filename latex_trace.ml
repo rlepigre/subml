@@ -77,53 +77,63 @@ let print_calls ch arities calls =
   List.iter (print_call arities) calls;
   Printf.fprintf ch "  }\n\\end{dot2tex}\n"
 
-(*
-let print_subtyping_proof, print_typing_proof =
-  let rec fn ch (p:sub_proof) =
-    let rn, strees = Print_trace.filter_rule p in
-    let strees =
-      let r = List.filter (fun p -> not (eq_kind p.left p.right)) strees in
-      if r = [] then strees else r
-    in
-    List.iter (fn ch) strees;
-    let cmd = match List.length strees with
-      | 0 -> "\\AxiomC{}\n\\UnaryInfC"
-      | 1 -> "\\UnaryInfC"
-      | 2 -> "\\BinaryInfC"
-      | 3 -> "\\TrinaryInfC"
-      | _ -> assert false
-    in
-    if !print_term_in_subtyping then
-      Printf.fprintf ch "\\RightLabel{$%a$}%s{$%a \\in %a \\subset %a$}\n%!" print_rule_name rn cmd
-	(print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right
-    else
-      Printf.fprintf ch "\\RightLabel{$%a$}%s{$%a \\subset %a$}\n%!" print_rule_name rn cmd
-	(print_kind false) p.left (print_kind false) p.right
-            (*Printf.fprintf ch "%s{$%a \\in %a \\subset %a$}\n%!" cmd
-	      (print_term false) p.sterm (print_kind false) p.left (print_kind false) p.right*)
+let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
+  let open Proof in
+  let t2s = term_to_string false and k2s = kind_to_string false in
+  let c = Printf.sprintf "$%s : %s$" (t2s t) (k2s k) in
+  match r with
+  | Typ_Coer(p1,p2)   -> binaryN "$\\subset$" c (sub2proof p1) (typ2proof p2)
+  | Typ_KAbs(p)       -> unaryN "$\\Lambda$" c (typ2proof p)
+  | Typ_OAbs(p)       -> unaryN "$\\Lambda_o$" c (typ2proof p)
+  | Typ_Defi(p)       -> assert false (* TODO *)
+  | Typ_Prnt(p)       -> unaryN "$print$" c (sub2proof p)
+  | Typ_Cnst(p)       -> unaryN "$=$" c (sub2proof p)
+  | Typ_Func_i(p1,p2) -> binaryN "$\\to_i$" c (sub2proof p1) (typ2proof p2)
+  | Typ_Func_e(p1,p2) -> binaryN "$\\to_i$" c (typ2proof p1) (typ2proof p2)
+  | Typ_Prod_i(p,ps)  -> n_aryN "$\\times_i$" c
+                           (sub2proof p :: List.map typ2proof ps)
+  | Typ_Prod_e(p)     -> unaryN "$\\times_e$" c (typ2proof p)
+  | Typ_DSum_i(p1,p2) -> binaryN "$+_i$" c (sub2proof p1) (typ2proof p2)
+  | Typ_DSum_e(p,ps)  -> n_aryN "$+_e$" c
+                           (typ2proof p :: List.map typ2proof ps)
+  | Typ_TODO          -> assert false (* Should not happen. *)
 
-  and gn ch (p:typ_proof) =
-    let strees = List.filter (fun p -> not (eq_kind p.left p.right)) p.strees in
-    let cmd = match List.length strees + List.length p.ttrees with
-      | 0 -> "\\AxiomC{}\n\\UnaryInfC"
-      | 1 -> "\\UnaryInfC"
-      | 2 -> "\\BinaryInfC"
-      | 3 -> "\\TrinaryInfC"
-      | _ -> assert false
-    in
-    List.iter (fn ch) strees;
-    List.iter (gn ch) p.ttrees;
-    Printf.fprintf ch "%s{$%a : %a$}\n%!" cmd
-      (print_term false) p.tterm (print_kind false) p.typ
-  in
-  (fun ch p -> fn ch p),
-  (fun ch p -> gn ch p)
+and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,r) ->
+  let open Proof in
+  let t2s = term_to_string false and k2s = kind_to_string false in
+  let c = Printf.sprintf "$%s \\in %s \\subset %s$" (t2s t) (k2s a) (k2s b) in
+  match r with
+  | Sub_Delay(pr)     -> sub2proof !pr
+  | Sub_Lower         -> hyp (Printf.sprintf "$%s \\leq %s$" (k2s a) (k2s b))
+  | Sub_Func(p1,p2)   -> binaryN "$\\to$" c (sub2proof p1) (sub2proof p2)
+  | Sub_Prod(ps)      -> n_aryN "$\\times$" c (List.map sub2proof ps)
+  | Sub_DSum(ps)      -> n_aryN "$+$" c (List.map sub2proof ps)
+  | Sub_DPrj_l(p1,p2) -> binaryN "$\\pi_l$" c (typ2proof p1) (sub2proof p2)
+  | Sub_DPrj_r(p1,p2) -> binaryN "$\\pi_r$" c (typ2proof p1) (sub2proof p2)
+  | Sub_With_l(p)     -> unaryN "$w_l$" c (sub2proof p)
+  | Sub_With_r(p)     -> unaryN "$w_r$" c (sub2proof p)
+  | Sub_KAll_r(p)     -> unaryN "$\\forall_r$" c (sub2proof p)
+  | Sub_KAll_l(p)     -> unaryN "$\\forall_l$" c (sub2proof p)
+  | Sub_KExi_l(p)     -> unaryN "$\\exists_l$" c (sub2proof p)
+  | Sub_KExi_r(p)     -> unaryN "$\\exists_r$" c (sub2proof p)
+  | Sub_OAll_r(p)     -> unaryN "$\\forall_{or}$" c (sub2proof p)
+  | Sub_OAll_l(p)     -> unaryN "$\\forall_{ol}$" c (sub2proof p)
+  | Sub_OExi_l(p)     -> unaryN "$\\exists_{ol}$" c (sub2proof p)
+  | Sub_OExi_r(p)     -> unaryN "$\\exists_{or}$" c (sub2proof p)
+  | Sub_FixM_r(p)     -> unaryN "$\\mu_r$" c (sub2proof p)
+  | Sub_FixN_l(p)     -> unaryN "$\\nu_l$" c (sub2proof p)
+  | Sub_Dummy         -> assert false (* Should not happen. *)
+  | Sub_TODO          -> assert false (* Should not happen. *)
+
+let print_typing_proof    ch p = Proof.output ch (typ2proof p)
+let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
 
 let rec output ch = function
   | Kind(n,unfold,k) -> break_hint := n; print_kind unfold ch k; break_hint := 0
   | Term(n,unfold,t) -> break_hint := n; print_term unfold ch t; break_hint := 0
   | Text(t)        -> Printf.fprintf ch "%s" t
   | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
+  (*
   | SProof (p,(tt,sct)) ->
      Printf.fprintf ch "\\begin{prooftree}\n";
      print_subtyping_proof ch p;
@@ -131,6 +141,7 @@ let rec output ch = function
      Printf.fprintf ch "\\begin{center}\n";
      if sct <> [] then print_calls ch tt sct;
      Printf.fprintf ch "\\end{center}\n%!";
+     *)
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(n,t)     ->
@@ -141,14 +152,15 @@ let rec output ch = function
      let k = msubst f params in
      let print_array cg a =
        if Array.length a = 0 then () else
-	 Printf.fprintf ch "(%s%a)" a.(0) (fun ch a ->
-	   for i = 1 to Array.length a - 1 do
-	     Printf.fprintf ch ",%s" a.(i)
-	   done) a
+       Printf.fprintf ch "(%s%a)" a.(0) (fun ch a ->
+         for i = 1 to Array.length a - 1 do
+           Printf.fprintf ch ",%s" a.(i)
+         done) a
      in
      break_hint := n;
      Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
      break_hint := 0
+     (*
   | Sct ls ->
      List.iter (fun (tt,calls) -> print_calls ch tt calls) ls
-*)
+     *)
