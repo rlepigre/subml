@@ -243,11 +243,11 @@ and print_term unfold lvl ff t =
        | TAbst(_,f) ->
           let x = binder_name f in
           let t = subst f (free_of (new_tvari' x)) in
-          fprintf ff "| \\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
+          fprintf ff "\\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
        | _          ->
-          fprintf ff "| \\mathrm{%s} \\rightarrow %a" c (print_term 0) b
+          fprintf ff "\\mathrm{%s} \\rightarrow %a" c (print_term 0) b
       in
-      fprintf ff "\\case{%a}{%a}" (print_term 0) t (print_list pvariant "; ") l
+      fprintf ff "\\case{%a}{%a}" (print_term 0) t (print_list pvariant "| ") l
   | TDefi(v) ->
      if unfold then
        nprint_term lvl ff v.orig_value
