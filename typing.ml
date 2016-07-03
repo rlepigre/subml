@@ -173,13 +173,22 @@ let has_uvar : kind -> bool = fun k ->
 
 let cr = ref 0
 
-let add_pos ctxt o o' =
+let add_pos positives o o' =
   let o = orepr o and o' = orepr o' in
-  if o = OConv then ctxt else
-  let l = try List.assq o ctxt.positive_ordinals with Not_found -> [] in
-  if List.memq o' l then ctxt else
-    { ctxt with positive_ordinals = (o, o'::l) ::
-        (List.filter (fun (o1,_) -> o1 != o) ctxt.positive_ordinals) }
+  if o = OConv then positives else
+  let l = try List.assq o positives with Not_found -> [] in
+  if List.memq o' l then positives else
+    (o, (o'::l)) :: (List.filter (fun (o1,_) -> o1 != o) positives)
+
+let add_positive ctxt o o' =
+  { ctxt with positive_ordinals = add_pos ctxt.positive_ordinals o o' }
+
+let add_positives ctxt gamma =
+  let positive_ordinals =
+    List.fold_left (fun positives (o,o') -> add_pos positives o o')
+      ctxt.positive_ordinals gamma
+  in
+  { ctxt with positive_ordinals }
 
 exception Induction_hyp of int
 
@@ -221,22 +230,6 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
     with Exit -> (None, None, ctxt)
        | Induction_hyp n -> (None, Some n, ctxt)
 
-let collect_pos ctxt w c c' =
-  let (_,_,os) = decompose false Pos c c' in
-  let rec fn ctxt o =
-    match orepr o with
-    | OLess(o',w') ->
-      (*      Printf.eprintf "find pos ord %a %a\n%!" (print_ordinal true) o (print_term false) (snd w);*)
-      let ctxt = fn ctxt o' in
-      (match w,w' with
-        (false, t), NotIn(t',_) when eq_term t' t -> add_pos ctxt o' o
-      | (true, t), In(t',_) when eq_head_term t' t -> add_pos ctxt o' o
-      | _ -> ctxt)
-    | OMaxi(l1) ->
-       List.fold_left fn ctxt l1
-    | _ -> ctxt
-  in
-  List.fold_left fn ctxt (List.map snd os)
 (****************************************************************************
  *                                 Lower kind                               *
 ****************************************************************************)
@@ -314,7 +307,8 @@ let lower_kind k1 k2 =
   in
   Timed.pure_test (lower_kind true k1) k2
 
-let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a0 b0 ->
+let rec subtype : subtype_ctxt -> term -> kind -> kind
+  -> (sub_prf * 'a * 'b) = fun ctxt t a0 b0 ->
   let a = full_repr a0 in
   let b = full_repr b0 in
   if !debug then
@@ -328,10 +322,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
       | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
   let (ind_ref, ind_hyp, ctxt) = check_rec t ctxt a b in
-  let r =
-    if lower_kind a b then Sub_Lower else
+  let (r, gm, gn) =
+    if lower_kind a b then (Sub_Lower, [], []) else
     match ind_hyp with
-    | Some n -> Sub_Ind n
+    | Some n -> (Sub_Ind n, [], [])
     | _ ->
     match (a,b) with
     (* Delayed unification. *)
@@ -339,17 +333,21 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let r = ref (t,a,b,None,Sub_Dummy) in
         let open Timed in
         let hook = !(ua.uvar_hook) in
-        ua.uvar_hook := (fun k -> r := subtype ctxt t k b0; hook k);
+        ua.uvar_hook := (fun k ->
+	  let (p,_,_) = subtype ctxt t k b0 in
+	  r := p; hook k);
 	ua.uvar_state := Prod;
-        Sub_Delay(r)
+        (Sub_Delay(r), [], [])
 
     | (KDSum(_)    , KUVar(ub)   ) when !(ub.uvar_state) <> Prod  ->
         let r = ref (t,a,b,None,Sub_Dummy) in
         let open Timed in
         let hook = !(ub.uvar_hook) in
-        ub.uvar_hook := (fun k -> r := subtype ctxt t a0 k; hook k);
+        ub.uvar_hook := (fun k ->
+	  let (p,_,_) = subtype ctxt t a0 k in
+	  r := p; hook k);
 	ub.uvar_state := Sum;
-        Sub_Delay(r)
+        (Sub_Delay(r), [], [])
 
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
@@ -357,13 +355,15 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let bnd = unbox (bind (tvari_p dummy_position) "x" f) in
         let wit = tcnst bnd a2 b2 in
         if has_uvar b1 then
-          let p2 = subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2 in
-          let p1 = subtype ctxt wit a2 a1 in
-          Sub_Func(p1, p2)
+          let (p2,_,_) =
+	    subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2 in
+          let (p1,_,_) = subtype ctxt wit a2 a1 in
+          (Sub_Func(p1, p2), [], [])
         else
-          let p1 = subtype ctxt wit a2 a1 in
-          let p2 = subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2 in
-        Sub_Func(p1, p2)
+          let (p1,_,_) = subtype ctxt wit a2 a1 in
+          let (p2,_,_) =
+	    subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2 in
+          (Sub_Func(p1, p2), [], [])
 
     (* Product type. *)
     | (KProd(fsa)  , KProd(fsb)  ) ->
@@ -372,10 +372,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             try List.assoc l fsa
             with Not_found -> subtype_error ("Product fields clash: " ^ l)
           in
-          subtype ctxt (dummy_pos (TProj(t,l))) a b
+          let (p, _, _) = subtype ctxt (dummy_pos (TProj(t,l))) a b in
+	  p
         in
         let ps = List.map check_field fsb in
-        Sub_Prod(ps)
+        (Sub_Prod(ps),[],[])
 
     (* Sum type. *)
     | (KDSum(csa)  , KDSum(csb)  ) ->
@@ -385,68 +386,69 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             try List.assoc c csb
             with Not_found -> subtype_error ("Constructor clash: " ^ c)
           in
-          subtype ctxt t a b
+          let (p, _, _) = subtype ctxt t a b in
+	  p
         in
         let ps = List.map check_variant csa in
-        Sub_DSum(ps)
+        (Sub_DSum(ps), [],[])
 
     (* Dot projection. *)
     | (KDPrj(t0,s) , _           ) ->
         let u = new_uvar () in
-        let p1 = type_check ctxt t0 u in
-        let p2 = subtype ctxt t (dot_proj t0 u s) b0 in
-        Sub_DPrj_l(p1, p2)
+        let (p1,_) = type_check ctxt t0 u in
+        let (p2,gm,gn) = subtype ctxt t (dot_proj t0 u s) b0 in
+        (Sub_DPrj_l(p1, p2),gm,gn)
 
     | (_           , KDPrj(t0,s) ) ->
         let u = new_uvar () in
-        let p1 = type_check ctxt t0 u in
-        let p2 = subtype ctxt t a0 (dot_proj t0 u s) in
-        Sub_DPrj_r(p1, p2)
+        let (p1,_) = type_check ctxt t0 u in
+        let (p2,gm,gn) = subtype ctxt t a0 (dot_proj t0 u s) in
+        (Sub_DPrj_r(p1, p2),gm,gn)
 
     (* KWith clause. *)
     | (KWith(a,e)  , _           ) ->
-        let p = subtype ctxt t (with_clause a e) b0 in
-        Sub_With_l(p)
+        let (p,gm,gn) = subtype ctxt t (with_clause a e) b0 in
+        (Sub_With_l(p),gm,gn)
 
     | (_           , KWith(b,e)  ) ->
-        let p = subtype ctxt t a0 (with_clause b e) in
-        Sub_With_r(p)
+        let (p,gm,gn) = subtype ctxt t a0 (with_clause b e) in
+        (Sub_With_r(p),gm,gn)
 
     (* Universal quantification over kinds. *)
     | (_           , KKAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (KUCst(t,f))) in
-        Sub_KAll_r(p)
+        let (p,gm,gn) = subtype ctxt t a0 (subst f (KUCst(t,f))) in
+        (Sub_KAll_r(p),gm,gn)
 
     | (KKAll(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (new_uvar ())) b0 in
-        Sub_KAll_l(p)
+        let (p,gm,gn) = subtype ctxt t (subst f (new_uvar ())) b0 in
+        (Sub_KAll_l(p),gm,gn)
 
     (* Existantial quantification over kinds. *)
     | (KKExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (KECst(t,f))) b0 in
-        Sub_KExi_l(p)
+        let (p,gm,gn) = subtype ctxt t (subst f (KECst(t,f))) b0 in
+        (Sub_KExi_l(p),gm,gn)
 
     | (_           , KKExi(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (new_uvar ())) in
-        Sub_KExi_r(p)
+        let (p,gm,gn) = subtype ctxt t a0 (subst f (new_uvar ())) in
+        (Sub_KExi_r(p),gm,gn)
 
     (* Universal quantification over ordinals. *)
     | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (OLess(OConv,NotIn(t,f)))) in
-        Sub_OAll_r(p)
+        let (p,gm,gn) = subtype ctxt t a0 (subst f (OLess(OConv,NotIn(t,f)))) in
+        (Sub_OAll_r(p),gm,gn)
 
     | (KOAll(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (OUVar(OConv, ref None))) b0 in
-        Sub_OAll_l(p)
+        let (p,gm,gn) = subtype ctxt t (subst f (OUVar(OConv, ref None))) b0 in
+        (Sub_OAll_l(p),gm,gn)
 
     (* Existantial quantification over ordinals. *)
     | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (OLess(OConv,In(t,f)))) b0 in
-        Sub_OExi_l(p)
+        let (p,gm,gn) = subtype ctxt t (subst f (OLess(OConv,In(t,f)))) b0 in
+        (Sub_OExi_l(p),gm,gn)
 
     | (_           , KOExi(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (OUVar(OConv, ref None))) in
-        Sub_OExi_r(p)
+        let (p,gm,gn) = subtype ctxt t a0 (subst f (OUVar(OConv, ref None))) in
+        (Sub_OExi_r(p),gm,gn)
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
@@ -454,22 +456,22 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
         in
         let o' = OLess (o,NotIn(t,unbox g)) in
-        let ctxt = add_pos ctxt o o' in
+        let ctxt = add_positive ctxt o o' in
         if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixN(o', f) in
-        let prf = subtype ctxt t a0 (subst f cst) in
-        Sub_FixN_r prf
+        let (prf,gm,gn) = subtype ctxt t a0 (subst f cst) in
+        (Sub_FixN_r prf,gm,(o,o')::gn)
 
    | (KFixM(o,f)   , _           ) ->
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
         in
         let o' = OLess (o,In(t,unbox g)) in
-        let ctxt = add_pos ctxt o o' in
+        let ctxt = add_positive ctxt o o' in
         if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixM(o', f) in
-        let prf = subtype ctxt t (subst f cst) b0 in
-        Sub_FixM_l prf
+        let (prf,gm,gn) = subtype ctxt t (subst f cst) b0 in
+        (Sub_FixM_l prf,(o,o')::gm,gn)
 
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
@@ -477,8 +479,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
           try
             let o' = find_positive ctxt o in
             let a = if o' = o then a else KFixN(o',f) in
-            let p = subtype ctxt t (subst f a) b0 in
-            Sub_FixM_r(p)
+            let (p,gm,gn) = subtype ctxt t (subst f a) b0 in
+            (Sub_FixM_r(p),gm,gn)
           with Not_found -> subtype_error "Subtyping clash (no rule apply)."
         end
 
@@ -487,17 +489,17 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
           try
             let o' = find_positive ctxt o in
             let b = if o' = o then b else KFixM(o',f) in
-            let p = subtype ctxt t a0 (subst f b) in
-            Sub_FixN_l(p)
+            let (p,gm,gn) = subtype ctxt t a0 (subst f b) in
+            (Sub_FixN_l(p),gm,gn)
           with Not_found -> subtype_error "Subtyping clash (no rule apply)."
         end
 
     (* Subtype clash. *)
     | (_           , _           ) ->
         subtype_error "Subtyping clash (no rule apply)."
-  in (t, a, b, ind_ref, r)
+  in (t, a, b, ind_ref, r), gm, gn
 
-and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
+and type_check : subtype_ctxt -> term -> kind -> (typ_prf * 'a) = fun ctxt t c ->
   let c = repr c in
   if !debug then
     begin
@@ -508,71 +510,74 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | [] -> io.log "\n%!"
       | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
-  let r =
+  let (r,gm) =
     try
     match t.elt with
     | TCoer(t,a) ->
-        let p1 = subtype ctxt t a c in
-        let p2 = type_check ctxt t a in
-        Typ_Coer(p1, p2)
+        let (p1,gm',gn) = subtype ctxt t a c in
+	let ctxt = if is_normal t then add_positives ctxt gn else ctxt in
+        let (p2,gm) = type_check ctxt t a in
+        (Typ_Coer(p1, p2),gm @ gm')
     | TAbst(ao,f) ->
         let a = match ao with None -> new_uvar () | Some a -> a in
         let b = new_uvar () in
         let c' = KFunc(a,b) in
-        let p1 = subtype ctxt t c' c in
-        let ctxt = collect_pos ctxt (false,t) c c' in
+        let (p1,_,gn) = subtype ctxt t c' c in
+        let ctxt = add_positives ctxt gn in
         let wit = tcnst f a b in
-        let p2 = type_check ctxt (subst f wit) b in
-        Typ_Func_i(p1, p2)
+        let (p2,_) = type_check ctxt (subst f wit) b in
+        (Typ_Func_i(p1, p2), [])
     | TKAbs(f) ->
         let k = lambda_kind t c (binder_name f) in
-        let p = type_check ctxt (subst f k) c in
-        Typ_KAbs(p)
+        let (p, gm) = type_check ctxt (subst f k) c in
+        (Typ_KAbs(p), gm)
     | TOAbs(f) ->
         let k = lambda_ordinal t c (binder_name f) in
-        let p = type_check ctxt (subst f k) c in
-        Typ_OAbs(p)
+        let (p, gm) = type_check ctxt (subst f k) c in
+        (Typ_OAbs(p), gm)
     | TAppl(t,u) ->
         let a = new_uvar () in
-        let p1 = type_check ctxt u a in
-        let p2 = type_check ctxt t (KFunc(a,c)) in
-        Typ_Func_e(p1, p2)
+        let (p1,_) = type_check ctxt u a in
+        let (p2,gm) = type_check ctxt t (KFunc(a,c)) in
+	let gm = if is_normal u then gm else [] in
+        (Typ_Func_e(p1, p2), gm)
     | TReco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
-        let p1 = subtype ctxt t (KProd(ts)) c in
+        let (p1,_,gn) = subtype ctxt t (KProd(ts)) c in
+	let ctxt = if is_normal t then add_positives ctxt gn else ctxt in
         let check (l,t) =
           let cl = List.assoc l ts in
-          type_check ctxt t cl
+          fst (type_check ctxt t cl)
         in
         let p2s = List.map check fs in
-        Typ_Prod_i(p1, p2s)
+        (Typ_Prod_i(p1, p2s), [])
     | TProj(t,l) ->
         let c' = KProd([(l,c)]) in
-        let p = type_check ctxt t c' in
-        Typ_Prod_e(p)
+        let (p,gm) = type_check ctxt t c' in
+        (Typ_Prod_e(p), gm)
     | TCons(d,v) ->
         let a = new_uvar () in
         let c' = KDSum([(d,a)]) in
-        let p1 = subtype ctxt t c' c in
-        let p2 = type_check ctxt v a in
-        Typ_DSum_i(p1, p2)
+        let (p1,_,gn) = subtype ctxt t c' c in
+	let ctxt = if is_normal t then add_positives ctxt gn else ctxt in
+        let (p2,_) = type_check ctxt v a in
+        (Typ_DSum_i(p1, p2), [])
     | TCase(t,l) ->
         let ts = List.map (fun (c,_) -> (c, new_uvar ())) l in
-        let c' = KDSum(ts) in
-        let p1 = type_check ctxt t (KDSum(ts)) in
-        let ctxt = collect_pos ctxt (true,t) c c' in
+        let (p1, gm) = type_check ctxt t (KDSum(ts)) in
+        let ctxt = add_positives ctxt gm in
         let check (d,f) =
           let cc = List.assoc d ts in
-          type_check ctxt f (KFunc(cc,c))
+          fst (type_check ctxt f (KFunc(cc,c)))
         in
         let p2s = List.map check l in
-        Typ_DSum_e(p1, p2s)
+        (Typ_DSum_e(p1, p2s), gm) (* FIXME: check that (case (case x of ...) of ... \in N_0) *)
     | TDefi(v) ->
-        let p = subtype ctxt v.value v.ttype c in
-        Typ_Defi(p)
+        let (p, gm, _) = subtype ctxt v.value v.ttype c in
+        (Typ_Defi(p), gm)
     | TPrnt(_) ->
-        let p = subtype ctxt t (KProd []) c in
-        Typ_Prnt(p)
+        let (p,gm,_) = subtype ctxt t (KProd []) c in
+        (Typ_Prnt(p), gm) (* FIXME check *)
     | TFixY(ko,f) ->
        (* what if KUVar ? -> error ? *)
        let c0 = match ko with
@@ -591,8 +596,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        in
        let _, c0 = elim_ord_quantifier t c2 in
        let (_, c1, os) = decompose false Pos (KProd []) c0 in
-       let p1 = subtype ctxt t c0 c2 in
-       let p2 = subtype ctxt t c2 c in
+       let (p1,gm1,gn1) = subtype ctxt t c0 c2 in
+       let (p2,gm2,gn2) = subtype ctxt t c2 c in
        let fnum = new_function (List.length os) in
        if !debug then
          begin
@@ -621,8 +626,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          | _       -> t
        in
        let t = fn t in
-       let p = type_check ctxt t c0 in
-       Typ_Y(fnum,p1,p2,p)
+       let (p,_) = type_check ctxt t c0 in
+       (Typ_Y(fnum,p1,p2,p), [])
 
     | TCstY(_,a) ->
        let (c',c'',fnum,os) =
@@ -641,7 +646,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               io.log "  %a => %a\n%!" (print_kind false) a
                 (print_kind false) c
             end;
-          let prf = subtype ctxt t a c in
+          let (prf,gm,gn) = subtype ctxt t a c in
           delayed := (fun () ->
             if !debug then
               begin
@@ -653,24 +658,24 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
             let call = (fnum, cur, m, true) in
                 (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
             ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
-          Typ_YH(fnum,prf))
+          (Typ_YH(fnum,prf), gm))
 
     | TCnst(_,a,b) ->
-        let p = subtype ctxt t a c in
-        Typ_Cnst(p)
+        let (p,gm,gn) = subtype ctxt t a c in
+        (Typ_Cnst(p), gm)
     | TTInt(_) -> assert false (* Cannot happen. *)
     | TVari(_) -> assert false (* Cannot happen. *)
     with Subtype_error msg ->
       Format.eprintf "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
       exit 1
-  in (t, c, r)
+  in ((t, c, r), gm)
 
 let subtype : term -> kind -> kind -> sub_prf * calls_graph
   = fun t a b ->
   let calls = ref [] in
   let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
   try
-    let p = subtype ctxt t a b in
+    let (p,_,_) = subtype ctxt t a b in
     List.iter (fun f -> f ()) !delayed;
     delayed := [];
     let calls = inline !calls in
@@ -685,7 +690,7 @@ let type_check : term -> kind -> typ_prf * calls_graph = fun t c ->
   let calls = ref [] in
   let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
   try
-    let p = type_check ctxt t c in
+    let (p,_) = type_check ctxt t c in
     List.iter (fun f -> f ()) !delayed;
     delayed := [];
     let calls = inline !calls in

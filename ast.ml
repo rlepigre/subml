@@ -713,6 +713,30 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
     | u           -> box_apply (in_pos t.pos) (box u)
   in fn t
 
+(*****************************************************************
+ *              test if a term is normal in CBV                  *
+******************************************************************)
+let is_normal : term -> bool = fun t ->
+  let rec fn t =
+    match t.elt with
+    | TCoer(t,k)  -> fn t
+    | TVari(x)    -> true
+    | TAbst(ko,f) -> true
+    | TFixY(ko,f) -> false
+    | TKAbs(f)    -> fn (subst f (KProd []))
+    | TOAbs(f)    -> fn (subst f (OConv))
+    | TAppl(a,b)  -> false
+    | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
+    | TProj(a,s)  -> false
+    | TCons(s,a)  -> fn a
+    | TCase(a,fs) -> fn a
+    | TDefi(d)    -> fn d.value
+    | TCnst _     -> true
+    | TCstY _     -> false
+    | TPrnt _     -> false
+    | TTInt _ -> assert false
+  in fn t
+
 (****************************************************************************
  *                 Occurence test for unification variables                 *
  ****************************************************************************)
