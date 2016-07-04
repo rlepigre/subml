@@ -537,7 +537,7 @@ and type_check : subtype_ctxt -> term -> kind -> (typ_prf * 'a) = fun ctxt t c -
         let k = lambda_ordinal t c (binder_name f) in
         let (p, gm) = type_check ctxt (subst f k) c in
         (Typ_OAbs(p), gm)
-    | TAppl({ elt = TCnst _ } as t,u) ->
+    | TAppl({ elt = TCnst _ } as t,u) -> (* FIXME: use is_neutral *)
         let a = new_uvar () in
         let (p2,gm) = type_check ctxt t (KFunc(a,c)) in
 	let gm, ctxt = if is_normal u then gm, add_positives ctxt gm else [], ctxt in
@@ -602,10 +602,10 @@ and type_check : subtype_ctxt -> term -> kind -> (typ_prf * 'a) = fun ctxt t c -
 	     KOAll(bind_ovar ptr acc)
 	   | _ -> acc) c0 os
        in
-       let _, c0 = elim_ord_quantifier t c2 in
+       let _, c0 = elim_ord_quantifier t c2 in    (* FIXME *)
        let (_, c1, os) = decompose false Pos (KProd []) c0 in
-       let (p1,gm1,gn1) = subtype ctxt t c0 c2 in
-       let (p2,gm2,gn2) = subtype ctxt t c2 c in
+       let (p1,gm1,gn1) = subtype ctxt t c0 c2 in (* FIXME *)
+       let (p2,gm2,gn2) = subtype ctxt t c2 c in  (* FIXME *)
        let fnum = new_function (List.length os) in
        if !debug then
          begin

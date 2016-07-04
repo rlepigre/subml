@@ -736,8 +736,10 @@ let is_normal : term -> bool = fun t ->
     | TCnst _     -> true
     | TCstY _     -> false
     | TPrnt _     -> false
-    | TTInt _ -> assert false
+    | TTInt _     -> assert false
   in fn t
+
+(* let is_neutral ...  *)
 
 (****************************************************************************
  *                 Occurence test for unification variables                 *
