@@ -22,14 +22,14 @@ type subtype_ctxt =
 exception Found of cmp * int
 
 
-let find_indexes index index' a b =
+let find_indexes pos index index' a b =
   let c = Sct.arity index and l = Sct.arity index' in
   let m = Array.init l (fun _ -> Array.make c Unknown) in
 
   List.iter (fun (j,o') ->
     List.iter (fun (i,o) ->
-      if less_ordinal o o' then m.(j).(i) <- Less
-      else if leq_ordinal o o' then m.(j).(i) <- min m.(j).(i) Leq
+      if less_ordinal pos o o' then m.(j).(i) <- Less
+      else if leq_ordinal pos o o' then m.(j).(i) <- min m.(j).(i) Leq
     ) a) b;
   m
 
@@ -38,9 +38,9 @@ let rec find_positive ctxt o =
   (*  Printf.eprintf "find positive %a\n%!" (print_ordinal false) o;*)
   try omax (List.assq o ctxt.positive_ordinals) with
   | Not_found ->
-      match o with
+  match o with
   | OConv -> OConv
-  | OUVar(o',ptr) -> OUVar(o, ref None)
+  | OUVar(_, ptr) -> OUVar(Some o, ref None)
   | OMaxi(l1) ->
      let rec fn = function
        | [] -> []
@@ -79,7 +79,7 @@ let rec elim_ord_quantifier t k =
   let l = ref [] in
   let rec fn k =
     match full_repr k with
-    | KOExi(f) -> fn (subst f (OUVar(OConv, ref None)))
+    | KOExi(f) -> fn (subst f (OUVar(None, ref None)))
     | KOAll(f) ->
        let o = OLess(OConv,NotIn(t,f)) in
        l := (binder_name f, o)::!l;
@@ -208,12 +208,13 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       let (a', b', os) = decompose false Pos a b in
       (* Printf.eprintf "len(os') = %d\n%!" (List.length os');
          Printf.eprintf "(%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
+      let pos = List.map fst ctxt.positive_ordinals in
       List.iter (fun (a0,b0,index,os0) ->
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
 	  match ctxt.induction_hyp with
 	  | (_,_,index',os')::_ ->
 	     delayed := (fun () ->
-	       let m = find_indexes index index' os os' in
+	       let m = find_indexes pos index index' os os' in
 	       ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed;
 	     raise (Induction_hyp index)
 	  | _ -> assert false
@@ -222,7 +223,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       (match ctxt.induction_hyp with
       | (_,_,index',os')::_ ->
 	   delayed := (fun () ->
-	     let m = find_indexes fnum index' os os' in
+	     let m = find_indexes pos fnum index' os os' in
 	     ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed;
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (a', b', fnum, os)::ctxt.induction_hyp } in
@@ -234,14 +235,14 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
  *                                 Lower kind                               *
 ****************************************************************************)
 
-let lower_kind k1 k2 =
-  if !debug then
-    io.log "%a ≤ %a" (print_kind false) k1 (print_kind false) k2;
+let lower_kind pos k1 k2 =
+  (*if !debug then
+    io.log "%a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;*)
   (*positive integer are for eq_kind and alike *)
   let new_kint = let i = ref 0 in (fun () -> decr i; KTInt(!i)) in
   let new_oint = let i = ref 0 in (fun () -> decr i; OTInt(!i)) in
   let rec lower_kind first k01 k02 =
-    (* if !debug then Format.eprintf "    %a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;*)
+    (*if !debug then Format.eprintf "    %a ≤ %a\n%!" (print_kind false) (full_repr k01) (print_kind false) (full_repr k02);*)
     match (full_repr k01, full_repr k02) with
     | (k1          , k2          ) when k1 == k2 -> true
     | (KVari(_)     , KVari(_)     ) -> assert false
@@ -261,11 +262,11 @@ let lower_kind k1 k2 =
        let i = new_oint () in
        lower_kind false (subst a i) (subst b i)
     | (KFixM(oa,fa) , KFixM(ob,fb) ) ->
-       leq_ordinal oa ob && (fa == fb ||
+       leq_ordinal pos oa ob && (fa == fb ||
          let i = new_kint () in
          lower_kind false (subst fa i) (subst fb i))
     | (KFixN(oa,fa) , KFixN(ob,fb) ) ->
-       leq_ordinal ob oa &&
+       leq_ordinal pos ob oa &&
          (fa == fb ||
             let i = new_kint () in lower_kind false (subst fa i) (subst fb i))
     | (KDPrj(t1,s1) , KDPrj(t2,s2) ) -> s1 = s2 && eq_term t1 t2
@@ -322,8 +323,9 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind
       | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
   let (ind_ref, ind_hyp, ctxt) = check_rec t ctxt a b in
+  let pos = List.map fst ctxt.positive_ordinals in
   let (r, gm, gn) =
-    if lower_kind a b then (Sub_Lower, [], []) else
+    if lower_kind pos a b then (Sub_Lower, [], []) else
     match ind_hyp with
     | Some n -> (Sub_Ind n, [], [])
     | _ ->
@@ -438,7 +440,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind
         (Sub_OAll_r(p),gm,gn)
 
     | (KOAll(f)    , _           ) ->
-        let (p,gm,gn) = subtype ctxt t (subst f (OUVar(OConv, ref None))) b0 in
+        let (p,gm,gn) = subtype ctxt t (subst f (OUVar(None, ref None))) b0 in
         (Sub_OAll_l(p),gm,gn)
 
     (* Existantial quantification over ordinals. *)
@@ -447,7 +449,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind
         (Sub_OExi_l(p),gm,gn)
 
     | (_           , KOExi(f)    ) ->
-        let (p,gm,gn) = subtype ctxt t a0 (subst f (OUVar(OConv, ref None))) in
+        let (p,gm,gn) = subtype ctxt t a0 (subst f (OUVar(None, ref None))) in
         (Sub_OExi_r(p),gm,gn)
 
     (* μl and νr rules. *)
@@ -535,6 +537,12 @@ and type_check : subtype_ctxt -> term -> kind -> (typ_prf * 'a) = fun ctxt t c -
         let k = lambda_ordinal t c (binder_name f) in
         let (p, gm) = type_check ctxt (subst f k) c in
         (Typ_OAbs(p), gm)
+    | TAppl({ elt = TCnst _ } as t,u) ->
+        let a = new_uvar () in
+        let (p2,gm) = type_check ctxt t (KFunc(a,c)) in
+	let gm, ctxt = if is_normal u then gm, add_positives ctxt gm else [], ctxt in
+        let (p1,_) = type_check ctxt u a in
+        (Typ_Func_e(p1, p2), gm)
     | TAppl(t,u) ->
         let a = new_uvar () in
         let (p1,_) = type_check ctxt u a in
@@ -605,11 +613,12 @@ and type_check : subtype_ctxt -> term -> kind -> (typ_prf * 'a) = fun ctxt t c -
            io.log "  %a => %a %a\n%!" (print_kind false) c0
              (print_kind false) c1 (print_term true) t;
          end;
+       let pos = List.map fst ctxt.positive_ordinals in
        begin match ctxt.induction_hyp with
            [] -> ()
        | (_,_,cur,os0)::_   ->
           delayed := (fun () ->
-	    let m = find_indexes fnum cur os os0 in
+	    let m = find_indexes pos fnum cur os os0 in
             let call = (fnum, cur, m, false) in
             ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
        end;
@@ -638,7 +647,7 @@ and type_check : subtype_ctxt -> term -> kind -> (typ_prf * 'a) = fun ctxt t c -
        (match ctxt.induction_hyp with
        | [] -> assert false
        | (_,_,cur,os0)::_   ->
-          let ovars = List.map (fun (i,_) -> (i,OUVar(OConv,ref None))) os in
+          let ovars = List.map (fun (i,_) -> (i,OUVar(None,ref None))) os in
           let a = recompose a ovars in
           if !debug then
             begin
@@ -647,14 +656,15 @@ and type_check : subtype_ctxt -> term -> kind -> (typ_prf * 'a) = fun ctxt t c -
                 (print_kind false) c
             end;
           let (prf,gm,gn) = subtype ctxt t a c in
+	  let pos = List.map fst ctxt.positive_ordinals in
           delayed := (fun () ->
             if !debug then
               begin
                 io.log "searching induction hyp (2) %d:\n" fnum;
-                io.log "  %a => %a\n%!" (print_kind false) a
-                  (print_kind false) c
+                io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
+                  (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos
               end;
-            let m = find_indexes fnum cur ovars os0 in
+            let m = find_indexes pos fnum cur ovars os0 in
             let call = (fnum, cur, m, true) in
                 (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
             ctxt.calls := call :: !(ctxt.calls)) :: !delayed;

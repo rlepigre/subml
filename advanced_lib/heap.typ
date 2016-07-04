@@ -30,7 +30,7 @@ val rec merge : ∀A (A → A → Bool) → List(A) → List(A) → List(A) =
                   | Cons[c2] → if cmp c1.hd c2.hd then
                                  c1.hd :: merge cmp c1.tl l2
                                else c2.hd :: merge cmp l1 c2.tl)
-
+(*
 val rec sort : ∀A (A → A → Bool) → List(A) → List(A) =
   fun cmp l →
     case l of
@@ -41,7 +41,7 @@ val rec sort : ∀A (A → A → Bool) → List(A) → List(A) =
                                let l1 = sort cmp (c1.hd::c.1) in
                                let l2 = sort cmp (c2.hd::c.2) in
                                merge cmp l1 l2)
-
+*)
 (*
 latex {
 \documentclass{article}

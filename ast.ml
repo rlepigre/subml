@@ -139,7 +139,7 @@ and ordinal =
   (* Ordinal large enough to ensure convergence of all fixpoint. *)
   | OConv
   (* Unification variables for ordinals. *)
-  | OUVar of ordinal * ordinal option ref
+  | OUVar of ordinal option * ordinal option ref
   (* Ordinal created by the μl and νr rules. *)
   | OLess of ordinal * ord_wit
   (* Maximum of a list of ordinals. *)
@@ -610,9 +610,9 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   match (orepr o1, orepr o2) with
   | (o1          , o2          ) when o1 == o2 -> true
   | (OConv       , OConv       ) -> true
-  | (OUVar(o',p) , o           )
-  | (o           , OUVar(o',p) ) -> Timed.pure_test (less_ordinal c o) o' &&
-                                    (set_ouvar p o; true)
+(*  | (OUVar(o',p) , o           )
+  | (o           , OUVar(o',p) ) -> Timed.pure_test (less_ordinal [] c o) o' && (* FIXME *)
+    (set_ouvar p o; true)*)
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal c o1 o2 && eq_ord_wit c w1 w2
   | (OMaxi(l1)   , OMaxi(l2)   ) -> List.for_all (fun o1 ->
                                       List.exists (fun o2 ->
@@ -628,26 +628,28 @@ and eq_ord_wit c w1 w2 = match w1, w2 with
   | (NotIn(t1,f1) , NotIn(t2,f2) ) -> eq_term c t1 t2 && eq_obinder c f1 f2
   | (_            , _            ) -> false
 
-and leq_ordinal c o1 o2 =
+and leq_ordinal pos c o1 o2 =
   match (orepr o1, orepr o2) with
   | (o1         , o2        ) when eq_ordinal c o1 o2 -> true
   | (_          , OConv     ) -> true
-  | (OUVar(o, p), o2        ) -> Timed.pure_test (leq_ordinal c o) o2 || (
-                                   Timed.pure_test (less_ordinal c o2) o &&
+  | (OUVar(None, p), o2     ) -> set_ouvar p o2; true
+  | (OUVar(Some o, p), o2   ) -> Timed.pure_test (leq_ordinal pos c o) o2 || (
+                                   Timed.pure_test (less_ordinal pos c o2) o &&
                                    (set_ouvar p o2; true))
-  | (o1         , OUVar(o,p)) -> Timed.pure_test (less_ordinal c o1) o &&
+  | (o1      , OUVar(None,p)) -> set_ouvar p o1; true
+  | (o1    , OUVar(Some o,p)) -> Timed.pure_test (less_ordinal pos c o1) o &&
                                  (set_ouvar p o1; true)
-  | (OLess(o1,_), o2        ) -> leq_ordinal c o1 o2
-  | (OMaxi(l1)  , o2        ) -> List.for_all (fun o1 -> leq_ordinal c o1 o2) l1
-  | (o1         , OMaxi(l2) ) -> List.exists (fun o2 -> leq_ordinal c o1 o2) l2
+  | (OLess(o1,_), o2        ) when List.exists (eq_ordinal c o1) pos -> leq_ordinal pos c o1 o2
+  | (OMaxi(l1)  , o2        ) -> List.for_all (fun o1 -> leq_ordinal pos c o1 o2) l1
+  | (o1         , OMaxi(l2) ) -> List.exists (fun o2 -> leq_ordinal pos c o1 o2) l2
   | (_          , _         ) -> false
 
-and less_ordinal c o1 o2 =
+and less_ordinal pos c o1 o2 =
   let o1 = orepr o1 and o2 = orepr o2 in
   match o1 with
-  | OLess(o,_) -> leq_ordinal c o o2
-  | OUVar(o,_) -> less_ordinal c o o2
-  | OMaxi(l1)  -> List.for_all (fun o1 -> less_ordinal c o1 o2) l1
+  | OLess(o,_) when List.exists (eq_ordinal c o) pos -> leq_ordinal pos c o o2
+  | OUVar(Some o,_) -> List.exists (eq_ordinal c o) pos && less_ordinal pos c o o2
+  | OMaxi(l1)  -> List.for_all (fun o1 -> less_ordinal pos c o1 o2) l1
   | _          -> false
 
 (* FIXME: normalize elements, sort, eliminate duplicate, hashcons ? *)
@@ -668,11 +670,11 @@ let eq_ordinal : ordinal -> ordinal -> bool =
 let eq_ord_wit : ord_wit -> ord_wit -> bool =
   fun t1 t2 -> Timed.pure_test (eq_ord_wit (ref 0) t1) t2
 
-let leq_ordinal : ordinal -> ordinal -> bool =
-  fun t1 t2 -> Timed.pure_test (leq_ordinal (ref 0) t1) t2
+let leq_ordinal : ordinal list -> ordinal -> ordinal -> bool =
+  fun pos t1 t2 -> Timed.pure_test (leq_ordinal pos (ref 0) t1) t2
 
-let less_ordinal : ordinal -> ordinal -> bool =
-  fun t1 t2 -> Timed.pure_test (less_ordinal (ref 0) t1) t2
+let less_ordinal : ordinal list -> ordinal -> ordinal -> bool =
+  fun pos t1 t2 -> Timed.pure_test (less_ordinal pos (ref 0) t1) t2
 
 let eq_head_term t u =
   let rec fn u =
@@ -992,7 +994,7 @@ let decompose : bool -> occur -> kind -> kind ->
          if o <> OConv && pos <> Eps then search o
          else if o = OConv && pos = Neg then (
 	   if fix then
-	     let o' = OUVar(OConv,ref None) in create o'
+	     let o' = OUVar(None, ref None) in create o'
 	   else o)
          else o
        in
@@ -1002,7 +1004,7 @@ let decompose : bool -> occur -> kind -> kind ->
          if o <> OConv && pos <> Eps then search o
          else if o = OConv && pos = Pos then  (
 	   if fix then
-	     let o' = OUVar(OConv,ref None) in create o'
+	     let o' = OUVar(None, ref None) in create o'
 	   else o)
          else o
        in

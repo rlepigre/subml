@@ -98,7 +98,8 @@ let rec print_ordinal unfold ff o =
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
     | OTInt(n) -> fprintf ff "!%d!" n
-    | OUVar(o,n) -> fprintf ff "?<%a" (print_ordinal false) o
+    | OUVar(None,n) -> fprintf ff "?"
+    | OUVar(Some o,n) -> fprintf ff "?<%a" (print_ordinal false) o
 
 and print_index_ordinal ff = function
   | OConv -> ()

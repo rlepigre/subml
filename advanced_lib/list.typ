@@ -75,7 +75,7 @@ val rec flatten2 : ∀A List(List(A)) → List(A) = fun l ↦
     | [] → flatten2 l.tl
     | Cons l' → l'.hd :: flatten2 ((l'.tl) :: (l.tl)))
 *)
-
+(*
 val rec flatten2 : ∀A F(List(A),List(List(A))) → List(A) = fun l ↦
   case l of
   | []      → []
@@ -84,3 +84,4 @@ val rec flatten2 : ∀A F(List(A),List(List(A))) → List(A) = fun l ↦
                | Cons[l'] → l'.hd :: flatten2 ((l'.tl) :: (l.tl)))
 
 val flatten3 : ∀A List(List(A)) → List(A) = flatten2
+*)
