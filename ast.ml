@@ -944,6 +944,10 @@ let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
+let rec assoc_ordinal o = function
+  | [] -> raise Not_found
+  | (o',v)::l -> if eq_ordinal o o' then v else assoc_ordinal o l
+
 let decompose : bool -> occur -> kind -> kind ->
                   kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
   let res = ref [] in
@@ -951,7 +955,7 @@ let decompose : bool -> occur -> kind -> kind ->
   let search o =
     try
       match o with
-        OLess _ -> OTInt (List.assq o !res)
+        OLess _ -> OTInt (assoc_ordinal o !res)
       | _ -> raise Not_found
     with
       Not_found ->

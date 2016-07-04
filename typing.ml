@@ -36,7 +36,7 @@ let find_indexes pos index index' a b =
 let rec find_positive ctxt o =
   let o = orepr o in
   (*  Printf.eprintf "find positive %a\n%!" (print_ordinal false) o;*)
-  try omax (List.assq o ctxt.positive_ordinals) with
+  try omax (assoc_ordinal o ctxt.positive_ordinals) with
   | Not_found ->
   match o with
   | OConv -> OConv
@@ -176,8 +176,8 @@ let cr = ref 0
 let add_pos positives o o' =
   let o = orepr o and o' = orepr o' in
   if o = OConv then positives else
-  let l = try List.assq o positives with Not_found -> [] in
-  if List.memq o' l then positives else
+  let l = try assoc_ordinal o positives with Not_found -> [] in
+  if List.exists (eq_ordinal o') l then positives else
     (o, (o'::l)) :: (List.filter (fun (o1,_) -> o1 != o) positives)
 
 let add_positive ctxt o o' =
