@@ -1,7 +1,7 @@
 (* List library. *)
 include "advanced_lib/nat.typ"
 
-type F(A,X) = [Nil of {} | Cons of {hd : A; tl : X}]
+type F(A,X) = [Nil | Cons of {tl : X; hd : A}]
 type List(A) = μX F(A,X)
 
 val hd : ∀A List(A) → Option(A) = fun l ↦
@@ -62,20 +62,26 @@ val rec flatten : ∀A List(List(A)) → List(A) = fun l ↦
   | Cons[l] → rev_append (rev l.hd) (flatten l.tl)
 
 (*
+val rec flatten2 : ∀A List(List(A)) → List(A) = fun l ↦
+  case l of
+  | [] → []
+  | Cons[l] → (case l.hd of
+    | [] → flatten2 l.tl
+    | Cons[l'] → l'.hd :: flatten2 ((l'.tl) :: (l.tl)))
+
 DOES NOT WORK, but this is expected:
   l'.tl and the content of l.tl do not agree on type,
   either typing fails, of termination fails
 
 it would probably work if the definition of List (the outer one
 was unroled … Lets try
-val rec flatten2 : ∀A List(List(A)) → List(A) = fun l ↦
-  case l of
-  | [] → []
-  | Cons l → (case l.hd of
-    | [] → flatten2 l.tl
-    | Cons l' → l'.hd :: flatten2 ((l'.tl) :: (l.tl)))
 *)
+
 (*
+Still not working:
+
+Mises one hypothesis about the positiveness of an ordinal.
+
 val rec flatten2 : ∀A F(List(A),List(List(A))) → List(A) = fun l ↦
   case l of
   | []      → []

@@ -133,6 +133,8 @@ and print_kind unfold wrap ff t =
   | KUVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | KTInt(_) -> assert false
+  | MuRec(_,a) -> pkind ff a
+  | NuRec(_,a) -> pkind ff a
 
 
 and pkind_def unfold ff kd =

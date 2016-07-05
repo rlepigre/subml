@@ -1,4 +1,5 @@
 open Bindlib
+open Refinter
 
 exception Stopped
 
@@ -110,6 +111,12 @@ type kind =
   | KUVar of uvar
   (* Integer tag for comparing kinds. *)
   | KTInt of int
+  (* Recording *)
+  | MuRec of ordinal refinter * kind
+  | NuRec of ordinal refinter * kind
+
+and ordinal_set =
+    Empty | NonEmpty of ordinal list
 
 (* Type definition (user defined type). *)
 and type_def =
@@ -561,7 +568,9 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder c f1 f2 && eq_term c t1 t2
     | (KUVar(u1)   , KUVar(u2)   ) -> u1.uvar_key = u2.uvar_key
     | (KTInt(i1)   , KTInt(i2)   ) -> i1 = i2
-    | (_          , _          ) -> false
+    | (MuRec(p,a1) , MuRec(q,a2) )
+    | (NuRec(p,a1) , NuRec(q,a2) ) -> p == q && eq_kind a1 a2
+    | (_           , _           ) -> false
   in
   eq_kind k1 k2
 
@@ -688,6 +697,21 @@ let eq_head_term t u =
     | _          -> false
   in fn u
 
+let rec assoc_ordinal o = function
+  | [] -> raise Not_found
+  | (o',v)::l -> if eq_ordinal o o' then v else assoc_ordinal o l
+
+let all_epsilons = ref []
+
+let oless o w =
+  let o = orepr o in
+  let o' = OLess(o,w) in
+  if o <> OConv then
+    (let l = try assoc_ordinal o !all_epsilons with Not_found -> [] in
+    if not (List.exists (eq_ordinal o') l) then
+      all_epsilons := (o, (o' :: l)) :: !all_epsilons);
+  o'
+
  (***************************************************************************
  *                             mapping on terms                             *
  ****************************************************************************)
@@ -717,7 +741,7 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
 
 (*****************************************************************
  *              test if a term is normal in CBV                  *
-******************************************************************)
+ *****************************************************************)
 let is_normal : term -> bool = fun t ->
   let rec fn t =
     match t.elt with
@@ -739,7 +763,30 @@ let is_normal : term -> bool = fun t ->
     | TTInt _     -> assert false
   in fn t
 
-(* let is_neutral ...  *)
+(*****************************************************************
+ *              test if a term is neutral in CBV                 *
+ *****************************************************************)
+let is_neutral : term -> bool = fun t ->
+  let rec fn t =
+    match t.elt with
+    | TCoer(t,k)  -> fn t
+    | TVari(x)    -> true
+    | TAbst(ko,f) -> false
+    | TFixY(ko,f) -> false
+    | TKAbs(f)    -> fn (subst f (KProd []))
+    | TOAbs(f)    -> fn (subst f (OConv))
+    | TAppl(a,b)  -> fn a
+    | TReco(fs)   -> false
+    | TProj(a,s)  -> fn a
+    | TCons(s,a)  -> false
+    | TCase(a,fs) -> fn a
+    | TDefi(d)    -> fn d.value
+    | TCnst _     -> true
+    | TCstY _     -> false
+    | TPrnt _     -> false
+    | TTInt _     -> assert false
+  in fn t
+
 
 (****************************************************************************
  *                 Occurence test for unification variables                 *
@@ -818,6 +865,8 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
     | KUVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | KTInt(_)   -> assert false
+    | MuRec(_,k)
+    | NuRec(_,k) -> aux occ acc k
   and aux2 acc t = match t.elt with
     | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (dummy_pos (TReco [])))
     | TCstY(t,k)     -> aux2 (aux Eps acc k) (subst t (dummy_pos (TReco [])))
@@ -862,6 +911,8 @@ let lift_kind : kind -> kind bindbox = fun k ->
       | KDefi(d,a) -> kdefi d (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+      | MuRec _
+      | NuRec _    -> assert false
       | t          -> box t
     and gn o =
       match orepr o with
@@ -892,7 +943,9 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | KDefi(d,a) -> kdefi d (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | t         -> box t
+      | MuRec(_,k)
+      | NuRec(_,k) -> fn k
+      | t          -> box t
     and gn o =
       match orepr o with
       | OVari x -> box_of_var x
@@ -922,7 +975,9 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | KDefi(d,a) -> kdefi d (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | t         -> box t
+      | MuRec(_,k)
+      | NuRec(_,k) -> fn k
+      | t          -> box t
     and gn o =
       match orepr o with
       | OVari x -> box_of_var x
@@ -943,10 +998,6 @@ let is_mu f = !contract_mu &&
 let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
-
-let rec assoc_ordinal o = function
-  | [] -> raise Not_found
-  | (o',v)::l -> if eq_ordinal o o' then v else assoc_ordinal o l
 
 let decompose : bool -> occur -> kind -> kind ->
                   kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
@@ -1019,6 +1070,8 @@ let decompose : bool -> occur -> kind -> kind ->
     | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn Eps a)
     | KVari(x)   -> box_of_var x
+    | MuRec(_,k)
+    | NuRec(_,k) -> fn pos k
     | t          -> box t
   in
   let k1 = unbox (fn (neg pos) k1) in
@@ -1048,6 +1101,8 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
     | KDefi(d,a) -> fn (msubst d.tdef_value a)
     | KDPrj(t,s) -> kdprj (map_term fn t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+    | MuRec _
+    | NuRec _    -> assert false
     | t          -> box t
   in
   unbox (fn k)

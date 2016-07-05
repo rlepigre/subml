@@ -174,7 +174,9 @@ and print_kind unfold wrap ff t =
   | KUVar(u) ->
       fprintf ff "?%i" u.uvar_key
   | KTInt(n) ->
-      fprintf ff "!%i" n
+     fprintf ff "!%i" n
+  | MuRec(_,a) -> fprintf ff "REC(%a)" pkind a
+  | NuRec(_,a) -> fprintf ff "REC(%a)" pkind a
 
 and print_occur ff = function
   | Eps    -> pp_print_string ff "ε"

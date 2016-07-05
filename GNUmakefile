@@ -3,7 +3,7 @@ all: subml.byte subml.native
 DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
 				bindlib/bindlib.ml decap/ahash.ml decap/input.ml decap/decap.ml \
-        io.ml timed.ml ast.ml eval.ml print.ml latex.ml sct.ml \
+        io.ml timed.ml refinter.ml ast.ml eval.ml print.ml latex.ml sct.ml \
 				raw.ml typing.ml parser.ml proof.ml
 
 subml.native: $(MLFILES) subml.ml
