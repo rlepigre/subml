@@ -1,0 +1,127 @@
+(* Binary coding of natural numbers, using Church encoding, untyped *)
+typed off;
+
+# boolean are needed
+include "bool";
+
+# recursive definition are used
+recursive;
+
+# Binary representation with lower bits first
+let End = λz o e.e;        # end of the representation
+let Sz = λn z o e.(z n);   # adds a zero
+let So = λn z o e.(o n);   # adds a one
+
+# Function like predecessor or substraction can send back an error:
+let Error = λz o e x.x;
+
+# We will only use "normal" represention. This means we will assume
+# that there is never some useless zeros at the end of a number.  To
+# do this we need two functions which add a zero or a one in front of
+# a normal representation, keeping it normal and caring about errors.
+let nSz = λn.n (λnp e.Sz (Sz np)) (λnp e.Sz (So np)) (λe. End) Error;
+let nSo = λn.n (λnp e.So (Sz np)) (λnp e.So (So np)) (λe. (So End)) Error;
+
+# Test for zero (works on non normal representation)
+let rec Is_zero = λn.n
+  (λnp.Is_zero np)
+  (λnp.False)
+  True
+;
+
+# Test for errors
+let Is_error = λn.n
+  (λnp e. False)
+  (λnp e. False)
+  (λe. False)
+  True
+;
+
+
+# Succesor
+let rec S = λn.n (λnp.So np) (λnp.Sz (S np)) (So End);
+
+# Predecessor
+let rec Pred = λn.n (λnp.So (Pred np)) (λnp.nSz np) Error;
+
+# Addition
+let rec Add_aux = λn m r. n
+  (λnp.m
+    (λmp.r (So (Add_aux np mp False)) (Sz (Add_aux np mp False)))
+    (λmp.r (Sz (Add_aux np mp True)) (So (Add_aux np mp False)))
+    (r (So np) (Sz np)))
+  (λnp.m
+    (λmp.r (Sz (Add_aux np mp True)) (So (Add_aux np mp False)))
+    (λmp.r (So (Add_aux np mp True)) (Sz (Add_aux np mp True)))
+    (r (Sz (S np)) (So np)))
+  (r (S m) m);
+let Add = λn m.Add_aux n m False;
+
+# Multiplication
+let rec Mul = λn m.(n
+  (λnp.Sz (Mul np m))
+  (λnp.Add m (Sz (Mul np m)))
+  End);
+
+# Subtraction
+let rec Sub_aux = λn m r. n
+  (λnp.m
+    (λmp.r (nSo (Sub_aux np mp True)) (nSz (Sub_aux np mp False)))
+    (λmp.r (nSz (Sub_aux np mp True)) (nSo (Sub_aux np mp True)))
+    (r (So (Pred np)) (nSz np)))
+  (λnp.m
+    (λmp.r (nSz (Sub_aux np mp False)) (nSo (Sub_aux np mp False)))
+    (λmp.r (nSo (Sub_aux np mp True)) (nSz (Sub_aux np mp False)))
+    (r (nSz np) (So np)))
+  (r Error (Is_zero m End Error));
+let Sub = λn m.Sub_aux n m False;
+
+# Division and modulo
+let rec Euclide = λn m.n
+  (λnp. Euclide np m (λq r. let nr = Sub (nSz r) m in
+      Is_error nr
+        (λp. p (nSz q) (nSz r))
+        (λp. p (So q) nr)))
+  (λnp. Euclide np m (λq r. let nr = Sub (So r) m in
+      Is_error nr
+        (λp. p (nSz q) (So r))
+        (λp. p (So q) nr)))
+  (λp. p End End)
+;
+
+let Div = λn m. Euclide n m True;
+let Mod = λn m. Euclide n m False;
+
+# Printing in binary (High bit first)
+let rec Printb = λn. n (λnp. Printb np "0") (λnp. Printb np "1") "";
+
+# Printing in decimal (quite slow)
+let Print_dec = λn. n
+  (λnp.np (λnpp.npp (λx."8") (λx."4") "?")
+          (λnpp.npp (λx."?") (λx."6") "2") "?")
+  (λnp.np (λnpp.npp (λx."9") (λx."5") "?")
+          (λnpp.npp (λx."?") (λx."7") "3") "1")
+  "0"
+;
+let dix = λz o e.z (λz o e.o (λz o e.z (λz o e.o (λz o e.e))));
+let rec Print = λn. Euclide n dix (λq r. Is_zero q "" (Print q) (Print_dec r));
+
+# Some numbers
+let 0 = End;
+let 1 = S 0;
+let 2 = S 1;
+let 3 = S 2;
+let 4 = S 3;
+let 5 = S 4;
+let 6 = S 5;
+let 7 = S 6;
+let 8 = S 7;
+let 9 = S 8;
+let 10 = S 9;
+let 20 = Add 10 10;
+let 30 = Add 20 10;
+let 40 = Add 30 10;
+let 100 = Mul 10 10;
+
+# A classical example:
+let rec Fact = λn.Is_zero n 1 (Mul n (Fact (Pred n)));

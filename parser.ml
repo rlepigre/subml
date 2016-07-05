@@ -376,43 +376,43 @@ let parser hash = "#" no_hash
 
 let parser latex_atom =
   | hash "witnesses" "#"     ->
-     (fun () -> Latex_trace.Witnesses)
+     (fun () -> Latex.Witnesses)
   | hash br:int_lit?[0] u:"!"? k:kind "#" ->
-     (fun () -> Latex_trace.Kind (br,u<>None, unbox (unsugar_kind empty_env k)))
+     (fun () -> Latex.Kind (br,u<>None, unbox (unsugar_kind empty_env k)))
   | "@" br:int_lit?[0] u:"!"? t:term "@" ->
-     (fun () -> Latex_trace.Term (br,u<>None, unbox (unsugar_term empty_env t)))
+     (fun () -> Latex.Term (br,u<>None, unbox (unsugar_term empty_env t)))
   | t:(Decap.(change_layout (parser (in_charset tex_normal)+) no_blank)) ->
-     (fun () -> Latex_trace.Text (string_of_chars t))
+     (fun () -> Latex.Text (string_of_chars t))
   | l:latex_text          -> l
   | hash "check" a:kind subset b:kind "#" -> (fun () ->
      let a = unbox (unsugar_kind empty_env a) in
      let b = unbox (unsugar_kind empty_env b) in
      let (prf, cg) = generic_subtype a b in
-     Latex_trace.SProof (prf, cg))
+     Latex.SProof (prf, cg))
   | hash br:int_lit?[0] ":" id:lident "#"    -> (fun () ->
      let t = Hashtbl.find val_env id in
-     Latex_trace.Kind (br, false, t.ttype))
+     Latex.Kind (br, false, t.ttype))
   | hash br:int_lit?[0] "?" id:uident "#"    -> (fun () ->
      let t = Hashtbl.find typ_env id in
-     Latex_trace.KindDef(br,t))
+     Latex.KindDef(br,t))
   | "##" id:lident "#"    -> (fun () ->
      let t = Hashtbl.find val_env id in
-     Latex_trace.TProof t.proof)
+     Latex.TProof t.proof)
   | "#!" id:lident "#" -> (fun () ->
      let t = Hashtbl.find val_env id in
-     Latex_trace.Sct t.calls_graph)
+     Latex.Sct t.calls_graph)
 
 and latex_text = "{" l:latex_atom* "}" -> (fun () ->
-  Latex_trace.List (List.map (fun f -> f ()) l))
+  Latex.List (List.map (fun f -> f ()) l))
 
 let parser latex_name_aux =
   | t:(Decap.(change_layout (parser (in_charset tex_normal)+) no_blank)) ->
-      (fun () -> Latex_trace.Text (string_of_chars t))
+      (fun () -> Latex.Text (string_of_chars t))
   | "{" l:latex_name_aux* "}" ->
-      (fun () -> Latex_trace.List (List.map (fun f -> f ()) l))
+      (fun () -> Latex.List (List.map (fun f -> f ()) l))
 
 and latex_name = "{" t:latex_name_aux* "}" -> (fun () ->
-  Latex_trace.to_string (Latex_trace.List (List.map (fun f -> f ()) t)))
+  Latex.to_string (Latex.List (List.map (fun f -> f ()) t)))
 
 (****************************************************************************
  *                       Top-level parsing functions                        *
@@ -441,7 +441,7 @@ type command =
   | ParseT  of pterm
   | Eval    of pterm
   | Include of string
-  | Latex   of unit -> Latex_trace.latex_output
+  | Latex   of unit -> Latex.latex_output
   | Set     of unit -> unit
 
 let parser command =
@@ -560,7 +560,7 @@ let run_command : command -> unit = function
       ignore_latex := save
   (* Latex. *)
   | Latex(t) ->
-      if not !ignore_latex then Latex_trace.output !latex_ch (t ())
+      if not !ignore_latex then Latex.output !latex_ch (t ())
   (* Set a flag. *)
   | Set(f) -> f ()
 

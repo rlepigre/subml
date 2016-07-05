@@ -1,0 +1,43 @@
+include "bool";
+
+(* the constructor for terms *)
+
+let app u v = \l a. (a u v);
+let abs f = \l a. (l f);
+
+(* the substitution *)
+let subst u v  =  u (\f. f v) (\x y. app u v);
+
+(* one more constructor which can be added to term !*)
+let P v = \l a p. p v;
+
+(* test is a term eventually using the new constructor, is an abstraction *)
+let is_abs u =  u (\f o. True) (\x y o. False) (\x. False);
+
+(* the complete development *) (* not typable !
+let rec complete u = u 
+                   (\f o.abs (\y. complete (f (P y))))
+                   (\v w o.is_abs v subst app (complete v) (complete w))
+                   (\x.x); *)
+
+let rec complete u = u 
+                   (\f o.abs (\y. complete (f (P y))))
+                   (\v w o. v
+                       (\f o. complete (f (P (complete w))))
+                       (\v' w' o. app (complete v) (complete w))
+                       (\x. app x (complete w)))
+                   (\x.x);
+
+(* comple examples *)
+
+let delta = abs (\x. (app x x));
+complete (app delta delta);
+
+let 0 = abs (\x. abs (\y. y));
+let S n = app (abs (\n. abs (\x. abs (\y. (app x (app (app n x) y)))))) n;
+
+complete 0;
+complete (S 0);
+complete (S (S 0));
+complete (S (S (S 0)));
+complete (S (S (S (S 0))));

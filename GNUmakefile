@@ -4,7 +4,7 @@ DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
 				bindlib/bindlib.ml decap/ahash.ml decap/input.ml decap/decap.ml \
         io.ml timed.ml ast.ml eval.ml print.ml latex.ml sct.ml \
-				raw.ml typing.ml latex_trace.ml parser.ml proof.ml
+				raw.ml typing.ml parser.ml proof.ml
 
 subml.native: $(MLFILES) subml.ml
 	ocamlbuild -cflags -w,-3-30 $@
@@ -64,8 +64,7 @@ subml-latest.tar.gz: $(MLFILES)
 	cp -r bindlib subml-latest
 	pa_ocaml --ascii parser.ml > subml-latest/parser.ml
 	cp io.ml timed.ml ast.ml eval.ml print.ml subml-latest
-	cp latex.ml proof.ml sct.ml raw.ml typing.ml subml-latest
-	cp latex_trace.ml latex_trace.mli subml.ml subml-latest
+	cp subml.ml latex.ml proof.ml sct.ml raw.ml typing.ml subml-latest
 	cp Makefile_minimum subml-latest/Makefile
 	cp _tags subml-latest
 	rm -f lib/*~
