@@ -2,24 +2,21 @@ type F(A,X) = [ Nil | Cons of { hd : A; tl : X } ]
 type List(A) = μX F(A,X)
 type G(A,B) = [ Cons of { hd : A; tl : B } ]
 
+
 val rec split : ∀A G(A,List(A)) → List(A) × List(A) =
   fun l ↦
     case l of
-    | Cons[c] → let x = c.hd in
-                let l' = c.tl in
-                case l' of
-                | []       → (x::[], [])
-                | Cons[c'] → let c = split Cons[c'] in
-                             (x::c.2, c.1)
+    | Cons[c] → case c.tl of
+                | []       → (c.hd::[], [])
+                | Cons[c'] → let r = split Cons[c'] in
+                             (c.hd::r.2, r.1)
 
 val rec split2 : ∀o ∀A (μo X F(A,X)) → (μo X F(A,X)) × (μo X F(A,X)) =
   fun l →
     case l of
     | []      → ([], [])
-    | Cons[c] → let x = c.hd in
-                let l' = c.tl in
-                let q = split2 l' in
-                (x::q.2, q.1)
+    | Cons[c] → let q = split2 c.tl in
+                (c.hd::q.2, q.1)
 
 val rec merge : ∀A (A → A → Bool) → List(A) → List(A) → List(A) =
   fun cmp l1 l2 →
@@ -41,6 +38,7 @@ val rec sort : ∀A (A → A → Bool) → List(A) → List(A) =
                                let l1 = sort cmp (c1.hd::c.1) in
                                let l2 = sort cmp (c2.hd::c.2) in
                                merge cmp l1 l2)
+
 
 (*
 latex {

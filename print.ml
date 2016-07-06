@@ -280,8 +280,8 @@ and print_term ?(in_proj=false) unfold ff t =
   | TCnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_%d" name index
-  | TCstY(f,a) ->
-     let name, index = search_term_tbl f a a in
+  | TCstY(_,f,_,_) ->
+     let name, index = search_term_tbl f (KProd []) (KProd []) in
      fprintf ff "%s_%d" name index
   | TTInt(i) ->
       fprintf ff "TAG(%i)" i

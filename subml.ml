@@ -24,6 +24,7 @@ let spec =
     ("--tex-file", Arg.String (fun s -> open_latex s), "Choose tex file output");
     ("--no-prelude", Arg.Clear prelude, "Do not load the prelude");
     ("--no-inline", Arg.Clear Sct.do_inline, "Do not optimize call graph by inlining");
+    ("--fixpoint-depth", Arg.Set_int Typing.fixpoint_depth, "Depth for termination of recursitve function (default 3)");
     ("--quit", Arg.Set quit, "quit after parsing files");
   ]
 

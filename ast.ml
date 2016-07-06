@@ -136,10 +136,11 @@ and uvar =
   { uvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
   ; uvar_val : kind option ref
-  ; uvar_hook : (kind -> unit) ref
   ; uvar_state : uvar_state ref }
 
-and uvar_state = Free | Sum | Prod
+and uvar_state = Free
+	       | Sum  of (string * kind) list
+	       | Prod of (string * kind) list
 
 (* Abstract syntax tree for ordinals. *)
 and ordinal =
@@ -192,9 +193,9 @@ and term' =
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
-  | TCnst of ((term, term) binder * kind * kind)
+  | TCnst of (term, term) binder * kind * kind
   (* Specific witness for recursive definitions. *)
-  | TCstY of ((term, term) binder * kind)
+  | TCstY of int * (term, term) binder * kind * kind list
   (* Integer tag. *)
   | TTInt of int
 
@@ -280,11 +281,19 @@ let rec orepr = function
   | OUVar(_, {contents = Some o})
   | o                             -> o
 
-let set_kuvar v k =
+let set_kuvar f v k =
   assert (!(v.uvar_val) = None);
-  Timed.(v.uvar_val := Some k);
-  !(v.uvar_hook) k;
-  Timed.(v.uvar_hook := (fun _ -> ()))
+  match !(v.uvar_state) with
+  | Free ->
+     Timed.(v.uvar_val := Some k);
+  | Sum l ->
+     let k' = KDSum(l) in
+     Timed.(v.uvar_val := Some k');
+     f k' k
+  | Prod l ->
+     let k' = KProd(l) in
+     Timed.(v.uvar_val := Some k');
+     f k k'
 
 let set_ouvar v o =
   assert(!v = None);
@@ -414,7 +423,6 @@ let (new_uvar, reset_uvar) =
   let new_uvar () = KUVar {
     uvar_key = (incr c; !c);
     uvar_val = ref None;
-    uvar_hook = ref (fun k -> ());
     uvar_state = ref Free;
   } in
   let reset_uvar () = c := 0 in
@@ -477,9 +485,6 @@ let tprnt_p : pos -> string -> term =
 
 let tfixy_p : pos -> kind option -> (term, term) binder -> term =
   fun p ko t -> in_pos p (TFixY(ko,t))
-
-let tcnst_p : pos -> ((term, term) binder * kind * kind) -> term =
-  fun p c -> in_pos p (TCnst(c))
 
 (****************************************************************************
  *                     Smart constructors for terms                         *
@@ -607,11 +612,11 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (TCons(c1,t1), TCons(c2,t2)) -> c1 = c2 && eq_term t1 t2
     | (TCase(t1,l1), TCase(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
     | (TPrnt(s1)   , TPrnt(s2)   ) -> s1 = s2
-    | (TCnst(c1)   , TCnst(c2)   ) -> let (f1,a1,b1) = c1 in
-                                      let (f2,a2,b2) = c2 in
-                                      eq_tbinder c f1 f2 && eq_kind c a1 a2
+    | (TCnst(f1,a1,b1)
+	        , TCnst(f2,a2,b2)) -> eq_tbinder c f1 f2 && eq_kind c a1 a2
                                         && eq_kind c b1 b2
-    | (TCstY(f1,a1), TCstY(f2,a2)) -> eq_tbinder c f1 f2 && eq_kind c a1 a2
+    | (TCstY(n1,f1,a1,_)
+	        , TCstY(n2,f2,a2,_)) -> n1 = n2 && eq_tbinder c f1 f2 && eq_kind c a1 a2
     | (_           , _           ) -> false
   in eq_term t1 t2
 
@@ -869,7 +874,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | NuRec(_,k) -> aux occ acc k
   and aux2 acc t = match t.elt with
     | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (dummy_pos (TReco [])))
-    | TCstY(t,k)     -> aux2 (aux Eps acc k) (subst t (dummy_pos (TReco [])))
+    | TCstY(n,t,a,k)     -> aux2 (List.fold_left (aux Eps) (aux Eps acc a) k) (subst t (dummy_pos (TReco [])))
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t

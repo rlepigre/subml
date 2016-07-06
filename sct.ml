@@ -28,7 +28,7 @@ let compose c1 c2 = match c1, c2 with
 
 type calls = call list
 type pre_calls = pre_call list
-type arities = (int * int) list
+type arities = (int * (string * int)) list
 type calls_graph = arities * calls
 
 let debug_sct = ref false
@@ -53,12 +53,14 @@ let print_cmp ff c =
 
 let print_call tbl ff (i,j,m) =
   let print_args ff i =
-    let a = try List.assoc i tbl with Not_found -> assert false in
+    let (_, a) = try List.assoc i tbl with Not_found -> assert false in
     for i = 0 to a - 1 do
       fprintf ff "%sX%d" (if i = 0 then "" else ",") i
     done
   in
-  fprintf ff "F%d(%a) <- F%d(" j print_args j i;
+  let (namei, _) = try List.assoc i tbl with Not_found -> assert false in
+  let (namej, _) = try List.assoc j tbl with Not_found -> assert false in
+  fprintf ff "%s%d(%a) <- %s%d(" namej j print_args j namei i;
   Array.iteri (fun i l ->
     if i > 0 then fprintf ff ",";
     let some = ref false in
@@ -95,13 +97,13 @@ module IAMap = Map.Make(IntArray)
 
 (* function needs to be declared. calling sct will
    reset the function table *)
-let (new_function : int -> int), reset_function, pr_call, arities, arity =
+let (new_function : string -> int -> int), reset_function, pr_call, arities, arity =
   let count = ref 0 in
   let fun_table = ref [] in (* the table is only used for debugging messages *)
-  (fun arity ->
+  (fun name arity ->
     let n = !count in
     incr count;
-    fun_table := (n, arity)::!fun_table;
+    fun_table := (n, (name, arity))::!fun_table;
     n),
   (fun () ->
     let res = (!count, !fun_table) in
@@ -134,7 +136,7 @@ let sct: calls -> bool = fun ls ->
      if the edge is new or not *)
   let add_edge i j m =
     (* test idempotent edges as soon as they are discovered *)
-    let a = List.assoc i arities in
+    let (_, a) = List.assoc i arities in
     if i = j && mat_prod a a a m m = m && not (decrease m) then begin
       if !debug_sct then eprintf "edge %a idempotent and looping\n%!" print_call (i,j,m);
       raise Exit;
@@ -170,9 +172,9 @@ let sct: calls -> bool = fun ls ->
 	      eprintf "\tcompose: %a * %a = %!"
 		print_call (i,j,m)
 		print_call (j,k,m');
-	    let a = List.assoc k arities in
-	    let b = List.assoc j arities in
-	    let c = List.assoc i arities in
+	    let (_, a) = List.assoc k arities in
+	    let (_, b) = List.assoc j arities in
+	    let (_, c) = List.assoc i arities in
 	    let m'' = mat_prod a b c m' m in
 	    incr composed;
 	    new_edges := (i,k,m'') :: !new_edges;
@@ -220,9 +222,9 @@ let inline calls =
     try
       match Hashtbl.find tbl i with
       | One (_,k,m') ->
-	 let a = arity k in
-	 let b = arity i in
-	 let c = arity j in
+	 let (_, a) = arity k in
+	 let (_, b) = arity i in
+	 let (_, c) = arity j in
 	 let call = (j,k,mat_prod a b c m' m,r) in
 	 fn call
       | _ -> (j,i,m)

@@ -267,7 +267,7 @@ and print_term unfold lvl ff t =
         | Some a -> fprintf ff "Y(%s : %a) . %a" x pkind a (print_term 0) t
       end;
      if lvl > 0 then pp_print_string ff ")";
-  | TCstY(f,_) ->
+  | TCstY(_,f,_,_) ->
      if lvl > 0 then pp_print_string ff "(";
       let x = binder_name f in
       let t = subst f (free_of (new_tvari' x)) in
@@ -350,7 +350,7 @@ let print_calls ch arities calls =
     | Sct.Leq     -> Printf.fprintf ch "="
   in
   let print_args ch i =
-    let a = try List.assoc i arities with Not_found -> assert false in
+    let (_, a) = try List.assoc i arities with Not_found -> assert false in
     for i = 0 to a - 1 do
       Printf.fprintf ch "%sx_%d" (if i = 0 then "" else ",") i
     done
