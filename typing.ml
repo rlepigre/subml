@@ -79,22 +79,6 @@ let rec dot_proj t k s = match full_repr k with
   | k ->
      raise Not_found
 
-let rec elim_ord_quantifier t k =
-  let l = ref [] in
-  let rec fn k =
-    match full_repr k with
-    | KOExi(f) -> fn (subst f (OUVar(None, ref None)))
-    | KOAll(f) ->
-       let o = oless OConv (NotIn(t,f)) in
-       l := (binder_name f, o)::!l;
-       fn (subst f o)
-    | KKAll(f) -> fn (subst f (KUCst(t,f)))
-    | KKExi(f) -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-  (* fixme: more cases to search below mu and nu ? *)
-    | _ -> lift_kind k
-  in
-  let r = unbox (fn k) in (!l, r)
-
 let rec lambda_kind t k s = match full_repr k with
   | KKAll(f) ->
      let c = KUCst(t,f) in
