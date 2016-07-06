@@ -251,6 +251,12 @@ and ordinal_list  = l:(list_sep ordinal ",")
 type pkind_prio = KFunc | KProd | KAtom
 type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
 
+let pfixY id _loc_t t =
+  match id with
+  | (id, None) -> in_pos _loc_t (PFixY(id, t))
+  | (id, Some k) -> in_pos _loc_t (PCoer(in_pos _loc_t (PFixY(id, t)), k))
+
+
 let parser pkind p =
   | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
       -> in_pos _loc (PFunc(a,b))
@@ -330,10 +336,10 @@ and pterm p =
      in_pos _loc (PLVar(id))
   | fix_kw x:var mapto u:(pterm TFunc) when p = TFunc ->
      Printf.eprintf "fix 1 \n%!";
-    in_pos _loc (PFixY(x,u))
+    pfixY x _loc_u u
   | "[" l:list "]" -> l
   | let_kw r:is_rec id:lvar "=" t:(pterm TFunc) in_kw u:(pterm TFunc) when p = TFunc ->
-     let t = if not r then t else in_pos _loc_t (PFixY(id, t)) in
+     let t = if not r then t else pfixY id _loc_t t in
      in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
   | if_kw c:(pterm TFunc) then_kw t:(pterm TFunc) else_kw e:(pterm TFunc)$ ->
      in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
@@ -508,10 +514,7 @@ let run_command : command -> unit = function
       io.stdout "%a\n%!" (print_term true) (eval t)
   (* Typed value definition. *)
   | NewVal(r,tex,id,k,t,_loc_t,_loc_id) ->
-      let t =
-        if not r then t
-        else in_pos _loc_t (PFixY((in_pos _loc_id id, Some k), t))
-      in
+      let t = if not r then t else pfixY (in_pos _loc_id id, Some k) _loc_t t in
       let t = unbox (unsugar_term empty_env t) in
       let k = unbox (unsugar_kind empty_env k) in
       let (prf, calls_graph) = type_check t k in

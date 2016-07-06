@@ -15,9 +15,13 @@ let subtype_error : string -> 'a =
   fun msg -> raise (Subtype_error msg)
 
 type subtype_ctxt =
-  { induction_hyp     : (kind * kind * int * (int * ordinal) list) list
+  { induction_hyp     : (int * induction_type * (int * ordinal) list) list
   ; calls             : pre_calls ref
   ; positive_ordinals : ordinal list }
+
+and induction_type =
+  | Sub of kind * kind
+  | Rec of (term,term) binder * kind * kind
 
 exception Found of cmp * int
 
@@ -236,10 +240,10 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       (* Printf.eprintf "len(os') = %d\n%!" (List.length os');
          Printf.eprintf "(%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
       let pos = ctxt.positive_ordinals in
-      List.iter (fun (a0,b0,index,os0) ->
+      List.iter (function (_,Rec _,_) -> () | (index,Sub(a0,b0),os0) ->
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
 	  match ctxt.induction_hyp with
-	  | (_,_,index',os')::_ ->
+	  | (index',_,os')::_ ->
 	     delayed := (fun () ->
 	       let m = find_indexes pos index index' os os' in
 	       ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed;
@@ -248,12 +252,12 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
  	)) ctxt.induction_hyp;
       let fnum = new_function "S" (List.length os) in
       (match ctxt.induction_hyp with
-      | (_,_,index',os')::_ ->
+      | (index',_,os')::_ ->
 	   delayed := (fun () ->
 	     let m = find_indexes pos fnum index' os os' in
 	     ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed;
       | _ -> ());
-      let ctxt = { ctxt with induction_hyp = (a', b', fnum, os)::ctxt.induction_hyp } in
+      let ctxt = { ctxt with induction_hyp = (fnum, Sub(a', b'), os)::ctxt.induction_hyp } in
       (Some fnum, None, ctxt)
     with Exit -> (None, None, ctxt)
        | Induction_hyp n -> (None, Some n, ctxt)
@@ -652,54 +656,58 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TPrnt(_) ->
         let p = subtype ctxt t (KProd []) c in
         Typ_Prnt(p)
-    | TFixY(ko,f) ->
-       let c0 = match ko with
-         | None -> c
-         | Some k -> k
-       in
-       let p1 = subtype ctxt t c0 c in
-       let t = in_pos t.pos (TCstY(!fixpoint_depth,f,c0,[])) in  (* FIXME, 2 an option *)
-       let p2 =  type_check ctxt t c in
-       Typ_Coer(p1, p2)
 
-    | TCstY(n,f,a,l) ->
+    | TFixY(n,f) ->
+       let hyps = List.filter (function (_,Rec(f',_,_),_) -> f' == f | _ -> false)
+	 ctxt.induction_hyp in
+       let a =
+	 match hyps with
+	 | (_,Rec(_,a,_),_) :: _ -> a
+	 | _ -> c
+       in
        let prf = subtype ctxt t a c in
        let (_, c0, os) = decompose false Pos (KProd []) c in
        let pos = ctxt.positive_ordinals in
+       if !debug then
+	 begin
+	   io.log "searching induction hyp (1):\n" ;
+	   io.log "  %a (%a > 0)\n%!"
+	     (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos;
+	 end;
        let rec fn = function
 	 | [] -> raise Not_found
-	 | a::l' ->
-	    try
-	      if !debug then
-		begin
-		  io.log "searching induction hyp (1):\n" ;
-		  io.log "  %a (%a > 0)\n%!"
-		    (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos;
-		end;
-	      let (c',c'',fnum,_) =
-		List.find (fun (c',c'',_,os') ->
-		  a == c' && a == c'' && List.length os = List.length os' &&
-	              is_subtype ctxt t a c0)
-		  ctxt.induction_hyp
-	    in
-	    (match ctxt.induction_hyp with
-	    | [] -> assert false
-	    | (_,_,cur,os0)::_   ->
-               delayed := (fun () ->
-		 if !debug then
-		   begin
-                     io.log "searching induction hyp (2) %d:\n" fnum;
-                     io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
-                       (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos
-		   end;
-		 let m = find_indexes pos fnum cur os os0 in
-		 let call = (fnum, cur, m, true) in
-                (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
-		 ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
-               Typ_YH(fnum,(t,c,c,None,Sub_Lower))) (* FIXME *)
-	   with Not_found -> fn l'
+	 | (_,Sub _, _) :: hyps -> fn hyps
+	 | (fnum,Rec(_,_,a),os') :: hyps ->
+	    if List.length os = List.length os' then
+	      try
+		let prf =
+		  let time = Timed.Time.save () in
+		  try
+		    subtype ctxt t a c0
+		  with _ ->
+		    Timed.Time.rollback time;
+		    raise Exit
+		in
+		match ctxt.induction_hyp with
+		| [] -> assert false
+		| (cur,_,os0)::_   ->
+		   delayed := (fun () ->
+		     if !debug then
+		       begin
+			 io.log "searching induction hyp (2) %d:\n" fnum;
+			 io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
+			   (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos
+		       end;
+		     let m = find_indexes pos fnum cur os os0 in
+		     let call = (fnum, cur, m, true) in
+                   (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
+		     ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
+		  Typ_YH(fnum,prf)
+	      with Exit -> fn hyps
+	    else
+	      fn hyps
        in
-       (try fn l with Not_found ->
+       (try fn hyps with Not_found ->
        if n = 0 then subtype_error "no ind found" else
        let fnum = new_function "Y" (List.length os) in
        if !debug then
@@ -709,21 +717,19 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
              (print_kind false) c0 (print_term true) t;
          end;
        let pos = ctxt.positive_ordinals in
-       let ctxt = if os = [] then ctxt else (
-       begin match ctxt.induction_hyp with
-       | [] -> ()
-       | (_,_,cur,os0)::_   ->
-          delayed := (fun () ->
-	    let m = find_indexes pos fnum cur os os0 in
-            let call = (fnum, cur, m, false) in
-            ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
-       end;
-	 { ctxt with induction_hyp = (c0, c0, fnum, os)::ctxt.induction_hyp })
+       let ctxt =
+	 begin match ctxt.induction_hyp with
+	 | [] -> ()
+	 | (cur,_,os0)::_   ->
+            delayed := (fun () ->
+	      let m = find_indexes pos fnum cur os os0 in
+              let call = (fnum, cur, m, false) in
+              ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
+	 end;
+	 { ctxt with induction_hyp = (fnum, Rec(f,a,c0), os)::ctxt.induction_hyp }
        in
-       let wit = in_pos t.pos (TCstY(n-1,f,a,c0::l)) in
-       let t = subst f wit in
-       let p = type_check ctxt t c in
-       Typ_Y(fnum,prf,prf,p)) (* FIXME *)
+       let p = type_check ctxt (subst f t) c in
+       Typ_Y(fnum,prf,p)) (* FIXME *)
 
     | TCnst(_,a,b) ->
         let p = subtype ctxt t a c in
@@ -734,12 +740,6 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       Format.eprintf "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
       exit 1
   in (t, c, r)
-
-and is_subtype : subtype_ctxt -> term -> kind -> kind -> bool =
-  fun ctxt t k1 k2 ->
-  Timed.pure_test (fun () ->
-    try let _ = subtype ctxt t k1 k2 in true
-    with _ -> false) ()
 
 let subtype : term -> kind -> kind -> sub_prf * calls_graph
   = fun t a b ->

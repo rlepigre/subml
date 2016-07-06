@@ -39,7 +39,7 @@ and pterm' =
   | PKAbs of strpos * pterm
   | POAbs of strpos * pterm
   | PPrnt of string
-  | PFixY of (strpos * pkind option) * pterm
+  | PFixY of strpos * pterm
 
 let list_nil _loc =
   in_pos _loc (PCons("Nil" , None))
@@ -210,7 +210,5 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    in tcase pt.pos (unsugar_term env t) (List.map f cs)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
-  | PFixY(x,t)  -> let (x, ko) = x in
-                   let ko = map_opt (unsugar_kind env) ko in
-                   let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in
-                   tfixy pt.pos ko x f
+  | PFixY(x,t)  -> let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in
+                   tfixy pt.pos !(Typing.fixpoint_depth) x f

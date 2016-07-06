@@ -269,19 +269,12 @@ and print_term ?(in_proj=false) unfold ff t =
        pp_print_string ff v.name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
-  | TFixY(ko,f) ->
+  | TFixY(_,f) ->
       let x = binder_name f in
       let t = subst f (free_of (new_tvari' x)) in
-      begin
-        match ko with
-        | None   -> fprintf ff "fix %s → %a" x print_term t
-        | Some a -> fprintf ff "fix(%s : %a) → %a" x pkind a print_term t
-      end
+      fprintf ff "fix %s → %a" x print_term t
   | TCnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
-     fprintf ff "%s_%d" name index
-  | TCstY(_,f,_,_) ->
-     let name, index = search_term_tbl f (KProd []) (KProd []) in
      fprintf ff "%s_%d" name index
   | TTInt(i) ->
       fprintf ff "TAG(%i)" i

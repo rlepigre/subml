@@ -185,7 +185,7 @@ and term' =
   (* Print a string (side effect) and behave like the term. *)
   | TPrnt of string
   (* Fixpoint combinator. *)
-  | TFixY of kind option * (term,term) binder
+  | TFixY of int * (term,term) binder
   (* Lambda on a type, semantics via epsilon *)
   | TKAbs of (kind, term) binder
   (* Lambda on an ordinal, semantics via epsilon *)
@@ -194,8 +194,6 @@ and term' =
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
   | TCnst of (term, term) binder * kind * kind
-  (* Specific witness for recursive definitions. *)
-  | TCstY of int * (term, term) binder * kind * kind list
   (* Integer tag. *)
   | TTInt of int
 
@@ -258,7 +256,7 @@ and typ_rule =
   | Typ_Prod_e of typ_prf
   | Typ_DSum_i of sub_prf * typ_prf
   | Typ_DSum_e of typ_prf * typ_prf list
-  | Typ_Y      of int * sub_prf * sub_prf * typ_prf
+  | Typ_Y      of int * sub_prf * typ_prf
   | Typ_YH     of int * sub_prf
 and typ_prf =
   term * kind * typ_rule
@@ -483,8 +481,8 @@ let tdefi_p : pos -> value_def -> term =
 let tprnt_p : pos -> string -> term =
   fun p s -> in_pos p (TPrnt(s))
 
-let tfixy_p : pos -> kind option -> (term, term) binder -> term =
-  fun p ko t -> in_pos p (TFixY(ko,t))
+let tfixy_p : pos -> int -> (term, term) binder -> term =
+  fun p n t -> in_pos p (TFixY(n,t))
 
 (****************************************************************************
  *                     Smart constructors for terms                         *
@@ -536,8 +534,8 @@ let tdefi : pos -> value_def -> tbox =
 let tprnt : pos -> string -> tbox =
   fun p s -> box (tprnt_p p s)
 
-let tfixy : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
-  fun p ko x f -> box_apply2 (tfixy_p p) (box_opt ko)
+let tfixy : pos -> int -> strpos -> (tvar -> tbox) -> tbox =
+  fun p n x f -> box_apply (tfixy_p p n)
                     (vbind (tvari_p x.pos) x.elt f)
 
 (* Build a constant. Useful during typing. *)
@@ -615,8 +613,6 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (TCnst(f1,a1,b1)
 	        , TCnst(f2,a2,b2)) -> eq_tbinder c f1 f2 && eq_kind c a1 a2
                                         && eq_kind c b1 b2
-    | (TCstY(n1,f1,a1,_)
-	        , TCstY(n2,f2,a2,_)) -> n1 = n2 && eq_tbinder c f1 f2 && eq_kind c a1 a2
     | (_           , _           ) -> false
   in eq_term t1 t2
 
@@ -729,8 +725,7 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
     | TAbst(ko,f) -> let ko = map_opt kn ko in
                      tabst t.pos ko (in_pos t.pos (binder_name f))
                        (fun x -> fn (subst f (dummy_pos (TVari x))))
-    | TFixY(ko,f) -> let ko = map_opt kn ko in
-                     tfixy t.pos ko (in_pos t.pos (binder_name f))
+    | TFixY(n,f) ->  tfixy t.pos n (in_pos t.pos (binder_name f))
                        (fun x -> fn (subst f (dummy_pos (TVari x))))
     | TKAbs(f)    -> tkabs t.pos (dummy_pos (binder_name f))
                        (fun x -> fn (subst f (KVari x)))
@@ -763,7 +758,6 @@ let is_normal : term -> bool = fun t ->
     | TCase(a,fs) -> fn a
     | TDefi(d)    -> fn d.value
     | TCnst _     -> true
-    | TCstY _     -> false
     | TPrnt _     -> false
     | TTInt _     -> assert false
   in fn t
@@ -787,7 +781,6 @@ let is_neutral : term -> bool = fun t ->
     | TCase(a,fs) -> fn a
     | TDefi(d)    -> fn d.value
     | TCnst _     -> true
-    | TCstY _     -> false
     | TPrnt _     -> false
     | TTInt _     -> assert false
   in fn t
@@ -874,7 +867,6 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | NuRec(_,k) -> aux occ acc k
   and aux2 acc t = match t.elt with
     | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (dummy_pos (TReco [])))
-    | TCstY(n,t,a,k)     -> aux2 (List.fold_left (aux Eps) (aux Eps acc a) k) (subst t (dummy_pos (TReco [])))
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t

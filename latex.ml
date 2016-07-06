@@ -261,18 +261,8 @@ and print_term unfold lvl ff t =
      if lvl > 0 then pp_print_string ff "(";
       let x = binder_name f in
       let t = subst f (free_of (new_tvari' x)) in
-      begin
-        match ko with
-        | None   -> fprintf ff "Y %s . %a" x (print_term 0) t
-        | Some a -> fprintf ff "Y(%s : %a) . %a" x pkind a (print_term 0) t
-      end;
-     if lvl > 0 then pp_print_string ff ")";
-  | TCstY(_,f,_,_) ->
-     if lvl > 0 then pp_print_string ff "(";
-      let x = binder_name f in
-      let t = subst f (free_of (new_tvari' x)) in
       fprintf ff "Y %s . %a" x (print_term 0) t;
-      if lvl > 0 then pp_print_string ff ")";
+     if lvl > 0 then pp_print_string ff ")";
   | TCnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_{%d}" name index
@@ -398,9 +388,9 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_YH(n,p)          ->
      let name = Printf.sprintf "$H_%d$" n in
      unaryN name c (sub2proof p)
-  | Typ_Y(n,p1,p2,p)     ->
+  | Typ_Y(n,p1,p)     ->
      let name = Printf.sprintf "$I_%d$" n in
-     ternaryN name c (sub2proof p1) (sub2proof p2) (typ2proof p)
+     binaryN name c (sub2proof p1) (typ2proof p)
 
 and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let open Proof in
