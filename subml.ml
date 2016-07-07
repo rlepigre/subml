@@ -21,7 +21,7 @@ let spec =
     , Arg.Set verbose
     , "Activate verbose mode" )
   ; ( "--debug"
-    , Arg.Set debug
+    , Arg.Set Ast.debug
     , "Activate verbose mode" )
   ; ( "--no-contraction"
     , Arg.Clear contract_mu

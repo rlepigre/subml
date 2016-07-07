@@ -4,8 +4,6 @@ open Print
 open Sct
 open Io
 
-let debug = ref false
-
 exception Type_error of pos * string
 let type_error : pos -> string -> unit =
   fun p msg -> raise (Type_error(p,msg))
@@ -161,7 +159,7 @@ let uvar_list : kind -> uvar list = fun k ->
        fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f (OTInt(-42)))
-    | KUVar(u)   -> if not (List.memq u !r) then r := u :: !r
+    | KUVar(u)   -> if not (List.exists (fun v -> u.uvar_key = v.uvar_key) !r) then r := u :: !r
     | KDefi(d,a) -> Array.iter fn a
     | KWith(k,c) -> let (_,b) = c in fn k; fn b
     (* we ommit Dprj above because the kind in term are only
@@ -312,31 +310,16 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        Sub_Lower
 
     (* Handling of unification variables (immitation). *)
-    | (KUVar ua as a,(KUVar _ as b)) ->
-        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) b;
+    | (KUVar ua,(KUVar _ as b)) ->
         set_kuvar ua b;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
-    | (KUVar ua as a, b            ) ->
-        let k =
-          match uvar_occur ua b with
-          | Non -> b0
-          | Pos -> KFixM(OConv,bind_uvar ua b0)
-          | _   -> bot
-        in
-        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) k;
-        set_kuvar ua k;
+    | (KUVar ua, b            ) ->
+        set_kuvar ua b0;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
-    | (a           ,(KUVar ub as b))  ->
-        let k =
-          match uvar_occur ub a with
-          | Non -> a0
-          | Pos -> KFixM(OConv,bind_uvar ub a0)
-          | _   -> top
-        in
-        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) b (print_kind false) k;
-        set_kuvar ub k;
+    | (a           ,(KUVar ub))  ->
+        set_kuvar ub a0;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     (* Arrow type. *)
@@ -712,4 +695,12 @@ let type_check : term -> kind -> typ_prf * calls_graph = fun t c ->
 let type_infer : term -> kind * typ_prf * calls_graph = fun t ->
   let k = new_uvar () in
   let (prf, calls) = type_check t k in
+  let ul = uvar_list k in
+  let ul = List.filter (fun v ->
+    match !(v.uvar_state) with
+    | Free -> true
+    | Sum l -> set_kuvar v (KDSum l); false
+    | Prod l -> set_kuvar v (KProd l); false) ul
+  in
+  let k = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) k ul in
   (k, prf, calls)

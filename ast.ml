@@ -1,5 +1,8 @@
 open Bindlib
 open Refinter
+open Io
+
+let debug = ref false
 
 exception Stopped
 
@@ -268,23 +271,6 @@ let rec full_repr : kind -> kind = function
 
 let rec orepr = function OUVar({contents = Some o}) | o -> o
 
-let set_kuvar v k =
-  assert (!(v.uvar_val) = None);
-  match !(v.uvar_state) with
-  | Free ->
-     Timed.(v.uvar_val := Some k)
-  | Sum l ->
-     let k' = KDSum(l) in
-     Timed.(v.uvar_val := Some k')
-  | Prod l ->
-     let k' = KProd(l) in
-     Timed.(v.uvar_val := Some k')
-
-
-let set_ouvar v o =
-  assert(!v = None);
-  Timed.(v := Some o)
-
 (* Printing function from "print.ml" *)
 let fprint_term : (bool -> out_channel -> term -> unit) ref =
   ref (fun _ -> assert false)
@@ -534,6 +520,10 @@ let generic_tcnst : kind -> kind -> term =
   fun a b ->
     let f = bind (tvari_p dummy_position) "x" (fun x -> x) in
     dummy_pos (TCnst(unbox f,a,b))
+
+let set_ouvar v o =
+  assert(!v = None);
+  Timed.(v := Some o)
 
 (****************************************************************************
  *                  Equality of types, terms and ordinals                   *
@@ -864,6 +854,57 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
   in aux Pos Non k
 
 (****************************************************************************
+ *                 Binding a unification variable in a type                 *
+ ****************************************************************************)
+
+let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
+  unbox (bind mk_free_kvari "X" (fun x ->
+    let rec fn k =
+      match repr k with
+      | KFunc(a,b) -> kfunc (fn a) (fn b)
+      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KUVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
+      | KVari(x)   -> box_of_var x
+      | KDefi(d,a) -> kdefi d (Array.map fn a)
+      | KDPrj(t,s) -> kdprj (map_term fn t) s
+      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+      | MuRec(_,k)
+      | NuRec(_,k) -> fn k
+      | t          -> box t
+    and gn o =
+      match orepr o with
+      | OVari x -> box_of_var x
+      | OSucc o -> osucc (gn o)
+      | o -> box o
+    in
+    fn k))
+
+let set_kuvar v k =
+  assert (!(v.uvar_val) = None);
+  let k =
+    match !(v.uvar_state) with
+    | Free -> k
+    | Sum l -> KDSum(l)
+    | Prod l -> KProd(l)
+  in
+  let k =
+    match uvar_occur v k with
+    | Non -> k
+    | Pos -> KFixM(OConv,bind_uvar v k)
+    | _   -> assert false
+  in
+  if !debug then Printf.eprintf "set %a <- %a\n\n%!"
+    (!fprint_kind false) (KUVar v) (!fprint_kind false) k;
+  Timed.(v.uvar_val := Some k)
+
+(****************************************************************************
  *                            lifting of kind                               *
  ****************************************************************************)
 
@@ -893,37 +934,6 @@ let lift_kind : kind -> kind bindbox = fun k ->
     in
     fn k
 
-(****************************************************************************
- *                 Binding a unification variable in a type                 *
- ****************************************************************************)
-
-let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
-  unbox (bind mk_free_kvari "X" (fun x ->
-    let rec fn k =
-      match repr k with
-      | KFunc(a,b) -> kfunc (fn a) (fn b)
-      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
-      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
-      | KVari(x)   -> box_of_var x
-      | KDefi(d,a) -> kdefi d (Array.map fn a)
-      | KDPrj(t,s) -> kdprj (map_term fn t) s
-      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | MuRec(_,k)
-      | NuRec(_,k) -> fn k
-      | t          -> box t
-    and gn o =
-      match orepr o with
-      | OVari x -> box_of_var x
-      | o -> box o
-    in
-    fn k))
 
 (****************************************************************************
  *                 Binding a unification variable in a type                 *
