@@ -212,8 +212,8 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
        existential witnesses otherwise some dot projection fail *)
     try
       if (has_uvar a || has_uvar b || has_leading_exists a) &&
-	(match a with KFixM _ -> false | _ -> true) &&
-	(match b with KFixN _ -> false | _ -> true)
+        (match a with KFixM _ -> false | _ -> true) &&
+        (match b with KFixN _ -> false | _ -> true)
       then raise Exit;
       (match a with MuRec _ | NuRec _ -> raise Exit | _ -> ());
       (match b with MuRec _ | NuRec _ -> raise Exit | _ -> ());
@@ -223,20 +223,20 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       let pos = ctxt.positive_ordinals in
       List.iter (function (_,Rec _,_) -> () | (index,Sub(a0,b0),os0) ->
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
-	  match ctxt.induction_hyp with
-	  | (index',_,os')::_ ->
-	     delayed := (fun () ->
-	       let m = find_indexes pos index index' os os' in
-	       ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed;
-	     raise (Induction_hyp index)
-	  | _ -> assert false
- 	)) ctxt.induction_hyp;
+          match ctxt.induction_hyp with
+          | (index',_,os')::_ ->
+             delayed := (fun () ->
+               let m = find_indexes pos index index' os os' in
+               ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed;
+               raise (Induction_hyp index)
+          | _ -> assert false
+        )) ctxt.induction_hyp;
       let fnum = new_function "S" (List.length os) in
       (match ctxt.induction_hyp with
       | (index',_,os')::_ ->
-	   delayed := (fun () ->
-	     let m = find_indexes pos fnum index' os os' in
-	     ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed;
+           delayed := (fun () ->
+             let m = find_indexes pos fnum index' os os' in
+             ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed;
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (fnum, Sub(a', b'), os)::ctxt.induction_hyp } in
       (Some fnum, None, ctxt)
@@ -254,7 +254,8 @@ let lower_kind f pos k1 k2 =
   let new_kint = let i = ref 0 in (fun () -> decr i; KTInt(!i)) in
   let new_oint = let i = ref 0 in (fun () -> decr i; OTInt(!i)) in
   let rec lower_kind first k01 k02 =
-    (*if !debug then Format.eprintf "    %a ≤ %a\n%!" (print_kind false) (full_repr k01) (print_kind false) (full_repr k02);*)
+    (*if !debug then Format.eprintf "    %a ≤ %a\n%!" (print_kind false)
+       (full_repr k01) (print_kind false) (full_repr k02);*)
     match (full_repr k01, full_repr k02) with
     | (k1          , k2          ) when k1 == k2 -> true
     | (KVari(_)     , KVari(_)     ) -> assert false
@@ -352,37 +353,39 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     | _ ->
     match (a,b) with
     (* Delayed unification. *)
-    | (KUVar(ua)   , (KProd(l) | NuRec(_,KProd(l)) | MuRec(_,KProd(l)))) when (match !(ua.uvar_state) with Sum _ -> false | _ -> true) ->
+    | (KUVar(ua)   , (KProd(l) | NuRec(_,KProd(l)) | MuRec(_,KProd(l))))
+       when (match !(ua.uvar_state) with Sum _ -> false | _ -> true) ->
        let l0 = match !(ua.uvar_state) with
-	   Free -> []
-	 | Prod l -> l
-	 | Sum _ -> assert false
+           Free -> []
+         | Prod l -> l
+         | Sum _ -> assert false
        in
        let l1 = ref l0 in
        List.iter (fun (s,k) ->
-	 try
-	   let _ = subtype ctxt t (List.assoc s l0) k  in
-	 (* FIXME: témoin et preuve *)
-	   ()
-	 with
-	   Not_found -> l1 := (s,k)::!l1) l;
+         try
+           let _ = subtype ctxt t (List.assoc s l0) k  in
+         (* FIXME: témoin et preuve *)
+           ()
+         with
+           Not_found -> l1 := (s,k)::!l1) l;
        ua.uvar_state := Prod !l1;
        Sub_Lower
 
-    | ((KDSum(l) | MuRec(_,KDSum(l)) | NuRec(_,KDSum(l)))   , KUVar(ub)   ) when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
+    | ((KDSum(l) | MuRec(_,KDSum(l)) | NuRec(_,KDSum(l)))   , KUVar(ub)   )
+       when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
        let l0 = match !(ub.uvar_state) with
-	   Free -> []
-	 | Sum l -> l
-	 | Prod _ -> assert false
+           Free -> []
+         | Sum l -> l
+         | Prod _ -> assert false
        in
        let l1 = ref l0 in
        List.iter (fun (s,k) ->
-	 try
-	   let _ = subtype ctxt t k (List.assoc s l0)  in
-	 (* FIXME: témoin et preuve *)
-	   ()
-	 with
-	   Not_found -> l1 := (s,k)::!l1) l;
+         try
+           let _ = subtype ctxt t k (List.assoc s l0)  in
+         (* FIXME: témoin et preuve *)
+           ()
+         with
+           Not_found -> l1 := (s,k)::!l1) l;
        ub.uvar_state := Sum !l1;
        Sub_Lower
 
@@ -490,7 +493,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         in
         let o' = oless o (NotIn(t,unbox g)) in
         let ctxt = add_positive ctxt o in
-        if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+        if !debug then
+          io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixN(o', f) in
         let prf = subtype ctxt t a0 (subst f cst) in
         Sub_FixN_r prf
@@ -501,7 +505,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         in
         let o' = oless o (In(t,unbox g)) in
         let ctxt = add_positive ctxt o in
-        if !debug then io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+        if !debug then
+          io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixM(o', f) in
         let prf = subtype ctxt t (subst f cst) b0 in
         Sub_FixM_l prf
@@ -531,7 +536,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        Sub_FixM_l(subtype ctxt t a b0) (* FIXME *)
 
     | (NuRec(ptr, a), _          )
-	when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
+        when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
        Sub_FixM_l(subtype ctxt t a b0) (* FIXME *)
 
     | (_           , MuRec(ptr, b))
@@ -567,7 +572,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TAbst(ao,f) ->
         let a = match ao with None -> new_uvar () | Some a -> a in
         let b = new_uvar () in
-	let ptr = Refinter.create () in
+        let ptr = Refinter.create () in
         let c' = NuRec(ptr,KFunc(a,b)) in
         let p1 = subtype ctxt t c' c in
         let ctxt =  add_positives ctxt (Refinter.get ptr) in
@@ -586,22 +591,22 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let a = new_uvar () in
         let ptr = Refinter.create () in
         let p2 = type_check ctxt t (MuRec(ptr,KFunc(a,c))) in
-	let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p1 = type_check ctxt u a in
         Typ_Func_e(p1, p2)
     | TAppl(t,u) ->
         let a = new_uvar () in
-	(*	let ctxt = add_positives ctxt (gamma_mu_term t) in*)
+        (*        let ctxt = add_positives ctxt (gamma_mu_term t) in*)
         let p1 = type_check ctxt u a in
         let p2 = type_check ctxt t (KFunc(a,c)) in
         Typ_Func_e(p1, p2)
     | TReco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
-	let ptr = Refinter.create () in
-	let c' = KProd(ts) in
-	let c' = if is_normal t then NuRec(ptr,c') else c' in
+        let ptr = Refinter.create () in
+        let c' = KProd(ts) in
+        let c' = if is_normal t then NuRec(ptr,c') else c' in
         let p1 = subtype ctxt t c' c in
-	let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Refinter.get ptr) in
         let check (l,t) =
           let cl = List.assoc l ts in type_check ctxt t cl
         in
@@ -614,10 +619,10 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TCons(d,v) ->
         let a = new_uvar () in
         let c' = KDSum([(d,a)]) in
-	let ptr = Refinter.create () in
-	let c' = if is_normal t then NuRec(ptr,c') else c' in
+        let ptr = Refinter.create () in
+        let c' = if is_normal t then NuRec(ptr,c') else c' in
         let p1 = subtype ctxt t c' c in
-	let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p2 = type_check ctxt v a in
         Typ_DSum_i(p1, p2)
     | TCase(t,l) ->
@@ -640,53 +645,53 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
 
     | TFixY(n,f) ->
        let hyps = List.filter (function (_,Rec(f',_,_),_) -> f' == f | _ -> false)
-	 ctxt.induction_hyp in
+         ctxt.induction_hyp in
        let a =
-	 match hyps with
-	 | (_,Rec(_,a,_),_) :: _ -> a
-	 | _ -> c
+         match hyps with
+         | (_,Rec(_,a,_),_) :: _ -> a
+         | _ -> c
        in
        let prf = subtype ctxt t a c in
        let (_, c0, os) = decompose false Pos (KProd []) c in
        let pos = ctxt.positive_ordinals in
        if !debug then
-	 begin
-	   io.log "searching induction hyp (1):\n" ;
-	   io.log "  %a (%a > 0)\n%!"
-	     (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos;
-	 end;
+         begin
+           io.log "searching induction hyp (1):\n" ;
+           io.log "  %a (%a > 0)\n%!"
+             (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos;
+         end;
        let rec fn = function
-	 | [] -> raise Not_found
-	 | (_,Sub _, _) :: hyps -> fn hyps
-	 | (fnum,Rec(_,_,a),os') :: hyps ->
-	    if List.length os = List.length os' then
-	      try
-		let prf =
-		  let time = Timed.Time.save () in
-		  try
-		    subtype ctxt t a c0
-		  with _ ->
-		    Timed.Time.rollback time;
-		    raise Exit
-		in
-		match ctxt.induction_hyp with
-		| [] -> assert false
-		| (cur,_,os0)::_   ->
-		   delayed := (fun () ->
-		     if !debug then
-		       begin
-			 io.log "searching induction hyp (2) %d:\n" fnum;
-			 io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
-			   (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos
-		       end;
-		     let m = find_indexes pos fnum cur os os0 in
-		     let call = (fnum, cur, m, true) in
+         | [] -> raise Not_found
+         | (_,Sub _, _) :: hyps -> fn hyps
+         | (fnum,Rec(_,_,a),os') :: hyps ->
+            if List.length os = List.length os' then
+              try
+                let prf =
+                  let time = Timed.Time.save () in
+                  try
+                    subtype ctxt t a c0
+                  with _ ->
+                    Timed.Time.rollback time;
+                    raise Exit
+                in
+                match ctxt.induction_hyp with
+                | [] -> assert false
+                | (cur,_,os0)::_   ->
+                   delayed := (fun () ->
+                     if !debug then
+                       begin
+                         io.log "searching induction hyp (2) %d:\n" fnum;
+                         io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
+                           (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos
+                       end;
+                     let m = find_indexes pos fnum cur os os0 in
+                     let call = (fnum, cur, m, true) in
                    (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
-		     ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
-		  Typ_YH(fnum,prf)
-	      with Exit -> fn hyps
-	    else
-	      fn hyps
+                     ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
+                  Typ_YH(fnum,prf)
+              with Exit -> fn hyps
+            else
+              fn hyps
        in
        (try fn hyps with Not_found ->
        if n = 0 then subtype_error "no ind found" else
@@ -699,15 +704,15 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          end;
        let pos = ctxt.positive_ordinals in
        let ctxt =
-	 begin match ctxt.induction_hyp with
-	 | [] -> ()
-	 | (cur,_,os0)::_   ->
+         begin match ctxt.induction_hyp with
+         | [] -> ()
+         | (cur,_,os0)::_   ->
             delayed := (fun () ->
-	      let m = find_indexes pos fnum cur os os0 in
+              let m = find_indexes pos fnum cur os os0 in
               let call = (fnum, cur, m, false) in
               ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
-	 end;
-	 { ctxt with induction_hyp = (fnum, Rec(f,a,c0), os)::ctxt.induction_hyp }
+         end;
+         { ctxt with induction_hyp = (fnum, Rec(f,a,c0), os)::ctxt.induction_hyp }
        in
        let p = type_check ctxt (subst f t) c in
        Typ_Y(fnum,prf,p)) (* FIXME *)

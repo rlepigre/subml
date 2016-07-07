@@ -12,12 +12,12 @@ let rec eval : term -> term = fun t0 ->
       begin
         let u' = eval u in
         let rec fn t =
-	  let t' = eval t in
-	  match t'.elt with
+          let t' = eval t in
+          match t'.elt with
           | TAbst(_,b) -> eval (subst b u')
           | TFixY(_,f) -> fn (subst f t')
           | t          -> dummy_pos (TAppl(t',u'))
-	in fn t
+        in fn t
       end
   | TReco(l)   -> in_pos t0.pos (TReco (List.map (fun (s,t) -> (s, eval t)) l))
   | TProj(t,l) ->

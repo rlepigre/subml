@@ -33,7 +33,8 @@ let treat_exception fn a =
   | Unbound(loc,s)       -> io.stderr "%a:\nUnbound: %s\n%!" print_position loc s; false
   | Type_error(loc, msg)
                          -> io.stderr "%a:\nType error: %s\n%!" print_position loc msg; false
-  | e                    -> io.stderr "Uncaught fucking exception %s\n%!" (Printexc.to_string e); false
+  | e                    -> io.stderr "Uncaught fucking exception %s\n%!" (Printexc.to_string e);
+                            false
 
 let js_object = Js.Unsafe.variable "Object"
 let postMessage = Js.Unsafe.variable "postMessage"

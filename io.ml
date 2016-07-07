@@ -2,9 +2,9 @@ open Format
 
 type io =
   { mutable stdout : 'a. ('a, formatter, unit) format -> 'a
-	; mutable log    : 'a. ('a, formatter, unit) format -> 'a
-	; mutable stderr : 'a. ('a, formatter, unit) format -> 'a
-	; mutable files  : string -> Input.buffer }
+  ; mutable log    : 'a. ('a, formatter, unit) format -> 'a
+  ; mutable stderr : 'a. ('a, formatter, unit) format -> 'a
+  ; mutable files  : string -> Input.buffer }
 
 let io =
   { stdout = (fun format -> fprintf std_formatter format)

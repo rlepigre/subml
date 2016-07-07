@@ -5,7 +5,7 @@ module rec T : sig type 'a t = {
     mutable deps : W.t option;
     mutable is_ref : ('a t * (unit -> 'a t)) option;
     ident: int;
-		   }
+  }
 end
 = struct
   type 'a t = {

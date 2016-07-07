@@ -301,8 +301,9 @@ let print_epsilon_tbls ch =
   List.iter (fun (f,(name,index,a,b)) ->
     let x = new_tvari dummy_position (binder_name f) in
     let t = subst f (free_of x) in
-    Printf.fprintf ch "%s_{%d} &= \\epsilon_{%s \\in %a}( %a \\notin %a)\\\\\n" name index
-      (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_tbl;
+    Printf.fprintf ch "%s_{%d} &= \\epsilon_{%s \\in %a}(%a \\notin %a)\\\\\n"
+      name index (name_of x) (print_kind false) a (print_term false) t
+      (print_kind false) b) !epsilon_term_tbl;
   List.iter (fun (f,(name,index,u,is_exists)) ->
     let x = new_kvari (binder_name f) in
     let k = subst f (free_of x) in
@@ -310,7 +311,8 @@ let print_epsilon_tbls ch =
       Printf.fprintf ch "%s_{%d} &= \\epsilon_{%s}(%a %s %a)\\\\\n" name index
       (name_of x) (print_term false) u symbol (print_kind false) k) !epsilon_type_tbl;
   List.iter (fun (o,n) ->
-    Printf.fprintf ch "%a &= %a\\\\\n" (print_ordinal false) o (print_ordinal true) o) !ordinal_tbl
+    Printf.fprintf ch "%a &= %a\\\\\n" (print_ordinal false) o
+    (print_ordinal true) o) !ordinal_tbl
 
 (****************************************************************************
  *                              Proof printing                              *
@@ -346,20 +348,22 @@ let print_calls ch arities calls =
     done
   in
   Printf.fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
-  List.iter (fun (i,_) ->
-    Printf.fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" i i print_args i) (List.filter (fun (i,_) ->
-       List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
+  let f (i,_) =
+    Printf.fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" i i print_args i
+  in
+  List.iter f (List.filter (fun (i,_) ->
+    List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
   let print_call arities (i,j,m) =
     Printf.fprintf ch "    N%d -> N%d [label = \"(" j i;
     Array.iteri (fun i l ->
       if i > 0 then Printf.fprintf ch ",";
       let some = ref false in
       Array.iteri (fun j c ->
-	if c <> Sct.Unknown then (
-	  let sep = if !some then " " else "" in
-	  Printf.fprintf ch "%s%aX%d" sep print_cmp c j;
-	  some := true
-	)) l;
+        if c <> Sct.Unknown then (
+          let sep = if !some then " " else "" in
+          Printf.fprintf ch "%s%aX%d" sep print_cmp c j;
+          some := true
+        )) l;
       if not !some then Printf.fprintf ch "?") m;
     Printf.fprintf ch ")\"]\n%!"
   in

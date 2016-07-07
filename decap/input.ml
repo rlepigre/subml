@@ -83,8 +83,8 @@ let empty_buffer fn lnum bol =
          ; length   = 0
          ; contents = ""
          ; next     = res
-	 ; ident    = gen_ident ()
-	 }
+         ; ident    = gen_ident ()
+         }
   in res
 
 let rec is_empty (lazy b) pos =

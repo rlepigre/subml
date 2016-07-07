@@ -7,7 +7,7 @@
 
 let compare x y =
   try Pervasives.compare x y = 0 with _ -> x == y
-					      
+
 let hash x = Hashtbl.hash x
 let hash_param n1 n2 x = Hashtbl.hash_param n1 n2 x
 

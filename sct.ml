@@ -39,7 +39,7 @@ let mat_prod l1 c1 c2 m1 m2 =
     Array.init c2 (fun j ->
       let r = ref Unknown in
       for k = 0 to c1 - 1 do
-	r := min !r (compose m1.(i).(k) m2.(k).(j))
+        r := min !r (compose m1.(i).(k) m2.(k).(j))
       done;
       !r
     ))
@@ -66,9 +66,9 @@ let print_call tbl ff (i,j,m) =
     let some = ref false in
     Array.iteri (fun j c ->
       if c <> Unknown then (
-	let sep = if !some then " " else "" in
-	fprintf ff "%s%aX%d" sep print_cmp c j;
-	some := true
+        let sep = if !some then " " else "" in
+        fprintf ff "%s%aX%d" sep print_cmp c j;
+        some := true
       )) l;
       if not !some then fprintf ff "?") m;
   fprintf ff ")%!"
@@ -119,7 +119,7 @@ let subsume m1 m2 =
   try
     Array.iteri (fun i l1 ->
       Array.iteri (fun j x ->
-	if not (x >= m2.(i).(j)) then raise Exit) l1) m1;
+        if not (x >= m2.(i).(j)) then raise Exit) l1) m1;
     true
   with
     Exit -> false
@@ -160,31 +160,31 @@ let sct: calls -> bool = fun ls ->
     if !debug_sct then eprintf "start completion\n%!";
     let rec fn () =
       match !new_edges with
-	[] -> ()
+        [] -> ()
       | (i,j,m)::l ->
-	 new_edges := l;
-	if add_edge i j m then begin
-	  if !debug_sct then eprintf "\tedge %a added\n%!" print_call (i,j,m);
-	  incr added;
-	  let t' = tbl.(j) in
-	  Array.iteri (fun k t -> List.iter (fun m' ->
-	    if !debug_sct then
-	      eprintf "\tcompose: %a * %a = %!"
-		print_call (i,j,m)
-		print_call (j,k,m');
-	    let (_, a) = List.assoc k arities in
-	    let (_, b) = List.assoc j arities in
-	    let (_, c) = List.assoc i arities in
-	    let m'' = mat_prod a b c m' m in
-	    incr composed;
-	    new_edges := (i,k,m'') :: !new_edges;
-	    if !debug_sct then
-	      eprintf "%a\n%!"
-		print_call (i,k,m'');
-	  ) t) t'
-	end else
-	  if !debug_sct then eprintf "\tedge %a is old\n%!" print_call (i,j,m);
-	fn ()
+         new_edges := l;
+        if add_edge i j m then begin
+          if !debug_sct then eprintf "\tedge %a added\n%!" print_call (i,j,m);
+          incr added;
+          let t' = tbl.(j) in
+          Array.iteri (fun k t -> List.iter (fun m' ->
+            if !debug_sct then
+              eprintf "\tcompose: %a * %a = %!"
+                print_call (i,j,m)
+                print_call (j,k,m');
+            let (_, a) = List.assoc k arities in
+            let (_, b) = List.assoc j arities in
+            let (_, c) = List.assoc i arities in
+            let m'' = mat_prod a b c m' m in
+            incr composed;
+            new_edges := (i,k,m'') :: !new_edges;
+            if !debug_sct then
+              eprintf "%a\n%!"
+                print_call (i,k,m'');
+          ) t) t'
+        end else
+          if !debug_sct then eprintf "\tedge %a is old\n%!" print_call (i,j,m);
+        fn ()
     in
     fn ();
     if !debug_sct || !summary_sct then
@@ -222,11 +222,11 @@ let inline calls =
     try
       match Hashtbl.find tbl i with
       | One (_,k,m') ->
-	 let (_, a) = arity k in
-	 let (_, b) = arity i in
-	 let (_, c) = arity j in
-	 let call = (j,k,mat_prod a b c m' m,r) in
-	 fn call
+         let (_, a) = arity k in
+         let (_, b) = arity i in
+         let (_, c) = arity j in
+         let call = (j,k,mat_prod a b c m' m,r) in
+         fn call
       | _ -> (j,i,m)
     with Not_found -> (j,i,m)
   in

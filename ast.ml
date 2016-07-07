@@ -135,8 +135,8 @@ and uvar =
   ; uvar_state : uvar_state ref }
 
 and uvar_state = Free
-	       | Sum  of (string * kind) list
-	       | Prod of (string * kind) list
+  | Sum  of (string * kind) list
+  | Prod of (string * kind) list
 
 (* Abstract syntax tree for ordinals. *)
 and ordinal =
@@ -189,7 +189,7 @@ and term' =
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
-  | TCnst of (term, term) binder * kind * kind
+  | TCnst of ((term, term) binder * kind * kind)
   (* Integer tag. *)
   | TTInt of int
 
@@ -601,11 +601,12 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (TCons(c1,t1), TCons(c2,t2)) -> c1 = c2 && eq_term t1 t2
     | (TCase(t1,l1), TCase(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
     | (TPrnt(s1)   , TPrnt(s2)   ) -> s1 = s2
-    | (TCnst(f1,a1,b1)
-	        , TCnst(f2,a2,b2)) -> eq_tbinder c f1 f2 && eq_kind c a1 a2
-                                        && eq_kind c b1 b2
+    | (TCnst(c1)   , TCnst(c2)   ) -> eq_tcnst c c1 c2
     | (_           , _           ) -> false
   in eq_term t1 t2
+
+and eq_tcnst c (f1,a1,b1) (f2,a2,b2) =
+  eq_tbinder c f1 f2 && eq_kind c a1 a2 && eq_kind c b1 b2
 
 and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   match (orepr o1, orepr o2) with
@@ -1034,20 +1035,16 @@ let decompose : bool -> occur -> kind -> kind ->
     | KFixM(o,f) ->
        let o =
          if o <> OConv && pos <> Eps then search o
-         else if o = OConv && pos = Neg then (
-	   if fix then
-	     let o' = OUVar(None, ref None) in create o'
-	   else o)
+         else if o = OConv && pos = Neg then
+           (if fix then create (OUVar(None, ref None)) else o)
          else o
        in
        kfixm (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        let o =
          if o <> OConv && pos <> Eps then search o
-         else if o = OConv && pos = Pos then  (
-	   if fix then
-	     let o' = OUVar(None, ref None) in create o'
-	   else o)
+         else if o = OConv && pos = Pos then
+           (if fix then create (OUVar(None, ref None)) else o)
          else o
        in
        kfixn (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))

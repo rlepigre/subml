@@ -40,8 +40,10 @@ let search_type_tbl u f is_exists =
     (name, index)
   with not_found ->
     let base = binder_name f in
-    let max = List.fold_left
-      (fun acc (_,(base',i,u,is_exists)) -> if base = base' then max acc i else acc) (-1) !epsilon_type_tbl
+    let fn acc (_,(base',i,u,is_exists)) =
+      if base = base' then max acc i else acc
+    in
+    let max = List.fold_left fn (-1) !epsilon_type_tbl
     in
     let index = max + 1 in
     epsilon_type_tbl := (f,(base,index,u,is_exists)) :: !epsilon_type_tbl;
@@ -53,9 +55,10 @@ let search_term_tbl f a b =
     (name, index)
   with not_found ->
     let base = binder_name f in
-    let max = List.fold_left
-      (fun acc (_,(base',i,_,_)) -> if base = base' then max acc i else acc) (-1) !epsilon_term_tbl
+    let fn acc (_,(base',i,_,_)) =
+      if base = base' then max acc i else acc
     in
+    let max = List.fold_left fn (-1) !epsilon_term_tbl in
     let index = max + 1 in
     epsilon_term_tbl := (f,(base,index,a,b)) :: !epsilon_term_tbl;
     (base, index)
@@ -86,10 +89,10 @@ let rec print_ordinal unfold ff o =
     match orepr o with
     | OLess(o,In(t,a)) as o0 when unfold ->
        fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
-	 (print_term false) t (print_kind false false) (subst a o0)
+         (print_term false) t (print_kind false false) (subst a o0)
     | OLess(o,NotIn(t,a)) as o0 when unfold ->
        fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
-	 (print_term false) t (print_kind false false) (subst a o0)
+         (print_term false) t (print_kind false false) (subst a o0)
     | OLess(o,_) when unfold ->
        fprintf ff "α(%d<%a)" n (print_ordinal false) o
     | OLess(o,_) -> fprintf ff "κ%d" n
@@ -304,8 +307,9 @@ let print_epsilon_tbls ff =
   List.iter (fun (f,(name,index,a,b)) ->
     let x = new_tvari dummy_position (binder_name f) in
     let t = subst f (free_of x) in
-    fprintf ff "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index
-      (name_of x) (print_kind false) a (print_term false) t (print_kind false) b) !epsilon_term_tbl;
+    fprintf ff "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index (name_of x)
+      (print_kind false) a (print_term false) t (print_kind false) b)
+      !epsilon_term_tbl;
   List.iter (fun (f,(name,index,u,is_exists)) ->
     let x = new_kvari (binder_name f) in
     let k = subst f (free_of x) in
@@ -321,7 +325,7 @@ let find_tdef : kind -> type_def = fun t ->
   try
     Hashtbl.iter (fun _ d ->
       if d.tdef_arity = 0 && eq_kind (msubst d.tdef_value [||]) t then
-	raise (Find_tdef d)) typ_env;
+        raise (Find_tdef d)) typ_env;
     raise Not_found
   with
     Find_tdef(t) -> t

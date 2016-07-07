@@ -121,7 +121,7 @@ let rec kind_variable : occur -> env -> strpos -> pkind array -> kbox =
         in arity_error s.pos msg
       end;
       let ks = Array.mapi (fun i k ->
-	unsugar_kind ~pos:(compose2 (td.tdef_variance.(i)) pos) env k) ks
+        unsugar_kind ~pos:(compose2 (td.tdef_variance.(i)) pos) env k) ks
       in
       kdefi td ks
     with Not_found -> unbound s

@@ -14,8 +14,8 @@ let subset : ('a -> 'a -> bool) -> 'a refinter -> 'a list -> bool =
       match !set with
       | None -> set := Some l; true
       | Some l' ->
-	 set := Some (List.filter (fun x -> List.exists (eq x) l) l');
-	 true
+         set := Some (List.filter (fun x -> List.exists (eq x) l) l');
+         true
 
 
 let get : 'a refinter -> 'a list =

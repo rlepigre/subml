@@ -46,6 +46,10 @@ run: all
 test: all
 	./subml.native --quit lib/all.typ
 	./subml.native --no-prelude --quit advanced_lib/all.typ
+	@ echo -n "Lines with a tabulation: "
+	@ grep -P '\t' *.ml | wc -l
+	@ echo -n "Longest line:           "
+	@ wc -L *.ml | tail -n 1 | colrm 1 3 | colrm 4 10
 
 clean:
 	ocamlbuild -clean

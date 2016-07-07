@@ -64,15 +64,15 @@ let add k x t =
   let rec ins = function
     | Empty -> Leaf (k,x)
     | Leaf (j,_) as t -> 
-	if j == k then Leaf (k,x) else join (k, Leaf (k,x), j, t)
+        if j == k then Leaf (k,x) else join (k, Leaf (k,x), j, t)
     | Branch (p,m,t0,t1) as t ->
-	if match_prefix k p m then
-	  if zero_bit k m then 
-	    Branch (p, m, ins t0, t1)
-	  else
-	    Branch (p, m, t0, ins t1)
-	else
-	  join (k, Leaf (k,x), p, t)
+        if match_prefix k p m then
+          if zero_bit k m then 
+            Branch (p, m, ins t0, t1)
+          else
+            Branch (p, m, t0, ins t1)
+        else
+          join (k, Leaf (k,x), p, t)
   in
   ins t
 
@@ -86,13 +86,13 @@ let remove k t =
     | Empty -> Empty
     | Leaf (j,_) as t -> if k == j then Empty else t
     | Branch (p,m,t0,t1) as t -> 
-	if match_prefix k p m then
-	  if zero_bit k m then
-	    branch (p, m, rmv t0, t1)
-	  else
-	    branch (p, m, t0, rmv t1)
-	else
-	  t
+        if match_prefix k p m then
+          if zero_bit k m then
+            branch (p, m, rmv t0, t1)
+          else
+            branch (p, m, t0, rmv t1)
+        else
+          t
   in
   rmv t
 
@@ -123,15 +123,15 @@ let compare cmp t1 t2 =
     | Empty, _ -> -1
     | _, Empty -> 1
     | Leaf (k1,x1), Leaf (k2,x2) ->
-	let c = compare k1 k2 in 
-	if c <> 0 then c else cmp x1 x2
+        let c = compare k1 k2 in 
+        if c <> 0 then c else cmp x1 x2
     | Leaf _, Branch _ -> -1
     | Branch _, Leaf _ -> 1
     | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) ->
-	let c = compare p1 p2 in
-	if c <> 0 then c else
-	let c = compare m1 m2 in
-	if c <> 0 then c else
+        let c = compare p1 p2 in
+        if c <> 0 then c else
+        let c = compare m1 m2 in
+        if c <> 0 then c else
         let c = compare_aux l1 l2 in
         if c <> 0 then c else
         compare_aux r1 r2
@@ -143,7 +143,7 @@ let equal eq t1 t2 =
     | Empty, Empty -> true
     | Leaf (k1,x1), Leaf (k2,x2) -> k1 = k2 && eq x1 x2
     | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) ->
-	p1 = p2 && m1 = m2 && equal_aux l1 l2 && equal_aux r1 r2
+        p1 = p2 && m1 = m2 && equal_aux l1 l2 && equal_aux r1 r2
     | _ -> false
   in
   equal_aux t1 t2
