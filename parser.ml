@@ -312,7 +312,15 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | tatm when p = `Col
   | tcol when p = `App
 
-and term_llet = let_kw r:is_rec id:lvar "=" t:term in_kw u:term ->
+and var =
+  | id:lident                    -> (in_pos _loc_id id, None)
+  | "(" id:lident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
+
+and let_var =
+  | id:lident            -> (in_pos _loc_id id, None)
+  | id:lident ":" k:kind -> (in_pos _loc_id id, Some k)
+
+and term_llet = let_kw r:is_rec id:let_var "=" t:term in_kw u:term ->
   let t = if not r then t else pfixY id _loc_t t in
   in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
 
@@ -330,14 +338,6 @@ and term_list =
   | t:term "," l:term_list -> list_cons _loc t l
 
 and pats = _:"|"? ps:(list_sep case "|")
-
-and var =
-  | id:lident                             -> (in_pos _loc_id id, None)
-  | "(" id:lident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
-
-and lvar =
-  | id:lident                     -> (in_pos _loc_id id, None)
-  | id:lident ":" k:kind -> (in_pos _loc_id id, Some k)
 
 and pattern =
   | c:uident x:{"[" x:var "]"}? -> (c,x)

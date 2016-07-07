@@ -43,6 +43,11 @@ rodlinstalljs: subml.js subml-latest.tar.gz
 run: all
 	ledit ./subml.native
 
+validate: clean
+	@ wc -L *.ml
+	@ echo ""
+	@ grep -n -P '\t' *.ml || exit 0
+
 test: all
 	./subml.native --quit lib/all.typ
 	./subml.native --no-prelude --quit advanced_lib/all.typ
