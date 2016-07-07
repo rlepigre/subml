@@ -352,9 +352,22 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     | Some n -> Sub_Ind n
     | _ ->
     match (a,b) with
+    | (MuRec(ptr,a), _           ) ->
+       Sub_FixM_l(subtype ctxt t a b0)
+
+    | (_           , NuRec(ptr,b))->
+       Sub_FixN_r(subtype ctxt t a0 b)
+
+    | (NuRec(ptr,a), KUVar _     )
+	when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
+       Sub_FixM_l(subtype ctxt t a b0)
+
+    | (KUVar _     , MuRec(ptr,b))
+        when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
+       Sub_FixN_r(subtype ctxt t a0 b)
+
     (* Delayed unification. *)
-    | (KUVar(ua)   , (KProd(l) | NuRec(_,KProd(l)) | MuRec(_,KProd(l))))
-       when (match !(ua.uvar_state) with Sum _ -> false | _ -> true) ->
+    | (KUVar(ua)   , (KProd(l) | NuRec(_,KProd(l)) | MuRec(_,KProd(l)))) when (match !(ua.uvar_state) with Sum _ -> false | _ -> true) ->
        let l0 = match !(ua.uvar_state) with
            Free -> []
          | Prod l -> l
@@ -371,8 +384,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        ua.uvar_state := Prod !l1;
        Sub_Lower
 
-    | ((KDSum(l) | MuRec(_,KDSum(l)) | NuRec(_,KDSum(l)))   , KUVar(ub)   )
-       when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
+    | ((KDSum(l) | MuRec(_,KDSum(l)) | NuRec(_,KDSum(l)))   , KUVar(ub)   ) when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
        let l0 = match !(ub.uvar_state) with
            Free -> []
          | Sum l -> l
@@ -532,19 +544,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
           with Not_found -> subtype_error "Subtyping clash (no rule apply)."
         end
 
-    | (MuRec(ptr, a), _          ) ->
-       Sub_FixM_l(subtype ctxt t a b0) (* FIXME *)
-
     | (NuRec(ptr, a), _          )
         when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
-       Sub_FixM_l(subtype ctxt t a b0) (* FIXME *)
+       Sub_FixM_l(subtype ctxt t a b0)
 
     | (_           , MuRec(ptr, b))
         when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
-       Sub_FixN_r(subtype ctxt t a0 b) (* FIXME *)
-
-    | (_           , NuRec(ptr, b))->
-       Sub_FixN_r(subtype ctxt t a0 b) (* FIXME *)
+       Sub_FixN_r(subtype ctxt t a0 b)
 
     (* Subtype clash. *)
     | (_           , _           ) ->
