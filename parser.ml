@@ -230,7 +230,7 @@ let parser is_not =
   | not_kw -> true
 
 (****************************************************************************
- *                           Parsers for ordinals                           *
+ *                  Parsers for ordinals and kinds (types)                  *
  ****************************************************************************)
 
 let parser ordinal =
@@ -238,9 +238,7 @@ let parser ordinal =
   | s:lident                                -> in_pos _loc (PVari(s))
   | max_kw '(' l:(list_sep ordinal ",") ')' -> in_pos _loc (PMaxi(l))
 
-(****************************************************************************
- *                   Parsers for kinds (types) and terms                    *
- ****************************************************************************)
+let build_prod = List.mapi (fun i x -> (string_of_int (i+1), x))
 
 let parser pkind (p : [`Atm | `Prd | `Fun]) =
   | a:(pkind `Prd) arrow b:(pkind `Fun)    when p = `Fun ->
@@ -261,8 +259,8 @@ let parser pkind (p : [`Atm | `Prd | `Fun]) =
       in_pos _loc (PFixN(o,id,a))
   | "{" fs:prod_items "}"                  when p = `Atm ->
       in_pos _loc (PProd(fs))
-  | fs : kind_prod                         when p = `Prd ->
-      in_pos _loc (PProd(fs))
+  | fs:(glist_sep'' (pkind `Atm) time)     when p = `Prd ->
+      in_pos _loc (PProd(build_prod fs))
   | "[" fs:sum_items "]"                   when p = `Atm ->
       in_pos _loc (PDSum(fs))
   | t:(pterm `Atm) "." s:uident            when p = `Atm ->
@@ -270,26 +268,21 @@ let parser pkind (p : [`Atm | `Prd | `Fun]) =
   | a:(pkind `Atm) (s,b):with_eq           when p = `Atm ->
       in_pos _loc (PWith(a,s,b))
   (* Parenthesis and coercions. *)
-  | "(" a:(pkind `Fun) ")" when p = `Atm
-  | a:(pkind `Atm)         when p = `Prd
-  | a:(pkind `Prd)         when p = `Fun
+  | "(" (pkind `Fun) ")" when p = `Atm
+  | (pkind `Atm)         when p = `Prd
+  | (pkind `Prd)         when p = `Fun
 
 and kind_list  = l:(list_sep (pkind `Fun) ",")
-and kind_prod  = l:(glist_sep'' (pkind `Atm) time)
-                   -> List.mapi (fun i x -> (string_of_int (i+1), x)) l
-and sum_item   = id:uident a:{_:of_kw a:(pkind `Fun)}?
-and sum_items  = l:(list_sep sum_item "|")
-and prod_item  = id:lident ":" a:(pkind `Fun)
-and prod_items = l:(list_sep prod_item ";")
+and sum_items  = (list_sep (parser uident a:{_:of_kw (pkind `Fun)}?) "|")
+and prod_items = (list_sep (parser lident ":" (pkind `Fun)) ";")
 and with_eq    = _:with_kw s:uident "=" b:(pkind `Atm)
 
-and var =
-  | id:lident                             -> (in_pos _loc_id id, None)
-  | "(" id:lident ":" k:(pkind `Fun) ")" -> (in_pos _loc_id id, Some k)
+(* Entry point. *)
+and kind = (pkind `Fun)
 
-and lvar =
-  | id:lident                     -> (in_pos _loc_id id, None)
-  | id:lident ":" k:(pkind `Fun) -> (in_pos _loc_id id, Some k)
+(****************************************************************************
+ *                              Parsers for terms                           *
+ ****************************************************************************)
 
 and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | lambda xs:var+ dot t:(pterm `Lam)$   when p = `Lam ->
@@ -338,6 +331,14 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
       (match l with None -> t | Some u -> list_cons _loc t u)
   | t:(pterm `Seq) when p = `Lam
 
+and var =
+  | id:lident                             -> (in_pos _loc_id id, None)
+  | "(" id:lident ":" k:(pkind `Fun) ")" -> (in_pos _loc_id id, Some k)
+
+and lvar =
+  | id:lident                     -> (in_pos _loc_id id, None)
+  | id:lident ":" k:(pkind `Fun) -> (in_pos _loc_id id, Some k)
+
 and pattern =
   | c:uident x:{"[" x:var "]"}? -> (c,x)
   | "[" "]"                     -> ("Nil", None)
@@ -349,9 +350,8 @@ and tuple   = l:(glist_sep' (pterm `Lam) comma) -> to_tuple l
 and list    = EMPTY -> list_nil _loc
             | t:(pterm `Lam) "," l:list -> list_cons _loc t l
 
-
-let kind = pkind `Fun
-let term = pterm `Lam
+(* Entry point. *)
+and term = (pterm `Lam)
 
 let parser kind_def =
   uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
