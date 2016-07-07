@@ -223,20 +223,20 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       let pos = ctxt.positive_ordinals in
       List.iter (function (_,Rec _,_) -> () | (index,Sub(a0,b0),os0) ->
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
-	  match ctxt.induction_hyp with
-	  | (index',_,os')::_ ->
-	     Timed.(delayed := (fun () ->
-	       let m = find_indexes pos index index' os os' in
-	       ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed);
-	     raise (Induction_hyp index)
-	  | _ -> assert false
- 	)) ctxt.induction_hyp;
+          match ctxt.induction_hyp with
+          | (index',_,os')::_ ->
+             Timed.(delayed := (fun () ->
+               let m = find_indexes pos index index' os os' in
+               ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed);
+             raise (Induction_hyp index)
+          | _ -> assert false
+        )) ctxt.induction_hyp;
       let fnum = new_function "S" (List.length os) in
       (match ctxt.induction_hyp with
       | (index',_,os')::_ ->
-	   Timed.(delayed := (fun () ->
-	     let m = find_indexes pos fnum index' os os' in
-	     ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed);
+           Timed.(delayed := (fun () ->
+             let m = find_indexes pos fnum index' os os' in
+             ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed);
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (fnum, Sub(a', b'), os)::ctxt.induction_hyp } in
       (Some fnum, None, ctxt)
@@ -331,7 +331,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         in
         if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) k;
         set_kuvar ua k;
-	let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (a           ,(KUVar ub as b))  ->
         let k =
@@ -342,7 +342,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         in
         if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) b (print_kind false) k;
         set_kuvar ub k;
-	let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
