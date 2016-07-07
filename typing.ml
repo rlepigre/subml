@@ -23,9 +23,6 @@ and induction_type =
   | Sub of kind * kind
   | Rec of (term,term) binder * kind * kind
 
-exception Found of cmp * int
-
-
 let find_indexes pos index index' a b =
   let (_, c) = Sct.arity index and (_, l) = Sct.arity index' in
   let m = Array.init l (fun _ -> Array.make c Unknown) in

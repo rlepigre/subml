@@ -115,9 +115,6 @@ type kind =
   | MuRec of ordinal refinter * kind
   | NuRec of ordinal refinter * kind
 
-and ordinal_set =
-    Empty | NonEmpty of ordinal list
-
 (* Type definition (user defined type). *)
 and type_def =
   (* Name of the type constructor. *)
