@@ -270,19 +270,18 @@ let rec orepr = function
   | OUVar(_, {contents = Some o})
   | o                             -> o
 
-let set_kuvar f v k =
+let set_kuvar v k =
   assert (!(v.uvar_val) = None);
   match !(v.uvar_state) with
   | Free ->
-     Timed.(v.uvar_val := Some k);
+     Timed.(v.uvar_val := Some k)
   | Sum l ->
      let k' = KDSum(l) in
-     Timed.(v.uvar_val := Some k');
-     f k' k
+     Timed.(v.uvar_val := Some k')
   | Prod l ->
      let k' = KProd(l) in
-     Timed.(v.uvar_val := Some k');
-     f k k'
+     Timed.(v.uvar_val := Some k')
+
 
 let set_ouvar v o =
   assert(!v = None);

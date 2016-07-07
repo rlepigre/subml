@@ -137,7 +137,7 @@ let has_uvar : kind -> bool = fun k ->
     | KKExi(f)   -> fn (subst f (KProd []))
     | KFixM(o,f)
     | KFixN(o,f) ->
-       (* (match orepr o with OUVar _ -> raise Exit | _ -> ());*)
+       (match orepr o with OUVar _ -> raise Exit | _ -> ());
        fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f (OTInt(-42)))
@@ -223,111 +223,25 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       let pos = ctxt.positive_ordinals in
       List.iter (function (_,Rec _,_) -> () | (index,Sub(a0,b0),os0) ->
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
-          match ctxt.induction_hyp with
-          | (index',_,os')::_ ->
-             delayed := (fun () ->
-               let m = find_indexes pos index index' os os' in
-               ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed;
-               raise (Induction_hyp index)
-          | _ -> assert false
-        )) ctxt.induction_hyp;
+	  match ctxt.induction_hyp with
+	  | (index',_,os')::_ ->
+	     Timed.(delayed := (fun () ->
+	       let m = find_indexes pos index index' os os' in
+	       ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed);
+	     raise (Induction_hyp index)
+	  | _ -> assert false
+ 	)) ctxt.induction_hyp;
       let fnum = new_function "S" (List.length os) in
       (match ctxt.induction_hyp with
       | (index',_,os')::_ ->
-           delayed := (fun () ->
-             let m = find_indexes pos fnum index' os os' in
-             ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed;
+	   Timed.(delayed := (fun () ->
+	     let m = find_indexes pos fnum index' os os' in
+	     ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed);
       | _ -> ());
       let ctxt = { ctxt with induction_hyp = (fnum, Sub(a', b'), os)::ctxt.induction_hyp } in
       (Some fnum, None, ctxt)
     with Exit -> (None, None, ctxt)
        | Induction_hyp n -> (None, Some n, ctxt)
-
-(****************************************************************************
- *                                 Lower kind                               *
-****************************************************************************)
-
-let lower_kind f pos k1 k2 =
-  (*if !debug then
-    io.log "%a ≤ %a\n%!" (print_kind false) k1 (print_kind false) k2;*)
-  (*positive integer are for eq_kind and alike *)
-  let new_kint = let i = ref 0 in (fun () -> decr i; KTInt(!i)) in
-  let new_oint = let i = ref 0 in (fun () -> decr i; OTInt(!i)) in
-  let rec lower_kind first k01 k02 =
-    (*if !debug then Format.eprintf "    %a ≤ %a\n%!" (print_kind false)
-       (full_repr k01) (print_kind false) (full_repr k02);*)
-    match (full_repr k01, full_repr k02) with
-    | (k1          , k2          ) when k1 == k2 -> true
-    | (KVari(_)     , KVari(_)     ) -> assert false
-    | (KFunc(a1,b1) , KFunc(a2,b2) ) -> lower_kind false a2 a1 && lower_kind false b1 b2
-    | (KDSum(fsa)   , KDSum(fsb)   )
-    | (KProd(fsa)   , KProd(fsb)   ) ->
-       let cmp (k1,_) (k2,_) = compare k1 k2 in
-       let f (la,a) (lb,b) = la = lb && lower_kind false a b in
-       List.length fsa = List.length fsb &&
-           List.for_all2 f (List.sort cmp fsa) (List.sort cmp fsb)
-    | (KKAll(a)     , KKAll(b)     )
-    | (KKExi(a)     , KKExi(b)     ) ->
-       let i = new_kint () in
-       lower_kind false (subst a i) (subst b i)
-    | (KOAll(a)     , KOAll(b)     )
-    | (KOExi(a)     , KOExi(b)     ) ->
-       let i = new_oint () in
-       lower_kind false (subst a i) (subst b i)
-    | (KFixM(oa,fa) , KFixM(ob,fb) ) ->
-       leq_ordinal pos oa ob && (fa == fb ||
-         let i = new_kint () in
-         lower_kind false (subst fa i) (subst fb i))
-    | (KFixN(oa,fa) , KFixN(ob,fb) ) ->
-       leq_ordinal pos ob oa &&
-         (fa == fb ||
-            let i = new_kint () in lower_kind false (subst fa i) (subst fb i))
-    | (KDPrj(t1,s1) , KDPrj(t2,s2) ) -> s1 = s2 && eq_term t1 t2
-    | (KWith(a1,(s1,b1))
-      ,          KWith(a2,(s2,b2))) -> s1 = s2 && lower_kind false a1 a2 && lower_kind false b1 b2
-    | (KUCst(t1,f1) , KUCst(t2,f2) )
-    | (KECst(t1,f1) , KECst(t2,f2) ) ->
-       let i = new_kint () in
-       lower_kind false (subst f1 i) (subst f2 i) && eq_term t1 t2
-    (* Handling of unification variables (immitation). *)
-    | (KUVar(ua)    , KUVar(ub)    ) when ua == ub -> true
-    | (KUVar ua as a,(KUVar _ as b)) ->
-        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) b;
-      set_kuvar f ua b; true
-    | (KUVar _      , KProd _      ) when first or true ->
-       false (* use hook in the main procedure *)
-    | (KUVar _      , NuRec(_,KProd _)) when first or true ->
-       false
-    | (KUVar _      , MuRec(_,KProd _)) when first or true ->
-       false (* use hook in the main procedure *)
-    | (KDSum _      , KUVar _      ) when first or true ->
-       false (* use hook in the main procedure *)
-    | (MuRec(_,KDSum _)      , KUVar _      ) when first or true ->
-       false (* use hook in the main procedure *)
-    | (NuRec(_,KDSum _)      , KUVar _      ) when first or true ->
-       false (* use hook in the main procedure *)
-    | (KUVar ua as a, b            ) when first or true ->
-        let k =
-          match uvar_occur ua b with
-          | Non -> k02
-          | Pos -> KFixM(OConv,bind_uvar ua k02)
-          | _   -> bot
-        in
-        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) k;
-        set_kuvar f ua k; true
-    | (a           ,(KUVar ub as b)) when first or true ->
-        let k =
-          match uvar_occur ub a with
-          | Non -> k01
-          | Pos -> KFixM(OConv,bind_uvar ub k01)
-          | _   -> top
-        in
-        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) b (print_kind false) k;
-        set_kuvar f ub k; true
-    | (KTInt(ia)    , KTInt(ib)    ) -> ia = ib
-    | (_            , _            ) -> false
-  in
-  Timed.pure_test (lower_kind true k1) k2
 
 let fixpoint_depth = ref 3
 
@@ -344,10 +258,9 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
       | [] -> io.log "\n%!"
       | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
+  if eq_kind a b then (t, a0, b0, None, Sub_Lower) else
   let (ind_ref, ind_hyp, ctxt) = check_rec t ctxt a b in
-  let pos = ctxt.positive_ordinals in
   let r = (* FIXME: le témoin n'est pas le bon *)
-    if lower_kind (fun a b -> let _ = subtype ctxt t a b in ()) pos a b then Sub_Lower else
     match ind_hyp with
     | Some n -> Sub_Ind n
     | _ ->
@@ -366,8 +279,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
        Sub_FixN_r(subtype ctxt t a0 b)
 
-    (* Delayed unification. *)
-    | (KUVar(ua)   , (KProd(l) | NuRec(_,KProd(l)) | MuRec(_,KProd(l))))
+    (* unification. (sum and product special) *)
+    | (KUVar(ua)   , KProd(l))
        when (match !(ua.uvar_state) with Sum _ -> false | _ -> true) ->
        let l0 = match !(ua.uvar_state) with
            Free -> []
@@ -385,7 +298,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        ua.uvar_state := Prod !l1;
        Sub_Lower
 
-    | ((KDSum(l) | MuRec(_,KDSum(l)) | NuRec(_,KDSum(l)))   , KUVar(ub)   )
+    | (KDSum(l)   , KUVar(ub)   )
        when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
        let l0 = match !(ub.uvar_state) with
            Free -> []
@@ -402,6 +315,34 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
            Not_found -> l1 := (s,k)::!l1) l;
        ub.uvar_state := Sum !l1;
        Sub_Lower
+
+    (* Handling of unification variables (immitation). *)
+    | (KUVar ua as a,(KUVar _ as b)) ->
+        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) b;
+        set_kuvar ua b;
+        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+
+    | (KUVar ua as a, b            ) ->
+        let k =
+          match uvar_occur ua b with
+          | Non -> b0
+          | Pos -> KFixM(OConv,bind_uvar ua b0)
+          | _   -> bot
+        in
+        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) a (print_kind false) k;
+        set_kuvar ua k;
+	let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+
+    | (a           ,(KUVar ub as b))  ->
+        let k =
+          match uvar_occur ub a with
+          | Non -> a0
+          | Pos -> KFixM(OConv,bind_uvar ub a0)
+          | _   -> top
+        in
+        if !debug then io.log "set %a <- %a\n\n%!" (print_kind false) b (print_kind false) k;
+        set_kuvar ub k;
+	let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
@@ -502,6 +443,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
+        (match a with KFixN(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o') | _ -> ());
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
         in
@@ -513,7 +455,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let prf = subtype ctxt t a0 (subst f cst) in
         Sub_FixN_r prf
 
-   | (KFixM(o,f)   , _           ) ->
+    | (KFixM(o,f)   , _           ) ->
+        (match b with KFixM(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o') | _ -> ());
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
         in
@@ -527,6 +470,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
+        (match b with KFixN(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o') o) | _ -> ());
         begin
           try
             let o' = find_positive ctxt o in
@@ -537,6 +481,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         end
 
     | (_           , KFixM(o,f)  ) ->
+        (match a with KFixM(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o') o) | _ -> ());
         begin
           try
             let o' = find_positive ctxt o in
@@ -557,7 +502,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (* Subtype clash. *)
     | (_           , _           ) ->
         subtype_error "Subtyping clash (no rule apply)."
-  in (t, a, b, ind_ref, r)
+  in (t, a0, b0, ind_ref, r)
 
 and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
