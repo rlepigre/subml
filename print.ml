@@ -291,7 +291,7 @@ let print_term unfold ff t =
 let print_kind unfold ff t =
   print_kind unfold false ff t; pp_print_flush ff ()
 
-(*let _ = fprint_kind := print_kind*)
+let _ = fprint_kind := print_kind
 
 let print_kind_def unfold ff kd =
   pkind_def unfold ff kd; pp_print_flush ff ()

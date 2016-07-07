@@ -1,3 +1,5 @@
+open Format
+
 type 'a proof =
   (* Hypothesis. *)
   | Hyp  of 'a
@@ -27,10 +29,10 @@ let binaryN n c p1 p2     = n_aryN n c [p1;p2]
 let ternaryN n c p1 p2 p3 = n_aryN n c [p1;p2;p3]
 
 (* Proof printing functions. *)
-let output : out_channel -> string proof -> unit = fun ch p ->
+let output : formatter -> string proof -> unit = fun ch p ->
   let output_name ch = function
     | None    -> ()
-    | Some(n) -> Printf.fprintf ch "  \\RightLabel{%s}\n" n
+    | Some(n) -> fprintf ch "  \\RightLabel{%s}\n" n
   in
   let macro_name = function
     | 1 -> "Unary"
@@ -41,11 +43,11 @@ let output : out_channel -> string proof -> unit = fun ch p ->
     | _ -> assert false
   in
   let rec output ch = function
-    | Hyp(s)         -> Printf.fprintf ch "  \\AxiomC{%s}\n" s
+    | Hyp(s)         -> fprintf ch "  \\AxiomC{%s}\n" s
     | Rule(ps, c, n) -> List.iter (output ch) ps;
-                        if ps = [] then Printf.fprintf ch "  \\AxiomC{}\n";
+                        if ps = [] then fprintf ch "  \\AxiomC{}\n";
                         output_name ch n;
                         let macro = macro_name (max 1 (List.length ps)) in
-                        Printf.fprintf ch "  \\%sInfC{%s}\n" macro c;
+                        fprintf ch "  \\%sInfC{%s}\n" macro c;
   in
-  Printf.fprintf ch "\\begin{prooftree}\n%a\\end{prooftree}\n%!" output p
+  fprintf ch "\\begin{prooftree}\n%a\\end{prooftree}\n%!" output p

@@ -7,6 +7,7 @@ open Eval
 open Typing
 open Raw
 open Io
+open Format
 
 (* Definition of a "location" function for DeCaP. *)
 #define LOCATE locate
@@ -528,7 +529,8 @@ let run_command : command -> unit = function
       ignore_latex := save
   (* Latex. *)
   | Latex(t) ->
-      if not !ignore_latex then Latex.output !latex_ch (t ())
+     let ff = formatter_of_out_channel !latex_ch in
+     if not !ignore_latex then Latex.output ff (t ())
   (* Set a flag. *)
   | Set(f) -> f ()
 

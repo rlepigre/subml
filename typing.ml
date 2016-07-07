@@ -311,15 +311,15 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Handling of unification variables (immitation). *)
     | (KUVar ua,(KUVar _ as b)) ->
-        set_kuvar ua b;
+        set_kuvar true ua b;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (KUVar ua, b            ) ->
-        set_kuvar ua b0;
+        set_kuvar true ua b0;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (a           ,(KUVar ub))  ->
-        set_kuvar ub a0;
+        set_kuvar false ub a0;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     (* Arrow type. *)
@@ -518,7 +518,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let k = lambda_ordinal t c (binder_name f) in
         let p = type_check ctxt (subst f k) c in
         Typ_OAbs(p)
-    | TAppl(t,u) when is_neutral t ->
+    | TAppl(t,u) when is_neutral t && not (is_neutral u)->
         let a = new_uvar () in
         let ptr = Refinter.create () in
         let p2 = type_check ctxt t (MuRec(ptr,KFunc(a,c))) in
@@ -697,9 +697,9 @@ let type_infer : term -> kind * typ_prf * calls_graph = fun t ->
   let (prf, calls) = type_check t k in
   let fn v =
     match !(v.uvar_state) with
-    | Free   -> true
-    | Sum l  -> set_kuvar v (KDSum l); false
-    | Prod l -> set_kuvar v (KProd l); false
+    | Free -> true
+    | Sum l -> set_kuvar v (KDSum l); false
+    | Prod l -> set_kuvar v (KProd l); false) ul
   in
   let ul = List.filter fn (uvar_list k) in
   let k = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) k ul in

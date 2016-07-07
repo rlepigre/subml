@@ -1,6 +1,7 @@
 open Bindlib
 open Refinter
 open Io
+open Format
 
 let debug = ref false
 
@@ -272,13 +273,13 @@ let rec full_repr : kind -> kind = function
 let rec orepr = function OUVar({contents = Some o}) | o -> o
 
 (* Printing function from "print.ml" *)
-let fprint_term : (bool -> out_channel -> term -> unit) ref =
+let fprint_term : (bool -> formatter -> term -> unit) ref =
   ref (fun _ -> assert false)
 
-let fprint_kind : (bool -> out_channel -> kind -> unit) ref =
+let fprint_kind : (bool -> formatter -> kind -> unit) ref =
   ref (fun _ -> assert false)
 
-let fprint_ordinal : (bool -> out_channel -> ordinal -> unit) ref =
+let fprint_ordinal : (bool -> formatter -> ordinal -> unit) ref =
   ref (fun _ -> assert false)
 
 (****************************************************************************
@@ -747,7 +748,7 @@ let is_neutral : term -> bool = fun t ->
     | TProj(a,s)  -> fn a
     | TCons(s,a)  -> false
     | TCase(a,fs) -> fn a
-    | TDefi(d)    -> fn d.value
+    | TDefi(d)    -> true
     | TCnst _     -> true
     | TPrnt _     -> false
     | TTInt _     -> assert false
@@ -886,7 +887,10 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
     in
     fn k))
 
-let set_kuvar v k =
+let bottom = unbox (kkall "X" (fun x -> box_of_var x))
+let top    = unbox (kkexi "X" (fun x -> box_of_var x))
+
+let set_kuvar side v k =
   assert (!(v.uvar_val) = None);
   let k =
     match !(v.uvar_state) with
@@ -898,9 +902,9 @@ let set_kuvar v k =
     match uvar_occur v k with
     | Non -> k
     | Pos -> KFixM(OConv,bind_uvar v k)
-    | _   -> assert false
+    | _   -> if side then bottom else top
   in
-  if !debug then Printf.eprintf "set %a <- %a\n\n%!"
+  if !debug then eprintf "set %a <- %a\n\n%!"
     (!fprint_kind false) (KUVar v) (!fprint_kind false) k;
   Timed.(v.uvar_val := Some k)
 

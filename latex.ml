@@ -281,37 +281,30 @@ let kind_to_string unfold k =
   print_kind unfold false str_formatter k;
   flush_str_formatter ()
 
-let print_term unfold ch t =
-  let ff = formatter_of_out_channel ch in
-  print_term unfold 0 ff t; pp_print_flush ff (); flush ch
+let print_term unfold ff t =
+  print_term unfold 0 ff t
 
-let print_kind unfold ch t =
-  let ff = formatter_of_out_channel ch in
-  print_kind unfold false ff t; pp_print_flush ff (); flush ch
+let print_kind unfold ff t =
+  print_kind unfold false ff t
 
-let print_kind_def unfold ch kd =
-  let ff = formatter_of_out_channel ch in
-  pkind_def unfold ff kd; pp_print_flush ff (); flush ch
-
-let print_ordinal unfold ch o =
-  let ff = formatter_of_out_channel ch in
-  print_ordinal unfold ff o; pp_print_flush ff (); flush ch
+let print_kind_def unfold ff kd =
+  pkind_def unfold ff kd
 
 let print_epsilon_tbls ch =
   List.iter (fun (f,(name,index,a,b)) ->
     let x = new_tvari dummy_position (binder_name f) in
     let t = subst f (free_of x) in
-    Printf.fprintf ch "%s_{%d} &= \\epsilon_{%s \\in %a}(%a \\notin %a)\\\\\n"
+    fprintf ch "%s_{%d} &= \\epsilon_{%s \\in %a}(%a \\notin %a)\\\\\n"
       name index (name_of x) (print_kind false) a (print_term false) t
       (print_kind false) b) !epsilon_term_tbl;
   List.iter (fun (f,(name,index,u,is_exists)) ->
     let x = new_kvari (binder_name f) in
     let k = subst f (free_of x) in
     let symbol = if is_exists then "\\in" else "\\notin" in
-      Printf.fprintf ch "%s_{%d} &= \\epsilon_{%s}(%a %s %a)\\\\\n" name index
+      fprintf ch "%s_{%d} &= \\epsilon_{%s}(%a %s %a)\\\\\n" name index
       (name_of x) (print_term false) u symbol (print_kind false) k) !epsilon_type_tbl;
   List.iter (fun (o,n) ->
-    Printf.fprintf ch "%a &= %a\\\\\n" (print_ordinal false) o
+    fprintf ch "%a &= %a\\\\\n" (print_ordinal false) o
     (print_ordinal true) o) !ordinal_tbl
 
 (****************************************************************************
@@ -337,43 +330,43 @@ let rec to_string = function
 let print_calls ch arities calls =
   let print_cmp ch c =
     match c with
-    | Sct.Unknown -> Printf.fprintf ch "?"
-    | Sct.Less    -> Printf.fprintf ch "<"
-    | Sct.Leq     -> Printf.fprintf ch "="
+    | Sct.Unknown -> fprintf ch "?"
+    | Sct.Less    -> fprintf ch "<"
+    | Sct.Leq     -> fprintf ch "="
   in
   let print_args ch i =
     let (_, a) = try List.assoc i arities with Not_found -> assert false in
     for i = 0 to a - 1 do
-      Printf.fprintf ch "%sx_%d" (if i = 0 then "" else ",") i
+      fprintf ch "%sx_%d" (if i = 0 then "" else ",") i
     done
   in
-  Printf.fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
+  fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
   let f (i,_) =
-    Printf.fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" i i print_args i
+    fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" i i print_args i
   in
   List.iter f (List.filter (fun (i,_) ->
     List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
   let print_call arities (i,j,m) =
-    Printf.fprintf ch "    N%d -> N%d [label = \"(" j i;
+    fprintf ch "    N%d -> N%d [label = \"(" j i;
     Array.iteri (fun i l ->
-      if i > 0 then Printf.fprintf ch ",";
+      if i > 0 then fprintf ch ",";
       let some = ref false in
       Array.iteri (fun j c ->
         if c <> Sct.Unknown then (
           let sep = if !some then " " else "" in
-          Printf.fprintf ch "%s%aX%d" sep print_cmp c j;
+          fprintf ch "%s%aX%d" sep print_cmp c j;
           some := true
         )) l;
-      if not !some then Printf.fprintf ch "?") m;
-    Printf.fprintf ch ")\"]\n%!"
+      if not !some then fprintf ch "?") m;
+    fprintf ch ")\"]\n%!"
   in
   List.iter (print_call arities) calls;
-  Printf.fprintf ch "  }\n\\end{dot2tex}\n"
+  fprintf ch "  }\n\\end{dot2tex}\n"
 
 let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   let open Proof in
   let t2s = term_to_string false and k2s = kind_to_string false in
-  let c = Printf.sprintf "$%s : %s$" (t2s t) (k2s k) in
+  let c = sprintf "$%s : %s$" (t2s t) (k2s k) in
   match r with
   | Typ_Coer(p1,p2)   -> binaryN "$\\subset$" c (sub2proof p1) (typ2proof p2)
   | Typ_KAbs(p)       -> unaryN "$\\Lambda$" c (typ2proof p)
@@ -390,19 +383,19 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_DSum_e(p,ps)  -> n_aryN "$+_e$" c
                            (typ2proof p :: List.map typ2proof ps)
   | Typ_YH(n,p)          ->
-     let name = Printf.sprintf "$H_%d$" n in
+     let name = sprintf "$H_%d$" n in
      unaryN name c (sub2proof p)
   | Typ_Y(n,p1,p)     ->
-     let name = Printf.sprintf "$I_%d$" n in
+     let name = sprintf "$I_%d$" n in
      binaryN name c (sub2proof p1) (typ2proof p)
 
 and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let open Proof in
   let t2s = term_to_string false and k2s = kind_to_string false in
-  let c = Printf.sprintf "$%s \\in %s \\subset %s$" (t2s t) (k2s a) (k2s b) in
+  let c = sprintf "$%s \\in %s \\subset %s$" (t2s t) (k2s a) (k2s b) in
   match r with
   | Sub_Delay(pr)     -> sub2proof !pr
-  | Sub_Lower         -> hyp (Printf.sprintf "$%s \\leq %s$" (k2s a) (k2s b))
+  | Sub_Lower         -> hyp (sprintf "$%s \\leq %s$" (k2s a) (k2s b))
   | Sub_Func(p1,p2)   -> binaryN "$\\to$" c (sub2proof p1) (sub2proof p2)
   | Sub_Prod(ps)      -> n_aryN "$\\times$" c (List.map sub2proof ps)
   | Sub_DSum(ps)      -> n_aryN "$+$" c (List.map sub2proof ps)
@@ -422,7 +415,7 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_FixN_l(p)     -> unaryN "$\\nu_l$" c (sub2proof p)
   | Sub_FixM_l(p)     -> unaryN "$\\mu_l$" c (sub2proof p)
   | Sub_FixN_r(p)     -> unaryN "$\\nu_r$" c (sub2proof p)
-  | Sub_Ind(n)        -> axiomN (Printf.sprintf "$H_%d$" n) c
+  | Sub_Ind(n)        -> axiomN (sprintf "$H_%d$" n) c
   | Sub_Dummy         -> assert false (* Should not happen. *)
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
@@ -431,13 +424,13 @@ let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
 let rec output ch = function
   | Kind(n,unfold,k) -> break_hint := n; print_kind unfold ch k; break_hint := 0
   | Term(n,unfold,t) -> break_hint := n; print_term unfold ch t; break_hint := 0
-  | Text(t)        -> Printf.fprintf ch "%s" t
-  | List(l)        -> Printf.fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
+  | Text(t)        -> fprintf ch "%s" t
+  | List(l)        -> fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof (p,(arities,calls)) ->
      print_subtyping_proof ch p;
-     Printf.fprintf ch "\\begin{center}\n";
+     fprintf ch "\\begin{center}\n";
      if calls <> [] then print_calls ch arities calls;
-     Printf.fprintf ch "\\end{center}\n%!";
+     fprintf ch "\\end{center}\n%!";
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(n,t)     ->
@@ -448,13 +441,13 @@ let rec output ch = function
      let k = msubst f params in
      let print_array cg a =
        if Array.length a = 0 then () else
-       Printf.fprintf ch "(%s%a)" a.(0) (fun ch a ->
+       fprintf ch "(%s%a)" a.(0) (fun ch a ->
          for i = 1 to Array.length a - 1 do
-           Printf.fprintf ch ",%s" a.(i)
+           fprintf ch ",%s" a.(i)
          done) a
      in
      break_hint := n;
-     Printf.fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
+     fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
      break_hint := 0
   | Sct (arities,calls) ->
       print_calls ch arities calls
