@@ -142,12 +142,12 @@ and uvar_state = Free
 and ordinal =
   (* Ordinal large enough to ensure convergence of all fixpoint. *)
   | OConv
-  (* Unification variables for ordinals. *)
-  | OUVar of ordinal option * ordinal option ref
+  (* Succesor *)
+  | OSucc of ordinal
   (* Ordinal created by the μl and νr rules. *)
   | OLess of ordinal * ord_wit
-  (* Maximum of a list of ordinals. *)
-  | OMaxi of ordinal list
+  (* Unification variables for ordinals. *)
+  | OUVar of ordinal option ref
   (* Ordinal variable. *)
   | OVari of ordinal variable
   (* Integer tag used in decompose / recompose. *)
@@ -266,9 +266,7 @@ let rec full_repr : kind -> kind = function
   | KDefi({tdef_value = v}, a)              -> full_repr (msubst v a)
   | k                                      -> k
 
-let rec orepr = function
-  | OUVar(_, {contents = Some o})
-  | o                             -> o
+let rec orepr = function OUVar({contents = Some o}) | o -> o
 
 let set_kuvar v k =
   assert (!(v.uvar_val) = None);
@@ -346,7 +344,7 @@ let new_ovari : string -> ovar =
 (* sugaring for ordinals *)
 let oconv = box OConv
 
-let omaxi l = box_apply (fun o -> OMaxi o) (box_list l)
+let osucc o = box_apply (fun o -> OSucc o) o
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
@@ -611,16 +609,8 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   match (orepr o1, orepr o2) with
   | (o1          , o2          ) when o1 == o2 -> true
   | (OConv       , OConv       ) -> true
-(*  | (OUVar(o',p) , o           )
-  | (o           , OUVar(o',p) ) -> Timed.pure_test (less_ordinal [] c o) o' && (* FIXME *)
-    (set_ouvar p o; true)*)
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal c o1 o2 && eq_ord_wit c w1 w2
-  | (OMaxi(l1)   , OMaxi(l2)   ) -> List.for_all (fun o1 ->
-                                      List.exists (fun o2 ->
-                                        eq_ordinal c o1 o2) l2) l1 &&
-                                    List.for_all (fun o1 ->
-                                      List.exists (fun o2 ->
-                                        eq_ordinal c o1 o2) l1) l2
+  | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal c o1 o2
   | (OTInt n1    , OTInt n2    ) -> n1 = n2
   | (_           , _           ) -> false
 
@@ -631,33 +621,26 @@ and eq_ord_wit c w1 w2 = match w1, w2 with
 
 and leq_ordinal pos c o1 o2 =
   match (orepr o1, orepr o2) with
-  | (o1         , o2        ) when eq_ordinal c o1 o2 -> true
-  | (_          , OConv     ) -> true
-  | (OUVar(None, p), o2     ) -> set_ouvar p o2; true
-  | (OUVar(Some o, p), o2   ) -> Timed.pure_test (leq_ordinal pos c o) o2 || (
-                                   Timed.pure_test (less_ordinal pos c o2) o &&
-                                   (set_ouvar p o2; true))
-  | (o1      , OUVar(None,p)) -> set_ouvar p o1; true
-  | (o1    , OUVar(Some o,p)) -> Timed.pure_test (less_ordinal pos c o1) o &&
-                                 (set_ouvar p o1; true)
-  | (OLess(o1,_), o2        ) when List.exists (eq_ordinal c o1) pos -> leq_ordinal pos c o1 o2
-  | (OMaxi(l1)  , o2        ) -> List.for_all (fun o1 -> leq_ordinal pos c o1 o2) l1
-  | (o1         , OMaxi(l2) ) -> List.exists (fun o2 -> leq_ordinal pos c o1 o2) l2
-  | (_          , _         ) -> false
+  | (o1         , o2         ) when eq_ordinal c o1 o2 -> true
+  | (_          , OConv      ) -> true
+  | (OUVar(p)   , o2      ) ->
+     set_ouvar p o2; true
+  | (o1         , OUVar(p)   ) ->
+     set_ouvar p o1; true
+  | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
+  (* case loosing information, the first one loose less *)
+  | (OLess(o1,_), OSucc o2   ) when List.exists (eq_ordinal c o1) pos -> leq_ordinal pos c o1 o2
+  | (OLess(o1,_), o2         ) when List.exists (eq_ordinal c o1) pos -> leq_ordinal pos c o1 o2
+  | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
+  | (_          , _          ) -> false
 
 and less_ordinal pos c o1 o2 =
   let o1 = orepr o1 and o2 = orepr o2 in
-  match o1 with
-  | OLess(o,_) when List.exists (eq_ordinal c o) pos -> leq_ordinal pos c o o2
-  | OUVar(Some o,_) -> List.exists (eq_ordinal c o) pos && less_ordinal pos c o o2
-  | OMaxi(l1)  -> List.for_all (fun o1 -> less_ordinal pos c o1 o2) l1
-  | _          -> false
-
-(* FIXME: normalize elements, sort, eliminate duplicate, hashcons ? *)
-let omax = function
-  | []  -> assert false
-  | [o] -> o
-  | l   -> OMaxi l
+  match o1, o2 with
+  | OSucc(o1)      , OSucc(o2) -> less_ordinal pos c o1 o2
+  | o1             , OSucc(o2) -> leq_ordinal pos c o1 o2
+  | OLess(o,_)     , _ when List.exists (eq_ordinal c o) pos -> leq_ordinal pos c o o2
+  | _                          -> false
 
 let eq_kind : kind -> kind -> bool =
   fun k1 k2 -> Timed.pure_test (eq_kind (ref 0) k1) k2
@@ -697,6 +680,10 @@ let all_epsilons = ref []
 
 let oless o w =
   let o = orepr o in
+  match o with OUVar(p) ->
+    let o' = OUVar(ref None) in
+    set_ouvar p (OSucc o'); o'
+  | _ ->
   let o' = OLess(o,w) in
   if o <> OConv then
     (let l = try assoc_ordinal o !all_epsilons with Not_found -> [] in
@@ -965,8 +952,9 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | t          -> box t
     and gn o =
       match orepr o with
+      | OSucc o -> osucc (gn o)
       | OVari x -> box_of_var x
-      | OUVar(_,ov) -> assert(!ov = None); if ov == ov0 then x else box o
+      | OUVar(ov) -> if ov == ov0 then x else box o
       | o -> box o
     in
     fn k))
@@ -984,8 +972,8 @@ let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
-let decompose : bool -> occur -> kind -> kind ->
-                  kind * kind * (int * ordinal) list = fun fix pos k1 k2 ->
+let decompose : occur -> kind -> kind ->
+                  kind * kind * (int * ordinal) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
   let search o =
@@ -996,9 +984,6 @@ let decompose : bool -> occur -> kind -> kind ->
     with
       Not_found ->
         let n = !i in incr i; res := (o, n) :: !res; OTInt n
-  in
-  let create o =
-    let n = !i in incr i; res := (o, n) :: !res; OTInt n
   in
   let rec fn pos k =
     match repr k with
@@ -1033,18 +1018,12 @@ let decompose : bool -> occur -> kind -> kind ->
        kfixn (binder_name f) (box_of_var o) (fun x -> fn pos (subst f (KVari x)))
     | KFixM(o,f) ->
        let o =
-         if o <> OConv && pos <> Eps then search o
-         else if o = OConv && pos = Neg then
-           (if fix then create (OUVar(None, ref None)) else o)
-         else o
+         if o <> OConv && pos <> Eps then search o else o
        in
        kfixm (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        let o =
-         if o <> OConv && pos <> Eps then search o
-         else if o = OConv && pos = Pos then
-           (if fix then create (OUVar(None, ref None)) else o)
-         else o
+         if o <> OConv && pos <> Eps then search o else o
        in
        kfixn (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
     | KDefi(d,a) -> fn pos (msubst d.tdef_value a)

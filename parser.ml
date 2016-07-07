@@ -226,9 +226,9 @@ let parser is_not =
 
 (* Entry point for ordinals. *)
 let parser ordinal : pordinal Decap.grammar =
-  | infty?                                  -> in_pos _loc PConv
-  | s:lident                                -> in_pos _loc (PVari(s))
-  | max_kw '(' l:(list_sep ordinal ",") ')' -> in_pos _loc (PMaxi(l))
+  | infty?                  -> in_pos _loc PConv
+  | s:lident                -> in_pos _loc (PVari s)
+  | o:ordinal '+' n:int_lit -> padd _loc o n
 
 (* Entry point for kinds. *)
 let parser kind : pkind Decap.grammar = (pkind `Fun)
@@ -294,7 +294,7 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | fix_kw x:var mapto u:term     when p = `Lam -> pfixY x _loc_u u
   | "[" term_list "]"             when p = `Atm
   | term_llet                     when p = `Lam
-  | term_cond                     when p = `Atm 
+  | term_cond                     when p = `Atm
   | t:tapp "::" u:tseq$           when p = `Seq -> list_cons _loc t u
   (* Parenthesis and coercions. *)
   | "(" term ")" when p = `Atm

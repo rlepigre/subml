@@ -37,21 +37,14 @@ let find_indexes pos index index' a b =
 let rec find_positive ctxt o =
   let o = orepr o in
   (*  Printf.eprintf "find positive %a\n%!" (print_ordinal false) o;*)
-  try omax (assoc_ordinal o !all_epsilons) with
-  | Not_found ->
-  match o with
+  if List.exists (eq_ordinal o) ctxt.positive_ordinals then
+    try List.hd (*omax*) (assoc_ordinal o !all_epsilons) with Not_found -> assert false
+  else match o with
   | OConv -> OConv
-  | OUVar(_, ptr) -> OUVar(Some o, ref None)
-  | OMaxi(l1) ->
-     let rec fn = function
-       | [] -> []
-       | o::l ->
-          let l = fn l in
-          try find_positive ctxt o :: l with Not_found -> l
-     in
-     let l = fn l1 in
-     (*     Printf.eprintf "%d %d \n%!" (List.length l1) (List.length l);*)
-     if l = [] then raise Not_found else omax l
+  | OSucc o' -> o'
+  | OUVar(p) ->
+     let o' = OUVar(ref None) in
+     set_ouvar p (OSucc o'); o'
   | o -> raise Not_found
 
 (* FIXME: the function below are certainly missing cases *)
@@ -183,7 +176,9 @@ let cr = ref 0
 
 let add_pos positives o =
   let o = orepr o in
-  if o = OConv then positives else
+  match o with
+  | OConv | OSucc _ -> positives
+  | _ ->
   if List.exists (eq_ordinal o) positives then positives else
     o :: positives
 
@@ -217,7 +212,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       then raise Exit;
       (match a with MuRec _ | NuRec _ -> raise Exit | _ -> ());
       (match b with MuRec _ | NuRec _ -> raise Exit | _ -> ());
-      let (a', b', os) = decompose false Pos a b in
+      let (a', b', os) = decompose Pos a b in
       (* Printf.eprintf "len(os') = %d\n%!" (List.length os');
          Printf.eprintf "(%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
       let pos = ctxt.positive_ordinals in
@@ -429,7 +424,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_OAll_r(p)
 
     | (KOAll(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (OUVar(None, ref None))) b0 in
+        let p = subtype ctxt t (subst f (OUVar(ref None))) b0 in
         Sub_OAll_l(p)
 
     (* Existantial quantification over ordinals. *)
@@ -438,7 +433,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_OExi_l(p)
 
     | (_           , KOExi(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (OUVar(None, ref None))) in
+        let p = subtype ctxt t a0 (subst f (OUVar(ref None))) in
         Sub_OExi_r(p)
 
     (* μl and νr rules. *)
@@ -470,7 +465,6 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
-        (match b with KFixN(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o') o) | _ -> ());
         begin
           try
             let o' = find_positive ctxt o in
@@ -481,7 +475,6 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         end
 
     | (_           , KFixM(o,f)  ) ->
-        (match a with KFixM(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o') o) | _ -> ());
         begin
           try
             let o' = find_positive ctxt o in
@@ -604,8 +597,9 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          | (_,Rec(_,a,_),_) :: _ -> a
          | _ -> c
        in
+       (* This is the subtyping that means that the program is typed *)
        let prf = subtype ctxt t a c in
-       let (_, c0, os) = decompose false Pos (KProd []) c in
+       let (_, c0, os) = decompose Pos (KProd []) c in
        let pos = ctxt.positive_ordinals in
        if !debug then
          begin
@@ -621,7 +615,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               try
                 let prf =
                   let time = Timed.Time.save () in
-                  try
+                  try (* If all these subtyping fails,
+                         it is only a problem of terminaison *)
                     subtype ctxt t a c0
                   with _ ->
                     Timed.Time.rollback time;

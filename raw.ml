@@ -8,7 +8,7 @@ open Bindlib
 type pordinal = pordinal' position
 and pordinal' =
   | PConv
-  | PMaxi of pordinal list
+  | PSucc of pordinal
   | PVari of string
 
 type pkind = pkind' position
@@ -60,6 +60,9 @@ let pfixY (id, ko) _loc t =
   match ko with
   | None   -> in_pos _loc (PFixY(id, t))
   | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, t)), k))
+
+let rec padd _loc o n =
+  if n <= 0 then o else in_pos _loc (PSucc(padd _loc o (n-1)))
 
 (****************************************************************************
  *                         Environment management                           *
@@ -139,7 +142,7 @@ and unsugar_ordinal : env -> pordinal -> obox = fun env po ->
   match po.elt with
   | PConv   -> oconv
   | PVari s -> ordinal_variable env (in_pos po.pos s)
-  | PMaxi l -> omaxi (List.map (unsugar_ordinal env) l)
+  | PSucc o -> osucc (unsugar_ordinal env o)
 
 and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   fun ?(pos=Pos) (env:env) pk ->

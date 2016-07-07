@@ -96,13 +96,12 @@ let rec print_ordinal unfold ff o =
     | OLess(o,_) when unfold ->
        fprintf ff "α(%d<%a)" n (print_ordinal false) o
     | OLess(o,_) -> fprintf ff "κ%d" n
-    | OMaxi(l) ->
-       fprintf ff "max(%a)" (print_list (print_ordinal false) ";") l
+    | OSucc(o) ->
+       fprintf ff "s(%a)" (print_ordinal false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
     | OTInt(n) -> fprintf ff "!%d!" n
-    | OUVar(None,n) -> fprintf ff "?"
-    | OUVar(Some o,n) -> fprintf ff "?<%a" (print_ordinal false) o
+    | OUVar(n) -> fprintf ff "?"
 
 and print_index_ordinal ff = function
   | OConv -> ()
