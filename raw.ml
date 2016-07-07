@@ -56,6 +56,11 @@ let sequence _loc t u =
   let dum = (in_pos _loc "_", Some(in_pos _loc (PProd []))) in
   in_pos _loc (PAppl(in_pos _loc (PLAbs([dum],u)), t))
 
+let pfixY (id, ko) _loc t =
+  match ko with
+  | None   -> in_pos _loc (PFixY(id, t))
+  | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, t)), k))
+
 (****************************************************************************
  *                         Environment management                           *
  ****************************************************************************)

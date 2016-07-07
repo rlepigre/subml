@@ -8,7 +8,12 @@ open Typing
 open Raw
 open Io
 
+(* Definition of a "location" function for DeCaP. *)
 #define LOCATE locate
+
+(****************************************************************************
+ *                    Missing standard library functions                    *
+ ****************************************************************************)
 
 let int_of_chars s =
   let f acc c = acc * 10 + (Char.code c - Char.code '0') in
@@ -20,30 +25,21 @@ let string_of_chars s =
   Array.iteri (fun i c -> res.[i] <- c) s; res
 
 (****************************************************************************
- *                       Handling of blanks and comments                    *
+ *                      Handling of blanks and comments                     *
  ****************************************************************************)
 
-exception Unclosed_comment of bool * string * int * int
+(* Exception raised when EOF is reached while parsing a comment. The boolean
+   is set to true when EOF is reached while parsing a string. *)
+exception Unclosed_comment of bool * (string * int * int)
 
-let unclosed_comment : type a. (Input.buffer * int) -> a =
-  fun (buf, pos) ->
-    let line = Input.line_num buf in
-    let fname = Input.fname buf in
-    raise (Unclosed_comment (false, fname, line, pos))
+let unclosed_comment in_string (buf,pos) =
+  let position = (Input.fname buf, Input.line_num buf, pos) in
+  raise (Unclosed_comment (in_string, position))
 
-let unclosed_comment_string : type a. (Input.buffer * int) -> a =
-  fun (buf, pos) ->
-    let line = Input.line_num buf in
-    let fname = Input.fname buf in
-    raise (Unclosed_comment (true, fname, line, pos))
-
-(*
- * Characters to be ignored are:
- *   - ' ', '\t', '\r', '\n',
- *   - everything between "(*" and "*)" (ocaml-like comments).
- * Remarks on what is allowed inside an ocaml-like comment:
- *   - (nested) comments.
- *)
+(* Blank function for basic blank characters (' ', '\t', '\r' and '\n') and
+   comments delimited with "(*" and "*)". Nested comments (i.e. comments in
+   comments) are supported. Arbitrary string litterals are also allowed in
+   comments (including those containing comment closing sequences). *)
 let subml_blank buf pos =
   let rec fn state stack prev curr =
     let (buf, pos) = curr in
@@ -51,44 +47,45 @@ let subml_blank buf pos =
     let next = (buf', pos') in
     match (state, stack, c) with
     (* Basic blancs. *)
-    | (`Ini      , []  , ' '     )
-    | (`Ini      , []  , '\t'    )
-    | (`Ini      , []  , '\r'    )
-    | (`Ini      , []  , '\n'    ) -> fn `Ini stack curr next
+    | (`Ini   , []  , ' '   )
+    | (`Ini   , []  , '\t'  )
+    | (`Ini   , []  , '\r'  )
+    | (`Ini   , []  , '\n'  ) -> fn `Ini stack curr next
     (* Comment opening. *)
-    | (`Ini      , _   , '('     ) -> fn (`Opn(curr)) stack curr next
-    | (`Ini      , []  , _       ) -> curr
-    | (`Opn(p)   , _   , '*'     ) -> fn `Ini (p::stack) curr next
-    | (`Opn(_)   , _::_, '"'     ) -> fn (`Str(curr)) stack curr next (*#*)
-    | (`Opn(_)   , []  , _       ) -> prev
-    | (`Opn(_)   , _   , _       ) -> fn `Ini stack curr next
+    | (`Ini   , _   , '('   ) -> fn (`Opn(curr)) stack curr next
+    | (`Ini   , []  , _     ) -> curr
+    | (`Opn(p), _   , '*'   ) -> fn `Ini (p::stack) curr next
+    | (`Opn(_), _::_, '"'   ) -> fn (`Str(curr)) stack curr next (*#*)
+    | (`Opn(_), []  , _     ) -> prev
+    | (`Opn(_), _   , _     ) -> fn `Ini stack curr next
     (* String litteral in a comment (including the # rules). *)
-    | (`Ini      , _::_, '"'     ) -> fn (`Str(curr)) stack curr next
-    | (`Str(_)   , _::_, '"'     ) -> fn `Ini stack curr next
-    | (`Str(p)   , _::_, '\\'    ) -> fn (`Esc(p)) stack curr next
-    | (`Esc(p)   , _::_, _       ) -> fn (`Str(p)) stack curr next
-    | (`Str(p)   , _::_, '\255'  ) -> unclosed_comment_string p
-    | (`Str(_)   , _::_, _       ) -> fn state stack curr next
-    | (`Str(_)   , []  , _       ) -> assert false (* Impossible. *)
-    | (`Esc(_)   , []  , _       ) -> assert false (* Impossible. *)
+    | (`Ini   , _::_, '"'   ) -> fn (`Str(curr)) stack curr next
+    | (`Str(_), _::_, '"'   ) -> fn `Ini stack curr next
+    | (`Str(p), _::_, '\\'  ) -> fn (`Esc(p)) stack curr next
+    | (`Esc(p), _::_, _     ) -> fn (`Str(p)) stack curr next
+    | (`Str(p), _::_, '\255') -> unclosed_comment true p
+    | (`Str(_), _::_, _     ) -> fn state stack curr next
+    | (`Str(_), []  , _     ) -> assert false (* Impossible. *)
+    | (`Esc(_), []  , _     ) -> assert false (* Impossible. *)
     (* Comment closing. *)
-    | (`Ini      , _::_, '*'     ) -> fn `Cls stack curr next
-    | (`Cls      , _::_, '*'     ) -> fn `Cls stack curr next
-    | (`Cls      , _::s, ')'     ) -> fn `Ini s curr next
-    | (`Cls      , _::_, _       ) -> fn `Ini stack curr next
-    | (`Cls      , []  , _       ) -> assert false (* Impossible. *)
+    | (`Ini   , _::_, '*'   ) -> fn `Cls stack curr next
+    | (`Cls   , _::_, '*'   ) -> fn `Cls stack curr next
+    | (`Cls   , _::s, ')'   ) -> fn `Ini s curr next
+    | (`Cls   , _::_, _     ) -> fn `Ini stack curr next
+    | (`Cls   , []  , _     ) -> assert false (* Impossible. *)
     (* Comment contents (excluding string litterals). *)
-    | (`Ini     , p::_, '\255'  ) -> unclosed_comment p
-    | (`Ini     , _::_, _       ) -> fn `Ini stack curr next
+    | (`Ini   , p::_, '\255') -> unclosed_comment false p
+    | (`Ini   , _::_, _     ) -> fn `Ini stack curr next
   in
   fn `Ini [] (buf, pos) (buf, pos)
 
+(* Blank function for basic blank characters (' ', '\t', '\r' and '\n'). *)
 let latex_blank buf pos =
   let rec fn curr =
     let (buf, pos) = curr in
     let (c, buf', pos') = Input.read buf pos in
     let next = (buf', pos') in
-    if List.mem c ['\t'; ' '; '\n'] then fn next else curr
+    if List.mem c ['\t'; ' '; '\r'; '\n'] then fn next else curr
   in fn (buf,pos)
 
 (****************************************************************************
@@ -250,12 +247,6 @@ and ordinal_list  = l:(list_sep ordinal ",")
 
 type pkind_prio = KFunc | KProd | KAtom
 type pterm_prio = TFunc | TSeq | TAppl | TColo | TAtom
-
-let pfixY id _loc_t t =
-  match id with
-  | (id, None) -> in_pos _loc_t (PFixY(id, t))
-  | (id, Some k) -> in_pos _loc_t (PCoer(in_pos _loc_t (PFixY(id, t)), k))
-
 
 let parser pkind p =
   | a:(pkind KProd) arrow b:(pkind KFunc) when p = KFunc
