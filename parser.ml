@@ -173,7 +173,7 @@ let ident first =
 let lident = ident lidentfirst
 let uident = ident uppercase
 
-let to_tuple = List.mapi (fun i x -> (string_of_int (i+1), x))
+let build_prod l = List.mapi (fun i x -> (string_of_int (i+1), x)) l
 
 (****************************************************************************
  *                                Basic tokens                              *
@@ -239,13 +239,14 @@ let parser ordinal : pordinal Decap.grammar =
   | s:lident                                -> in_pos _loc (PVari(s))
   | max_kw '(' l:(list_sep ordinal ",") ')' -> in_pos _loc (PMaxi(l))
 
-let build_prod = List.mapi (fun i x -> (string_of_int (i+1), x))
-
 (* Entry point for kinds. *)
 let parser kind : pkind Decap.grammar = (pkind `Fun)
 
+and kind_atm = (pkind `Atm)
+and kind_prd = (pkind `Prd)
+
 and pkind (p : [`Atm | `Prd | `Fun]) =
-  | a:(pkind `Prd) arrow b:kind   when p = `Fun -> in_pos _loc (PFunc(a,b))
+  | a:kind_prd arrow b:kind       when p = `Fun -> in_pos _loc (PFunc(a,b))
   | id:uident l:kind_args$        when p = `Atm -> in_pos _loc (PTVar(id,l))
   | forall id:uident a:kind       when p = `Fun -> in_pos _loc (PKAll(id,a))
   | exists id:uident a:kind       when p = `Fun -> in_pos _loc (PKExi(id,a))
@@ -253,22 +254,22 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | exists id:lident a:kind       when p = `Fun -> in_pos _loc (POExi(id,a))
   | mu o:ordinal id:uident a:kind when p = `Fun -> in_pos _loc (PFixM(o,id,a))
   | nu o:ordinal id:uident a:kind when p = `Fun -> in_pos _loc (PFixN(o,id,a))
-  | "{" fs:prod_items "}"         when p = `Atm -> in_pos _loc (PProd(fs))
+  | "{" fs:kind_reco "}"          when p = `Atm -> in_pos _loc (PProd(fs))
   | fs:kind_prod                  when p = `Prd -> in_pos _loc (PProd(fs))
-  | "[" fs:sum_items "]"          when p = `Atm -> in_pos _loc (PDSum(fs))
-  | t:(pterm `Atm) "." s:uident   when p = `Atm -> in_pos _loc (PDPrj(t,s))
-  | a:(pkind `Atm) (s,b):with_eq  when p = `Atm -> in_pos _loc (PWith(a,s,b))
+  | "[" fs:kind_dsum "]"          when p = `Atm -> in_pos _loc (PDSum(fs))
+  | t:tatm "." s:uident       when p = `Atm -> in_pos _loc (PDPrj(t,s))
+  | a:kind_atm (s,b):with_eq      when p = `Atm -> in_pos _loc (PWith(a,s,b))
   (* Parenthesis and coercions. *)
   | "(" kind ")"                  when p = `Atm
-  | (pkind `Atm)                  when p = `Prd
-  | (pkind `Prd)                  when p = `Fun
+  | kind_atm                      when p = `Prd
+  | kind_prd                      when p = `Fun
 
-and kind_args  = {"(" l:kind_list ")"}?[[]]
-and kind_prod  = fs:(glist_sep'' (pkind `Atm) time) -> build_prod fs
-and kind_list  = l:(list_sep kind ",")
-and sum_items  = (list_sep (parser uident a:{_:of_kw kind}?) "|")
-and prod_items = (list_sep (parser lident ":" kind) ";")
-and with_eq    = _:with_kw s:uident "=" b:(pkind `Atm)
+and kind_args = {"(" l:kind_list ")"}?[[]]
+and kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
+and kind_list = l:(list_sep kind ",")
+and kind_dsum = (list_sep (parser uident a:{_:of_kw kind}?) "|")
+and kind_reco = (list_sep (parser lident ":" kind) ";")
+and with_eq   = _:with_kw s:uident "=" b:kind_atm
 
 (****************************************************************************
  *                              Parsers for terms                           *
@@ -277,55 +278,58 @@ and with_eq    = _:with_kw s:uident "=" b:(pkind `Atm)
 (* Entry point for terms. *)
 and term : pterm Decap.grammar = (pterm `Lam)
 
+and tapp = (pterm `App)
+and tseq = (pterm `Seq)
+and tcol = (pterm `Col)
+and tatm = (pterm `Atm)
+
 and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
-  | lambda xs:var+ dot t:term$             when p = `Lam ->
-      in_pos _loc (PLAbs(xs,t))
-  | fun_kw xs:var+ mapto t:term$   when p = `Lam ->
-      in_pos _loc (PLAbs(xs,t))
-  | klam x:uident t:term           when p = `Lam ->
-      in_pos _loc (PKAbs(in_pos _loc_x x,t))
-  | klam x:lident t:term           when p = `Lam ->
-      in_pos _loc (POAbs(in_pos _loc_x x,t))
-  | t:(pterm `App) u:(pterm `Col)          when p = `App ->
-      in_pos _loc (PAppl(t,u))
-  | t:(pterm `App) ";" u:(pterm `Seq)      when p = `Seq ->
-      sequence _loc t u
-  | "print(" - s:string_lit - ")"          when p = `Atm ->
-      in_pos _loc (PPrnt(s))
-  | c:uident uo:{"[" term "]"}?$   when p = `Atm ->
-      in_pos _loc (PCons(c,uo))
-  | t:(pterm `Atm) "." l:lident            when p = `Atm ->
-      in_pos _loc (PProj(t,l))
-  | case_kw t:term of_kw ps:patts$ when p = `Lam ->
-      in_pos _loc (PCase(t,ps))
-  | "{" fs:(list_sep field ";") ";"? "}"   when p = `Atm ->
-      in_pos _loc (PReco(fs))
-  | "(" fs:tuple ")"                       when p = `Atm ->
-     (match fs with
-     | [] -> assert false
-     | [(_,t)] -> t
-     | _ -> in_pos _loc (PReco(fs)))
-  | t:(pterm `Col) ":" k:kind$     when p = `Col ->
-      in_pos _loc (PCoer(t,k))
-  | id:lident                              when p = `Atm ->
-      in_pos _loc (PLVar(id))
-  | fix_kw x:var mapto u:term              when p = `Lam ->
-      pfixY x _loc_u u
-  | "[" l:list "]" -> l
-  | let_kw r:is_rec id:lvar "=" t:term in_kw u:term when p = `Lam ->
-     let t = if not r then t else pfixY id _loc_t t in
-     in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
-  | if_kw c:term then_kw t:term else_kw e:term$ ->
-     in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
-  | t:(pterm `App) l:{"::" u:(pterm `Seq)}? when p = `Seq ->
-      (match l with None -> t | Some u -> list_cons _loc t u)
-  | (pterm `Seq) when p = `Lam
+  | lambda xs:var+ dot t:term$    when p = `Lam -> in_pos _loc (PLAbs(xs,t))
+  | fun_kw xs:var+ mapto t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
+  | klam x:uident t:term          when p = `Lam -> let x = in_pos _loc_x x in
+                                                   in_pos _loc (PKAbs(x,t))
+  | klam o:lident t:term          when p = `Lam -> let o = in_pos _loc_o o in
+                                                   in_pos _loc (POAbs(o,t))
+  | t:tapp u:tcol                 when p = `App -> in_pos _loc (PAppl(t,u))
+  | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
+  | "print(" - s:string_lit - ")" when p = `Atm -> in_pos _loc (PPrnt(s))
+  | c:uident uo:{"[" term "]"}?$  when p = `Atm -> in_pos _loc (PCons(c,uo))
+  | t:tatm "." l:lident           when p = `Atm -> in_pos _loc (PProj(t,l))
+  | case_kw t:term of_kw ps:pats$ when p = `Lam -> in_pos _loc (PCase(t,ps))
+  | "{" fs:term_reco "}"          when p = `Atm -> in_pos _loc (PReco(fs))
+  | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
+  | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
+  | id:lident                     when p = `Atm -> in_pos _loc (PLVar(id))
+  | fix_kw x:var mapto u:term     when p = `Lam -> pfixY x _loc_u u
+  | "[" term_list "]"             when p = `Atm
+  | term_llet                     when p = `Lam
+  | term_cond                     when p = `Atm 
+  | t:tapp "::" u:tseq$           when p = `Seq -> list_cons _loc t u
   (* Parenthesis and coercions. *)
   | "(" term ")" when p = `Atm
-  | (pterm `Atm)         when p = `Col
-  | (pterm `Col)         when p = `App
+  | tapp when p = `Seq
+  | tseq when p = `Lam
+  | tatm when p = `Col
+  | tcol when p = `App
 
-and patts = _:"|"? ps:(list_sep case "|")
+and term_llet = let_kw r:is_rec id:lvar "=" t:term in_kw u:term ->
+  let t = if not r then t else pfixY id _loc_t t in
+  in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
+
+and term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
+  in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
+
+and term_reco = (list_sep field ";") _:";"?
+and term_prod = l:(glist_sep'' term comma) -> build_prod l
+
+and field = l:lident k:{ ":" kind }?$ "=" t:tapp$ ->
+  (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
+
+and term_list =
+  | EMPTY                  -> list_nil _loc
+  | t:term "," l:term_list -> list_cons _loc t l
+
+and pats = _:"|"? ps:(list_sep case "|")
 
 and var =
   | id:lident                             -> (in_pos _loc_id id, None)
@@ -340,11 +344,6 @@ and pattern =
   | "[" "]"                     -> ("Nil", None)
 
 and case = (c,x):pattern _:arrow t:term -> (c, x, t)
-and field   = l:lident k:{ ":" kind }?$ "=" t:(pterm `App)$ ->
-    (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
-and tuple   = l:(glist_sep'' term comma) -> to_tuple l
-and list    = EMPTY -> list_nil _loc
-            | t:term "," l:list -> list_cons _loc t l
 
 (****************************************************************************
  *                                LaTeX parser                              *
