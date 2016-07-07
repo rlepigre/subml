@@ -438,7 +438,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
-        (match a with KFixN(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o') | _ -> ());
+       (match a with KFixN(o',_) ->
+         ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o') | _ -> ());
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
         in
@@ -451,7 +452,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_FixN_r prf
 
     | (KFixM(o,f)   , _           ) ->
-        (match b with KFixM(o',_) -> ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o') | _ -> ());
+       (match b with KFixM(o',_) ->
+         ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o') | _ -> ());
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
         in
@@ -610,6 +612,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        let rec fn = function
          | [] -> raise Not_found
          | (_,Sub _, _) :: hyps -> fn hyps
+         | (_,Rec(_,_,a),[]) :: hyps -> fn hyps
          | (fnum,Rec(_,_,a),os') :: hyps ->
             if List.length os = List.length os' then
               try
@@ -630,7 +633,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                        begin
                          io.log "searching induction hyp (2) %d:\n" fnum;
                          io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
-                           (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos
+                           (print_kind false) c
+                           (fun ch -> List.iter (print_ordinal false ch)) pos
                        end;
                      let m = find_indexes pos fnum cur os os0 in
                      let call = (fnum, cur, m, true) in
