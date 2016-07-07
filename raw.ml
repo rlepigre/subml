@@ -62,7 +62,7 @@ let sequence _loc t u =
 
 type env =
   { terms    : (string * tbox) list
-  ; kinds    : (string * (kbox * (occur * int))) list
+  ; kinds    : (string * (kbox * occur)) list
   ; ordinals : (string * obox) list }
 
 let empty_env : env = { terms = [] ; kinds = [] ; ordinals = [] }
@@ -70,7 +70,7 @@ let empty_env : env = { terms = [] ; kinds = [] ; ordinals = [] }
 let add_term : string -> tbox -> env -> env = fun x t env ->
   { env with terms = (x,t) :: env.terms }
 
-let add_kind : string -> kbox -> occur * int -> env -> env = fun x k o env ->
+let add_kind : string -> kbox -> occur -> env -> env = fun x k o env ->
   { env with kinds = (x,(k,o)) :: env.kinds }
 
 let add_ordinal : string -> obox -> env -> env = fun x o env ->
@@ -100,12 +100,12 @@ let ordinal_variable : env -> strpos -> obox = fun env s ->
 
 (* Lookup a kind variable in the environment. If it does not appear, look for
    the name in the list of type definitions. *)
-let rec kind_variable : (occur * int) -> env -> strpos -> pkind array -> kbox =
+let rec kind_variable : occur -> env -> strpos -> pkind array -> kbox =
  fun pos env s ks ->
   let arity = Array.length ks in
   try
     let (k, pos') = List.assoc s.elt env.kinds in
-    if not (List.mem (fst (compose2 pos' pos)) [Non; Pos]) then
+    if not (List.mem (compose2 pos' pos) [Non; Pos]) then
       let msg = Printf.sprintf "%s used in a negative position." s.elt in
       positivity_error s.pos msg
     else if arity > 0 then
@@ -121,7 +121,7 @@ let rec kind_variable : (occur * int) -> env -> strpos -> pkind array -> kbox =
         in arity_error s.pos msg
       end;
       let ks = Array.mapi (fun i k ->
-	unsugar_kind ~pos:(compose2 (td.tdef_variance.(i), td.tdef_depth.(i)) pos) env k) ks
+	unsugar_kind ~pos:(compose2 (td.tdef_variance.(i)) pos) env k) ks
       in
       kdefi td ks
     with Not_found -> unbound s
@@ -136,19 +136,18 @@ and unsugar_ordinal : env -> pordinal -> obox = fun env po ->
   | PVari s -> ordinal_variable env (in_pos po.pos s)
   | PMaxi l -> omaxi (List.map (unsugar_ordinal env) l)
 
-and unsugar_kind : ?pos:(occur * int) -> env -> pkind -> kbox =
-  fun ?(pos=(Pos,0)) (env:env) pk ->
+and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
+  fun ?(pos=Pos) (env:env) pk ->
   match pk.elt with
   | PFunc(a,b)   ->
-     let (o,d) = pos in
-     kfunc (unsugar_kind ~pos:(neg o, d+1) env a) (unsugar_kind ~pos:(o, d) env b)
+     kfunc (unsugar_kind ~pos:(neg pos) env a) (unsugar_kind ~pos env b)
   | PTVar(s,ks)  ->
      kind_variable pos env (in_pos pk.pos s) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =
-                      unsugar_kind ~pos (add_kind x (box_of_var xk) (Non,-1) env) k
+                      unsugar_kind ~pos (add_kind x (box_of_var xk) Non env) k
                     in kkall x f
   | PKExi(x,k)   -> let f xk =
-                      unsugar_kind (add_kind x (box_of_var xk) (Non,-1) env) k
+                      unsugar_kind (add_kind x (box_of_var xk) Non env) k
                     in kkexi x f
   | POAll(o,k)   -> let f xo =
                       unsugar_kind (add_ordinal o (box_of_var xo) env) k
@@ -189,7 +188,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                          tabst pos ko x f
                    in aux true env vs
   | PKAbs(s,f)  -> let f xk =
-                     unsugar_term (add_kind s.elt (box_of_var xk) (Non, -1) env) f
+                     unsugar_term (add_kind s.elt (box_of_var xk) Non env) f
                    in tkabs s.pos s f
   | POAbs(s,f)  -> let f xo =
                       unsugar_term (add_ordinal s.elt (box_of_var xo) env) f

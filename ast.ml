@@ -75,7 +75,7 @@ type occur =
   (* The variable occurs under an epsilon witness (special case). *)
   | Eps
   (* Special constructor for constructing the variance of definitions. *)
-  | Reg of int * occur array * int array
+  | Reg of int * occur array
 
 (* Ast of kinds (or types). *)
 type kind =
@@ -123,7 +123,6 @@ and type_def =
   (* Arity of the constructor. *)
   ; tdef_arity    : int
   ; tdef_variance : occur array
-  ; tdef_depth    : int array
   (* Definition of the constructor. *)
   ; tdef_value    : (kind, kind) mbinder }
 
@@ -203,11 +202,6 @@ and value_def =
   ; ttype      : kind        (* Type of the term. *)
   ; proof      : typ_prf     (* Typing proof. *)
   ; calls_graph: Sct.calls_graph } (* SCT instance. *)
-
-and srule_name = NUseInd of int | NRefl | NArrow | NSum | NProd
-  | NAllLeft | NAllRight | NExistsLeft | NExistsRight | NMuLeft
-  | NMuRightInf | NNuLeftInf | NNuRight | NMuRight | NNuLeft
-  | NUnknown | NProjLeft | NProjRight | NWithRight | NWithLeft
 
 and typ_jdg = term * kind
 and sub_jdg = term * kind * kind
@@ -817,13 +811,10 @@ let compose oa ob =
   | (Neg   , Neg   ) -> Pos
   | (Pos   , Pos   ) -> Pos
 
-let compose2 (oa,da) (ob,db) =
-  let o =
-    match (oa, ob) with
-    | (Reg(i,a,d), p) -> a.(i) <- combine a.(i) p;
-                         d.(i) <- min d.(i) (db - da); Non
-    | _               -> compose oa ob
-  in (o, da + db)
+let compose2 oa ob =
+  match oa with
+  | Reg(i,a) -> a.(i) <- combine a.(i) ob; Non
+  | _        -> compose oa ob
 
 let neg = function
   | Reg(_) -> assert false

@@ -476,11 +476,10 @@ let run_command : command -> unit = function
       let arg_names = Array.of_list args in
       let tdef_arity = Array.length arg_names in
       let tdef_variance = Array.make tdef_arity Non in
-      let tdef_depth = Array.make tdef_arity max_int in
       let f args =
         let env = ref [] in
         let f i k =
-          let v = (k, (Reg(i,tdef_variance, tdef_depth), 0)) in
+          let v = (k, (Reg(i,tdef_variance))) in
           env := (arg_names.(i), v) :: !env
         in
         Array.iteri f args;
@@ -494,7 +493,7 @@ let run_command : command -> unit = function
       in
       let td =
         { tdef_name = name ; tdef_tex_name ; tdef_arity ; tdef_variance
-        ; tdef_depth ; tdef_value = unbox b }
+        ; tdef_value = unbox b }
       in
       if !verbose then io.stdout "%a\n%!" (print_kind_def false) td;
       Hashtbl.add typ_env name td
