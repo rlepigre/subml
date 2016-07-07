@@ -704,3 +704,8 @@ let type_check : term -> kind -> typ_prf * calls_graph = fun t c ->
     let arities = Sct.arities () in
     if not (sct calls) then subtype_error "loop"; (p, (arities, calls))
   with e -> delayed := []; raise e
+
+let type_infer : term -> kind * typ_prf * calls_graph = fun t ->
+  let k = new_uvar () in
+  let (prf, calls) = type_check t k in
+  (k, prf, calls)

@@ -189,7 +189,7 @@ and print_occur ff = function
   | Reg(_) -> pp_print_string ff "R"
 
 and pkind_def unfold ff kd =
-  pp_print_string ff kd.tdef_name;
+  fprintf ff "type %s" kd.tdef_name;
   let names = mbinder_names kd.tdef_value in
   let xs = new_mvar mk_free_kvari names in
   let k = msubst kd.tdef_value (Array.map free_of xs) in

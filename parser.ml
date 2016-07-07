@@ -375,9 +375,9 @@ and latex_atom =
   | hash "witnesses" "#" ->
       (fun () -> Latex.Witnesses)
   | hash br:int_lit?[0] u:"!"? k:kind "#" ->
-      (fun () -> Latex.Kind (br,u<>None, unbox (unsugar_kind empty_env k)))
+      (fun () -> Latex.Kind (br, u <> None, unbox (unsugar_kind empty_env k)))
   | "@" br:int_lit?[0] u:"!"? t:term "@" ->
-      (fun () -> Latex.Term (br,u<>None, unbox (unsugar_term empty_env t)))
+      (fun () -> Latex.Term (br, u <> None, unbox (unsugar_term empty_env t)))
   | t:tex_simple ->
       (fun () -> Latex.Text t)
   | tex_text
@@ -474,9 +474,9 @@ let run_command : command -> unit = function
   (* Evaluate a term. *)
   | Eval(t) ->
       let t = unbox (unsugar_term empty_env t) in
-      let _ = type_check t (new_uvar ()) in
+      let (k,_,_) = type_infer t in
       reset_all ();
-      io.stdout "%a\n%!" (print_term true) (eval t)
+      io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
   (* Typed value definition. *)
   | NewVal(r,tex,id,k,t,_loc_t,_loc_id) ->
       let t = if not r then t else pfixY (in_pos _loc_id id, Some k) _loc_t t in

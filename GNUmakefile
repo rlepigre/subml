@@ -41,7 +41,7 @@ rodlinstalljs: subml.js subml-latest.tar.gz
 	cp subml-latest.tar.gz /home/rodolphe/public_html/subml/docs/
 
 run: all
-	ledit ./subml.native
+	ledit ./subml.native --verbose
 
 validate: clean
 	@ wc -L *.ml
