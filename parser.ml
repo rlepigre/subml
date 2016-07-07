@@ -79,15 +79,6 @@ let subml_blank buf pos =
   in
   fn `Ini [] (buf, pos) (buf, pos)
 
-(* Blank function for basic blank characters (' ', '\t', '\r' and '\n'). *)
-let latex_blank buf pos =
-  let rec fn curr =
-    let (buf, pos) = curr in
-    let (c, buf', pos') = Input.read buf pos in
-    let next = (buf', pos') in
-    if List.mem c ['\t'; ' '; '\r'; '\n'] then fn next else curr
-  in fn (buf,pos)
-
 (****************************************************************************
  *                             Keyword management                           *
  ****************************************************************************)
@@ -349,54 +340,61 @@ and case = (c,x):pattern _:arrow t:term -> (c, x, t)
  *                                LaTeX parser                              *
  ****************************************************************************)
 
-let no_hash =
-  Decap.test ~name:"no_hash" Charset.full_charset (fun buf pos ->
-    let c,buf,pos = Input.read buf pos in
-    if c <> '#' then ((), true) else ((), false))
+(* Blank function for basic blank characters (' ', '\t', '\r' and '\n'). *)
+let tex_blank buf pos =
+  let rec fn curr =
+    let (buf, pos) = curr in
+    let (c, buf', pos') = Input.read buf pos in
+    let next = (buf', pos') in
+    if List.mem c ['\t'; ' '; '\r'; '\n'] then fn next else curr
+  in fn (buf,pos)
 
-let tex_normal = Charset.(List.fold_left del full_charset ['}';'{';'@';'#'])
+(* Single '#' character (not followed by another one). *)
+let hash =
+  let fn buf pos = let (c,_,_) = Input.read buf pos in ((), c <> '#') in
+  let no_hash = Decap.test ~name:"no_hash" Charset.full_charset fn in
+  parser '#' no_hash
 
-let parser hash = "#" no_hash
+(* Sequence of characters excluding '}', '{', '@' and '#'. *)
+let tex_simple =
+  let cs = Charset.(List.fold_left del full_charset ['}';'{';'@';'#']) in
+  parser cs:(Decap.change_layout (parser (in_charset cs)+) no_blank) ->
+    string_of_chars cs
 
-let parser latex_atom =
-  | hash "witnesses" "#"     ->
-     (fun () -> Latex.Witnesses)
+(* Simple LaTeX text (without specific annotations. *)
+let parser tex_name = '{' l:tex_name_aux* '}' -> String.concat "" l
+and tex_name_aux =
+  | s:tex_simple            -> s
+  | "{" l:tex_name_aux* "}" -> "{" ^ (String.concat "" l) ^ "}"
+
+(* LaTeX text with annotations to generate proofs and stuff. *)
+let parser tex_text = "{" l:latex_atom* "}" ->
+  (fun () -> Latex.List (List.map (fun f -> f ()) l))
+
+and latex_atom =
+  | hash "witnesses" "#" ->
+      (fun () -> Latex.Witnesses)
   | hash br:int_lit?[0] u:"!"? k:kind "#" ->
-     (fun () -> Latex.Kind (br,u<>None, unbox (unsugar_kind empty_env k)))
+      (fun () -> Latex.Kind (br,u<>None, unbox (unsugar_kind empty_env k)))
   | "@" br:int_lit?[0] u:"!"? t:term "@" ->
-     (fun () -> Latex.Term (br,u<>None, unbox (unsugar_term empty_env t)))
-  | t:(Decap.(change_layout (parser (in_charset tex_normal)+) no_blank)) ->
-     (fun () -> Latex.Text (string_of_chars t))
-  | l:latex_text          -> l
-  | hash "check" a:kind subset b:kind "#" -> (fun () ->
-     let a = unbox (unsugar_kind empty_env a) in
-     let b = unbox (unsugar_kind empty_env b) in
-     let (prf, cg) = generic_subtype a b in
-     Latex.SProof (prf, cg))
-  | hash br:int_lit?[0] ":" id:lident "#"    -> (fun () ->
-     let t = Hashtbl.find val_env id in
-     Latex.Kind (br, false, t.ttype))
-  | hash br:int_lit?[0] "?" id:uident "#"    -> (fun () ->
-     let t = Hashtbl.find typ_env id in
-     Latex.KindDef(br,t))
-  | "##" id:lident "#"    -> (fun () ->
-     let t = Hashtbl.find val_env id in
-     Latex.TProof t.proof)
-  | "#!" id:lident "#" -> (fun () ->
-     let t = Hashtbl.find val_env id in
-     Latex.Sct t.calls_graph)
-
-and latex_text = "{" l:latex_atom* "}" -> (fun () ->
-  Latex.List (List.map (fun f -> f ()) l))
-
-let parser latex_name_aux =
-  | t:(Decap.(change_layout (parser (in_charset tex_normal)+) no_blank)) ->
-      (fun () -> Latex.Text (string_of_chars t))
-  | "{" l:latex_name_aux* "}" ->
-      (fun () -> Latex.List (List.map (fun f -> f ()) l))
-
-and latex_name = "{" t:latex_name_aux* "}" -> (fun () ->
-  Latex.to_string (Latex.List (List.map (fun f -> f ()) t)))
+      (fun () -> Latex.Term (br,u<>None, unbox (unsugar_term empty_env t)))
+  | t:tex_simple ->
+      (fun () -> Latex.Text t)
+  | tex_text
+  | hash "check" a:kind subset b:kind "#" ->
+      (fun () ->
+        let a = unbox (unsugar_kind empty_env a) in
+        let b = unbox (unsugar_kind empty_env b) in
+        let (prf, cg) = generic_subtype a b in
+        Latex.SProof (prf, cg))
+  | hash br:int_lit?[0] ":" id:lident "#" ->
+      (fun () -> Latex.Kind (br, false, (Hashtbl.find val_env id).ttype))
+  | hash br:int_lit?[0] "?" id:uident "#" ->
+      (fun () -> Latex.KindDef (br, Hashtbl.find typ_env id))
+  | "##" id:lident "#" ->
+      (fun () -> Latex.TProof (Hashtbl.find val_env id).proof)
+  | "#!" id:lident "#" ->
+      (fun () -> Latex.Sct (Hashtbl.find val_env id).calls_graph)
 
 (****************************************************************************
  *                       Top-level parsing functions                        *
@@ -418,26 +416,22 @@ let parser opt_flag =
   | "print_term_in_subtyping" b:enabled -> (fun () -> Print.print_term_in_subtyping := b)
 
 type command =
-  | NewType of (unit -> string) option * string * string list * pkind
-  | NewVal  of bool * (unit -> string) option * string * pkind * pterm * Location.t * Location.t
+  | NewType of string option * string * string list * pkind
+  | NewVal  of bool * string option * string * pkind * pterm * Location.t * Location.t
   | Check   of bool * pkind * pkind
-  | UnfoldK of pkind
-  | ParseT  of pterm
   | Eval    of pterm
   | Include of string
   | Latex   of unit -> Latex.latex_output
   | Set     of unit -> unit
 
 let parser command =
-  | type_kw tex:latex_name? (name,args,k):kind_def -> NewType(tex,name,args,k)
-  | unfold_kw k:kind                               -> UnfoldK(k)
-  | parse_kw t:term                                -> ParseT(t)
+  | type_kw tex:tex_name? (name,args,k):kind_def   -> NewType(tex,name,args,k)
   | eval_kw t:term                                 -> Eval(t)
-  | val_kw r:is_rec tex:latex_name?
-      id:lident ":" k:kind "=" t:term              -> NewVal(r,tex,id,k,t,_loc_t,_loc_id)
+  | val_kw r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term
+                                                   -> NewVal(r,tex,id,k,t,_loc_t,_loc_id)
   | check_kw n:is_not a:kind _:subset b:kind       -> Check(not n,a,b)
   | _:include_kw fn:string_lit                     -> Include(fn)
-  | latex_kw t:(change_layout latex_text latex_blank) -> Latex(t)
+  | latex_kw t:(change_layout tex_text tex_blank)  -> Latex(t)
   | _:set_kw f:opt_flag                            -> Set(f)
 
 and kind_def = uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
@@ -469,7 +463,7 @@ let run_command : command -> unit = function
       let tdef_tex_name =
         match tex with
         | None   -> "\\mathrm{"^name^"}"
-        | Some s -> s ()
+        | Some s -> s
       in
       let td =
         { tdef_name = name ; tdef_tex_name ; tdef_arity ; tdef_variance
@@ -477,14 +471,6 @@ let run_command : command -> unit = function
       in
       if !verbose then io.stdout "%a\n%!" (print_kind_def false) td;
       Hashtbl.add typ_env name td
-  (* Unfold a type definition. *)
-  | UnfoldK(k) ->
-      let k = unbox (unsugar_kind empty_env k) in
-      io.stdout "%a\n%!" (print_kind true) k
-  (* Parse a term. *)
-  | ParseT(t) ->
-      let t = unbox (unsugar_term empty_env t) in
-      io.stdout "%a\n%!" (print_term false) t
   (* Evaluate a term. *)
   | Eval(t) ->
       let t = unbox (unsugar_term empty_env t) in
@@ -500,7 +486,7 @@ let run_command : command -> unit = function
       reset_all ();
       let value = eval t in
       let tex_name =
-        match tex with None -> "\\mathrm{"^id^"}" | Some s -> s ()
+        match tex with None -> "\\mathrm{"^id^"}" | Some s -> s
       in
       Hashtbl.add val_env id
         { name = id ; tex_name ; value ; orig_value = t ; ttype = k
