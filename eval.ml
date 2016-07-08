@@ -46,7 +46,7 @@ let rec eval : term -> term = fun t0 ->
         | t          -> dummy_pos (TCase(t',l))
       end
   | TDefi(v)   -> eval v.value
-  | TPrnt(s)   -> printf "%s%!" s; in_pos t0.pos (TReco [])
+  | TPrnt(s)   -> Io.out "%s%!" s; in_pos t0.pos (TReco [])
   | TFixY(_)   -> t0
   | TCnst(_)   -> invalid_arg "Constant during evaluation."
   | TTInt(_)   -> invalid_arg "Integer tag during evaluation."

@@ -126,7 +126,7 @@ let subsume m1 m2 =
 
 (* the main function *)
 let sct: calls -> bool = fun ls ->
-  if !debug_sct then eprintf "SCT starts...\n%!";
+  if !debug_sct then Io.log "SCT starts...\n%!";
   let num_fun, arities = reset_function () in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun []) in
   let print_call = print_call arities in
@@ -138,7 +138,7 @@ let sct: calls -> bool = fun ls ->
     (* test idempotent edges as soon as they are discovered *)
     let (_, a) = List.assoc i arities in
     if i = j && mat_prod a a a m m = m && not (decrease m) then begin
-      if !debug_sct then eprintf "edge %a idempotent and looping\n%!" print_call (i,j,m);
+      if !debug_sct then Io.log "edge %a idempotent and looping\n%!" print_call (i,j,m);
       raise Exit;
     end;
     let ti = tbl.(i) in
@@ -153,23 +153,23 @@ let sct: calls -> bool = fun ls ->
   (* adding initial edges *)
   try
     if !debug_sct then (
-      eprintf "initial edges to be added:\n%!";
-      List.iter (fun c -> eprintf "\t%a\n%!" print_call c) ls);
+      Io.log "initial edges to be added:\n%!";
+      List.iter (fun c -> Io.log "\t%a\n%!" print_call c) ls);
     let new_edges = ref ls in
     (* compute the transitive closure of the call graph *)
-    if !debug_sct then eprintf "start completion\n%!";
+    if !debug_sct then Io.log "start completion\n%!";
     let rec fn () =
       match !new_edges with
         [] -> ()
       | (i,j,m)::l ->
          new_edges := l;
         if add_edge i j m then begin
-          if !debug_sct then eprintf "\tedge %a added\n%!" print_call (i,j,m);
+          if !debug_sct then Io.log "\tedge %a added\n%!" print_call (i,j,m);
           incr added;
           let t' = tbl.(j) in
           Array.iteri (fun k t -> List.iter (fun m' ->
             if !debug_sct then
-              eprintf "\tcompose: %a * %a = %!"
+              Io.log "\tcompose: %a * %a = %!"
                 print_call (i,j,m)
                 print_call (j,k,m');
             let (_, a) = List.assoc k arities in
@@ -179,20 +179,20 @@ let sct: calls -> bool = fun ls ->
             incr composed;
             new_edges := (i,k,m'') :: !new_edges;
             if !debug_sct then
-              eprintf "%a\n%!"
+              Io.log "%a\n%!"
                 print_call (i,k,m'');
           ) t) t'
         end else
-          if !debug_sct then eprintf "\tedge %a is old\n%!" print_call (i,j,m);
+          if !debug_sct then Io.log "\tedge %a is old\n%!" print_call (i,j,m);
         fn ()
     in
     fn ();
     if !debug_sct || !summary_sct then
-      eprintf "SCT passed (%5d edges added, %6d composed)\t%!" !added !composed;
+      Io.log "SCT passed (%5d edges added, %6d composed)\t%!" !added !composed;
     true
   with Exit ->
     if !debug_sct || !summary_sct then
-      eprintf "SCT failed (%5d edges added, %6d composed)\t%!" !added !composed;
+      Io.log "SCT failed (%5d edges added, %6d composed)\t%!" !added !composed;
     false
 
 
@@ -210,8 +210,8 @@ let inline calls =
   if not !do_inline then
     List.map (fun (i,j,m,_) -> (i,j,m)) calls
   else
-  (* eprintf "before inlining\n";
-     List.iter (eprintf "%a\n%!" pr_call) calls; *)
+  (* Io.log "before inlining\n";
+     List.iter (Io.log "%a\n%!" pr_call) calls; *)
   let tbl = Hashtbl.create 31 in
   List.iter (
     fun (i,j,m,rec_call) ->
@@ -234,6 +234,6 @@ let inline calls =
     List.filter (fun (i,_,_,_) -> Hashtbl.find tbl i = More) calls
   in
   let calls = List.map fn calls in
-  (* eprintf "after inlining\n";
-     List.iter (eprintf "%a\n%!" pr_call) calls;*)
+  (* Io.log "after inlining\n";
+     List.iter (Io.log "%a\n%!" pr_call) calls;*)
   calls
