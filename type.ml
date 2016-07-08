@@ -334,7 +334,7 @@ let decompose : occur -> kind -> kind ->
   let search o =
     try
       match o with
-        OLess _ -> OTInt (assoc_ordinal o !res)
+        OLess _ | OSucc _ -> OTInt (assoc_ordinal o !res)
       | _ -> raise Not_found
     with
       Not_found ->
@@ -391,7 +391,7 @@ let decompose : occur -> kind -> kind ->
   in
   let k1 = unbox (fn (neg pos) k1) in
   let k2 = unbox (fn pos k2) in
-  (k1, k2, List.rev_map (fun (a,b) -> (b,a)) !res)
+  (k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res)
 
 let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
   let get i =

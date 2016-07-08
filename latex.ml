@@ -20,16 +20,16 @@ let rec print_ordinal unfold ff o =
      let n = search_ordinal_tbl o in
      match o with
      | OLess(o,In(t,a)) as o0 when unfold ->
-        fprintf ff "\\kappa_{{<}%a}" (print_ordinal false) o;
+        fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
      | OLess(o,NotIn(t,a)) as o0 when unfold ->
-        fprintf ff "\\kappa_{{<}%a}" (print_ordinal false) o;
+        fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
      | OLess(o,_) when unfold ->
-       fprintf ff "\\alpha_{%d<%a}" n (print_ordinal false) o
-     | OLess(_) -> fprintf ff "\\kappa_{%d}" n
+       fprintf ff "{\\alpha_{%d<%a}}" n (print_ordinal false) o
+     | OLess(_) -> fprintf ff "{\\kappa_{%d}}" n
      | OVari(x) -> fprintf ff "%s" (name_of x)
      | _ -> assert false
 
@@ -337,9 +337,9 @@ let print_calls ch arities calls =
     | Sct.Leq     -> fprintf ch "="
   in
   let print_args ch i =
-    let (_, a) = try List.assoc i arities with Not_found -> assert false in
-    for i = 0 to a - 1 do
-      fprintf ch "%sx_%d" (if i = 0 then "" else ",") i
+    let (_, a, pr) = try List.assoc i arities with Not_found -> assert false in
+    for j = 0 to a - 1 do
+      fprintf ch "%s%t" (if j = 0 then "" else ",") (snd pr.(j))
     done
   in
   fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
@@ -350,13 +350,14 @@ let print_calls ch arities calls =
     List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
   let print_call arities (i,j,m) =
     fprintf ch "    N%d -> N%d [label = \"(" j i;
+    let (_, _, pr) = try List.assoc i arities with Not_found -> assert false in
     Array.iteri (fun i l ->
       if i > 0 then fprintf ch ",";
       let some = ref false in
       Array.iteri (fun j c ->
         if c <> Sct.Unknown then (
           let sep = if !some then " " else "" in
-          fprintf ch "%s%aX%d" sep print_cmp c j;
+          fprintf ch "%s%a%t" sep print_cmp c (snd pr.(j));
           some := true
         )) l;
       if not !some then fprintf ch "?") m;
@@ -455,3 +456,7 @@ let rec output ch = function
       print_calls ch arities calls
 
 let ignore_latex = ref false
+
+let ordinal_to_printer (_,o) =
+  (fun ff -> Print.print_ordinal false ff o),
+  (fun ff ->       print_ordinal false ff o)

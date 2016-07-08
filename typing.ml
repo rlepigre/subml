@@ -24,7 +24,7 @@ and induction_type =
   | Rec of (term,term) binder * kind * kind
 
 let find_indexes pos index index' a b =
-  let (_, c) = Sct.arity index and (_, l) = Sct.arity index' in
+  let c = Sct.arity index and l = Sct.arity index' in
   let m = Array.init l (fun _ -> Array.make c Unknown) in
 
   List.iter (fun (j,o') ->
@@ -203,7 +203,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
              raise (Induction_hyp index)
           | _ -> assert false
         )) ctxt.induction_hyp;
-      let fnum = new_function "S" (List.length os) in
+      let fnum = new_function "S" (List.map Latex.ordinal_to_printer os) in
       (match ctxt.induction_hyp with
       | (index',_,os')::_ ->
            Timed.(delayed := (fun () ->
@@ -600,7 +600,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                        end;
                      let m = find_indexes pos fnum cur os os0 in
                      let call = (fnum, cur, m, true) in
-                   (* Array.iter (fun x -> Format.eprintf "%a\n%!" print_cmp x) cmp; *)
+                   (* Array.iter (fun x -> Io.log "%a\n%!" print_cmp x) cmp; *)
                      ctxt.calls := call :: !(ctxt.calls)) :: !delayed;
                   Typ_YH(fnum,prf)
               with Exit -> fn hyps
@@ -609,7 +609,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        in
        (try fn hyps with Not_found ->
        if n = 0 then type_error t.pos "can not relate termination depth" else
-       let fnum = new_function "Y" (List.length os) in
+       let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
        if !debug then
          begin
            Io.log "Adding induction hyp %d:\n" fnum;

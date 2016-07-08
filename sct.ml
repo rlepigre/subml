@@ -28,7 +28,8 @@ let compose c1 c2 = match c1, c2 with
 
 type calls = call list
 type pre_calls = pre_call list
-type arities = (int * (string * int)) list
+type printer = (formatter -> unit) * (formatter -> unit) (* normal / latex *)
+type arities = (int * (string * int * printer array)) list
 type calls_graph = arities * calls
 
 let debug_sct = ref false
@@ -53,21 +54,22 @@ let print_cmp ff c =
 
 let print_call tbl ff (i,j,m) =
   let print_args ff i =
-    let (_, a) = try List.assoc i tbl with Not_found -> assert false in
-    for i = 0 to a - 1 do
-      fprintf ff "%sX%d" (if i = 0 then "" else ",") i
+    let (_, a, pr) = try List.assoc i tbl with Not_found -> assert false in
+    for j = 0 to a - 1 do
+      fprintf ff "%sX%t" (if j = 0 then "" else ",") (fst pr.(j))
     done
   in
-  let (namei, _) = try List.assoc i tbl with Not_found -> assert false in
-  let (namej, _) = try List.assoc j tbl with Not_found -> assert false in
+  let (namei, _, _) = try List.assoc i tbl with Not_found -> assert false in
+  let (namej, _, _) = try List.assoc j tbl with Not_found -> assert false in
   fprintf ff "%s%d(%a) <- %s%d(" namej j print_args j namei i;
   Array.iteri (fun i l ->
     if i > 0 then fprintf ff ",";
     let some = ref false in
-    Array.iteri (fun j c ->
+    let (_, _, pr) = try List.assoc i tbl with Not_found -> assert false in
+   Array.iteri (fun j c ->
       if c <> Unknown then (
         let sep = if !some then " " else "" in
-        fprintf ff "%s%aX%d" sep print_cmp c j;
+        fprintf ff "%s%aX%t" sep print_cmp c (fst pr.(j));
         some := true
       )) l;
       if not !some then fprintf ff "?") m;
@@ -97,13 +99,16 @@ module IAMap = Map.Make(IntArray)
 
 (* function needs to be declared. calling sct will
    reset the function table *)
-let (new_function : string -> int -> int), reset_function, pr_call, arities, arity =
+let (new_function : string -> printer list -> int),
+    reset_function, pr_call, arities, arity =
   let count = ref 0 in
   let fun_table = ref [] in (* the table is only used for debugging messages *)
-  (fun name arity ->
+  (fun name args ->
+    let args = Array.of_list args in
+    let arity = Array.length args in
     let n = !count in
     incr count;
-    fun_table := (n, (name, arity))::!fun_table;
+    fun_table := (n, (name, arity, args))::!fun_table;
     n),
   (fun () ->
     let res = (!count, !fun_table) in
@@ -113,7 +118,7 @@ let (new_function : string -> int -> int), reset_function, pr_call, arities, ari
   (fun ch ->
     print_call !fun_table ch),
   (fun () -> !fun_table),
-  (fun i -> try List.assoc i !fun_table with Not_found -> assert false)
+  (fun i -> try let (_,a,_) = List.assoc i !fun_table in a with Not_found -> assert false)
 
 let subsume m1 m2 =
   try
@@ -136,7 +141,7 @@ let sct: calls -> bool = fun ls ->
      if the edge is new or not *)
   let add_edge i j m =
     (* test idempotent edges as soon as they are discovered *)
-    let (_, a) = List.assoc i arities in
+    let (_, a, _) = List.assoc i arities in
     if i = j && mat_prod a a a m m = m && not (decrease m) then begin
       if !debug_sct then Io.log "edge %a idempotent and looping\n%!" print_call (i,j,m);
       raise Exit;
@@ -172,9 +177,9 @@ let sct: calls -> bool = fun ls ->
               Io.log "\tcompose: %a * %a = %!"
                 print_call (i,j,m)
                 print_call (j,k,m');
-            let (_, a) = List.assoc k arities in
-            let (_, b) = List.assoc j arities in
-            let (_, c) = List.assoc i arities in
+            let (_, a, _) = List.assoc k arities in
+            let (_, b, _) = List.assoc j arities in
+            let (_, c, _) = List.assoc i arities in
             let m'' = mat_prod a b c m' m in
             incr composed;
             new_edges := (i,k,m'') :: !new_edges;
@@ -222,18 +227,29 @@ let inline calls =
     try
       match Hashtbl.find tbl i with
       | One (_,k,m') ->
-         let (_, a) = arity k in
-         let (_, b) = arity i in
-         let (_, c) = arity j in
+         let a = arity k in
+         let b = arity i in
+         let c = arity j in
          let call = (j,k,mat_prod a b c m' m,r) in
          fn call
       | _ -> (j,i,m)
     with Not_found -> (j,i,m)
   in
   let calls =
-    List.filter (fun (i,_,_,_) -> Hashtbl.find tbl i = More) calls
+    List.filter (fun (i,j,_,_) -> Hashtbl.find tbl i = More) calls
   in
   let calls = List.map fn calls in
+  let rec gn calls =
+    let removed_one = ref false in
+    let calls =
+      List.filter (fun (_,i,_) ->
+	let b = List.exists (fun (j,_,_) -> i = j) calls in
+	if not b then removed_one := true;
+	b
+      ) calls
+    in
+    if !removed_one then gn calls else calls
+  in
   (* Io.log "after inlining\n";
      List.iter (Io.log "%a\n%!" pr_call) calls;*)
-  calls
+  gn calls
