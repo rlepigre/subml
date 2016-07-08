@@ -435,21 +435,19 @@ type flag = MustPass | MustFail | CanFail
 
 (* New value definition. *)
 let new_val : flag -> name -> pkind option -> pterm -> unit = fun f nm k t ->
-  (* TODO handle flag. *)
-  let (tex,id) = nm in
+  let (tex_name, name) = nm in
+  let tex_name = from_opt tex_name ("\\mathrm{" ^ name ^ "}") in
   let t = unbox (unsugar_term empty_env t) in
   let k = map_opt (fun k -> unbox (unsugar_kind empty_env k)) k in
-  let (k, prf, calls_graph) = type_check t k in
-  let value = eval t in
-  let tex_name = match tex with None -> "\\mathrm{"^id^"}" | Some s -> s in
-  if !verbose then Io.out "val %s : %a\n%!" id (print_kind false) k;
-  Hashtbl.add val_env id
-    { name = id ; tex_name ; value ; orig_value = t ; ttype = k
-    ; proof = prf ; calls_graph }
+  (* TODO handle flag. *)
+  let (k, proof, calls_graph) = type_check t k in
+  if !verbose then Io.out "val %s : %a\n%!" name (print_kind false) k;
+  Hashtbl.add val_env name
+    { name ; tex_name ; value = eval t ; orig_value = t
+    ; ttype = k ; proof ; calls_graph }
 
 (* Check a subtyping relation. *)
 let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
-  (* TODO handle flag. *)
   let a = unbox (unsugar_kind empty_env a) in
   let b = unbox (unsugar_kind empty_env b) in
   begin
@@ -465,6 +463,7 @@ let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
         Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
         failwith "check"
   end;
+  if f = CanFail then Io.out "A NEW TEST PASSED.\n%!";
   reset_epsilon_tbls ()
 
 (* Evaluate a term. *)
