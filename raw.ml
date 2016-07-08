@@ -73,6 +73,21 @@ let pappl _loc t u = match t.elt with
   | PCons(t, None) -> in_pos _loc (PCons(t, Some u))
   | _ -> in_pos _loc (PAppl(t,u))
 
+let apply_rpat x t =
+  match x with
+  | Simple x ->
+     let x = from_opt x (dummy_case_var t.pos) in
+     in_pos t.pos (PLAbs([x],t))
+  | Record r ->
+     let name = "@x" in
+     let v = in_pos t.pos (PLVar name) in
+     let t =
+       List.fold_left (fun acc (l,x) ->
+         (in_pos t.pos (PAppl(in_pos t.pos (PLAbs([x],acc)),
+                              in_pos t.pos (PProj(v, l)))))) t r
+     in
+     in_pos t.pos (PLAbs([in_pos t.pos name, None],t))
+
 (****************************************************************************
  *                         Environment management                           *
  ****************************************************************************)
@@ -220,22 +235,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                      | Some u -> unsugar_term env u
                    in tcons pt.pos c u
   | PProj(t,l)  -> tproj pt.pos (unsugar_term env t) l
-  | PCase(t,cs) -> let f (c,x,t) =
-                     (match x with
-                     | Simple x ->
-                        let x = from_opt x (dummy_case_var t.pos) in
-                        (c, unsugar_term env (in_pos t.pos (PLAbs([x],t))))
-                     | Record r ->
-                        let name = "@x" in
-                        let v = in_pos t.pos (PLVar name) in
-                        let t =
-                          List.fold_left (fun acc (l,x) ->
-                            (in_pos t.pos (PAppl(in_pos t.pos (PLAbs([x],acc)),
-                                                 in_pos t.pos (PProj(v, l)))))) t r
-                        in
-                        (c, unsugar_term env (in_pos t.pos (PLAbs([in_pos t.pos name, None],t))))
-
-                     )
+  | PCase(t,cs) -> let f (c,x,t) = (c, unsugar_term env (apply_rpat x t))
                    in tcase pt.pos (unsugar_term env t) (List.map f cs)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)

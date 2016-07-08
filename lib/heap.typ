@@ -8,13 +8,13 @@ val rec split : ∀A G(A,List(A)) → List(A) × List(A) =
     case l of
     | x::l → case l of
              | []   → (x::[], [])
-             | y::l → let r = split (y::l) in (x::r.2, r.1)
+             | y::l → let (l1,l2) = split (y::l) in (x::l2, l1)
 
 val rec split2 : ∀o ∀A (μo X F(A,X)) → (μo X F(A,X)) × (μo X F(A,X)) =
   fun l →
     case l of
     | []   → ([], [])
-    | x::l → let q = split2 l in (x::q.2, q.1)
+    | x::l → let (l1,l2) = split2 l in (x::l2, l1)
 
 val rec merge : ∀A (A → A → Bool) → List(A) → List(A) → List(A) =
   fun cmp l1 l2 →
@@ -32,9 +32,9 @@ val rec sort : ∀A (A → A → Bool) → List(A) → List(A) =
     | []   → []
     | x::l → (case l of
               | []       → l
-              | y::l → let c = split2 l in
-                       let l1 = sort cmp (x::c.1) in
-                       let l2 = sort cmp (y::c.2) in
+              | y::l → let (m1, m2) = split2 l in
+                       let l1 = sort cmp (x::m1) in
+                       let l2 = sort cmp (y::m2) in
                        merge cmp l1 l2)
 
 

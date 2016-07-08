@@ -316,9 +316,12 @@ and let_var =
   | id:lident            -> (in_pos _loc_id id, None)
   | id:lident ":" k:kind -> (in_pos _loc_id id, Some k)
 
-and term_llet = let_kw r:is_rec id:let_var "=" t:term in_kw u:term ->
-  let t = if not r then t else pfixY id _loc_t t in
-  in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
+and term_llet = let_kw r:is_rec pat:rpat "=" t:term in_kw u:term ->
+  let t = if not r then t else
+      match pat with Simple (Some id) -> pfixY id _loc_t t
+      | _ -> give_up ""
+  in
+  in_pos _loc (PAppl(apply_rpat pat u, t))
 
 and term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
   in_pos _loc (PCase(c, [("Tru", Simple None, t); ("Fls", Simple None, e)]))
