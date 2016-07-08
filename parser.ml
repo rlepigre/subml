@@ -282,21 +282,21 @@ and tatm = (pterm `Atm)
 and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | lambda xs:var+ dot t:term$    when p = `Lam -> in_pos _loc (PLAbs(xs,t))
   | fun_kw xs:var+ mapto t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
-  | klam x:uident t:term          when p = `Lam -> let x = in_pos _loc_x x in
+  | klam x:uident t:term$         when p = `Lam -> let x = in_pos _loc_x x in
                                                    in_pos _loc (PKAbs(x,t))
-  | klam o:lident t:term          when p = `Lam -> let o = in_pos _loc_o o in
+  | klam o:lident t:term$         when p = `Lam -> let o = in_pos _loc_o o in
                                                    in_pos _loc (POAbs(o,t))
   | t:tapp u:tcol                 when p = `App -> in_pos _loc (PAppl(t,u))
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
   | "print(" - s:string_lit - ")" when p = `Atm -> in_pos _loc (PPrnt(s))
-  | c:uident uo:{"[" term "]"}?$  when p = `Atm -> in_pos _loc (PCons(c,uo))
+  | c:uident uo:tcol?$            when p = `Atm -> in_pos _loc (PCons(c,uo))
   | t:tatm "." l:lident           when p = `Atm -> in_pos _loc (PProj(t,l))
   | case_kw t:term of_kw ps:pats$ when p = `Lam -> in_pos _loc (PCase(t,ps))
   | "{" fs:term_reco "}"          when p = `Atm -> in_pos _loc (PReco(fs))
   | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
   | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
   | id:lident                     when p = `Atm -> in_pos _loc (PLVar(id))
-  | fix_kw x:var mapto u:term     when p = `Lam -> pfixY x _loc_u u
+  | fix_kw x:var mapto u:term$    when p = `Lam -> pfixY x _loc_u u
   | "[" term_list "]"             when p = `Atm
   | term_llet                     when p = `Lam
   | term_cond                     when p = `Atm
@@ -321,7 +321,7 @@ and term_llet = let_kw r:is_rec id:let_var "=" t:term in_kw u:term ->
   in_pos _loc (PAppl(in_pos _loc_u (PLAbs([id],u)), t))
 
 and term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
-  in_pos _loc (PCase(c, [("Tru", None, t); ("Fls", None, e)]))
+  in_pos _loc (PCase(c, [("Tru", Simple None, t); ("Fls", Simple None, e)]))
 
 and term_reco = (list_sep field ";") _:";"?
 and term_prod = l:(glist_sep'' term comma) -> build_prod l
@@ -335,9 +335,17 @@ and term_list =
 
 and pats = _:"|"? ps:(list_sep case "|")
 
+and rpat =
+  | EMPTY                              -> Simple None
+  | x:var                              -> Simple (Some x)
+  | "(" x:var ")"                      -> Simple (Some x)
+  | "{" ls:{l:lident "=" x:var}* "}"   -> Record ls
+  | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)
+
 and pattern =
-  | c:uident x:{"[" x:var "]"}? -> (c,x)
-  | "[" "]"                     -> ("Nil", None)
+  | c:uident x:rpat -> (c,x)
+  | "[" "]"         -> ("Nil", Simple None)
+  | x:var"::"y:var  -> ("Cons", Record [("hd",x) ; ("tl",y)])
 
 and case = (c,x):pattern _:arrow t:term -> (c, x, t)
 

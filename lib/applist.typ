@@ -5,11 +5,11 @@ type AList(A) = μX
 val emptyAList : ∀X AList(X) = Nil
 
 val consAList : ∀X X → AList(X) → AList(X) =
-  fun e l ↦ Cons[{hd = e; tl = l}]
+  fun e l ↦ e::l
 
 val appendAList : ∀X AList(X) → AList(X) → AList(X) =
-  fun l1 l2 ↦ App[{left = l1; right = l2}]
-
+  fun l1 l2 ↦ App{left = l1; right = l2}
+(*
 val rec hdAList : ∀X AList(X) → Option(X) = fun l ↦
   case l of
   | Nil     → None
@@ -45,3 +45,4 @@ val rec toList : ∀X AList(X) → List(X) = fun l ↦
   | Nil     → Nil
   | Cons[c] → Cons[{hd = c.hd; tl = toList c.tl}]
   | App[c]  → append (toList c.left) (toList c.right)
+*)

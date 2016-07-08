@@ -37,11 +37,14 @@ and pterm' =
   | PReco of (string * pterm) list
   | PProj of pterm * string
   | PCons of string * pterm option
-  | PCase of pterm * (string * (strpos * pkind option) option * pterm) list
+  | PCase of pterm * (string * ppat * pterm) list
   | PKAbs of strpos * pterm
   | POAbs of strpos * pterm
   | PPrnt of string
   | PFixY of strpos * pterm
+and ppat =
+  | Simple of (strpos * pkind option) option
+  | Record of (string * (strpos * pkind option)) list
 
 let list_nil _loc =
   in_pos _loc (PCons("Nil" , None))
@@ -214,8 +217,21 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    in tcons pt.pos c u
   | PProj(t,l)  -> tproj pt.pos (unsugar_term env t) l
   | PCase(t,cs) -> let f (c,x,t) =
-                     let x = from_opt x (dummy_case_var t.pos) in
-                     (c, unsugar_term env (in_pos t.pos (PLAbs([x],t))))
+                     (match x with
+                     | Simple x ->
+                        let x = from_opt x (dummy_case_var t.pos) in
+                        (c, unsugar_term env (in_pos t.pos (PLAbs([x],t))))
+                     | Record r ->
+                        let name = "@x" in
+			let v = in_pos t.pos (PLVar name) in
+                        let t =
+                          List.fold_left (fun acc (l,x) ->
+                            (in_pos t.pos (PAppl(in_pos t.pos (PLAbs([x],acc)),
+                                                 in_pos t.pos (PProj(v, l)))))) t r
+                        in
+                        (c, unsugar_term env (in_pos t.pos (PLAbs([in_pos t.pos name, None],t))))
+
+                     )
                    in tcase pt.pos (unsugar_term env t) (List.map f cs)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
