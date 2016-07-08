@@ -101,23 +101,24 @@ let rec leq_ordinal pos c o1 o2 =
   match (orepr o1, orepr o2) with
   | (o1         , o2         ) when eq_ordinal c o1 o2 -> true
   | (_          , OConv      ) -> true
-  | (OUVar(p)   , o2      ) ->
-     set_ouvar p o2; true
-  | (o1         , OUVar(p)   ) ->
-     set_ouvar p o1; true
+  | (OUVar(p)   , o2         ) -> set_ouvar p o2; true
+  | (o1         , OUVar(p)   ) -> set_ouvar p o1; true
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
   (* case loosing information, the first one loose less *)
-  | (OLess(o1,_), OSucc o2   ) when List.exists (eq_ordinal c o1) pos -> leq_ordinal pos c o1 o2
-  | (OLess(o1,_), o2         ) when List.exists (eq_ordinal c o1) pos -> leq_ordinal pos c o1 o2
+  | (OLess(o1,_), OSucc o2   ) when List.exists (eq_ordinal c o1) pos
+                               -> leq_ordinal pos c o1 o2
+  | (OLess(o1,_), o2         ) when List.exists (eq_ordinal c o1) pos
+                               -> leq_ordinal pos c o1 o2
   | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (_          , _          ) -> false
 
 and less_ordinal pos c o1 o2 =
   let o1 = orepr o1 and o2 = orepr o2 in
   match o1, o2 with
-  | OSucc(o1)      , OSucc(o2) -> less_ordinal pos c o1 o2
-  | o1             , OSucc(o2) -> leq_ordinal pos c o1 o2
-  | OLess(o,_)     , _ when List.exists (eq_ordinal c o) pos -> leq_ordinal pos c o o2
+  | (OSucc(o1) , OSucc(o2)) -> less_ordinal pos c o1 o2
+  | (o1        , OSucc(o2)) -> leq_ordinal pos c o1 o2
+  | (OLess(o,_), _        ) when List.exists (eq_ordinal c o) pos
+                            -> leq_ordinal pos c o o2
   | _                          -> false
 
 let eq_kind : kind -> kind -> bool =

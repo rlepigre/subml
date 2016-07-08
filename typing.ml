@@ -677,9 +677,9 @@ let type_infer : term -> kind * typ_prf * calls_graph = fun t ->
   let (prf, calls) = type_check t k in
   let fn v =
     match !(v.uvar_state) with
-    | Free -> true
-    | Sum l -> set_kuvar v (KDSum l); false
-    | Prod l -> set_kuvar v (KProd l); false) ul
+    | Free   -> true
+    | Sum  l -> set_kuvar false v (KDSum l); false
+    | Prod l -> set_kuvar true  v (KProd l); false
   in
   let ul = List.filter fn (uvar_list k) in
   let k = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) k ul in
