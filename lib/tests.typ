@@ -1,19 +1,19 @@
 
 check ∀X X ⊂ ∃X X
-check not ∃X X ⊂ ∀X X
+!check ∃X X ⊂ ∀X X
 
 type I = ∀X (X → X)
 type I' = ∃X (X → X)
 
 check I ⊂ I'
-check not I' ⊂ I
+!check I' ⊂ I
 
 type N = ∀X ((X → X) → (X → X))
 
 check N ⊂ I → I
 check N ⊂ I' → I'
 check N ⊂ I → I'
-check not N ⊂ I' → I
+!check N ⊂ I' → I
 
 type F(K) = ∀X (X → (K → X) → X)
 type G(X,K) = (X → (K → X) → X)
@@ -21,7 +21,7 @@ type S = μK F(K)
 type G = νK F(K)
 
 check S ⊂ G
-check not G ⊂ S
+!check G ⊂ S
 
 check S ⊂ F(S)
 check S ⊂ F(F(S))
@@ -59,10 +59,10 @@ check P2(A,B) ⊂ P3(A,B)
 check P2(A,B) ⊂ P4(A,B)
 check P4(A,B) ⊂ P3(A,B)
 check P3(A,B) ⊂ P4(A,B)
-check not P4(A,B) ⊂ P2(A,B)
-check not P4(A,B) ⊂ P1(A,B)
-check not P3(A,B) ⊂ P2(A,B)
-check not P3(A,B) ⊂ P1(A,B)
+!check P4(A,B) ⊂ P2(A,B)
+!check P4(A,B) ⊂ P1(A,B)
+!check P3(A,B) ⊂ P2(A,B)
+!check P3(A,B) ⊂ P1(A,B)
 
 type F(X,Y) = [ A of X | B of Y | Nil ]
 type T1 = μX F(X,X)
@@ -116,14 +116,14 @@ check T6 ⊂ T8
 check T6 ⊂ T9
 check T7 ⊂ T9
 check T8 ⊂ T9
-check not T7 ⊂ T8
-check not T8 ⊂ T7
-check not T9 ⊂ T7
-check not T9 ⊂ T8
-check not T8 ⊂ T7
-check not T7 ⊂ T6
-check not T8 ⊂ T6
-check not T9 ⊂ T6
+!check T7 ⊂ T8
+!check T8 ⊂ T7
+!check T9 ⊂ T7
+!check T9 ⊂ T8
+!check T8 ⊂ T7
+!check T7 ⊂ T6
+!check T8 ⊂ T6
+!check T9 ⊂ T6
 
 type T10 = μX F(X,μY F(Y,μZ F(X,Z)))
 
@@ -143,4 +143,4 @@ check T10 ⊂ T6
 type T11 = μX F(X,νY F(Y,μZ F(X,Z)))
 
 check T10 ⊂ T11
-check not T11 ⊂ T10
+!check T11 ⊂ T10

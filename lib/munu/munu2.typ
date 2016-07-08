@@ -20,27 +20,27 @@ check Tab ⊂ Tba
 check Tab ⊂ TbA
 check Tab ⊂ TBa
 check Tab ⊂ TBA
-check not TaB ⊂ Tab
+!check TaB ⊂ Tab
 check TaB ⊂ TaB
-check not TaB ⊂ TAb
+!check TaB ⊂ TAb
 check TaB ⊂ TAB
-check not TaB ⊂ Tba
-check not TaB ⊂ TbA
+!check TaB ⊂ Tba
+!check TaB ⊂ TbA
 check TaB ⊂ TBa
 check TaB ⊂ TBA
-check not TAb ⊂ Tab
-check not TAb ⊂ TaB
+!check TAb ⊂ Tab
+!check TAb ⊂ TaB
 check TAb ⊂ TAb
 check TAb ⊂ TAB
-check not TAb ⊂ Tba
-check not TAb ⊂ TbA
-check not TAb ⊂ TBa
+!check TAb ⊂ Tba
+!check TAb ⊂ TbA
+!check TAb ⊂ TBa
 check TAb ⊂ TBA
-check not TAB ⊂ Tab
-check not TAB ⊂ TaB
-check not TAB ⊂ TAb
+!check TAB ⊂ Tab
+!check TAB ⊂ TaB
+!check TAB ⊂ TAb
 check TAB ⊂ TAB
-check not TAB ⊂ Tba
-check not TAB ⊂ TbA
-check not TAB ⊂ TBa
+!check TAB ⊂ Tba
+!check TAB ⊂ TbA
+!check TAB ⊂ TBa
 check TAB ⊂ TBA

@@ -17,8 +17,6 @@ include "advanced_lib/polyrec.typ"
 
 (* subtyping stress *)
 include "advanced_lib/tests.typ"
-include "advanced_lib/munu2.typ"
-include "advanced_lib/munu3.typ"
 
 (* only for the advanced proto *)
 include "advanced_lib/size.typ"

@@ -100,339 +100,339 @@ check Tabc ⊂ TCba
 check Tabc ⊂ TCbA
 check Tabc ⊂ TCBa
 check Tabc ⊂ TCBA
-check not TabC ⊂ Tabc
+!check TabC ⊂ Tabc
 check TabC ⊂ TabC
-check not TabC ⊂ TaBc
+!check TabC ⊂ TaBc
 check TabC ⊂ TaBC
-check not TabC ⊂ TAbc
+!check TabC ⊂ TAbc
 check TabC ⊂ TAbC
-check not TabC ⊂ TABc
+!check TabC ⊂ TABc
 check TabC ⊂ TABC
-check not TabC ⊂ Tacb
-check not TabC ⊂ TacB
+!check TabC ⊂ Tacb
+!check TabC ⊂ TacB
 check TabC ⊂ TaCb
 check TabC ⊂ TaCB
-check not TabC ⊂ TAcb
-check not TabC ⊂ TAcB
+!check TabC ⊂ TAcb
+!check TabC ⊂ TAcB
 check TabC ⊂ TACb
 check TabC ⊂ TACB
-check not TabC ⊂ Tbac
+!check TabC ⊂ Tbac
 check TabC ⊂ TbaC
-check not TabC ⊂ TbAc
+!check TabC ⊂ TbAc
 check TabC ⊂ TbAC
-check not TabC ⊂ TBac
+!check TabC ⊂ TBac
 check TabC ⊂ TBaC
-check not TabC ⊂ TBAc
+!check TabC ⊂ TBAc
 check TabC ⊂ TBAC
-check not TabC ⊂ Tbca
-check not TabC ⊂ TbcA
+!check TabC ⊂ Tbca
+!check TabC ⊂ TbcA
 check TabC ⊂ TbCa
 check TabC ⊂ TbCA
-check not TabC ⊂ TBca
-check not TabC ⊂ TBcA
+!check TabC ⊂ TBca
+!check TabC ⊂ TBcA
 check TabC ⊂ TBCa
 check TabC ⊂ TBCA
-check not TabC ⊂ Tcab
-check not TabC ⊂ TcaB
-check not TabC ⊂ TcAb
-check not TabC ⊂ TcAB
+!check TabC ⊂ Tcab
+!check TabC ⊂ TcaB
+!check TabC ⊂ TcAb
+!check TabC ⊂ TcAB
 check TabC ⊂ TCab
 check TabC ⊂ TCaB
 check TabC ⊂ TCAb
 check TabC ⊂ TCAB
-check not TabC ⊂ Tcba
-check not TabC ⊂ TcbA
-check not TabC ⊂ TcBa
-check not TabC ⊂ TcBA
+!check TabC ⊂ Tcba
+!check TabC ⊂ TcbA
+!check TabC ⊂ TcBa
+!check TabC ⊂ TcBA
 check TabC ⊂ TCba
 check TabC ⊂ TCbA
 check TabC ⊂ TCBa
 check TabC ⊂ TCBA
-check not TaBc ⊂ Tabc
-check not TaBc ⊂ TabC
+!check TaBc ⊂ Tabc
+!check TaBc ⊂ TabC
 check TaBc ⊂ TaBc
 check TaBc ⊂ TaBC
-check not TaBc ⊂ TAbc
-check not TaBc ⊂ TAbC
+!check TaBc ⊂ TAbc
+!check TaBc ⊂ TAbC
 check TaBc ⊂ TABc
 check TaBc ⊂ TABC
-check not TaBc ⊂ Tacb
-check not TaBc ⊂ TacB
-check not TaBc ⊂ TaCb
+!check TaBc ⊂ Tacb
+!check TaBc ⊂ TacB
+!check TaBc ⊂ TaCb
 check TaBc ⊂ TaCB
-check not TaBc ⊂ TAcb
-check not TaBc ⊂ TAcB
-check not TaBc ⊂ TACb
+!check TaBc ⊂ TAcb
+!check TaBc ⊂ TAcB
+!check TaBc ⊂ TACb
 check TaBc ⊂ TACB
-check not TaBc ⊂ Tbac
-check not TaBc ⊂ TbaC
-check not TaBc ⊂ TbAc
-check not TaBc ⊂ TbAC
+!check TaBc ⊂ Tbac
+!check TaBc ⊂ TbaC
+!check TaBc ⊂ TbAc
+!check TaBc ⊂ TbAC
 check TaBc ⊂ TBac
 check TaBc ⊂ TBaC
 check TaBc ⊂ TBAc
 check TaBc ⊂ TBAC
-check not TaBc ⊂ Tbca
-check not TaBc ⊂ TbcA
-check not TaBc ⊂ TbCa
-check not TaBc ⊂ TbCA
+!check TaBc ⊂ Tbca
+!check TaBc ⊂ TbcA
+!check TaBc ⊂ TbCa
+!check TaBc ⊂ TbCA
 check TaBc ⊂ TBca
 check TaBc ⊂ TBcA
 check TaBc ⊂ TBCa
 check TaBc ⊂ TBCA
-check not TaBc ⊂ Tcab
-check not TaBc ⊂ TcaB
-check not TaBc ⊂ TcAb
-check not TaBc ⊂ TcAB
-check not TaBc ⊂ TCab
+!check TaBc ⊂ Tcab
+!check TaBc ⊂ TcaB
+!check TaBc ⊂ TcAb
+!check TaBc ⊂ TcAB
+!check TaBc ⊂ TCab
 check TaBc ⊂ TCaB
-check not TaBc ⊂ TCAb
+!check TaBc ⊂ TCAb
 check TaBc ⊂ TCAB
-check not TaBc ⊂ Tcba
-check not TaBc ⊂ TcbA
-check not TaBc ⊂ TcBa
-check not TaBc ⊂ TcBA
-check not TaBc ⊂ TCba
-check not TaBc ⊂ TCbA
+!check TaBc ⊂ Tcba
+!check TaBc ⊂ TcbA
+!check TaBc ⊂ TcBa
+!check TaBc ⊂ TcBA
+!check TaBc ⊂ TCba
+!check TaBc ⊂ TCbA
 check TaBc ⊂ TCBa
 check TaBc ⊂ TCBA
-check not TaBC ⊂ Tabc
-check not TaBC ⊂ TabC
-check not TaBC ⊂ TaBc
+!check TaBC ⊂ Tabc
+!check TaBC ⊂ TabC
+!check TaBC ⊂ TaBc
 check TaBC ⊂ TaBC
-check not TaBC ⊂ TAbc
-check not TaBC ⊂ TAbC
-check not TaBC ⊂ TABc
+!check TaBC ⊂ TAbc
+!check TaBC ⊂ TAbC
+!check TaBC ⊂ TABc
 check TaBC ⊂ TABC
-check not TaBC ⊂ Tacb
-check not TaBC ⊂ TacB
-check not TaBC ⊂ TaCb
+!check TaBC ⊂ Tacb
+!check TaBC ⊂ TacB
+!check TaBC ⊂ TaCb
 check TaBC ⊂ TaCB
-check not TaBC ⊂ TAcb
-check not TaBC ⊂ TAcB
-check not TaBC ⊂ TACb
+!check TaBC ⊂ TAcb
+!check TaBC ⊂ TAcB
+!check TaBC ⊂ TACb
 check TaBC ⊂ TACB
-check not TaBC ⊂ Tbac
-check not TaBC ⊂ TbaC
-check not TaBC ⊂ TbAc
-check not TaBC ⊂ TbAC
-check not TaBC ⊂ TBac
+!check TaBC ⊂ Tbac
+!check TaBC ⊂ TbaC
+!check TaBC ⊂ TbAc
+!check TaBC ⊂ TbAC
+!check TaBC ⊂ TBac
 check TaBC ⊂ TBaC
-check not TaBC ⊂ TBAc
+!check TaBC ⊂ TBAc
 check TaBC ⊂ TBAC
-check not TaBC ⊂ Tbca
-check not TaBC ⊂ TbcA
-check not TaBC ⊂ TbCa
-check not TaBC ⊂ TbCA
-check not TaBC ⊂ TBca
-check not TaBC ⊂ TBcA
+!check TaBC ⊂ Tbca
+!check TaBC ⊂ TbcA
+!check TaBC ⊂ TbCa
+!check TaBC ⊂ TbCA
+!check TaBC ⊂ TBca
+!check TaBC ⊂ TBcA
 check TaBC ⊂ TBCa
 check TaBC ⊂ TBCA
-check not TaBC ⊂ Tcab
-check not TaBC ⊂ TcaB
-check not TaBC ⊂ TcAb
-check not TaBC ⊂ TcAB
-check not TaBC ⊂ TCab
+!check TaBC ⊂ Tcab
+!check TaBC ⊂ TcaB
+!check TaBC ⊂ TcAb
+!check TaBC ⊂ TcAB
+!check TaBC ⊂ TCab
 check TaBC ⊂ TCaB
-check not TaBC ⊂ TCAb
+!check TaBC ⊂ TCAb
 check TaBC ⊂ TCAB
-check not TaBC ⊂ Tcba
-check not TaBC ⊂ TcbA
-check not TaBC ⊂ TcBa
-check not TaBC ⊂ TcBA
-check not TaBC ⊂ TCba
-check not TaBC ⊂ TCbA
+!check TaBC ⊂ Tcba
+!check TaBC ⊂ TcbA
+!check TaBC ⊂ TcBa
+!check TaBC ⊂ TcBA
+!check TaBC ⊂ TCba
+!check TaBC ⊂ TCbA
 check TaBC ⊂ TCBa
 check TaBC ⊂ TCBA
-check not TAbc ⊂ Tabc
-check not TAbc ⊂ TabC
-check not TAbc ⊂ TaBc
-check not TAbc ⊂ TaBC
+!check TAbc ⊂ Tabc
+!check TAbc ⊂ TabC
+!check TAbc ⊂ TaBc
+!check TAbc ⊂ TaBC
 check TAbc ⊂ TAbc
 check TAbc ⊂ TAbC
 check TAbc ⊂ TABc
 check TAbc ⊂ TABC
-check not TAbc ⊂ Tacb
-check not TAbc ⊂ TacB
-check not TAbc ⊂ TaCb
-check not TAbc ⊂ TaCB
+!check TAbc ⊂ Tacb
+!check TAbc ⊂ TacB
+!check TAbc ⊂ TaCb
+!check TAbc ⊂ TaCB
 check TAbc ⊂ TAcb
 check TAbc ⊂ TAcB
 check TAbc ⊂ TACb
 check TAbc ⊂ TACB
-check not TAbc ⊂ Tbac
-check not TAbc ⊂ TbaC
-check not TAbc ⊂ TbAc
-check not TAbc ⊂ TbAC
-check not TAbc ⊂ TBac
-check not TAbc ⊂ TBaC
+!check TAbc ⊂ Tbac
+!check TAbc ⊂ TbaC
+!check TAbc ⊂ TbAc
+!check TAbc ⊂ TbAC
+!check TAbc ⊂ TBac
+!check TAbc ⊂ TBaC
 check TAbc ⊂ TBAc
 check TAbc ⊂ TBAC
-check not TAbc ⊂ Tbca
-check not TAbc ⊂ TbcA
-check not TAbc ⊂ TbCa
-check not TAbc ⊂ TbCA
-check not TAbc ⊂ TBca
-check not TAbc ⊂ TBcA
-check not TAbc ⊂ TBCa
+!check TAbc ⊂ Tbca
+!check TAbc ⊂ TbcA
+!check TAbc ⊂ TbCa
+!check TAbc ⊂ TbCA
+!check TAbc ⊂ TBca
+!check TAbc ⊂ TBcA
+!check TAbc ⊂ TBCa
 check TAbc ⊂ TBCA
-check not TAbc ⊂ Tcab
-check not TAbc ⊂ TcaB
-check not TAbc ⊂ TcAb
-check not TAbc ⊂ TcAB
-check not TAbc ⊂ TCab
-check not TAbc ⊂ TCaB
+!check TAbc ⊂ Tcab
+!check TAbc ⊂ TcaB
+!check TAbc ⊂ TcAb
+!check TAbc ⊂ TcAB
+!check TAbc ⊂ TCab
+!check TAbc ⊂ TCaB
 check TAbc ⊂ TCAb
 check TAbc ⊂ TCAB
-check not TAbc ⊂ Tcba
-check not TAbc ⊂ TcbA
-check not TAbc ⊂ TcBa
-check not TAbc ⊂ TcBA
-check not TAbc ⊂ TCba
-check not TAbc ⊂ TCbA
-check not TAbc ⊂ TCBa
+!check TAbc ⊂ Tcba
+!check TAbc ⊂ TcbA
+!check TAbc ⊂ TcBa
+!check TAbc ⊂ TcBA
+!check TAbc ⊂ TCba
+!check TAbc ⊂ TCbA
+!check TAbc ⊂ TCBa
 check TAbc ⊂ TCBA
-check not TAbC ⊂ Tabc
-check not TAbC ⊂ TabC
-check not TAbC ⊂ TaBc
-check not TAbC ⊂ TaBC
-check not TAbC ⊂ TAbc
+!check TAbC ⊂ Tabc
+!check TAbC ⊂ TabC
+!check TAbC ⊂ TaBc
+!check TAbC ⊂ TaBC
+!check TAbC ⊂ TAbc
 check TAbC ⊂ TAbC
-check not TAbC ⊂ TABc
+!check TAbC ⊂ TABc
 check TAbC ⊂ TABC
-check not TAbC ⊂ Tacb
-check not TAbC ⊂ TacB
-check not TAbC ⊂ TaCb
-check not TAbC ⊂ TaCB
-check not TAbC ⊂ TAcb
-check not TAbC ⊂ TAcB
+!check TAbC ⊂ Tacb
+!check TAbC ⊂ TacB
+!check TAbC ⊂ TaCb
+!check TAbC ⊂ TaCB
+!check TAbC ⊂ TAcb
+!check TAbC ⊂ TAcB
 check TAbC ⊂ TACb
 check TAbC ⊂ TACB
-check not TAbC ⊂ Tbac
-check not TAbC ⊂ TbaC
-check not TAbC ⊂ TbAc
-check not TAbC ⊂ TbAC
-check not TAbC ⊂ TBac
-check not TAbC ⊂ TBaC
-check not TAbC ⊂ TBAc
+!check TAbC ⊂ Tbac
+!check TAbC ⊂ TbaC
+!check TAbC ⊂ TbAc
+!check TAbC ⊂ TbAC
+!check TAbC ⊂ TBac
+!check TAbC ⊂ TBaC
+!check TAbC ⊂ TBAc
 check TAbC ⊂ TBAC
-check not TAbC ⊂ Tbca
-check not TAbC ⊂ TbcA
-check not TAbC ⊂ TbCa
-check not TAbC ⊂ TbCA
-check not TAbC ⊂ TBca
-check not TAbC ⊂ TBcA
-check not TAbC ⊂ TBCa
+!check TAbC ⊂ Tbca
+!check TAbC ⊂ TbcA
+!check TAbC ⊂ TbCa
+!check TAbC ⊂ TbCA
+!check TAbC ⊂ TBca
+!check TAbC ⊂ TBcA
+!check TAbC ⊂ TBCa
 check TAbC ⊂ TBCA
-check not TAbC ⊂ Tcab
-check not TAbC ⊂ TcaB
-check not TAbC ⊂ TcAb
-check not TAbC ⊂ TcAB
-check not TAbC ⊂ TCab
-check not TAbC ⊂ TCaB
+!check TAbC ⊂ Tcab
+!check TAbC ⊂ TcaB
+!check TAbC ⊂ TcAb
+!check TAbC ⊂ TcAB
+!check TAbC ⊂ TCab
+!check TAbC ⊂ TCaB
 check TAbC ⊂ TCAb
 check TAbC ⊂ TCAB
-check not TAbC ⊂ Tcba
-check not TAbC ⊂ TcbA
-check not TAbC ⊂ TcBa
-check not TAbC ⊂ TcBA
-check not TAbC ⊂ TCba
-check not TAbC ⊂ TCbA
-check not TAbC ⊂ TCBa
+!check TAbC ⊂ Tcba
+!check TAbC ⊂ TcbA
+!check TAbC ⊂ TcBa
+!check TAbC ⊂ TcBA
+!check TAbC ⊂ TCba
+!check TAbC ⊂ TCbA
+!check TAbC ⊂ TCBa
 check TAbC ⊂ TCBA
-check not TABc ⊂ Tabc
-check not TABc ⊂ TabC
-check not TABc ⊂ TaBc
-check not TABc ⊂ TaBC
-check not TABc ⊂ TAbc
-check not TABc ⊂ TAbC
+!check TABc ⊂ Tabc
+!check TABc ⊂ TabC
+!check TABc ⊂ TaBc
+!check TABc ⊂ TaBC
+!check TABc ⊂ TAbc
+!check TABc ⊂ TAbC
 check TABc ⊂ TABc
 check TABc ⊂ TABC
-check not TABc ⊂ Tacb
-check not TABc ⊂ TacB
-check not TABc ⊂ TaCb
-check not TABc ⊂ TaCB
-check not TABc ⊂ TAcb
-check not TABc ⊂ TAcB
-check not TABc ⊂ TACb
+!check TABc ⊂ Tacb
+!check TABc ⊂ TacB
+!check TABc ⊂ TaCb
+!check TABc ⊂ TaCB
+!check TABc ⊂ TAcb
+!check TABc ⊂ TAcB
+!check TABc ⊂ TACb
 check TABc ⊂ TACB
-check not TABc ⊂ Tbac
-check not TABc ⊂ TbaC
-check not TABc ⊂ TbAc
-check not TABc ⊂ TbAC
-check not TABc ⊂ TBac
-check not TABc ⊂ TBaC
+!check TABc ⊂ Tbac
+!check TABc ⊂ TbaC
+!check TABc ⊂ TbAc
+!check TABc ⊂ TbAC
+!check TABc ⊂ TBac
+!check TABc ⊂ TBaC
 check TABc ⊂ TBAc
 check TABc ⊂ TBAC
-check not TABc ⊂ Tbca
-check not TABc ⊂ TbcA
-check not TABc ⊂ TbCa
-check not TABc ⊂ TbCA
-check not TABc ⊂ TBca
-check not TABc ⊂ TBcA
-check not TABc ⊂ TBCa
+!check TABc ⊂ Tbca
+!check TABc ⊂ TbcA
+!check TABc ⊂ TbCa
+!check TABc ⊂ TbCA
+!check TABc ⊂ TBca
+!check TABc ⊂ TBcA
+!check TABc ⊂ TBCa
 check TABc ⊂ TBCA
-check not TABc ⊂ Tcab
-check not TABc ⊂ TcaB
-check not TABc ⊂ TcAb
-check not TABc ⊂ TcAB
-check not TABc ⊂ TCab
-check not TABc ⊂ TCaB
-check not TABc ⊂ TCAb
+!check TABc ⊂ Tcab
+!check TABc ⊂ TcaB
+!check TABc ⊂ TcAb
+!check TABc ⊂ TcAB
+!check TABc ⊂ TCab
+!check TABc ⊂ TCaB
+!check TABc ⊂ TCAb
 check TABc ⊂ TCAB
-check not TABc ⊂ Tcba
-check not TABc ⊂ TcbA
-check not TABc ⊂ TcBa
-check not TABc ⊂ TcBA
-check not TABc ⊂ TCba
-check not TABc ⊂ TCbA
-check not TABc ⊂ TCBa
+!check TABc ⊂ Tcba
+!check TABc ⊂ TcbA
+!check TABc ⊂ TcBa
+!check TABc ⊂ TcBA
+!check TABc ⊂ TCba
+!check TABc ⊂ TCbA
+!check TABc ⊂ TCBa
 check TABc ⊂ TCBA
-check not TABC ⊂ Tabc
-check not TABC ⊂ TabC
-check not TABC ⊂ TaBc
-check not TABC ⊂ TaBC
-check not TABC ⊂ TAbc
-check not TABC ⊂ TAbC
-check not TABC ⊂ TABc
+!check TABC ⊂ Tabc
+!check TABC ⊂ TabC
+!check TABC ⊂ TaBc
+!check TABC ⊂ TaBC
+!check TABC ⊂ TAbc
+!check TABC ⊂ TAbC
+!check TABC ⊂ TABc
 check TABC ⊂ TABC
-check not TABC ⊂ Tacb
-check not TABC ⊂ TacB
-check not TABC ⊂ TaCb
-check not TABC ⊂ TaCB
-check not TABC ⊂ TAcb
-check not TABC ⊂ TAcB
-check not TABC ⊂ TACb
+!check TABC ⊂ Tacb
+!check TABC ⊂ TacB
+!check TABC ⊂ TaCb
+!check TABC ⊂ TaCB
+!check TABC ⊂ TAcb
+!check TABC ⊂ TAcB
+!check TABC ⊂ TACb
 check TABC ⊂ TACB
-check not TABC ⊂ Tbac
-check not TABC ⊂ TbaC
-check not TABC ⊂ TbAc
-check not TABC ⊂ TbAC
-check not TABC ⊂ TBac
-check not TABC ⊂ TBaC
-check not TABC ⊂ TBAc
+!check TABC ⊂ Tbac
+!check TABC ⊂ TbaC
+!check TABC ⊂ TbAc
+!check TABC ⊂ TbAC
+!check TABC ⊂ TBac
+!check TABC ⊂ TBaC
+!check TABC ⊂ TBAc
 check TABC ⊂ TBAC
-check not TABC ⊂ Tbca
-check not TABC ⊂ TbcA
-check not TABC ⊂ TbCa
-check not TABC ⊂ TbCA
-check not TABC ⊂ TBca
-check not TABC ⊂ TBcA
-check not TABC ⊂ TBCa
+!check TABC ⊂ Tbca
+!check TABC ⊂ TbcA
+!check TABC ⊂ TbCa
+!check TABC ⊂ TbCA
+!check TABC ⊂ TBca
+!check TABC ⊂ TBcA
+!check TABC ⊂ TBCa
 check TABC ⊂ TBCA
-check not TABC ⊂ Tcab
-check not TABC ⊂ TcaB
-check not TABC ⊂ TcAb
-check not TABC ⊂ TcAB
-check not TABC ⊂ TCab
-check not TABC ⊂ TCaB
-check not TABC ⊂ TCAb
+!check TABC ⊂ Tcab
+!check TABC ⊂ TcaB
+!check TABC ⊂ TcAb
+!check TABC ⊂ TcAB
+!check TABC ⊂ TCab
+!check TABC ⊂ TCaB
+!check TABC ⊂ TCAb
 check TABC ⊂ TCAB
-check not TABC ⊂ Tcba
-check not TABC ⊂ TcbA
-check not TABC ⊂ TcBa
-check not TABC ⊂ TcBA
-check not TABC ⊂ TCba
-check not TABC ⊂ TCbA
-check not TABC ⊂ TCBa
+!check TABC ⊂ Tcba
+!check TABC ⊂ TcbA
+!check TABC ⊂ TcBa
+!check TABC ⊂ TcBA
+!check TABC ⊂ TCba
+!check TABC ⊂ TCbA
+!check TABC ⊂ TCBa
 check TABC ⊂ TCBA

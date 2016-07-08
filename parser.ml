@@ -432,8 +432,12 @@ let new_type : name -> string list -> pkind -> unit = fun name args k ->
   if !verbose then io.stdout "%a\n%!" (print_kind_def false) td;
   Hashtbl.add typ_env name td
 
+type flag = MustPass | MustFail | CanFail
+
 (* New value definition. *)
-let new_val : name -> pkind option -> pterm -> unit = fun (tex,id) k t ->
+let new_val : flag -> name -> pkind option -> pterm -> unit = fun f nm k t ->
+  (* TODO handle flag. *)
+  let (tex,id) = nm in
   let t = unbox (unsugar_term empty_env t) in
   let k = map_opt (fun k -> unbox (unsugar_kind empty_env k)) k in
   let (k, prf, calls_graph) = type_check t k in
@@ -445,17 +449,19 @@ let new_val : name -> pkind option -> pterm -> unit = fun (tex,id) k t ->
     ; proof = prf ; calls_graph }
 
 (* Check a subtyping relation. *)
-let check_sub : bool -> pkind -> pkind -> unit = fun must_fail a b ->
+let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
+  (* TODO handle flag. *)
   let a = unbox (unsugar_kind empty_env a) in
   let b = unbox (unsugar_kind empty_env b) in
   begin
     try ignore (generic_subtype a b) with
     | Subtype_error s ->
-        if not must_fail then
-          begin
-            io.stdout "CHECK FAILED: %s\n%!" s;
-            failwith "check"
-          end
+        begin
+          match f with
+          | MustPass -> io.stdout "CHECK FAILED: %s\n%!" s; failwith "check"
+          | MustFail -> ()
+          | CanFail  -> ()
+        end
     | e               ->
         io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
         failwith "check"
@@ -487,18 +493,22 @@ let output_tex : Latex.latex_output -> unit = fun t ->
  *                            Parsing of commands                           *
  ****************************************************************************)
 
+let parser flag =
+  | EMPTY -> MustPass
+  | '!'   -> MustFail
+  | '?'   -> CanFail
+
 let parser command top =
   | type_kw (tn,n,args,k):kind_def$               -> new_type (tn,n) args k
   | eval_kw t:term$                               -> eval_term t
-  | val_kw (n,k,t):val_def$                       -> new_val n k t
-  | check_kw n:is_not$ a:kind$ _:subset b:kind$   -> check_sub n a b
+  | f:flag$ val_kw (n,k,t):val_def$               -> new_val f n k t
+  | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
   | latex_kw t:tex_text$             when not top -> output_tex t
   | _:set_kw "verbose" b:enables                  -> verbose := b
   | _:set_kw "texfile" fn:string_lit when not top -> Latex.open_latex fn
   | _:clear_kw                       when top     -> System.clear ()
   | {quit_kw | exit_kw}              when top     -> raise End_of_file
-
 
 and kind_def =
   | tn:tex_name? uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
