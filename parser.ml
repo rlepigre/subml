@@ -412,7 +412,6 @@ let parser enabled =
 let parser opt_flag =
   | "verbose" b:enabled -> (fun () -> verbose := b)
   | "texfile" fn:string_lit -> (fun () -> open_latex fn)
-  | "print_term_in_subtyping" b:enabled -> (fun () -> Print.print_term_in_subtyping := b)
 
 type command =
   | NewType of string option * string * string list * pkind

@@ -74,9 +74,6 @@ let search_ordinal_tbl o =
       ordinal_tbl := (o,n)::!ordinal_tbl;
       n
 
-let print_term_in_subtyping = ref false
-
-
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
