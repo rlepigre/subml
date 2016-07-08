@@ -37,15 +37,15 @@ let find_indexes pos index index' a b =
 let rec find_positive ctxt o =
   let o = orepr o in
   (*  Io.log "find positive %a\n%!" (print_ordinal false) o;*)
-  if List.exists (eq_ordinal o) ctxt.positive_ordinals then
-    try List.hd (*omax*) (assoc_ordinal o !all_epsilons) with Not_found -> raise Not_found
-  else match o with
+  match o with
   | OConv -> OConv
   | OSucc o' -> o'
   | OUVar(p) ->
      let o' = OUVar(ref None) in
      set_ouvar p (OSucc o'); o'
-  | o -> raise Not_found
+  | _ ->
+    if List.exists (eq_ordinal o) ctxt.positive_ordinals then
+    List.hd (*omax*) (assoc_ordinal o !all_epsilons) else raise Not_found
 
 (* FIXME: the function below are certainly missing cases *)
 let rec with_clause a (s,b) = match full_repr a with

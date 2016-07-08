@@ -7,6 +7,7 @@ val rec idt : ∀o ((μo X F(X)) → (μo X F(X))) = fun n →
   | S(n) → S(idt n)
 
 val rec idt3 : ∀o (F(μo X F(X)) → F(μo X F(X))) = idt
+val rec idt4 : ∀o (μo+1 X F(X)) → μo+1 X F(X) = idt
 (*
 !val rec idt2 : ∀o (F(μo X F(X)) → F(μo X F(X)))
         = fun n → case n of
@@ -17,7 +18,7 @@ val pred : ∀o [ S of μo X F(X) ] → μo X F(X) = fun n →
   case n of
   | S n → n
 
-val pred' : ∀o F(F(μo X F(X))) → F(μo X F(X)) = fun n →
+val pred' : ∀o (μo+2 X F(X)) → μo+1 X F(X) = fun n →
   case n of
   | Z   → Z
   | S n → n
