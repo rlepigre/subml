@@ -286,10 +286,10 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
                                                    in_pos _loc (PKAbs(x,t))
   | klam o:lident t:term$         when p = `Lam -> let o = in_pos _loc_o o in
                                                    in_pos _loc (POAbs(o,t))
-  | t:tapp u:tcol                 when p = `App -> in_pos _loc (PAppl(t,u))
+  | t:tapp u:tcol                 when p = `App -> pappl _loc t u
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
   | "print(" - s:string_lit - ")" when p = `Atm -> in_pos _loc (PPrnt(s))
-  | c:uident uo:tcol?$            when p = `Atm -> in_pos _loc (PCons(c,uo))
+  | c:uident                      when p = `Atm -> in_pos _loc (PCons(c,None))
   | t:tatm "." l:lident           when p = `Atm -> in_pos _loc (PProj(t,l))
   | case_kw t:term of_kw ps:pats$ when p = `Lam -> in_pos _loc (PCase(t,ps))
   | "{" fs:term_reco "}"          when p = `Atm -> in_pos _loc (PReco(fs))

@@ -69,6 +69,10 @@ let pfixY (id, ko) _loc t =
 let rec padd _loc o n =
   if n <= 0 then o else in_pos _loc (PSucc(padd _loc o (n-1)))
 
+let pappl _loc t u = match t.elt with
+  | PCons(t, None) -> in_pos _loc (PCons(t, Some u))
+  | _ -> in_pos _loc (PAppl(t,u))
+
 (****************************************************************************
  *                         Environment management                           *
  ****************************************************************************)
@@ -223,7 +227,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                         (c, unsugar_term env (in_pos t.pos (PLAbs([x],t))))
                      | Record r ->
                         let name = "@x" in
-			let v = in_pos t.pos (PLVar name) in
+                        let v = in_pos t.pos (PLVar name) in
                         let t =
                           List.fold_left (fun acc (l,x) ->
                             (in_pos t.pos (PAppl(in_pos t.pos (PLAbs([x],acc)),
