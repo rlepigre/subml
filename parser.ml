@@ -396,6 +396,74 @@ let tex_name = change_layout tex_name no_blank
 let tex_text = change_layout tex_text no_blank
 
 (****************************************************************************
+ *                                    Actions                               *
+ ****************************************************************************)
+
+(* Optional TeX name and ASCII name. *)
+type name = string option * string
+
+(* New type definition. *)
+let new_type : name -> string list -> pkind -> unit = fun name args k ->
+  let (tex, name) = name in
+  let arg_names = Array.of_list args in
+  let tdef_arity = Array.length arg_names in
+  let tdef_variance = Array.make tdef_arity Non in
+  let f args =
+    let env = ref [] in
+    let f i k =
+      let v = (k, (Reg(i,tdef_variance))) in
+      env := (arg_names.(i), v) :: !env
+    in
+    Array.iteri f args;
+    unsugar_kind {empty_env with kinds = !env} k
+  in
+  let b = mbind mk_free_kvari arg_names f in
+  let tdef_tex_name =
+    match tex with
+    | None   -> "\\mathrm{"^name^"}"
+    | Some s -> s
+  in
+  let td =
+    { tdef_name = name ; tdef_tex_name ; tdef_arity ; tdef_variance
+    ; tdef_value = unbox b }
+  in
+  if !verbose then io.stdout "%a\n%!" (print_kind_def false) td;
+  Hashtbl.add typ_env name td
+
+(* New value definition. *)
+let new_val : bool -> name -> pkind -> pterm -> pos -> pos -> unit =
+  fun r (tex,id) k t _loc_t _loc_id ->
+    let t = if not r then t else pfixY (in_pos _loc_id id, Some k) _loc_t t in
+    let t = unbox (unsugar_term empty_env t) in
+    let k = unbox (unsugar_kind empty_env k) in
+    let (prf, calls_graph) = type_check t k in
+    reset_all ();
+    let value = eval t in
+    let tex_name =
+      match tex with None -> "\\mathrm{"^id^"}" | Some s -> s
+    in
+    Hashtbl.add val_env id
+      { name = id ; tex_name ; value ; orig_value = t ; ttype = k
+      ; proof = prf ; calls_graph }
+
+let check_sub : bool -> pkind -> pkind -> unit = fun must_fail a b ->
+  let a = unbox (unsugar_kind empty_env a) in
+  let b = unbox (unsugar_kind empty_env b) in
+  begin
+    try ignore (generic_subtype a b) with
+    | Subtype_error s ->
+        if not must_fail then
+          begin
+            io.stdout "CHECK FAILED: %s\n%!" s;
+            failwith "check"
+          end
+    | e               ->
+        io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+        failwith "check"
+  end;
+  reset_epsilon_tbls ()
+
+(****************************************************************************
  *                       Top-level parsing functions                        *
  ****************************************************************************)
 
@@ -413,24 +481,32 @@ let parser opt_flag =
   | "verbose" b:enabled -> (fun () -> verbose := b)
   | "texfile" fn:string_lit -> (fun () -> open_latex fn)
 
-type command =
-  | NewType of string option * string * string list * pkind
-  | NewVal  of bool * string option * string * pkind * pterm * pos * pos
-  | Check   of bool * pkind * pkind
-  | Eval    of pterm
-  | Include of string
-  | Latex   of unit -> Latex.latex_output
-  | Set     of unit -> unit
+let read_file = ref (fun _ -> assert false)
+
+let ignore_latex = ref false
 
 let parser command =
-  | type_kw tex:tex_name? (name,args,k):kind_def   -> NewType(tex,name,args,k)
-  | eval_kw t:term                                 -> Eval(t)
-  | val_kw r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term
-                                                   -> NewVal(r,tex,id,k,t,_loc_t,_loc_id)
-  | check_kw n:is_not a:kind _:subset b:kind       -> Check(not n,a,b)
-  | _:include_kw fn:string_lit                     -> Include(fn)
-  | latex_kw t:tex_text                            -> Latex(t)
-  | _:set_kw f:opt_flag                            -> Set(f)
+  | type_kw tex:tex_name? (name,args,k):kind_def$                  ->
+      new_type (tex,name) args k
+  | eval_kw t:term$                                                ->
+      let t = unbox (unsugar_term empty_env t) in
+      let (k,_,_) = type_infer t in
+      reset_all ();
+      io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
+  | val_kw r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term$ ->
+      new_val r (tex,id) k t _loc_t _loc_id
+  | check_kw n:is_not$ a:kind$ _:subset b:kind$                     ->
+      check_sub n a b
+  | _:include_kw fn:string_lit$                                    ->
+      let save = !ignore_latex in
+      ignore_latex := true;
+      !read_file fn;
+      ignore_latex := save
+  | latex_kw t:tex_text$                                           ->
+      let ff = formatter_of_out_channel !latex_ch in
+      if not !ignore_latex then Latex.output ff (t ())
+  | _:set_kw f:opt_flag$                                           ->
+      f ()
 
 and kind_def = uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
 
@@ -438,102 +514,9 @@ and kind_def = uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
  *                       High-level parsing functions                       *
  ****************************************************************************)
 
-let read_file = ref (fun _ -> assert false)
-
-let ignore_latex = ref false
-
-let run_command : command -> unit = function
-  (* Type definition command. *)
-  | NewType(tex,name,args,k) ->
-      let arg_names = Array.of_list args in
-      let tdef_arity = Array.length arg_names in
-      let tdef_variance = Array.make tdef_arity Non in
-      let f args =
-        let env = ref [] in
-        let f i k =
-          let v = (k, (Reg(i,tdef_variance))) in
-          env := (arg_names.(i), v) :: !env
-        in
-        Array.iteri f args;
-        unsugar_kind {empty_env with kinds = !env} k
-      in
-      let b = mbind mk_free_kvari arg_names f in
-      let tdef_tex_name =
-        match tex with
-        | None   -> "\\mathrm{"^name^"}"
-        | Some s -> s
-      in
-      let td =
-        { tdef_name = name ; tdef_tex_name ; tdef_arity ; tdef_variance
-        ; tdef_value = unbox b }
-      in
-      if !verbose then io.stdout "%a\n%!" (print_kind_def false) td;
-      Hashtbl.add typ_env name td
-  (* Evaluate a term. *)
-  | Eval(t) ->
-      let t = unbox (unsugar_term empty_env t) in
-      let (k,_,_) = type_infer t in
-      reset_all ();
-      io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
-  (* Typed value definition. *)
-  | NewVal(r,tex,id,k,t,_loc_t,_loc_id) ->
-      let t = if not r then t else pfixY (in_pos _loc_id id, Some k) _loc_t t in
-      let t = unbox (unsugar_term empty_env t) in
-      let k = unbox (unsugar_kind empty_env k) in
-      let (prf, calls_graph) = type_check t k in
-      reset_all ();
-      let value = eval t in
-      let tex_name =
-        match tex with None -> "\\mathrm{"^id^"}" | Some s -> s
-      in
-      Hashtbl.add val_env id
-        { name = id ; tex_name ; value ; orig_value = t ; ttype = k
-        ; proof = prf ; calls_graph }
-  (* Check subtyping. *)
-  | Check(n,a,b) ->
-      let a = unbox (unsugar_kind empty_env a) in
-      let b = unbox (unsugar_kind empty_env b) in
-      begin
-        try
-          let (_prf, _) = generic_subtype a b in
-          (* FIXME
-          if not n then (
-            io.stdout "MUST FAIL\n%!";
-            print_subtyping_proof prf;
-            failwith "check"
-          );
-          *)
-          if !verbose then
-            io.stderr "check %a < %a passed\n%!" (print_kind false) a (print_kind false) b;
-          reset_epsilon_tbls ()
-        with
-        | Subtype_error s when n ->
-           io.stdout "CHECK FAILED: OK %s\n%!" s;
-           failwith "check"
-        | Subtype_error s ->
-            if !verbose then
-              io.stderr "check not %a < %a passed\n%!" (print_kind false) a (print_kind false) b;
-           reset_epsilon_tbls ();
-        | e ->
-           io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
-           failwith "check"
-      end
-  (* Include a file. *)
-  | Include(fn) ->
-      let save = !ignore_latex in
-      ignore_latex := true;
-      !read_file fn;
-      ignore_latex := save
-  (* Latex. *)
-  | Latex(t) ->
-     let ff = formatter_of_out_channel !latex_ch in
-     if not !ignore_latex then Latex.output ff (t ())
-  (* Set a flag. *)
-  | Set(f) -> f ()
-
 let parser toplevel =
   (* Regular commands. *)
-  | c:command EOF           -> run_command c
+  | _:command EOF
   (* Clear the screen. *)
   | clear_kw EOF            -> ignore (Sys.command "clear")
   (* Exit the program. *)
@@ -542,8 +525,7 @@ let parser toplevel =
 let toplevel_of_string : string -> unit = fun s ->
   parse_string toplevel subml_blank s
 
-let parser file_contents =
-  | cs:command* EOF -> List.iter run_command cs
+let parser file_contents = _:command* EOF
 
 let eval_file fn =
   let buf = io.files fn in
