@@ -342,15 +342,6 @@ and case = (c,x):pattern _:arrow t:term -> (c, x, t)
  *                                LaTeX parser                              *
  ****************************************************************************)
 
-(* Blank function for basic blank characters (' ', '\t', '\r' and '\n'). *)
-let tex_blank buf pos =
-  let rec fn curr =
-    let (buf, pos) = curr in
-    let (c, buf', pos') = Input.read buf pos in
-    let next = (buf', pos') in
-    if List.mem c ['\t'; ' '; '\r'; '\n'] then fn next else curr
-  in fn (buf,pos)
-
 (* Single '#' character (not followed by another one). *)
 let hash =
   let fn buf pos = let (c,_,_) = Input.read buf pos in ((), c <> '#') in
@@ -376,14 +367,14 @@ let parser tex_text = "{" l:latex_atom* "}" ->
 and latex_atom =
   | hash "witnesses" "#" ->
       (fun () -> Latex.Witnesses)
-  | hash br:int_lit?[0] u:"!"? k:kind "#" ->
+  | hash br:int_lit?[0] u:"!"? k:(change_layout kind subml_blank) "#" ->
       (fun () -> Latex.Kind (br, u <> None, unbox (unsugar_kind empty_env k)))
-  | "@" br:int_lit?[0] u:"!"? t:term "@" ->
+  | "@" br:int_lit?[0] u:"!"? t:(change_layout term subml_blank) "@" ->
       (fun () -> Latex.Term (br, u <> None, unbox (unsugar_term empty_env t)))
-  | t:tex_simple ->
+  | t:tex_simple$ ->
       (fun () -> Latex.Text t)
   | tex_text
-  | hash "check" a:kind subset b:kind "#" ->
+  | hash "check" (a,b):sub "#" ->
       (fun () ->
         let a = unbox (unsugar_kind empty_env a) in
         let b = unbox (unsugar_kind empty_env b) in
@@ -397,6 +388,12 @@ and latex_atom =
       (fun () -> Latex.TProof (Hashtbl.find val_env id).proof)
   | "#!" id:lident "#" ->
       (fun () -> Latex.Sct (Hashtbl.find val_env id).calls_graph)
+
+and sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
+
+(* Entry points. *)
+let tex_name = change_layout tex_name no_blank
+let tex_text = change_layout tex_text no_blank
 
 (****************************************************************************
  *                       Top-level parsing functions                        *
@@ -433,7 +430,7 @@ let parser command =
                                                    -> NewVal(r,tex,id,k,t,_loc_t,_loc_id)
   | check_kw n:is_not a:kind _:subset b:kind       -> Check(not n,a,b)
   | _:include_kw fn:string_lit                     -> Include(fn)
-  | latex_kw t:(change_layout tex_text tex_blank)  -> Latex(t)
+  | latex_kw t:tex_text                            -> Latex(t)
   | _:set_kw f:opt_flag                            -> Set(f)
 
 and kind_def = uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
