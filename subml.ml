@@ -33,7 +33,7 @@ let spec =
     , Arg.Set Sct.debug_sct
     , "Activate sct verbose mode" )
   ; ( "--tex-file"
-    , Arg.String (fun s -> open_latex s)
+    , Arg.String (fun s -> Latex.open_latex s)
     , "Choose tex file output" )
   ; ( "--no-prelude"
     , Arg.Clear prelude

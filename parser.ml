@@ -446,6 +446,7 @@ let new_val : bool -> name -> pkind -> pterm -> pos -> pos -> unit =
       { name = id ; tex_name ; value ; orig_value = t ; ttype = k
       ; proof = prf ; calls_graph }
 
+(* Check a subtyping relation. *)
 let check_sub : bool -> pkind -> pkind -> unit = fun must_fail a b ->
   let a = unbox (unsugar_kind empty_env a) in
   let b = unbox (unsugar_kind empty_env b) in
@@ -463,50 +464,41 @@ let check_sub : bool -> pkind -> pkind -> unit = fun must_fail a b ->
   end;
   reset_epsilon_tbls ()
 
+(* Evaluate a term. *)
+let eval_term : pterm -> unit = fun t ->
+  let t = unbox (unsugar_term empty_env t) in
+  let (k,_,_) = type_infer t in
+  reset_all ();
+  io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
+
+(* Load a file. *)
+let read_file : (string -> unit) ref = ref (fun _ -> assert false)
+let include_file : string -> unit = fun fn ->
+  let open Latex in
+  let s = !ignore_latex in ignore_latex := true;
+  !read_file fn;
+  ignore_latex := s
+
+(* Output some TeX. *)
+let output_tex : (unit -> Latex.latex_output) -> unit = fun t ->
+  let open Latex in
+  let ff = formatter_of_out_channel !latex_ch in
+  if not !ignore_latex then output ff (t ())
+
 (****************************************************************************
  *                       Top-level parsing functions                        *
  ****************************************************************************)
 
-let latex_ch = ref stdout
-
-let open_latex fn =
-  if !latex_ch <> stdout then close_out !latex_ch;
-  latex_ch := open_out fn
-
-let parser enabled =
-  | "on"  -> true
-  | "off" -> false
-
-let parser opt_flag =
-  | "verbose" b:enabled -> (fun () -> verbose := b)
-  | "texfile" fn:string_lit -> (fun () -> open_latex fn)
-
-let read_file = ref (fun _ -> assert false)
-
-let ignore_latex = ref false
-
 let parser command =
-  | type_kw tex:tex_name? (name,args,k):kind_def$                  ->
-      new_type (tex,name) args k
-  | eval_kw t:term$                                                ->
-      let t = unbox (unsugar_term empty_env t) in
-      let (k,_,_) = type_infer t in
-      reset_all ();
-      io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
+  | type_kw tn:tex_name? (n,args,k):kind_def$ -> new_type (tn,n) args k
+  | eval_kw t:term$                           -> eval_term t
   | val_kw r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term$ ->
       new_val r (tex,id) k t _loc_t _loc_id
-  | check_kw n:is_not$ a:kind$ _:subset b:kind$                     ->
-      check_sub n a b
-  | _:include_kw fn:string_lit$                                    ->
-      let save = !ignore_latex in
-      ignore_latex := true;
-      !read_file fn;
-      ignore_latex := save
-  | latex_kw t:tex_text$                                           ->
-      let ff = formatter_of_out_channel !latex_ch in
-      if not !ignore_latex then Latex.output ff (t ())
-  | _:set_kw f:opt_flag$                                           ->
-      f ()
+  | check_kw n:is_not$ a:kind$ _:subset b:kind$ -> check_sub n a b
+  | _:include_kw fn:string_lit$                 -> include_file fn
+  | latex_kw t:tex_text$ -> output_tex t
+  | _:set_kw "verbose" b:{"on" -> true | "off" -> false} -> verbose := b
+  | _:set_kw "texfile" fn:string_lit                     -> Latex.open_latex fn
 
 and kind_def = uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
 
