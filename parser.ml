@@ -433,15 +433,17 @@ let new_type : name -> string list -> pkind -> unit = fun name args k ->
   Hashtbl.add typ_env name td
 
 (* New value definition. *)
-let new_val : name -> pkind -> pterm -> unit = fun (tex,id) k t ->
+let new_val : name -> pkind option -> pterm -> unit = fun (tex,id) k t ->
   let t = unbox (unsugar_term empty_env t) in
-  let k = unbox (unsugar_kind empty_env k) in
-  let (prf, calls_graph) = type_check t k in
-  reset_all ();
-  let value = eval t in
-  let tex_name =
-    match tex with None -> "\\mathrm{"^id^"}" | Some s -> s
+  let k =
+    match k with
+    | Some k -> unbox (unsugar_kind empty_env k)
+    | None   -> new_uvar ()
   in
+  let (prf, calls_graph) = type_check t k in
+  let value = eval t in
+  let tex_name = match tex with None -> "\\mathrm{"^id^"}" | Some s -> s in
+  if !verbose then io.stdout "val %s : %a\n%!" id (print_kind false) k;
   Hashtbl.add val_env id
     { name = id ; tex_name ; value ; orig_value = t ; ttype = k
     ; proof = prf ; calls_graph }
@@ -468,7 +470,6 @@ let check_sub : bool -> pkind -> pkind -> unit = fun must_fail a b ->
 let eval_term : pterm -> unit = fun t ->
   let t = unbox (unsugar_term empty_env t) in
   let (k,_,_) = type_infer t in
-  reset_all ();
   io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
 
 (* Load a file. *)
@@ -507,9 +508,9 @@ and kind_def =
   | tn:tex_name? uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
 
 and val_def =
-  | r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term ->
+  | r:is_rec tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
       let t =
-        if not r then t else pfixY (in_pos _loc_id id, Some k) _loc_t t
+        if not r then t else pfixY (in_pos _loc_id id, k) _loc_t t
       in ((tex,id), k, t)
 
 (****************************************************************************
