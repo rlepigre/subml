@@ -1,24 +1,45 @@
 open Format
 
-type io =
-  { mutable stdout_fmt : formatter
-  ; mutable stderr_fmt : formatter
-  ; mutable log_fmt    : formatter
-  ; mutable latex_fmt  : formatter
+type fmts =
+  { mutable out   : formatter
+  ; mutable err   : formatter
+  ; mutable log   : formatter
+  ; mutable latex : formatter
   }
 
-let io =
-  { stdout_fmt = std_formatter
-  ; stderr_fmt = err_formatter
-  ; log_fmt    = err_formatter
-  ; latex_fmt  = std_formatter
+let fmts =
+  { out   = std_formatter
+  ; err   = err_formatter
+  ; log   = err_formatter
+  ; latex = std_formatter
   }
 
-let out   ff = fprintf io.stdout_fmt ff
-let err   ff = fprintf io.stderr_fmt ff
-let log   ff = fprintf io.log_fmt    ff
-let latex ff = fprintf io.latex_fmt  ff
+let out   ff = fprintf fmts.out   ff
+let err   ff = fprintf fmts.err   ff
+let log   ff = fprintf fmts.log   ff
+let latex ff = fprintf fmts.latex ff
+
+let open_out, close_out =
+  let tbl = Hashtbl.create 31 in
+  (fun fn ->
+    try let (ch,n) = Hashtbl.find tbl fn in
+        Hashtbl.replace tbl fn (ch,n+1);
+        ch
+    with Not_found ->
+      let ch = open_out fn in
+      Hashtbl.add tbl fn (ch, 1);
+      ch),
+  (fun fn ->
+    try let (ch,n) = Hashtbl.find tbl fn in
+        if n = 1 then (
+          close_out ch;
+          Hashtbl.remove tbl fn)
+        else
+          Hashtbl.replace tbl fn (ch,n-1)
+    with Not_found -> ()) (* FIXME: error ? *)
 
 let file fn = Input.buffer_from_channel ~filename:fn (open_in fn)
 
 let fmt_of_file fn = formatter_of_out_channel (open_out fn)
+
+(*FIXME: close file, just need remembering the file *)

@@ -499,7 +499,7 @@ let parser command top =
   | _:include_kw fn:string_lit$                   -> include_file fn
   | latex_kw t:tex_text$             when not top -> Io.latex "%a%!" Latex.output t
   | _:set_kw "verbose" b:enables                  -> verbose := b
-  | _:set_kw "texfile" fn:string_lit when not top -> Io.(io.latex_fmt <- fmt_of_file fn)
+  | _:set_kw "texfile" fn:string_lit when not top -> Io.(fmts.latex <- fmt_of_file fn)
   | _:clear_kw                       when top     -> System.clear ()
   | {quit_kw | exit_kw}              when top     -> raise End_of_file
 

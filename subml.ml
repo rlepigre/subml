@@ -32,8 +32,17 @@ let spec =
     , Arg.Set Sct.debug_sct
     , "Activate sct verbose mode" )
   ; ( "--tex-file"
-    , Arg.String Io.(fun s -> io.latex_fmt <- fmt_of_file s)
+    , Arg.String Io.(fun s -> fmts.latex <- fmt_of_file s)
     , "Choose tex file output" )
+  ; ( "--out-file"
+    , Arg.String Io.(fun s -> fmts.out   <- fmt_of_file s)
+    , "Choose output file" )
+  ; ( "--err-file"
+    , Arg.String Io.(fun s -> fmts.err   <- fmt_of_file s)
+    , "Choose error file output" )
+  ; ( "--log-file"
+    , Arg.String Io.(fun s -> fmts.log   <- fmt_of_file s)
+    , "Choose log file output" )
   ; ( "--no-prelude"
     , Arg.Clear prelude
     , "Do not load the prelude" )
