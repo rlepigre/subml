@@ -6,7 +6,6 @@ open Position
  *                  Equality of types, terms and ordinals                   *
  ****************************************************************************)
 
-
 let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list -> ('a * 'b) list
                  -> bool = fun eq l1 l2 ->
   List.for_all (fun (k,_) -> List.mem_assoc k l2) l1 &&
@@ -93,7 +92,12 @@ and eq_ord_wit c w1 w2 = match w1, w2 with
   | (NotIn(t1,f1) , NotIn(t2,f2) ) -> eq_term c t1 t2 && eq_obinder c f1 f2
   | (_            , _            ) -> false
 
-and leq_ordinal pos c o1 o2 =
+let set_ouvar v o =
+  assert(!v = None);
+  Timed.(v := Some o)
+  (* FIXME: occur check *)
+
+let rec leq_ordinal pos c o1 o2 =
   match (orepr o1, orepr o2) with
   | (o1         , o2         ) when eq_ordinal c o1 o2 -> true
   | (_          , OConv      ) -> true
@@ -133,15 +137,3 @@ let leq_ordinal : ordinal list -> ordinal -> ordinal -> bool =
 
 let less_ordinal : ordinal list -> ordinal -> ordinal -> bool =
   fun pos t1 t2 -> Timed.pure_test (less_ordinal pos (ref 0) t1) t2
-
-let eq_head_term t u =
-  let rec fn u =
-    t == u || eq_term t u ||
-    match u.elt with
-    | TAppl(u,_)
-    | TCase(u,_)
-    | TProj(u,_) -> fn u
-    | TKAbs(f)   -> fn (subst f (KProd[]))
-    | TOAbs(f)   -> fn (subst f (OTInt(-1)))
-    | _          -> false
-  in fn u

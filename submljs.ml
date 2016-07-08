@@ -7,6 +7,8 @@ open Raw
 open Decap
 open Typing
 open Io
+open System
+open Position
 
 let _ = handle_stop true
 
@@ -24,13 +26,12 @@ let treat_exception fn a =
     fn a; true
   with
   | End_of_file          -> true
-  | Finish               -> true
   | Stopped              -> io.stderr "Stopped\n%!"; true
-  | Unsugar_error(loc,msg)
-                         -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
+  | Arity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
+  | Positivity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
                          -> io.stderr "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
-  | Unbound(loc,s)       -> io.stderr "%a:\nUnbound: %s\n%!" print_position loc s; false
+  | Unbound(s)           -> io.stderr "%a:\nUnbound: %s\n%!" print_position s.pos s.elt; false
   | Type_error(loc, msg)
                          -> io.stderr "%a:\nType error: %s\n%!" print_position loc msg; false
   | e                    -> io.stderr "Uncaught fucking exception %s\n%!" (Printexc.to_string e);

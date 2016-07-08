@@ -9,6 +9,7 @@ open Typing
 open Io
 open Type
 open Position
+open System
 
 let _ = handle_stop true
 

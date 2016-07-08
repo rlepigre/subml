@@ -1,24 +1,15 @@
 open Bindlib
 open Refinter
-open Io
 open Format
 open Position
 
 let debug = ref false
-
-exception Stopped
-
-let handle_stop : bool -> unit =
-  let open Sys in function
-  | true  -> set_signal sigint (Signal_handle (fun i -> raise Stopped))
-  | false -> set_signal sigint Signal_default
 
 let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
   match o with None -> None | Some e -> Some (f e)
 
 let from_opt : 'a option -> 'a -> 'a = fun o d ->
   match o with None -> d | Some e -> e
-
 
 (****************************************************************************
  *              AST for kinds (or types), ordinals and terms                *
@@ -213,8 +204,6 @@ and typ_rule =
   | Typ_YH     of int * sub_prf
 and typ_prf =
   term * kind * typ_rule
-
-
 
 
 (* Unfolding unification variable indirections. *)
@@ -479,8 +468,3 @@ let generic_tcnst : kind -> kind -> term =
   fun a b ->
     let f = bind (tvari_p dummy_position) "x" (fun x -> x) in
     dummy_pos (TCnst(unbox f,a,b))
-
-let set_ouvar v o =
-  assert(!v = None);
-  Timed.(v := Some o)
-  (* FIXME: occur check *)

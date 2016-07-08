@@ -4,12 +4,15 @@ open Position
 open Bindlib
 open Format
 
+(* global list of all epsilon ordinals
+   reset between each definition *)
+let all_epsilons = ref []
+
 let rec assoc_ordinal o = function
   | [] -> raise Not_found
   | (o',v)::l -> if eq_ordinal o o' then v else assoc_ordinal o l
 
-let all_epsilons = ref []
-
+(* construction of an ordinal < o such that w *)
 let oless o w =
   let o = orepr o in
   match o with OUVar(p) ->
