@@ -5,8 +5,8 @@ type T(A) = μX List(A × X)
 
 val rec length : ∀A T(A) → Nat = fun t ↦
    case t of
-   | []      → Z
-   | Cons[c] → add (length c.hd.2) (length c.tl)
+   | []   → Z
+   | x::l → add (length x.2) (length l)
 
 type Key = μK [Atom of Nat | Pair of K × K ]
 type Trie(A) = (μK ∃A [Nil | Branch of List(Nat × A) × (K with A = (K with A = A))]) with A = A
