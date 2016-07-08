@@ -222,6 +222,10 @@ let parser is_not =
   | EMPTY  -> false
   | not_kw -> true
 
+let parser enables =
+  | "on"  -> true
+  | "off" -> false
+
 (****************************************************************************
  *                  Parsers for ordinals and kinds (types)                  *
  ****************************************************************************)
@@ -361,33 +365,31 @@ and tex_name_aux =
   | "{" l:tex_name_aux* "}" -> "{" ^ (String.concat "" l) ^ "}"
 
 (* LaTeX text with annotations to generate proofs and stuff. *)
-let parser tex_text = "{" l:latex_atom* "}" ->
-  (fun () -> Latex.List (List.map (fun f -> f ()) l))
+let parser tex_text = "{" l:latex_atom* "}" -> Latex.List l
 
 and latex_atom =
   | hash "witnesses" "#" ->
-      (fun () -> Latex.Witnesses)
+      Latex.Witnesses
   | hash br:int_lit?[0] u:"!"? k:(change_layout kind subml_blank) "#" ->
-      (fun () -> Latex.Kind (br, u <> None, unbox (unsugar_kind empty_env k)))
+      Latex.Kind (br, u <> None, unbox (unsugar_kind empty_env k))
   | "@" br:int_lit?[0] u:"!"? t:(change_layout term subml_blank) "@" ->
-      (fun () -> Latex.Term (br, u <> None, unbox (unsugar_term empty_env t)))
+      Latex.Term (br, u <> None, unbox (unsugar_term empty_env t))
   | t:tex_simple$ ->
-      (fun () -> Latex.Text t)
+      Latex.Text t
   | tex_text
   | hash "check" (a,b):sub "#" ->
-      (fun () ->
-        let a = unbox (unsugar_kind empty_env a) in
-        let b = unbox (unsugar_kind empty_env b) in
-        let (prf, cg) = generic_subtype a b in
-        Latex.SProof (prf, cg))
+      let a = unbox (unsugar_kind empty_env a) in
+      let b = unbox (unsugar_kind empty_env b) in
+      let (prf, cg) = generic_subtype a b in
+      Latex.SProof (prf, cg)
   | hash br:int_lit?[0] ":" id:lident "#" ->
-      (fun () -> Latex.Kind (br, false, (Hashtbl.find val_env id).ttype))
+      Latex.Kind (br, false, (Hashtbl.find val_env id).ttype)
   | hash br:int_lit?[0] "?" id:uident "#" ->
-      (fun () -> Latex.KindDef (br, Hashtbl.find typ_env id))
+      Latex.KindDef (br, Hashtbl.find typ_env id)
   | "##" id:lident "#" ->
-      (fun () -> Latex.TProof (Hashtbl.find val_env id).proof)
+      Latex.TProof (Hashtbl.find val_env id).proof
   | "#!" id:lident "#" ->
-      (fun () -> Latex.Sct (Hashtbl.find val_env id).calls_graph)
+      Latex.Sct (Hashtbl.find val_env id).calls_graph
 
 and sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
 
@@ -476,52 +478,48 @@ let read_file : (string -> unit) ref = ref (fun _ -> assert false)
 let include_file : string -> unit = fun fn ->
   let open Latex in
   let s = !ignore_latex in ignore_latex := true;
+  (* FIXME should we save something else ? *)
   !read_file fn;
   ignore_latex := s
 
 (* Output some TeX. *)
-let output_tex : (unit -> Latex.latex_output) -> unit = fun t ->
+let output_tex : Latex.latex_output -> unit = fun t ->
   let open Latex in
   let ff = formatter_of_out_channel !latex_ch in
-  if not !ignore_latex then output ff (t ())
+  if not !ignore_latex then output ff t
 
 (****************************************************************************
  *                       Top-level parsing functions                        *
  ****************************************************************************)
 
-let parser command =
-  | type_kw tn:tex_name? (n,args,k):kind_def$ -> new_type (tn,n) args k
-  | eval_kw t:term$                           -> eval_term t
+let parser command top =
+  | type_kw (tn,n,args,k):kind_def$               -> new_type (tn,n) args k
+  | eval_kw t:term$                               -> eval_term t
   | val_kw r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term$ ->
       new_val r (tex,id) k t _loc_t _loc_id
-  | check_kw n:is_not$ a:kind$ _:subset b:kind$ -> check_sub n a b
-  | _:include_kw fn:string_lit$                 -> include_file fn
-  | latex_kw t:tex_text$ -> output_tex t
-  | _:set_kw "verbose" b:{"on" -> true | "off" -> false} -> verbose := b
-  | _:set_kw "texfile" fn:string_lit                     -> Latex.open_latex fn
+  | check_kw n:is_not$ a:kind$ _:subset b:kind$   -> check_sub n a b
+  | _:include_kw fn:string_lit$                   -> include_file fn
+  | latex_kw t:tex_text$             when not top -> output_tex t
+  | _:set_kw "verbose" b:enables                  -> verbose := b
+  | _:set_kw "texfile" fn:string_lit when not top -> Latex.open_latex fn
+  | _:clear_kw                       when top     -> System.clear ()
+  | {quit_kw | exit_kw}              when top     -> raise End_of_file
 
-and kind_def = uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
+
+and kind_def =
+  | tn:tex_name? uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
+
+let parser commands = _:(command false)*
 
 (****************************************************************************
  *                       High-level parsing functions                       *
  ****************************************************************************)
 
-let parser toplevel =
-  (* Regular commands. *)
-  | _:command EOF
-  (* Clear the screen. *)
-  | clear_kw EOF            -> ignore (Sys.command "clear")
-  (* Exit the program. *)
-  | {quit_kw | exit_kw} EOF -> raise End_of_file
+let toplevel_of_string : string -> unit =
+  parse_string (command true) subml_blank
 
-let toplevel_of_string : string -> unit = fun s ->
-  parse_string toplevel subml_blank s
-
-let parser file_contents = _:command* EOF
-
-let eval_file fn =
+let rec eval_file fn =
+  read_file := eval_file;
   let buf = io.files fn in
-  parse_buffer file_contents subml_blank buf;
-  io.stdout "## file loaded %S\n%!" fn
-
-let _ = read_file := eval_file
+  io.stdout "## loading file %S\n%!" fn;
+  parse_buffer commands subml_blank buf
