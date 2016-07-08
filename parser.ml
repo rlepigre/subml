@@ -433,20 +433,18 @@ let new_type : name -> string list -> pkind -> unit = fun name args k ->
   Hashtbl.add typ_env name td
 
 (* New value definition. *)
-let new_val : bool -> name -> pkind -> pterm -> pos -> pos -> unit =
-  fun r (tex,id) k t _loc_t _loc_id ->
-    let t = if not r then t else pfixY (in_pos _loc_id id, Some k) _loc_t t in
-    let t = unbox (unsugar_term empty_env t) in
-    let k = unbox (unsugar_kind empty_env k) in
-    let (prf, calls_graph) = type_check t k in
-    reset_all ();
-    let value = eval t in
-    let tex_name =
-      match tex with None -> "\\mathrm{"^id^"}" | Some s -> s
-    in
-    Hashtbl.add val_env id
-      { name = id ; tex_name ; value ; orig_value = t ; ttype = k
-      ; proof = prf ; calls_graph }
+let new_val : name -> pkind -> pterm -> unit = fun (tex,id) k t ->
+  let t = unbox (unsugar_term empty_env t) in
+  let k = unbox (unsugar_kind empty_env k) in
+  let (prf, calls_graph) = type_check t k in
+  reset_all ();
+  let value = eval t in
+  let tex_name =
+    match tex with None -> "\\mathrm{"^id^"}" | Some s -> s
+  in
+  Hashtbl.add val_env id
+    { name = id ; tex_name ; value ; orig_value = t ; ttype = k
+    ; proof = prf ; calls_graph }
 
 (* Check a subtyping relation. *)
 let check_sub : bool -> pkind -> pkind -> unit = fun must_fail a b ->
@@ -489,14 +487,13 @@ let output_tex : Latex.latex_output -> unit = fun t ->
   if not !ignore_latex then output ff t
 
 (****************************************************************************
- *                       Top-level parsing functions                        *
+ *                            Parsing of commands                           *
  ****************************************************************************)
 
 let parser command top =
   | type_kw (tn,n,args,k):kind_def$               -> new_type (tn,n) args k
   | eval_kw t:term$                               -> eval_term t
-  | val_kw r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term$ ->
-      new_val r (tex,id) k t _loc_t _loc_id
+  | val_kw (n,k,t):val_def$                       -> new_val n k t
   | check_kw n:is_not$ a:kind$ _:subset b:kind$   -> check_sub n a b
   | _:include_kw fn:string_lit$                   -> include_file fn
   | latex_kw t:tex_text$             when not top -> output_tex t
@@ -509,7 +506,11 @@ let parser command top =
 and kind_def =
   | tn:tex_name? uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
 
-let parser commands = _:(command false)*
+and val_def =
+  | r:is_rec tex:tex_name? id:lident ":" k:kind "=" t:term ->
+      let t =
+        if not r then t else pfixY (in_pos _loc_id id, Some k) _loc_t t
+      in ((tex,id), k, t)
 
 (****************************************************************************
  *                       High-level parsing functions                       *
@@ -522,4 +523,4 @@ let rec eval_file fn =
   read_file := eval_file;
   let buf = io.files fn in
   io.stdout "## loading file %S\n%!" fn;
-  parse_buffer commands subml_blank buf
+  parse_buffer (parser _:(command false)*) subml_blank buf
