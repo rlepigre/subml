@@ -1,5 +1,7 @@
 open Ast
 open Bindlib
+open Position
+open Type
 
 (****************************************************************************
  *                              Parser level AST                            *
@@ -87,10 +89,10 @@ let add_ordinal : string -> obox -> env -> env = fun x o env ->
 exception Unbound of strpos
 let unbound s = raise (Unbound(s))
 
-exception Arity_error of Location.t * string
+exception Arity_error of pos * string
 let arity_error loc s = raise (Arity_error (loc,s))
 
-exception Positivity_error of Location.t * string
+exception Positivity_error of pos * string
 let positivity_error loc s = raise (Positivity_error (loc,s))
 
 (* Lookup a term variable in the environment. If it does not appear, look for
@@ -190,7 +192,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                          let f xt = aux false (add_term x.elt (box_of_var xt) env) xs in
                          let pos =
                            if first then pt.pos else
-                           let open Location in
+                           let open Position in
                            { pt.pos with loc_start = x.pos.loc_start }
                          in
                          tabst pos ko x f

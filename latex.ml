@@ -2,6 +2,8 @@ open Bindlib
 open Format
 open Ast
 open Print
+open Type
+open Position
 
 (****************************************************************************
  *                           Printing of a type                             *

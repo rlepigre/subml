@@ -1,6 +1,8 @@
 open Bindlib
 open Format
 open Ast
+open Position
+open Compare
 
 let rec print_list pelem sep ff = function
   | []    -> ()
@@ -207,7 +209,7 @@ and pkind_def unfold ff kd =
  *                           Printing of a term                             *
  ****************************************************************************)
  and position ff loc =
-  let open Location in
+  let open Position in
   let open Lexing in
   let fname  = loc.loc_start.pos_fname in
   let lnum   = loc.loc_start.pos_lnum in

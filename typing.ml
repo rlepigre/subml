@@ -3,6 +3,9 @@ open Ast
 open Print
 open Sct
 open Io
+open Position
+open Compare
+open Type
 
 exception Type_error of pos * string
 let type_error : pos -> string -> unit =

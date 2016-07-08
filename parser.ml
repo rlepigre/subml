@@ -1,13 +1,14 @@
 open Decap
 open Bindlib
 open Ast
-open Location
+open Position
 open Print
 open Eval
 open Typing
 open Raw
 open Io
 open Format
+open Position
 
 (* Definition of a "location" function for DeCaP. *)
 #define LOCATE locate
@@ -418,7 +419,7 @@ let parser opt_flag =
 
 type command =
   | NewType of string option * string * string list * pkind
-  | NewVal  of bool * string option * string * pkind * pterm * Location.t * Location.t
+  | NewVal  of bool * string option * string * pkind * pterm * pos * pos
   | Check   of bool * pkind * pkind
   | Eval    of pterm
   | Include of string

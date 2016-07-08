@@ -1,6 +1,7 @@
 open Bindlib
 open Ast
 open Format
+open Position
 
 let rec eval : term -> term = fun t0 ->
   match t0.elt with

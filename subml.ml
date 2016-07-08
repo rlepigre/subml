@@ -7,6 +7,8 @@ open Raw
 open Decap
 open Typing
 open Io
+open Type
+open Position
 
 let _ = handle_stop true
 
