@@ -339,7 +339,8 @@ and rpat =
   | EMPTY                              -> Simple None
   | x:var                              -> Simple (Some x)
   | "(" x:var ")"                      -> Simple (Some x)
-  | "{" ls:{l:lident "=" x:var}* "}"   -> Record ls
+  | "{" ls:(list_sep (parser l:lident "=" x:var) ";") "}"
+                                       -> Record ls
   | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)
 
 and pattern =
