@@ -25,8 +25,11 @@ include "lib/munu/munu2.typ"
 include "lib/munu/munu3.typ"
 
 (* Sorting *)
+include "lib/insert_sort.typ"
 include "lib/quick_sort.typ"
 include "lib/heap.typ"
 
 (* Miscellaneous *)
+include "lib/size.typ"
 include "lib/hard.typ"
+include "lib/lazy_nat.typ"

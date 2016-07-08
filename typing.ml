@@ -38,7 +38,7 @@ let rec find_positive ctxt o =
   let o = orepr o in
   (*  Io.log "find positive %a\n%!" (print_ordinal false) o;*)
   if List.exists (eq_ordinal o) ctxt.positive_ordinals then
-    try List.hd (*omax*) (assoc_ordinal o !all_epsilons) with Not_found -> assert false
+    try List.hd (*omax*) (assoc_ordinal o !all_epsilons) with Not_found -> raise Not_found
   else match o with
   | OConv -> OConv
   | OSucc o' -> o'

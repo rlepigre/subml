@@ -243,9 +243,9 @@ let inline calls =
     let removed_one = ref false in
     let calls =
       List.filter (fun (_,i,_) ->
-	let b = List.exists (fun (j,_,_) -> i = j) calls in
-	if not b then removed_one := true;
-	b
+        let b = List.exists (fun (j,_,_) -> i = j) calls in
+        if not b then removed_one := true;
+        b
       ) calls
     in
     if !removed_one then gn calls else calls
