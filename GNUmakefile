@@ -1,4 +1,7 @@
-all: subml.byte subml.native submljs.byte
+all: subml.byte subml.native
+
+.PHONY: js
+js: subml.js
 
 DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
