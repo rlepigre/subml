@@ -8,7 +8,7 @@ open Compare
 open Type
 
 exception Type_error of pos * string
-let type_error : pos -> string -> unit =
+let type_error : pos -> string -> 'a =
   fun p msg -> raise (Type_error(p,msg))
 
 exception Subtype_error of string
@@ -84,29 +84,6 @@ let rec lambda_ordinal t k s =
      if binder_name f = s then c else lambda_ordinal t (subst f c) s
   (* FIXME KKAll *)
   | _ -> subtype_error ("can't find for all (ord) "^s)
-
-let rec pos_kind k =
-  match full_repr k with
-  | KProd(fs) ->
-     let rec fn = function
-       | [] -> raise Not_found
-       | (_,k)::l -> try pos_kind k with Not_found -> fn l
-     in fn fs
-  | _ -> raise Not_found
-
-let rec neg_kind k =
-  match full_repr k with
-  | KFunc(a,b) ->
-     (try pos_kind a with Not_found -> neg_kind k)
-  | _ -> raise Not_found
-
-let uwit_kind t f =
-  (* FIXME: could use t *)
-  neg_kind (subst f (dummy_pos (TTInt 0)))
-
-let ewit_kind t f =
-  (* FIXME: could use t *)
-  pos_kind (subst f (dummy_pos (TTInt 0)))
 
 let has_leading_exists : kind -> bool = fun k ->
   let rec fn k =
@@ -632,7 +609,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               fn hyps
        in
        (try fn hyps with Not_found ->
-       if n = 0 then subtype_error "no ind found" else
+       if n = 0 then type_error t.pos "can not relate termination depth" else
        let fnum = new_function "Y" (List.length os) in
        if !debug then
          begin
