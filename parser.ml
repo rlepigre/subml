@@ -6,7 +6,6 @@ open Print
 open Eval
 open Typing
 open Raw
-open Io
 open Format
 open Position
 
@@ -429,7 +428,7 @@ let new_type : name -> string list -> pkind -> unit = fun name args k ->
     { tdef_name = name ; tdef_tex_name ; tdef_arity ; tdef_variance
     ; tdef_value = unbox b }
   in
-  if !verbose then io.stdout "%a\n%!" (print_kind_def false) td;
+  if !verbose then Io.out "%a\n%!" (print_kind_def false) td;
   Hashtbl.add typ_env name td
 
 type flag = MustPass | MustFail | CanFail
@@ -443,7 +442,7 @@ let new_val : flag -> name -> pkind option -> pterm -> unit = fun f nm k t ->
   let (k, prf, calls_graph) = type_check t k in
   let value = eval t in
   let tex_name = match tex with None -> "\\mathrm{"^id^"}" | Some s -> s in
-  if !verbose then io.stdout "val %s : %a\n%!" id (print_kind false) k;
+  if !verbose then Io.out "val %s : %a\n%!" id (print_kind false) k;
   Hashtbl.add val_env id
     { name = id ; tex_name ; value ; orig_value = t ; ttype = k
     ; proof = prf ; calls_graph }
@@ -458,12 +457,12 @@ let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
     | Subtype_error s ->
         begin
           match f with
-          | MustPass -> io.stdout "CHECK FAILED: %s\n%!" s; failwith "check"
+          | MustPass -> Io.err "CHECK FAILED: %s\n%!" s; failwith "check"
           | MustFail -> ()
           | CanFail  -> ()
         end
     | e               ->
-        io.stdout "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+        Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
         failwith "check"
   end;
   reset_epsilon_tbls ()
@@ -472,7 +471,7 @@ let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
 let eval_term : pterm -> unit = fun t ->
   let t = unbox (unsugar_term empty_env t) in
   let (k,_,_) = type_check t None in
-  io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
+  Io.out "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
 
 (* Load a file. *)
 let read_file : (string -> unit) ref = ref (fun _ -> assert false)
@@ -482,12 +481,6 @@ let include_file : string -> unit = fun fn ->
   (* FIXME should we save something else ? *)
   !read_file fn;
   ignore_latex := s
-
-(* Output some TeX. *)
-let output_tex : Latex.latex_output -> unit = fun t ->
-  let open Latex in
-  let ff = formatter_of_out_channel !latex_ch in
-  if not !ignore_latex then output ff t
 
 (****************************************************************************
  *                            Parsing of commands                           *
@@ -504,9 +497,9 @@ let parser command top =
   | f:flag$ val_kw (n,k,t):val_def$               -> new_val f n k t
   | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
-  | latex_kw t:tex_text$             when not top -> output_tex t
+  | latex_kw t:tex_text$             when not top -> Io.latex "%a%!" Latex.output t
   | _:set_kw "verbose" b:enables                  -> verbose := b
-  | _:set_kw "texfile" fn:string_lit when not top -> Latex.open_latex fn
+  | _:set_kw "texfile" fn:string_lit when not top -> Io.(io.latex_fmt <- fmt_of_file fn)
   | _:clear_kw                       when top     -> System.clear ()
   | {quit_kw | exit_kw}              when top     -> raise End_of_file
 
@@ -528,6 +521,6 @@ let toplevel_of_string : string -> unit =
 
 let rec eval_file fn =
   read_file := eval_file;
-  let buf = io.files fn in
-  io.stdout "## loading file %S\n%!" fn;
+  let buf = Io.file fn in
+  Io.out "## loading file %S\n%!" fn;
   parse_buffer (parser _:(command false)*) subml_blank buf

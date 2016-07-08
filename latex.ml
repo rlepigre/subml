@@ -454,10 +454,4 @@ let rec output ch = function
   | Sct (arities,calls) ->
       print_calls ch arities calls
 
-let latex_ch = ref stdout
-
 let ignore_latex = ref false
-
-let open_latex fn =
-  if !latex_ch <> stdout then close_out !latex_ch;
-  latex_ch := open_out fn

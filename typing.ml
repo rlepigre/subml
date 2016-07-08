@@ -2,7 +2,6 @@ open Bindlib
 open Ast
 open Print
 open Sct
-open Io
 open Position
 open Compare
 open Type
@@ -37,7 +36,7 @@ let find_indexes pos index index' a b =
 
 let rec find_positive ctxt o =
   let o = orepr o in
-  (*  Printf.eprintf "find positive %a\n%!" (print_ordinal false) o;*)
+  (*  Io.log "find positive %a\n%!" (print_ordinal false) o;*)
   if List.exists (eq_ordinal o) ctxt.positive_ordinals then
     try List.hd (*omax*) (assoc_ordinal o !all_epsilons) with Not_found -> assert false
   else match o with
@@ -58,7 +57,7 @@ let rec with_clause a (s,b) = match full_repr a with
   | KFixM(OConv,f) -> with_clause (subst f (KFixM(OConv,f))) (s,b)
   | KFixN(OConv,f) -> with_clause (subst f (KFixN(OConv,f))) (s,b)
   | k       ->
-     io.log "KWith constraint on %s in %a\n%!" s (print_kind false) k;
+     Io.log "KWith constraint on %s in %a\n%!" s (print_kind false) k;
      subtype_error ("Illegal use of \"with\" on variable "^s^".")
 
 let rec dot_proj t k s = match full_repr k with
@@ -191,8 +190,8 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       (match a with MuRec _ | NuRec _ -> raise Exit | _ -> ());
       (match b with MuRec _ | NuRec _ -> raise Exit | _ -> ());
       let (a', b', os) = decompose Pos a b in
-      (* Printf.eprintf "len(os') = %d\n%!" (List.length os');
-         Printf.eprintf "(%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
+      (* Io.log "len(os') = %d\n%!" (List.length os');
+         Io.log "(%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
       let pos = ctxt.positive_ordinals in
       List.iter (function (_,Rec _,_) -> () | (index,Sub(a0,b0),os0) ->
         if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
@@ -223,13 +222,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   let b = full_repr b0 in
   if !debug then
     begin
-      io.log "%a\n" (print_term false) t;
-      io.log "  ∈ %a\n" (print_kind false) a;
-      io.log "  ⊂ %a\n" (print_kind false) b;
+      Io.log "%a\n" (print_term false) t;
+      Io.log "  ∈ %a\n" (print_kind false) a;
+      Io.log "  ⊂ %a\n" (print_kind false) b;
       let p_aux ch o = print_ordinal false ch o in
       match ctxt.positive_ordinals with
-      | [] -> io.log "\n%!"
-      | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
+      | [] -> Io.log "\n%!"
+      | l  -> Io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
   if eq_kind a b then (t, a0, b0, None, Sub_Lower) else
   let (ind_ref, ind_hyp, ctxt) = check_rec t ctxt a b in
@@ -409,7 +408,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let o' = oless o (NotIn(t,unbox g)) in
         let ctxt = add_positive ctxt o in
         if !debug then
-          io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+          Io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixN(o', f) in
         let prf = subtype ctxt t a0 (subst f cst) in
         Sub_FixN_r prf
@@ -423,7 +422,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let o' = oless o (In(t,unbox g)) in
         let ctxt = add_positive ctxt o in
         if !debug then
-          io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+          Io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixM(o', f) in
         let prf = subtype ctxt t (subst f cst) b0 in
         Sub_FixM_l prf
@@ -466,12 +465,12 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
   if !debug then
     begin
-      io.log "%a :\n" (print_term false) t;
-      io.log "  %a\n" (print_kind false) c;
+      Io.log "%a :\n" (print_term false) t;
+      Io.log "  %a\n" (print_kind false) c;
       let p_aux ch o = print_ordinal false ch o in
       match ctxt.positive_ordinals with
-      | [] -> io.log "\n%!"
-      | l  -> io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
+      | [] -> Io.log "\n%!"
+      | l  -> Io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
     end;
   let r =
     try
@@ -568,8 +567,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        let pos = ctxt.positive_ordinals in
        if !debug then
          begin
-           io.log "searching induction hyp (1):\n" ;
-           io.log "  %a (%a > 0)\n%!"
+           Io.log "searching induction hyp (1):\n" ;
+           Io.log "  %a (%a > 0)\n%!"
              (print_kind false) c (fun ch -> List.iter (print_ordinal false ch)) pos;
          end;
        let rec fn = function
@@ -594,8 +593,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                    delayed := (fun () ->
                      if !debug then
                        begin
-                         io.log "searching induction hyp (2) %d:\n" fnum;
-                         io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
+                         Io.log "searching induction hyp (2) %d:\n" fnum;
+                         Io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
                            (print_kind false) c
                            (fun ch -> List.iter (print_ordinal false ch)) pos
                        end;
@@ -613,8 +612,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        let fnum = new_function "Y" (List.length os) in
        if !debug then
          begin
-           io.log "Adding induction hyp %d:\n" fnum;
-           io.log "  %a => %a %a\n%!" (print_kind false) c
+           Io.log "Adding induction hyp %d:\n" fnum;
+           Io.log "  %a => %a %a\n%!" (print_kind false) c
              (print_kind false) c0 (print_term true) t;
          end;
        let pos = ctxt.positive_ordinals in
@@ -638,7 +637,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TTInt(_) -> assert false (* Cannot happen. *)
     | TVari(_) -> assert false (* Cannot happen. *)
     with Subtype_error msg ->
-      Format.eprintf "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
+      Io.err "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
       exit 1
   in (t, c, r)
 

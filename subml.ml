@@ -6,7 +6,6 @@ open Parser
 open Raw
 open Decap
 open Typing
-open Io
 open Type
 open Position
 open System
@@ -33,7 +32,7 @@ let spec =
     , Arg.Set Sct.debug_sct
     , "Activate sct verbose mode" )
   ; ( "--tex-file"
-    , Arg.String (fun s -> Latex.open_latex s)
+    , Arg.String Io.(fun s -> io.latex_fmt <- fmt_of_file s)
     , "Choose tex file output" )
   ; ( "--no-prelude"
     , Arg.Clear prelude
@@ -57,14 +56,14 @@ let handle_exception fn v =
     fn v; true
   with
   | End_of_file          -> exit 0
-  | Stopped              -> io.stderr "Stopped\n%!"; true
-  | Arity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
-  | Positivity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
+  | Stopped              -> Io.err "Stopped\n%!"; true
+  | Arity_error(loc,msg) -> Io.err "%a:\n%s\n%!" print_position loc msg; false
+  | Positivity_error(loc,msg) -> Io.err "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
-                         -> io.stderr "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
-  | Unbound(s)           -> io.stderr "%a:\nUnbound: %s\n%!" print_position s.pos s.elt; false
-  | Type_error(loc, msg) -> io.stderr "%a:\nType error: %s\n%!" print_position loc msg; false
-  | e                    -> io.stderr "Uncaught exception %s\n%!" (Printexc.to_string e); exit 1
+                         -> Io.err "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
+  | Unbound(s)           -> Io.err "%a:\nUnbound: %s\n%!" print_position s.pos s.elt; false
+  | Type_error(loc, msg) -> Io.err "%a:\nType error: %s\n%!" print_position loc msg; false
+  | e                    -> Io.err "Uncaught exception %s\n%!" (Printexc.to_string e); exit 1
 
 let rec interact () =
   Printf.printf ">> %!";
