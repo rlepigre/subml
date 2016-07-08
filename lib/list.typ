@@ -51,3 +51,23 @@ val rec assoc : ∀A ∀B (A → Bool) → List(A × B) → Option(B) = fun f l 
   case l of
   | []      → None
   | x::l → if f x.1 then Some x.2 else (assoc f l)
+
+val rec rev_append : ∀A List(A) → List(A) → List(A) = fun l1 l2 ↦
+  case l1 of
+  | [] → l2
+  | x::l → rev_append l (x :: l2)
+
+val rev : ∀A List(A) → List(A) = fun l ↦ rev_append l []
+
+val rec flatten : ∀A List(List(A)) → List(A) = fun l ↦
+  case l of
+  | [] → []
+  | x::l → rev_append (rev x) (flatten l)
+
+
+val rec flatten2 : ∀A List(List(A)) → List(A) = fun ll ↦
+  case ll of
+  | [] → []
+  | l::ll → (case l of
+    | [] → flatten2 ll
+    | x::l → x :: flatten2 (l :: ll))

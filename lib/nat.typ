@@ -38,3 +38,18 @@ val gt  : Nat → Nat → Bool = fun n m ↦
 
 val geq : Nat → Nat → Bool = fun n m ↦
   case compare n m of Ls → fls | Eq → tru | Gt → tru
+
+val rec iter : Nat → (Nat → Nat) → Nat → Nat =
+  fun n f a ↦ case n of
+  | Z    → a
+  | S p  → iter p f (f a)
+
+val rec iter' : Nat → (Nat → Nat) → Nat → Nat =
+  fun n f a ↦ case n of
+  | Z    → a
+  | S p  → f (iter' p f a)
+
+val rec iter'' : Nat → (Nat → Nat) → Nat → Nat =
+  fun n f a ↦ case n of
+  | Z    → a
+  | S p  → f (iter'' p f (f a))

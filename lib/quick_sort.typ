@@ -4,24 +4,24 @@ type List(A) = μX F(A,X)
 val rec append : ∀A (List(A) → List(A) → List(A)) =
   fun l1 l2 →
     case l1 of
-    | []      → l2
-    | Cons[l] → l.hd :: append l.tl l2
+    | []   → l2
+    | x::l → x :: append l l2
 
 val rec partition : ∀A∀o (A → Bool) → (μo X F(A,X)) → (μo X F(A,X)) × (μo X F(A,X)) =
   fun test l →
     case l of
-    | []      → ([], [])
-    | Cons[l] → let c = partition test l.tl in
-                if test l.hd then ((l.hd::c.1), c.2)
-                else (c.2,(l.hd::c.1))
+    | []   → ([], [])
+    | x::l → let c = partition test l in
+             if test x then ((x::c.1), c.2)
+             else (c.2,(x::c.1))
 
 val partition' : ∀A (A → Bool) → List(A) → List(A) × List(A) = partition
 
 val rec sort : ∀A (A → A → Bool) → List(A) → List(A) =
   fun cmp l → case l of
-  | []      → []
-  | Cons[l] → let test = cmp l.hd in
-              let c = partition test l.tl in
-              let above = sort cmp c.2 in
-              let below = sort cmp c.1 in
-              below (*append below (l.hd :: above)*)
+  | []   → []
+  | x::l → let test = cmp x in
+           let c = partition test l in
+           let below = sort cmp c.1 in
+           let above = sort cmp c.2 in
+           append below (x :: above)

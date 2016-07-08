@@ -23,3 +23,10 @@ include "lib/tests.typ"
 (* Mixed induction and coinduction. *)
 include "lib/munu/munu2.typ"
 include "lib/munu/munu3.typ"
+
+(* Sorting *)
+include "lib/quick_sort.typ"
+include "lib/heap.typ"
+
+(* Miscellaneous *)
+include "lib/hard.typ"

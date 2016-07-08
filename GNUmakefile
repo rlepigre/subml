@@ -54,7 +54,6 @@ validate: clean
 
 test: all
 	./subml.native --quit lib/all.typ
-	./subml.native --no-prelude --quit advanced_lib/all.typ
 	@ echo -n "Lines with a tabulation: "
 	@ grep -P '\t' *.ml | wc -l
 	@ echo -n "Longest line:           "
