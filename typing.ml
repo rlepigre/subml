@@ -661,30 +661,30 @@ let subtype : term -> kind -> kind -> sub_prf * calls_graph
 let generic_subtype : kind -> kind -> sub_prf * calls_graph = fun a b ->
   subtype (generic_tcnst a b) a b
 
-let type_check : term -> kind -> typ_prf * calls_graph = fun t c ->
+let type_check : term -> kind option -> kind * typ_prf * calls_graph =
+  fun t ko ->
+  let c = match ko with None -> new_uvar () | Some k -> k in
   let calls = ref [] in
   all_epsilons := [];
   let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
-  try
-    let p = type_check ctxt t c in
-    List.iter (fun f -> f ()) !delayed;
-    delayed := [];
-    let calls = inline !calls in
-    let arities = Sct.arities () in
-    reset_all ();
-    if not (sct calls) then subtype_error "loop";
-    (p, (arities, calls))
-  with e -> delayed := []; reset_all (); raise e
-
-let type_infer : term -> kind * typ_prf * calls_graph = fun t ->
-  let k = new_uvar () in
-  let (prf, calls) = type_check t k in
+  let (prf, calls) =
+    try
+      let p = type_check ctxt t c in
+      List.iter (fun f -> f ()) !delayed;
+      delayed := [];
+      let calls = inline !calls in
+      let arities = Sct.arities () in
+      reset_all ();
+      if not (sct calls) then subtype_error "loop";
+      (p, (arities, calls))
+    with e -> delayed := []; reset_all (); raise e
+  in
   let fn v =
     match !(v.uvar_state) with
     | Free   -> true
     | Sum  l -> set_kuvar false v (KDSum l); false
     | Prod l -> set_kuvar true  v (KProd l); false
   in
-  let ul = List.filter fn (uvar_list k) in
-  let k = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) k ul in
-  (k, prf, calls)
+  let ul = List.filter fn (uvar_list c) in
+  let c = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) c ul in
+  (c, prf, calls)

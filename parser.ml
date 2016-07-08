@@ -435,12 +435,8 @@ let new_type : name -> string list -> pkind -> unit = fun name args k ->
 (* New value definition. *)
 let new_val : name -> pkind option -> pterm -> unit = fun (tex,id) k t ->
   let t = unbox (unsugar_term empty_env t) in
-  let k =
-    match k with
-    | Some k -> unbox (unsugar_kind empty_env k)
-    | None   -> new_uvar ()
-  in
-  let (prf, calls_graph) = type_check t k in
+  let k = map_opt (fun k -> unbox (unsugar_kind empty_env k)) k in
+  let (k, prf, calls_graph) = type_check t k in
   let value = eval t in
   let tex_name = match tex with None -> "\\mathrm{"^id^"}" | Some s -> s in
   if !verbose then io.stdout "val %s : %a\n%!" id (print_kind false) k;
@@ -469,7 +465,7 @@ let check_sub : bool -> pkind -> pkind -> unit = fun must_fail a b ->
 (* Evaluate a term. *)
 let eval_term : pterm -> unit = fun t ->
   let t = unbox (unsugar_term empty_env t) in
-  let (k,_,_) = type_infer t in
+  let (k,_,_) = type_check t None in
   io.stdout "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
 
 (* Load a file. *)
