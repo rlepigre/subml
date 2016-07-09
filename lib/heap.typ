@@ -23,8 +23,8 @@ val rec merge : ∀A (A → A → Bool) → List(A) → List(A) → List(A) =
     | x1::l1' → (case l2 of
                 | []      → l1
                 | x2::l2' → if cmp x1 x2 then
-                                 x1 :: merge cmp l1' l2
-                            else x2 :: merge cmp l1 l2')
+                                 x1 :: merge cmp l1' (x2::l2')    (* FIXME : l2 : depth2 loop *)
+                            else x2 :: merge cmp (x1::l1') l2')   (* FIXME : l2 : depth2 loop *)
 
 val rec sort : ∀A (A → A → Bool) → List(A) → List(A) =
   fun cmp l →

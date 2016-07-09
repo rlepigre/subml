@@ -3,6 +3,7 @@ include "lib/nat.typ"
 include "lib/list.typ"
 include "lib/applist.typ"
 include "lib/set.typ"
+include "lib/natbin.typ"
 
 (* Church encoding. *)
 include "lib/church/bool.typ"

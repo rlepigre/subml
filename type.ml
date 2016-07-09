@@ -334,14 +334,18 @@ let decompose : occur -> kind -> kind ->
                   kind * kind * (int * ordinal) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
-  let search o =
-    try
-      match o with
-        OLess _ | OSucc _ -> OTInt (assoc_ordinal o !res)
-      | _ -> raise Not_found
-    with
-      Not_found ->
-        let n = !i in incr i; res := (o, n) :: !res; OTInt n
+  let rec search pos o =
+    let o = orepr o in
+    match o with
+    | OLess _ when pos <> Eps->
+       (try
+          box (OTInt(assoc_ordinal o !res))
+        with
+          Not_found ->
+            let n = !i in incr i; res := (o, n) :: !res; box (OTInt n))
+    | OSucc o -> osucc(search pos o)
+    | OVari o -> box_of_var o
+    | _ -> box o
   in
   let rec fn pos k =
     match repr k with
@@ -370,20 +374,10 @@ let decompose : occur -> kind -> kind ->
        let f = binder_from_fun (binder_name f) aux in
        let a' = KFixN(OConv, f) in
        fn pos a'
-    | KFixM(OVari o,f) ->
-       kfixm (binder_name f) (box_of_var o) (fun x -> fn pos (subst f (KVari x)))
-    | KFixN(OVari o,f) ->
-       kfixn (binder_name f) (box_of_var o) (fun x -> fn pos (subst f (KVari x)))
     | KFixM(o,f) ->
-       let o =
-         if o <> OConv && pos <> Eps then search o else o
-       in
-       kfixm (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
+       kfixm (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
-       let o =
-         if o <> OConv && pos <> Eps then search o else o
-       in
-       kfixn (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
+       kfixn (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
     | KDefi(d,o,a) -> fn pos (msubst (msubst d.tdef_value o) a)
     | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn Eps a)
@@ -397,8 +391,11 @@ let decompose : occur -> kind -> kind ->
   (k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res)
 
 let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
-  let get i =
-    try List.assoc i os with Not_found -> assert false
+  let rec get o = match orepr o with
+      | OTInt i -> (try box (List.assoc i os) with Not_found -> assert false)
+      | OSucc o -> osucc (get o)
+      | OVari v -> box_of_var v
+      | o -> box o
   in
   let rec fn k =
     match repr k with
@@ -409,12 +406,8 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
     | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
     | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
     | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | KFixM(OVari x,f) -> kfixm (binder_name f) (box_of_var x) (fun x -> fn (subst f (KVari x)))
-    | KFixN(OVari x,f) -> kfixn (binder_name f) (box_of_var x) (fun x -> fn (subst f (KVari x)))
-    | KFixM(OTInt i,f) -> kfixm (binder_name f) (box (get i))  (fun x -> fn (subst f (KVari x)))
-    | KFixN(OTInt i,f) -> kfixn (binder_name f) (box (get i))  (fun x -> fn (subst f (KVari x)))
-    | KFixM(o, f) -> kfixm (binder_name f) (box o) (fun x -> fn (subst f (KVari x)))
-    | KFixN(o, f) -> kfixn (binder_name f) (box o) (fun x -> fn (subst f (KVari x)))
+    | KFixM(o, f) -> kfixm (binder_name f) (get o) (fun x -> fn (subst f (KVari x)))
+    | KFixN(o, f) -> kfixn (binder_name f) (get o) (fun x -> fn (subst f (KVari x)))
     | KVari(x)   -> box_of_var x
     | KDefi(d,o,a) -> fn (msubst (msubst d.tdef_value o) a)
     | KDPrj(t,s) -> kdprj (map_term fn t) s

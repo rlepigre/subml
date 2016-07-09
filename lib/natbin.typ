@@ -8,6 +8,8 @@ type Bin' = BinAux(Bin) (* non zero naturals *)
 type EBin = μK [ Error | End | Zero of BinAux(K) | One of K ] (* should be [ Error ∪ Bin ] *)
 type RBin = [ Minus of Bin' | End | Zero of Bin' | One of Bin ] (*relative numbers*)
 
+type BBin = μK [ End | Zero of K | One of K ] (* allowed trailing zero *)
+
 check Bin' ⊂ Bin
 check Bin ⊂ EBin
 check Bin ⊂ RBin
@@ -18,7 +20,6 @@ val rec succ : Bin → Bin' = fun x →
   | End    → One End
   | One n  → Zero(succ n)
   | Zero n → One n
-
 
 val 0  : Bin = End
 val 1  : Bin' = succ 0
@@ -36,6 +37,18 @@ val times2 : Bin → Bin = fun x →
   case x of | End      → End
             | Zero x   → Zero(Zero x)
             | One  x   → Zero(One  x)
+
+val rec norm : BBin → Bin = fun x →
+  case x of
+  | End    → End
+  | One n  → One(norm n)
+  | Zero n → times2(norm n)
+
+val rec bsucc : BBin → Bin = fun x →
+  case x of
+  | End    → One End
+  | One n  → times2(bsucc n)
+  | Zero n → One(norm n)
 
 val rec pred : Bin' → Bin = fun x →
   case x of
@@ -65,34 +78,34 @@ val rpred : RBin → RBin = fun x →
 
 type Carry = [Zero | One]
 
-val add_carry : Carry → Bin → Bin = fun c x →
-  case c of | One → succ x | Zero → x
+val add_carry : Carry → BBin → Bin = fun c x →
+  case c of | One → bsucc x | Zero → norm x
 
-val rec add_aux : Carry → Bin → Bin → Bin = fun c x y →
+val rec add_aux : Carry → BBin → BBin → Bin = fun c x y →
   case x of
   | End     → add_carry c y
-  | Zero x' → (
-    case y of
-    | End     → add_carry c x
-    | Zero y' → (
-        case c of
-        | Zero → times2 (add_aux Zero x' y')
-        | One  → One(add_aux Zero x' y'))
-    | One y'  → (
-        case c of
-        | Zero → One(add_aux Zero x' y')
-        | One  → times2 (add_aux One x' y')))
   | One x' → (
     case y of
     | End     → add_carry c x
-    | Zero y' → (
-        case c of
-        | Zero → One(add_aux Zero x' y')
-        | One  → times2 (add_aux One x' y'))
     | One y'  → (
         case c of
-        | Zero → times2 (add_aux One x' y')
-        | One → One(add_aux One x' y')))
+        | Zero → times2 (add_aux (One:Carry) x' y')
+        | One → One(add_aux (One:Carry) x' y'))
+    | Zero y' → (
+        case c of
+        | Zero → One(add_aux (Zero:Carry) x' y')
+        | One  → times2 (add_aux (One:Carry) x' y')))
+  | Zero x' → (
+    case y of
+    | End     → add_carry c x
+    | One y'  → (
+        case c of
+        | Zero → One(add_aux (Zero:Carry) x' y')
+        | One  → times2 (add_aux (One:Carry) x' y'))
+    | Zero y' → (
+        case c of
+        | Zero → times2 (add_aux (Zero:Carry) x' y')
+        | One  → One(add_aux (Zero:Carry) x' y')))
 
 val add : Bin → Bin → Bin = add_aux Zero
 

@@ -53,23 +53,22 @@ let print_cmp ff c =
   | Leq  -> fprintf ff "="
 
 let print_call tbl ff (i,j,m) =
+  let (_, aj, prj) = try List.assoc j tbl with Not_found -> assert false in
   let print_args ff i =
-    let (_, a, pr) = try List.assoc i tbl with Not_found -> assert false in
-    for j = 0 to a - 1 do
-      fprintf ff "%sX%t" (if j = 0 then "" else ",") (fst pr.(j))
+    for j = 0 to aj - 1 do
+      fprintf ff "%s%t" (if j = 0 then "" else ",") (fst prj.(j))
     done
   in
   let (namei, _, _) = try List.assoc i tbl with Not_found -> assert false in
   let (namej, _, _) = try List.assoc j tbl with Not_found -> assert false in
   fprintf ff "%s%d(%a) <- %s%d(" namej j print_args j namei i;
-  Array.iteri (fun i l ->
-    if i > 0 then fprintf ff ",";
+  Array.iteri (fun j l ->
+    if j > 0 then fprintf ff ",";
     let some = ref false in
-    let (_, _, pr) = try List.assoc j tbl with Not_found -> assert false in
-   Array.iteri (fun j c ->
+   Array.iteri (fun i c ->
       if c <> Unknown then (
         let sep = if !some then " " else "" in
-        fprintf ff "%s%aX%t" sep print_cmp c (fst pr.(j));
+        fprintf ff "%s%a%t" sep print_cmp c (fst prj.(j));
         some := true
       )) l;
       if not !some then fprintf ff "?") m;
