@@ -7,7 +7,7 @@ val rec append : ∀A (List(A) → List(A) → List(A)) =
     | []   → l2
     | x::l → x :: append l l2
 
-val rec partition : ∀A∀o (A → Bool) → (μo X F(A,X)) → (μo X F(A,X)) × (μo X F(A,X)) =
+val rec partition : ∀A ∀α (A → Bool) → (μα X F(A,X)) → (μα X F(A,X)) × (μα X F(A,X)) =
   fun test l →
     case l of
     | []   → ([], [])

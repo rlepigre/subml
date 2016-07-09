@@ -10,7 +10,7 @@ val rec split : ∀A G(A,List(A)) → List(A) × List(A) =
              | []   → (x::[], [])
              | y::l → let (l1,l2) = split (y::l) in (x::l2, l1)
 
-val rec split2 : ∀o ∀A (μo X F(A,X)) → (μo X F(A,X)) × (μo X F(A,X)) =
+val rec split2 : ∀α ∀A (μα X F(A,X)) → (μα X F(A,X)) × (μα X F(A,X)) =
   fun l →
     case l of
     | []   → ([], [])

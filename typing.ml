@@ -197,7 +197,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
        if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
           match ctxt.induction_hyp with
           | (index',_,os')::_ ->
-	     (*Io.log "FOUND\n%!";*)
+             (*Io.log "FOUND\n%!";*)
              Timed.(delayed := (fun () ->
                let m = find_indexes pos index index' os os' in
                ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed);

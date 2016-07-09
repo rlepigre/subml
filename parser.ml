@@ -165,6 +165,13 @@ let ident first =
 let lident = ident lidentfirst
 let uident = ident uppercase
 
+let parser lgident =
+  | "α" -> "α"
+  | "β" -> "α"
+  | "γ" -> "γ"
+  | "δ" -> "δ"
+  | "ε" -> "ε"
+
 let build_prod l = List.mapi (fun i x -> (string_of_int (i+1), x)) l
 
 (****************************************************************************
@@ -232,7 +239,7 @@ let parser enables =
 (* Entry point for ordinals. *)
 let parser ordinal : pordinal Decap.grammar =
   | infty?                  -> in_pos _loc PConv
-  | s:lident                -> in_pos _loc (PVari s)
+  | s:lgident               -> in_pos _loc (PVari s)
   | o:ordinal '+' n:int_lit -> padd _loc o n
 
 (* Entry point for kinds. *)
@@ -246,14 +253,14 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | id:uident l:kind_args$        when p = `Atm -> in_pos _loc (PTVar(id,l))
   | forall id:uident a:kind       when p = `Fun -> in_pos _loc (PKAll(id,a))
   | exists id:uident a:kind       when p = `Fun -> in_pos _loc (PKExi(id,a))
-  | forall id:lident a:kind       when p = `Fun -> in_pos _loc (POAll(id,a))
-  | exists id:lident a:kind       when p = `Fun -> in_pos _loc (POExi(id,a))
+  | forall id:lgident a:kind      when p = `Fun -> in_pos _loc (POAll(id,a))
+  | exists id:lgident a:kind      when p = `Fun -> in_pos _loc (POExi(id,a))
   | mu o:ordinal id:uident a:kind when p = `Fun -> in_pos _loc (PFixM(o,id,a))
   | nu o:ordinal id:uident a:kind when p = `Fun -> in_pos _loc (PFixN(o,id,a))
   | "{" fs:kind_reco "}"          when p = `Atm -> in_pos _loc (PProd(fs))
   | fs:kind_prod                  when p = `Prd -> in_pos _loc (PProd(fs))
   | "[" fs:kind_dsum "]"          when p = `Atm -> in_pos _loc (PDSum(fs))
-  | t:tatm "." s:uident       when p = `Atm -> in_pos _loc (PDPrj(t,s))
+  | t:tatm "." s:uident           when p = `Atm -> in_pos _loc (PDPrj(t,s))
   | a:kind_atm (s,b):with_eq      when p = `Atm -> in_pos _loc (PWith(a,s,b))
   (* Parenthesis and coercions. *)
   | "(" kind ")"                  when p = `Atm
@@ -284,7 +291,7 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | fun_kw xs:var+ mapto t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
   | klam x:uident t:term$         when p = `Lam -> let x = in_pos _loc_x x in
                                                    in_pos _loc (PKAbs(x,t))
-  | klam o:lident t:term$         when p = `Lam -> let o = in_pos _loc_o o in
+  | klam o:lgident t:term$        when p = `Lam -> let o = in_pos _loc_o o in
                                                    in_pos _loc (POAbs(o,t))
   | t:tapp u:tcol                 when p = `App -> pappl _loc t u
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u

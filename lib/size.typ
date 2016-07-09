@@ -1,35 +1,35 @@
 type F(X) = [ Z | S of X]
 type N = μX F(X)
 
-val rec idt : ∀o ((μo X F(X)) → (μo X F(X))) = fun n →
+val rec idt : ∀α ((μα X F(X)) → (μα X F(X))) = fun n →
   case n of
   | Z    → Z
   | S(n) → S(idt n)
 
-val rec idt3 : ∀o (F(μo X F(X)) → F(μo X F(X))) = idt
-val rec idt4 : ∀o (μo+1 X F(X)) → μo+1 X F(X) = idt
+val rec idt3 : ∀α (F(μα X F(X)) → F(μα X F(X))) = idt
+val rec idt4 : ∀α (μα+1 X F(X)) → μα+1 X F(X) = idt
 (*
-!val rec idt2 : ∀o (F(μo X F(X)) → F(μo X F(X)))
+!val rec idt2 : ∀α (F(μα X F(X)) → F(μα X F(X)))
         = fun n → case n of
           | Z → Z
           | S n → S (idt2 n)
 *)
-val pred : ∀o [ S of μo X F(X) ] → μo X F(X) = fun n →
+val pred : ∀α [ S of μα X F(X) ] → μα X F(X) = fun n →
   case n of
   | S n → n
 
-val pred' : ∀o (μo+2 X F(X)) → μo+1 X F(X) = fun n →
+val pred' : ∀α (μα+2 X F(X)) → μα+1 X F(X) = fun n →
   case n of
   | Z   → Z
   | S n → n
 
 type G(X) = {} -> [ S of X]
 
-val rec idt' : ∀o (νo X G(X)) → (νo X G(X)) = fun n u →
+val rec idt' : ∀α (να X G(X)) → (να X G(X)) = fun n u →
   case (n {}) of
   | S n → S(idt' n)
 (*
-!val rec idt2' : ∀o (G(νo X G(X))) → (G(νo X G(X)))
+!val rec idt2' : ∀α (G(να X G(X))) → (G(να X G(X)))
         = fun n u → case (n {}) of
           | S n → S (idt2' n)
 *)
