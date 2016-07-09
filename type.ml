@@ -163,7 +163,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | KFixN(o,f) -> aux occ (aux3 acc o) (subst f kdummy)
     | KDPrj(t,_) -> aux2 acc t
     | KWith(a,_) -> aux occ acc a (* FIXME *)
-    | KDefi(d,a) ->
+    | KDefi(d,_,a) ->
        let acc = ref acc in
        Array.iteri (fun i k ->
          acc := aux (compose occ d.tdef_variance.(i)) !acc k) a;
@@ -220,7 +220,7 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KUVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
       | KVari(x)   -> box_of_var x
-      | KDefi(d,a) -> kdefi d (Array.map fn a)
+      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
       | MuRec(_,k)
@@ -269,7 +269,7 @@ let lift_kind : kind -> kind bindbox = fun k ->
       | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KVari(x)   -> box_of_var x
-      | KDefi(d,a) -> kdefi d (Array.map fn a)
+      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
       | MuRec _
@@ -302,7 +302,7 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KUVar(u)   -> assert(!(u.uvar_val) = None); box k
       | KVari(x)   -> box_of_var x
-      | KDefi(d,a) -> kdefi d (Array.map fn a)
+      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
       | MuRec(_,k)
@@ -384,7 +384,7 @@ let decompose : occur -> kind -> kind ->
          if o <> OConv && pos <> Eps then search o else o
        in
        kfixn (binder_name f) (box o) (fun x -> fn pos (subst f (KVari x)))
-    | KDefi(d,a) -> fn pos (msubst d.tdef_value a)
+    | KDefi(d,o,a) -> fn pos (msubst (msubst d.tdef_value o) a)
     | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn Eps a)
     | KVari(x)   -> box_of_var x
@@ -416,7 +416,7 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
     | KFixM(o, f) -> kfixm (binder_name f) (box o) (fun x -> fn (subst f (KVari x)))
     | KFixN(o, f) -> kfixn (binder_name f) (box o) (fun x -> fn (subst f (KVari x)))
     | KVari(x)   -> box_of_var x
-    | KDefi(d,a) -> fn (msubst d.tdef_value a)
+    | KDefi(d,o,a) -> fn (msubst (msubst d.tdef_value o) a)
     | KDPrj(t,s) -> kdprj (map_term fn t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
     | MuRec _

@@ -105,17 +105,19 @@ let has_uvar : kind -> bool = fun k ->
     | KKAll(f)
     | KKExi(f)   -> fn (subst f (KProd []))
     | KFixM(o,f)
-    | KFixN(o,f) ->
-       (match orepr o with OUVar _ -> raise Exit | _ -> ());
-       fn (subst f (KProd []))
+    | KFixN(o,f) -> gn o; fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f (OTInt(-42)))
     | KUVar(u)   -> raise Exit
-    | KDefi(d,a) -> Array.iter fn a
+    | KDefi(d,o,a) -> Array.iter gn o; Array.iter fn a
     | KWith(k,c) -> let (_,b) = c in fn k; fn b
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
     | t          -> ()
+  and gn o =
+    match orepr o with
+    | OUVar _ -> raise Exit
+    | _       -> ()
   in
   try
     fn k; false
@@ -138,7 +140,7 @@ let uvar_list : kind -> uvar list = fun k ->
     | KOAll(f)
     | KOExi(f)   -> fn (subst f (OTInt(-42)))
     | KUVar(u)   -> if not (List.exists (fun v -> u.uvar_key = v.uvar_key) !r) then r := u :: !r
-    | KDefi(d,a) -> Array.iter fn a
+    | KDefi(d,_,a) -> Array.iter fn a
     | KWith(k,c) -> let (_,b) = c in fn k; fn b
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)

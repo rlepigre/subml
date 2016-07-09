@@ -15,7 +15,7 @@ and pordinal' =
 
 type pkind = pkind' position
 and pkind' =
-  | PTVar of string * pkind list
+  | PTVar of string * pordinal list * pkind list
   | PFunc of pkind * pkind
   | PProd of (string * pkind) list
   | PDSum of (string * pkind option) list
@@ -132,30 +132,39 @@ let ordinal_variable : env -> strpos -> obox = fun env s ->
 
 (* Lookup a kind variable in the environment. If it does not appear, look for
    the name in the list of type definitions. *)
-let rec kind_variable : occur -> env -> strpos -> pkind array -> kbox =
- fun pos env s ks ->
-  let arity = Array.length ks in
+let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array -> kbox =
+ fun pos env s os ks ->
+  let karity = Array.length ks in
+  let oarity = Array.length os in
   try
     let (k, pos') = List.assoc s.elt env.kinds in
     if not (List.mem (compose2 pos' pos) [Non; Pos]) then
       let msg = Printf.sprintf "%s used in a negative position." s.elt in
       positivity_error s.pos msg
-    else if arity > 0 then
-      arity_error s.pos (s.elt ^ " does not expect arguments.")
+    else if oarity <> 0 then
+      arity_error s.pos (s.elt ^ " does not expect ordinal arguments.")
+    else if karity <> 0 then
+      arity_error s.pos (s.elt ^ " does not expect kind arguments.")
     else k
   with Not_found ->
     try
       let td = Hashtbl.find typ_env s.elt in
-      if td.tdef_arity <> arity then begin
+      if td.tdef_oarity <> oarity then
         let msg =
-          Printf.sprintf "%s expect %i arguments but received %i." s.elt
-            td.tdef_arity (Array.length ks)
+          Printf.sprintf "%s expect %i ordinal arguments but received %i."
+            s.elt td.tdef_oarity oarity
         in arity_error s.pos msg
-      end;
+      else if td.tdef_karity <> karity then
+        let msg =
+          Printf.sprintf "%s expect %i kind arguments but received %i."
+            s.elt td.tdef_karity karity
+        in arity_error s.pos msg
+      else
+      let os = Array.map (unsugar_ordinal env) os in
       let ks = Array.mapi (fun i k ->
         unsugar_kind ~pos:(compose2 (td.tdef_variance.(i)) pos) env k) ks
       in
-      kdefi td ks
+      kdefi td os ks
     with Not_found -> unbound s
 
 (****************************************************************************
@@ -173,8 +182,8 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   match pk.elt with
   | PFunc(a,b)   ->
      kfunc (unsugar_kind ~pos:(neg pos) env a) (unsugar_kind ~pos env b)
-  | PTVar(s,ks)  ->
-     kind_variable pos env (in_pos pk.pos s) (Array.of_list ks)
+  | PTVar(s,os,ks) ->
+     kind_variable pos env (in_pos pk.pos s) (Array.of_list os) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) Non env) k
                     in kkall x f

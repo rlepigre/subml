@@ -39,6 +39,7 @@ and print_index_ordinal ff o = match orepr o with
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
+  let pordi = print_ordinal false in
   let pkindw = print_kind false true in
   let t = repr t in
   let key, _, ords = decompose All t (KProd[]) in
@@ -115,14 +116,18 @@ and print_kind unfold wrap ff t =
       let a = subst b (free_of x) in
       fprintf ff "\\nu%a %s %a" print_index_ordinal o (name_of x) pkind a;
       if wrap then pp_print_string ff ")"
-  | KDefi(td,args) ->
-     if unfold then
-       print_kind unfold wrap ff (msubst td.tdef_value args)
-     else
-       if Array.length args = 0 then
-         pp_print_string ff td.tdef_tex_name
-       else
-         fprintf ff "%s(%a)" td.tdef_tex_name (print_array pkind ", ") args
+  | KDefi(td,os,ks) ->
+      if unfold then
+        print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
+      else if Array.length ks = 0 && Array.length os = 0 then
+        pp_print_string ff td.tdef_name
+      else if Array.length os = 0 then
+        fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") ks
+      else if Array.length ks = 0 then
+        fprintf ff "%s(%a)" td.tdef_name (print_array pordi ", ") os
+      else
+        fprintf ff "%s(%a, %a)" td.tdef_name (print_array pordi ", ") os
+          (print_array pkind ", ") ks
   | KDPrj(t,s) ->
      fprintf ff "%a.%s" (print_term false 2) t s
   | KWith(a,(s,b)) ->
@@ -141,12 +146,22 @@ and print_kind unfold wrap ff t =
 
 and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_tex_name;
-  let names = mbinder_names kd.tdef_value in
-  let xs = new_mvar mk_free_kvari names in
-  let k = msubst kd.tdef_value (Array.map free_of xs) in
-  if Array.length names > 0 then
-    fprintf ff "(%a)" (print_array pp_print_string ",") names;
-  fprintf ff " = %a" (print_kind unfold false) k
+  let parray = print_array pp_print_string "," in
+  let pkind = print_kind unfold false in
+  let onames = mbinder_names kd.tdef_value in
+  let os = new_mvar mk_free_ovari onames in
+  let k = msubst kd.tdef_value (Array.map free_of os) in
+  let knames = mbinder_names k in
+  let ks = new_mvar mk_free_kvari knames in
+  let k = msubst k (Array.map free_of ks) in
+  if Array.length knames = 0 && Array.length onames = 0 then
+    fprintf ff " = %a" pkind k
+  else if Array.length onames = 0 then
+    fprintf ff "(%a) = %a" parray knames pkind k
+  else if Array.length knames = 0 then
+    fprintf ff "(%a) = %a" parray onames pkind k
+  else
+    fprintf ff "(%a,%a) = %a" parray onames parray knames pkind k
 
 (****************************************************************************
  *                           Printing of a term                             *
@@ -437,6 +452,8 @@ let rec output ch = function
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(n,t)     ->
+      assert false (* TODO *)
+      (*
      let name = t.tdef_tex_name in
      let f = t.tdef_value in
      let args = mbinder_names f in
@@ -452,6 +469,7 @@ let rec output ch = function
      break_hint := n;
      fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
      break_hint := 0
+     *)
   | Sct (arities,calls) ->
       print_calls ch arities calls
 

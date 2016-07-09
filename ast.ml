@@ -51,7 +51,7 @@ type kind =
   | KFixM of ordinal * (kind, kind) binder
   | KFixN of ordinal * (kind, kind) binder
   (* User-defined type applied to arguments: T(A1,...,An). *)
-  | KDefi of type_def * kind array
+  | KDefi of type_def * ordinal array * kind array
   (* Dot projection t.X. *)
   | KDPrj of term * string
   (* With clause A with X = B. *)
@@ -74,10 +74,11 @@ and type_def =
   { tdef_name     : string
   ; tdef_tex_name : string
   (* Arity of the constructor. *)
-  ; tdef_arity    : int
+  ; tdef_oarity   : int
+  ; tdef_karity   : int
   ; tdef_variance : occur array
   (* Definition of the constructor. *)
-  ; tdef_value    : (kind, kind) mbinder }
+  ; tdef_value    : (ordinal, (kind, kind) mbinder) mbinder }
 
 (* Unification variable identified by a key and possibly a value. *)
 and uvar =
@@ -214,8 +215,8 @@ let rec repr : kind -> kind = function
 (* Unfolding unification variable indirections and definitions *)
 let rec full_repr : kind -> kind = function
   | KUVar({uvar_val = {contents = Some k}}) -> full_repr k
-  | KDefi({tdef_value = v}, a)              -> full_repr (msubst v a)
-  | k                                      -> k
+  | KDefi({tdef_value = v}, os, ks) -> full_repr (msubst (msubst v os) ks)
+  | k                               -> k
 
 let rec orepr = function OUVar({contents = Some o}) -> orepr o | o -> o
 
@@ -324,8 +325,10 @@ let kwith : kbox -> string -> kbox -> kbox =
   fun a s b ->
     box_apply2 (fun a b -> KWith(a,(s,b))) a b
 
-let kdefi : type_def -> kbox array -> kbox =
-  fun td ks -> box_apply2 (fun td ks -> KDefi(td,ks)) (box td) (box_array ks)
+let kdefi : type_def -> obox array -> kbox array -> kbox =
+  fun td os ks ->
+    let fn td os ks = KDefi(td,os,ks) in
+    box_apply3 fn (box td) (box_array os) (box_array ks)
 
 let kfixn : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->

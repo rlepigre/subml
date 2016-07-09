@@ -108,6 +108,7 @@ and print_index_ordinal ff = function
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
+  let pordi = print_ordinal unfold in
   let pkindw = print_kind unfold true in
   let t = repr t in
   match t with
@@ -155,14 +156,18 @@ and print_kind unfold wrap ff t =
       let x = new_kvari (binder_name b) in
       let a = subst b (free_of x) in
       fprintf ff "ν%a%s %a" print_index_ordinal o (name_of x) pkindw a
-  | KDefi(td,args) ->
+  | KDefi(td,os,ks) ->
       if unfold then
-        print_kind unfold wrap ff (msubst td.tdef_value args)
+        print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
+      else if Array.length ks = 0 && Array.length os = 0 then
+        pp_print_string ff td.tdef_name
+      else if Array.length os = 0 then
+        fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") ks
+      else if Array.length ks = 0 then
+        fprintf ff "%s(%a)" td.tdef_name (print_array pordi ", ") os
       else
-        if Array.length args = 0 then
-          pp_print_string ff td.tdef_name
-        else
-          fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") args
+        fprintf ff "%s(%a, %a)" td.tdef_name (print_array pordi ", ") os
+          (print_array pkind ", ") ks
   | KDPrj(t,s) ->
      fprintf ff "%a.%s" (print_term ~in_proj:false false) t s
   | KWith(a,(s,b)) ->
@@ -189,18 +194,26 @@ and print_occur ff = function
 
 and pkind_def unfold ff kd =
   fprintf ff "type %s" kd.tdef_name;
-  let names = mbinder_names kd.tdef_value in
-  let xs = new_mvar mk_free_kvari names in
-  let k = msubst kd.tdef_value (Array.map free_of xs) in
-  if Array.length names > 0 then
-    begin
-      assert(Array.length names = Array.length kd.tdef_variance);
-      let names = Array.mapi (fun i n -> (n, kd.tdef_variance.(i))) names in
-      let print_elt ff (n,v) = fprintf ff "%s%a" n print_occur v in
-      fprintf ff "(%a)" (print_array print_elt ",") names;
-    end;
-  fprintf ff " = %a" (print_kind unfold false) k
-
+  let parray = print_array pp_print_string "," in
+  let pkind = print_kind unfold false in
+  let onames = mbinder_names kd.tdef_value in
+  let os = new_mvar mk_free_ovari onames in
+  let k = msubst kd.tdef_value (Array.map free_of os) in
+  let knames = mbinder_names k in
+  let ks = new_mvar mk_free_kvari knames in
+  let k = msubst k (Array.map free_of ks) in
+  assert(Array.length knames = Array.length kd.tdef_variance);
+  let knames = Array.mapi (fun i n -> (n, kd.tdef_variance.(i))) knames in
+  let print_elt ff (n,v) = fprintf ff "%s%a" n print_occur v in
+  let parray' = print_array print_elt "," in
+  if Array.length knames = 0 && Array.length onames = 0 then
+    fprintf ff " = %a" pkind k
+  else if Array.length onames = 0 then
+    fprintf ff "(%a) = %a" parray' knames pkind k
+  else if Array.length knames = 0 then
+    fprintf ff "(%a) = %a" parray onames pkind k
+  else
+    fprintf ff "(%a,%a) = %a" parray onames parray' knames pkind k
 
 (****************************************************************************
  *                           Printing of a term                             *
@@ -321,9 +334,12 @@ exception Find_tdef of type_def
 
 let find_tdef : kind -> type_def = fun t ->
   try
-    Hashtbl.iter (fun _ d ->
-      if d.tdef_arity = 0 && eq_kind (msubst d.tdef_value [||]) t then
-        raise (Find_tdef d)) typ_env;
+    let fn _ d =
+      if d.tdef_oarity = 0 && d.tdef_karity = 0 then
+        let k = msubst (msubst d.tdef_value [||]) [||] in
+        if eq_kind k t then raise (Find_tdef d)
+    in
+    Hashtbl.iter fn typ_env;
     raise Not_found
   with
     Find_tdef(t) -> t

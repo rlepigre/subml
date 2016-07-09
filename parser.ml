@@ -250,7 +250,7 @@ and kind_prd = (pkind `Prd)
 
 and pkind (p : [`Atm | `Prd | `Fun]) =
   | a:kind_prd arrow b:kind       when p = `Fun -> in_pos _loc (PFunc(a,b))
-  | id:uident l:kind_args$        when p = `Atm -> in_pos _loc (PTVar(id,l))
+  | id:uident (o,k):kind_args$    when p = `Atm -> in_pos _loc (PTVar(id,o,k))
   | forall id:uident a:kind       when p = `Fun -> in_pos _loc (PKAll(id,a))
   | exists id:uident a:kind       when p = `Fun -> in_pos _loc (PKExi(id,a))
   | forall id:lgident a:kind      when p = `Fun -> in_pos _loc (POAll(id,a))
@@ -267,7 +267,10 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | kind_atm                      when p = `Prd
   | kind_prd                      when p = `Fun
 
-and kind_args = {"(" l:kind_list ")"}?[[]]
+and kind_args =
+  | EMPTY                   -> ([], [])
+  | l:{"(" l:kind_list ")"} -> ([], l)
+  (* TODO *)
 and kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
 and kind_list = l:(list_sep kind ",")
 and kind_dsum = (list_sep (parser uident a:{_:of_kw kind}?) "|")
@@ -423,32 +426,45 @@ let tex_text = change_layout tex_text no_blank
 type name = string option * string
 
 (* New type definition. *)
-let new_type : name -> string list -> pkind -> unit = fun name args k ->
-  let (tex, name) = name in
-  let arg_names = Array.of_list args in
-  let tdef_arity = Array.length arg_names in
-  let tdef_variance = Array.make tdef_arity Non in
-  let f args =
-    let env = ref [] in
-    let f i k =
-      let v = (k, (Reg(i,tdef_variance))) in
-      env := (arg_names.(i), v) :: !env
+let new_type : name -> (string list * string list) -> pkind -> unit =
+  fun (tex, name) (oargs, kargs) k ->
+    let tdef_tex_name =
+      match tex with
+      | None   -> "\\mathrm{"^name^"}"
+      | Some s -> s
     in
-    Array.iteri f args;
-    unsugar_kind {empty_env with kinds = !env} k
-  in
-  let b = mbind mk_free_kvari arg_names f in
-  let tdef_tex_name =
-    match tex with
-    | None   -> "\\mathrm{"^name^"}"
-    | Some s -> s
-  in
-  let td =
-    { tdef_name = name ; tdef_tex_name ; tdef_arity ; tdef_variance
-    ; tdef_value = unbox b }
-  in
-  if !verbose then Io.out "%a\n%!" (print_kind_def false) td;
-  Hashtbl.add typ_env name td
+    let oarg_names = Array.of_list oargs in
+    let karg_names = Array.of_list kargs in
+    let tdef_oarity = Array.length oarg_names in
+    let tdef_karity = Array.length karg_names in
+    let tdef_variance = Array.make tdef_karity Non in
+
+    let fn oargs =
+      let gn kargs =
+        let kinds = ref [] in
+        let f i k =
+          let v = (k, (Reg(i,tdef_variance))) in
+          kinds := (karg_names.(i), v) :: !kinds
+        in
+        Array.iteri f kargs;
+        let ordis = ref [] in
+        let f i o =
+          ordis := (oarg_names.(i), o) :: !ordis
+        in
+        Array.iteri f oargs;
+        unsugar_kind {empty_env with kinds = !kinds ; ordinals = !ordis} k
+      in
+      mbind mk_free_kvari karg_names gn
+    in
+    let b = mbind mk_free_ovari oarg_names fn in
+
+    let tdef_value = unbox b in
+    let td =
+      { tdef_name = name ; tdef_tex_name ; tdef_karity ; tdef_oarity
+      ; tdef_value ; tdef_variance }
+    in
+    if !verbose then Io.out "%a\n%!" (print_kind_def false) td;
+    Hashtbl.add typ_env name td
 
 type flag = MustPass | MustFail | CanFail
 
@@ -521,8 +537,12 @@ let parser command top =
   | _:clear_kw                       when top     -> System.clear ()
   | {quit_kw | exit_kw}              when top     -> raise End_of_file
 
-and kind_def =
-  | tn:tex_name? uident {"(" ids:(list_sep' uident ",") ")"}?[[]] "=" kind
+and kind_def = tex_name? uident kind_def_args "=" kind
+
+and kind_def_args =
+  | EMPTY                            -> ([], [])
+  | "(" l:(list_sep' uident ",") ")" -> ([], l)
+  (* TODO *)
 
 and val_def =
   | r:is_rec tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
