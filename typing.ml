@@ -405,8 +405,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
-       (match a with KFixN(o',_) ->
-         ignore (Timed.pure_test (leq_ordinal (List.map fst ctxt.positive_ordinals) o) o') | _ -> ());
+        begin
+          match a with
+          | KFixN(o',_) -> let os = List.map fst ctxt.positive_ordinals in
+                           ignore (Timed.pure_test (leq_ordinal os o) o')
+          | _           -> ()
+        end;
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
         in
@@ -419,8 +423,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_FixN_r prf
 
     | (KFixM(o,f)   , _           ) ->
-       (match b with KFixM(o',_) ->
-         ignore (Timed.pure_test (leq_ordinal (List.map fst ctxt.positive_ordinals) o) o') | _ -> ());
+        begin
+          match b with
+          | KFixM(o',_) -> let os = List.map fst ctxt.positive_ordinals in
+                           ignore (Timed.pure_test (leq_ordinal os o) o')
+          | _           -> ()
+        end;
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
         in
@@ -574,7 +582,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          begin
            Io.log "searching induction hyp (1):\n" ;
            Io.log "  %a (%a > 0)\n%!"
-             (print_kind false) c (fun ch -> List.iter (fun (o,_) -> print_ordinal false ch o)) pos;
+             (print_kind false) c
+             (fun ch -> List.iter (fun (o,_) -> print_ordinal false ch o)) pos;
          end;
        let rec fn = function
          | [] -> raise Not_found

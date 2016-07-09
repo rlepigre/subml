@@ -351,28 +351,28 @@ let print_calls ch arities calls =
     | Sct.Less    -> fprintf ch "<"
     | Sct.Leq     -> fprintf ch "="
   in
-  let print_args ch i =
-    let (_, a, pr) = try List.assoc i arities with Not_found -> assert false in
-    for j = 0 to a - 1 do
-      fprintf ch "%s%t" (if j = 0 then "" else ",") (snd pr.(j))
+  fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
+  let print_args ch j =
+    let (_, aj, prj) = try List.assoc j arities with Not_found -> assert false in
+    for j = 0 to aj - 1 do
+      fprintf ch "%s%t" (if j = 0 then "" else ",") (snd prj.(j))
     done
   in
-  fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
-  let f (i,_) =
-    fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" i i print_args i
+  let f (j,_) =
+    fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" j j print_args j
   in
   List.iter f (List.filter (fun (i,_) ->
     List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
   let print_call arities (i,j,m) =
+    let (_, aj, prj) = try List.assoc j arities with Not_found -> assert false in
     fprintf ch "    N%d -> N%d [label = \"(" j i;
-    let (_, _, pr) = try List.assoc j arities with Not_found -> assert false in
-    Array.iteri (fun i l ->
-      if i > 0 then fprintf ch ",";
+    Array.iteri (fun j l ->
+      if j > 0 then fprintf ch ",";
       let some = ref false in
-      Array.iteri (fun j c ->
+      Array.iteri (fun i c ->
         if c <> Sct.Unknown then (
           let sep = if !some then " " else "" in
-          fprintf ch "%s%a%t" sep print_cmp c (snd pr.(j));
+          fprintf ch "%s%a%t" sep print_cmp c (snd prj.(j));
           some := true
         )) l;
       if not !some then fprintf ch "?") m;
