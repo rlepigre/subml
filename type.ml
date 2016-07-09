@@ -4,27 +4,21 @@ open Position
 open Bindlib
 open Format
 
-(* global list of all epsilon ordinals
-   reset between each definition *)
-let all_epsilons = ref []
-
 let rec assoc_ordinal o = function
   | [] -> raise Not_found
   | (o',v)::l -> if eq_ordinal o o' then v else assoc_ordinal o l
 
 (* construction of an ordinal < o such that w *)
+
 let oless o w =
   let o = orepr o in
-  match o with OUVar(p) ->
+  match o with
+  | OSucc o' -> o'
+  | OUVar(p) ->
     let o' = OUVar(ref None) in
     set_ouvar p (OSucc o'); o'
   | _ ->
-  let o' = OLess(o,w) in
-  if o <> OConv then
-    (let l = try assoc_ordinal o !all_epsilons with Not_found -> [] in
-    if not (List.exists (eq_ordinal o') l) then
-      all_epsilons := (o, (o' :: l)) :: !all_epsilons);
-  o'
+  OLess(o,w)
 
  (***************************************************************************
  *                             mapping on terms                             *
@@ -150,8 +144,13 @@ let neg = function
 let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
   let kdummy = KProd [] in
   let odummy = OTInt(-42) in
+  let adone_k = ref [] in
+  let adone_t = ref [] in
   let rec aux occ acc k =
-    match repr k with
+    let k = repr k in
+    if List.memq k !adone_k then acc else (
+    adone_k := k :: !adone_k;
+    match k with
     | KVari(x)   -> acc
     | KFunc(a,b) -> aux (neg occ) (aux occ acc b) a
     | KProd(ks)
@@ -174,8 +173,11 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | KUVar(u)   -> if u.uvar_key = i then combine acc occ else acc
     | KTInt(_)   -> assert false
     | MuRec(_,k)
-    | NuRec(_,k) -> aux occ acc k
-  and aux2 acc t = match t.elt with
+    | NuRec(_,k) -> aux occ acc k)
+  and aux2 acc t =
+    if List.memq t !adone_t then acc else (
+    adone_t := t :: !adone_t;
+    match t.elt with
     | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (dummy_pos (TReco [])))
     | TCoer(t,_)
     | TProj(t,_)
@@ -190,9 +192,10 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
     | TVari(_)
     | TDefi(_)
     | TPrnt(_)
-    | TTInt(_)       -> acc
+    | TTInt(_)       -> acc)
   and aux3 acc = function
     | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
+    | OSucc o -> aux3 acc o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc

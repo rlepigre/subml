@@ -5,7 +5,7 @@ type List(A) = μX F(A,X)
 val rec insert : ∀o ∀A (A → A → Bool) → A → (μo X F(A,X)) → μo+1 X F(A,X) =
   fun cmp a l →
     case l of
-    | []      → a :: []
+    | []   → a :: []
     | x::l → if cmp a x then a::l else x :: insert cmp a l
 
 val rec insert0 : ∀o ∀A (A → A → Bool) →  A → List(A) →  List(A) =
@@ -19,5 +19,5 @@ val insert1 : ∀o ∀A (A → A → Bool) →  A → List(A) →  List(A) = ins
 val rec sort : ∀o ∀A  (A → A → Bool) → (μo X F(A,X)) → (μo X F(A,X)) =
   fun cmp l →
     case l of
-    | []      → []
+    | []   → []
     | x::l → insert cmp x (sort cmp l)

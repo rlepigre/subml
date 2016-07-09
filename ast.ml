@@ -65,8 +65,8 @@ type kind =
   (* Integer tag for comparing kinds. *)
   | KTInt of int
   (* Recording *)
-  | MuRec of ordinal refinter * kind
-  | NuRec of ordinal refinter * kind
+  | MuRec of (ordinal, ordinal) refinter * kind
+  | NuRec of (ordinal, ordinal) refinter * kind
 
 (* Type definition (user defined type). *)
 and type_def =
