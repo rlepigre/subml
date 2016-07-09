@@ -614,8 +614,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        if !debug then
          begin
            Io.log "Adding induction hyp %d:\n" fnum;
-           Io.log "  %a => %a %a\n%!" (print_kind false) c
-             (print_kind false) c0 (print_term true) t;
+           Io.log "  %a => %a\n%!" (print_kind false) c
+             (print_kind false) c0;
          end;
        let pos = ctxt.positive_ordinals in
        let ctxt =

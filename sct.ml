@@ -65,7 +65,7 @@ let print_call tbl ff (i,j,m) =
   Array.iteri (fun i l ->
     if i > 0 then fprintf ff ",";
     let some = ref false in
-    let (_, _, pr) = try List.assoc i tbl with Not_found -> assert false in
+    let (_, _, pr) = try List.assoc j tbl with Not_found -> assert false in
    Array.iteri (fun j c ->
       if c <> Unknown then (
         let sep = if !some then " " else "" in

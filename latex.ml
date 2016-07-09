@@ -350,7 +350,7 @@ let print_calls ch arities calls =
     List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
   let print_call arities (i,j,m) =
     fprintf ch "    N%d -> N%d [label = \"(" j i;
-    let (_, _, pr) = try List.assoc i arities with Not_found -> assert false in
+    let (_, _, pr) = try List.assoc j arities with Not_found -> assert false in
     Array.iteri (fun i l ->
       if i > 0 then fprintf ch ",";
       let some = ref false in
