@@ -717,5 +717,7 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
       | Prod l -> set_kuvar true  v (KProd l); false
     in
     let ul = List.filter fn (kuvar_list k) in
+    let ol = ouvar_list k in
     let k = List.fold_left (fun acc v -> KKAll (bind_kuvar v acc)) k ul in
+    let k = List.fold_left (fun acc v -> KOAll (bind_ouvar v acc)) k ol in
     (k, prf, calls)
