@@ -178,7 +178,7 @@ and print_kind unfold wrap ff t =
      let name, index =search_type_tbl u f is_exists in
      fprintf ff "%s_%d" name index
   | KUVar(u) ->
-      fprintf ff "?%i" u.uvar_key
+      fprintf ff "?%i" u.kuvar_key
   | KTInt(n) ->
      fprintf ff "!%i" n
   | MuRec(_,a) -> fprintf ff "REC(%a)" pkind a

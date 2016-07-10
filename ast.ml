@@ -11,6 +11,9 @@ let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
 let from_opt : 'a option -> 'a -> 'a = fun o d ->
   match o with None -> d | Some e -> e
 
+let from_opt' : 'a option -> (unit -> 'a) -> 'a = fun o f ->
+  match o with None -> f () | Some e -> e
+
 (****************************************************************************
  *              AST for kinds (or types), ordinals and terms                *
  ****************************************************************************)
@@ -61,7 +64,7 @@ type kind =
   | KUCst of term * (kind, kind) binder
   | KECst of term * (kind, kind) binder
   (* Unification variables - used for typechecking. *)
-  | KUVar of uvar
+  | KUVar of kuvar
   (* Integer tag for comparing kinds. *)
   | KTInt of int
   (* Recording *)
@@ -81,14 +84,14 @@ and type_def =
   ; tdef_value    : (ordinal, (kind, kind) mbinder) mbinder }
 
 (* Unification variable identified by a key and possibly a value. *)
-and uvar =
+and kuvar =
   (* Unique key identifying the variable. *)
-  { uvar_key : int
+  { kuvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
-  ; uvar_val : kind option ref
-  ; uvar_state : uvar_state ref }
+  ; kuvar_val : kind option ref
+  ; kuvar_state : kuvar_state ref }
 
-and uvar_state = Free
+and kuvar_state = Free
   | Sum  of (string * kind) list
   | Prod of (string * kind) list
 
@@ -209,12 +212,12 @@ and typ_prf =
 
 (* Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function
-  | KUVar({uvar_val = {contents = Some k}}) -> repr k
-  | k                                       -> k
+  | KUVar({kuvar_val = {contents = Some k}}) -> repr k
+  | k                                        -> k
 
 (* Unfolding unification variable indirections and definitions *)
 let rec full_repr : kind -> kind = function
-  | KUVar({uvar_val = {contents = Some k}}) -> full_repr k
+  | KUVar({kuvar_val = {contents = Some k}}) -> full_repr k
   | KDefi({tdef_value = v}, os, ks) -> full_repr (msubst (msubst v os) ks)
   | k                               -> k
 
@@ -344,9 +347,9 @@ let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
   let new_uvar () = KUVar {
-    uvar_key = (incr c; !c);
-    uvar_val = ref None;
-    uvar_state = ref Free;
+    kuvar_key = (incr c; !c);
+    kuvar_val = ref None;
+    kuvar_state = ref Free;
   } in
   let reset_uvar () = c := 0 in
   (new_uvar, reset_uvar)

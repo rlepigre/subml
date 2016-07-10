@@ -129,7 +129,7 @@ let has_uvar : kind -> bool = fun k ->
   with
     Exit -> true
 
-let uvar_list : kind -> uvar list = fun k ->
+let kuvar_list : kind -> kuvar list = fun k ->
   let r = ref [] in
   let rec fn k =
     match repr k with
@@ -144,7 +144,7 @@ let uvar_list : kind -> uvar list = fun k ->
        fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f (OTInt(-42)))
-    | KUVar(u)   -> if not (List.exists (fun v -> u.uvar_key = v.uvar_key) !r) then r := u :: !r
+    | KUVar(u)   -> if not (List.exists (fun v -> u.kuvar_key = v.kuvar_key) !r) then r := u :: !r
     | KDefi(d,_,a) -> Array.iter fn a
     | KWith(k,c) -> let (_,b) = c in fn k; fn b
     (* we ommit Dprj above because the kind in term are only
@@ -261,8 +261,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* unification. (sum and product special) *)
     | (KUVar(ua)   , KProd(l))
-       when (match !(ua.uvar_state) with Sum _ -> false | _ -> true) ->
-       let l0 = match !(ua.uvar_state) with
+       when (match !(ua.kuvar_state) with Sum _ -> false | _ -> true) ->
+       let l0 = match !(ua.kuvar_state) with
            Free -> []
          | Prod l -> l
          | Sum _ -> assert false
@@ -275,12 +275,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
            ()
          with
            Not_found -> l1 := (s,k)::!l1) l;
-       Timed.(ua.uvar_state := Prod !l1);
+       Timed.(ua.kuvar_state := Prod !l1);
        Sub_Lower
 
     | (KDSum(l)   , KUVar(ub)   )
-       when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
-       let l0 = match !(ub.uvar_state) with
+       when (match !(ub.kuvar_state) with Prod _ -> false | _ -> true) ->
+       let l0 = match !(ub.kuvar_state) with
            Free -> []
          | Sum l -> l
          | Prod _ -> assert false
@@ -293,7 +293,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
            ()
          with
            Not_found -> l1 := (s,k)::!l1) l;
-       Timed.(ub.uvar_state := Sum !l1);
+       Timed.(ub.kuvar_state := Sum !l1);
        Sub_Lower
 
     (* Handling of unification variables (immitation). *)
@@ -671,12 +671,12 @@ let subtype : term option -> kind -> kind -> sub_prf * calls_graph =
     with e -> delayed := []; reset_all (); raise e
 
 let type_check : term -> kind option -> kind * typ_prf * calls_graph =
-  fun t ko ->
-    let c = match ko with None -> new_uvar () | Some k -> k in
+  fun t k ->
+    let k = from_opt' k new_uvar in
     let ctxt = empty_ctxt () in
     let (prf, calls) =
       try
-        let p = type_check ctxt t c in
+        let p = type_check ctxt t k in
         List.iter (fun f -> f ()) !delayed;
         delayed := [];
         let calls = inline !(ctxt.calls) in
@@ -687,11 +687,11 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
       with e -> delayed := []; reset_all (); raise e
     in
     let fn v =
-      match !(v.uvar_state) with
+      match !(v.kuvar_state) with
       | Free   -> true
       | Sum  l -> set_kuvar false v (KDSum l); false
       | Prod l -> set_kuvar true  v (KProd l); false
     in
-    let ul = List.filter fn (uvar_list c) in
-    let c = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) c ul in
-    (c, prf, calls)
+    let ul = List.filter fn (kuvar_list k) in
+    let k = List.fold_left (fun acc v -> KKAll (bind_kuvar v acc)) k ul in
+    (k, prf, calls)

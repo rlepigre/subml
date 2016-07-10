@@ -141,7 +141,7 @@ let neg = function
 (* FIXME: should memoize this function, because a lot of sub-term are shared
    and we traverse all constants ... One could also precompute the
    variance of definitions to avoid substitution *)
-let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
+let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
   let kdummy = KProd [] in
   let odummy = OTInt(-42) in
   let adone_k = ref [] in
@@ -170,7 +170,7 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
        !acc
     | KUCst(t,f)
     | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
-    | KUVar(u)   -> if u.uvar_key = i then combine acc occ else acc
+    | KUVar(u)   -> if u.kuvar_key = i then combine acc occ else acc
     | KTInt(_)   -> assert false
     | MuRec(_,k)
     | NuRec(_,k) -> aux occ acc k)
@@ -205,7 +205,8 @@ let uvar_occur : uvar -> kind -> occur = fun {uvar_key = i} k ->
  *                 Binding a unification variable in a type                 *
  ****************************************************************************)
 
-let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
+let bind_kuvar : kuvar -> kind -> (kind, kind) binder =
+  fun {kuvar_key = i} k ->
   unbox (bind mk_free_kvari "X" (fun x ->
     let rec fn k =
       match repr k with
@@ -218,7 +219,7 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
       | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
       | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u)   -> assert(!(u.uvar_val) = None); if u.uvar_key = i then x else box k
+      | KUVar(u)   -> assert(!(u.kuvar_val) = None); if u.kuvar_key = i then x else box k
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
@@ -235,22 +236,22 @@ let bind_uvar : uvar -> kind -> (kind, kind) binder = fun {uvar_key = i} k ->
     fn k))
 
 let set_kuvar side v k =
-  assert (!(v.uvar_val) = None);
+  assert (!(v.kuvar_val) = None);
   let k =
-    match !(v.uvar_state) with
+    match !(v.kuvar_state) with
     | Free -> k
     | Sum l -> KDSum(l)
     | Prod l -> KProd(l)
   in
   let k =
-    match uvar_occur v k with
+    match kuvar_occur v k with
     | Non -> k
-    | Pos -> KFixM(OConv,bind_uvar v k)
+    | Pos -> KFixM(OConv,bind_kuvar v k)
     | _   -> if side then bot else top
   in
   if !debug then Io.log "set %a <- %a\n\n%!"
     (!fprint_kind false) (KUVar v) (!fprint_kind false) k;
-  Timed.(v.uvar_val := Some k)
+  Timed.(v.kuvar_val := Some k)
 
 (****************************************************************************
  *                            lifting of kind                               *
@@ -300,7 +301,7 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
       | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u)   -> assert(!(u.uvar_val) = None); box k
+      | KUVar(u)   -> assert(!(u.kuvar_val) = None); box k
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s

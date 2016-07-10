@@ -30,7 +30,7 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
                                       eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
     | (KUCst(t1,f1), KUCst(t2,f2))
     | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder c f1 f2 && eq_term c t1 t2
-    | (KUVar(u1)   , KUVar(u2)   ) -> u1.uvar_key = u2.uvar_key
+    | (KUVar(u1)   , KUVar(u2)   ) -> u1.kuvar_key = u2.kuvar_key
     | (KTInt(i1)   , KTInt(i2)   ) -> i1 = i2
     | (MuRec(p,a1) , MuRec(q,a2) )
     | (NuRec(p,a1) , NuRec(q,a2) ) -> p == q && eq_kind a1 a2
