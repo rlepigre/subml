@@ -23,6 +23,9 @@ and induction_type =
   | Sub of kind * kind
   | Rec of (term,term) binder * kind * kind
 
+let empty_ctxt () =
+  { induction_hyp = [] ; calls = ref [] ; positive_ordinals = [] }
+
 let find_indexes pos index index' a b =
   let c = Sct.arity index and l = Sct.arity index' in
   let m = Array.init l (fun _ -> Array.make c Unknown) in
@@ -654,43 +657,41 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
 
 let subtype : term option -> kind -> kind -> sub_prf * calls_graph =
   fun t a b ->
-  let t = from_opt t (generic_tcnst a b) in
-  let calls = ref [] in
-  let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
-  try
-    let p = subtype ctxt t a b in
-    List.iter (fun f -> f ()) !delayed;
-    delayed := [];
-    let calls = inline !calls in
-    let arities = Sct.arities () in
-    reset_all ();
-    if not (sct calls) then subtype_error "loop";
-    (p, (arities, calls))
-  with e -> delayed := []; reset_all (); raise e
-
-let type_check : term -> kind option -> kind * typ_prf * calls_graph =
-  fun t ko ->
-  let c = match ko with None -> new_uvar () | Some k -> k in
-  let calls = ref [] in
-  let ctxt = { induction_hyp = [] ; positive_ordinals = [] ; calls } in
-  let (prf, calls) =
+    let t = from_opt t (generic_tcnst a b) in
+    let ctxt = empty_ctxt () in
     try
-      let p = type_check ctxt t c in
+      let p = subtype ctxt t a b in
       List.iter (fun f -> f ()) !delayed;
       delayed := [];
-      let calls = inline !calls in
+      let calls = inline !(ctxt.calls) in
       let arities = Sct.arities () in
       reset_all ();
       if not (sct calls) then subtype_error "loop";
       (p, (arities, calls))
     with e -> delayed := []; reset_all (); raise e
-  in
-  let fn v =
-    match !(v.uvar_state) with
-    | Free   -> true
-    | Sum  l -> set_kuvar false v (KDSum l); false
-    | Prod l -> set_kuvar true  v (KProd l); false
-  in
-  let ul = List.filter fn (uvar_list c) in
-  let c = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) c ul in
-  (c, prf, calls)
+
+let type_check : term -> kind option -> kind * typ_prf * calls_graph =
+  fun t ko ->
+    let c = match ko with None -> new_uvar () | Some k -> k in
+    let ctxt = empty_ctxt () in
+    let (prf, calls) =
+      try
+        let p = type_check ctxt t c in
+        List.iter (fun f -> f ()) !delayed;
+        delayed := [];
+        let calls = inline !(ctxt.calls) in
+        let arities = Sct.arities () in
+        reset_all ();
+        if not (sct calls) then subtype_error "loop";
+        (p, (arities, calls))
+      with e -> delayed := []; reset_all (); raise e
+    in
+    let fn v =
+      match !(v.uvar_state) with
+      | Free   -> true
+      | Sum  l -> set_kuvar false v (KDSum l); false
+      | Prod l -> set_kuvar true  v (KProd l); false
+    in
+    let ul = List.filter fn (uvar_list c) in
+    let c = List.fold_left (fun acc v -> KKAll (bind_uvar v acc)) c ul in
+    (c, prf, calls)
