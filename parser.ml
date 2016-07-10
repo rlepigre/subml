@@ -268,11 +268,11 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | kind_prd                      when p = `Fun
 
 and kind_args =
-  | EMPTY                   -> ([], [])
-  | l:{"(" l:kind_list ")"} -> ([], l)
-  (* TODO *)
+  | EMPTY                           -> ([], [])
+  | "(" ks:(list_sep' kind ",") ")" -> ([], ks)
+  | "(" os:(list_sep' ordinal ",") ks:{"," ks:(list_sep kind ",")}?[[]] ")"
+
 and kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
-and kind_list = l:(list_sep kind ",")
 and kind_dsum = (list_sep (parser uident a:{_:of_kw kind}?) "|")
 and kind_reco = (list_sep (parser lident ":" kind) ";")
 and with_eq   = _:with_kw s:uident "=" b:kind_atm
@@ -540,9 +540,9 @@ let parser command top =
 and kind_def = tex_name? uident kind_def_args "=" kind
 
 and kind_def_args =
-  | EMPTY                            -> ([], [])
-  | "(" l:(list_sep' uident ",") ")" -> ([], l)
-  (* TODO *)
+  | EMPTY                             -> ([], [])
+  | "(" ks:(list_sep' uident ",") ")" -> ([], ks)
+  | "(" os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")} ")"
 
 and val_def =
   | r:is_rec tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
