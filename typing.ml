@@ -133,23 +133,47 @@ let kuvar_list : kind -> kuvar list = fun k ->
   let r = ref [] in
   let rec fn k =
     match repr k with
-    | KFunc(a,b) -> fn a; fn b
+    | KFunc(a,b)   -> fn a; fn b
     | KProd(ls)
-    | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
+    | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
-    | KKExi(f)   -> fn (subst f (KProd []))
+    | KKExi(f)     -> fn (subst f (KProd []))
     | KFixM(o,f)
-    | KFixN(o,f) ->
-       (* (match orepr o with OUVar _ -> raise Exit | _ -> ());*)
-       fn (subst f (KProd []))
+    | KFixN(o,f)   -> fn (subst f (KProd []))
     | KOAll(f)
-    | KOExi(f)   -> fn (subst f (OTInt(-42)))
-    | KUVar(u)   -> if not (List.exists (fun v -> u.kuvar_key = v.kuvar_key) !r) then r := u :: !r
+    | KOExi(f)     -> fn (subst f (OTInt(-42)))
+    | KUVar(u)     -> if not (List.exists (fun v -> u.kuvar_key = v.kuvar_key) !r) then r := u :: !r
     | KDefi(d,_,a) -> Array.iter fn a
-    | KWith(k,c) -> let (_,b) = c in fn k; fn b
+    | KWith(k,c)   -> fn k; fn (snd c)
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
-    | t          -> ()
+    | _            -> ()
+  in
+  fn k; !r
+
+let ouvar_list : kind -> ordinal option ref list = fun k ->
+  let r = ref [] in
+  let rec fn k =
+    match repr k with
+    | KFunc(a,b)   -> fn a; fn b
+    | KProd(ls)
+    | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
+    | KKAll(f)
+    | KKExi(f)     -> fn (subst f (KProd []))
+    | KFixM(o,f)
+    | KFixN(o,f)   -> gn o; fn (subst f (KProd []))
+    | KOAll(f)
+    | KOExi(f)     -> fn (subst f (OTInt(-42)))
+    | KDefi(d,o,a) -> Array.iter gn o;  Array.iter fn a
+    | KWith(k,c)   -> fn k; fn (snd c)
+    (* we ommit Dprj above because the kind in term are only
+       indication for the type-checker and they have no real meaning *)
+    | _            -> ()
+  and gn o =
+    match orepr o with
+    | OSucc(o) -> gn o
+    | OUVar(v) -> if not (List.exists ((==) v) !r) then r := v :: !r
+    | _        -> ()
   in
   fn k; !r
 
