@@ -104,7 +104,7 @@ and ordinal =
   (* Ordinal created by the μl and νr rules. *)
   | OLess of ordinal * ord_wit
   (* Unification variables for ordinals. *)
-  | OUVar of ordinal option ref
+  | OUVar of ouvar
   (* Ordinal variable. *)
   | OVari of ordinal variable
   (* Integer tag used in decompose / recompose. *)
@@ -112,6 +112,8 @@ and ordinal =
 and ord_wit =
   | In     of term * (ordinal, kind) binder
   | NotIn  of term * (ordinal, kind) binder
+
+and ouvar = ordinal option ref
 
 (* Abstract syntax tree for terms. *)
 and term = term' position

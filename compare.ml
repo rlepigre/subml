@@ -30,13 +30,16 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
                                       eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
     | (KUCst(t1,f1), KUCst(t2,f2))
     | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder c f1 f2 && eq_term c t1 t2
-    | (KUVar(u1)   , KUVar(u2)   ) -> u1.kuvar_key = u2.kuvar_key
+    | (KUVar(u1)   , KUVar(u2)   ) -> eq_kuvar u1 u2
     | (KTInt(i1)   , KTInt(i2)   ) -> i1 = i2
     | (MuRec(p,a1) , MuRec(q,a2) )
     | (NuRec(p,a1) , NuRec(q,a2) ) -> p == q && eq_kind a1 a2
     | (_           , _           ) -> false
   in
   eq_kind k1 k2
+
+and eq_kuvar : kuvar -> kuvar -> bool =
+  fun v1 v2 -> v1.kuvar_key = v2.kuvar_key
 
 and eq_kbinder c f1 f2 = f1 == f2 ||
   let i = incr c; KTInt(!c) in
@@ -81,11 +84,14 @@ and eq_tcnst c (f1,a1,b1) (f2,a2,b2) =
 and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   match (orepr o1, orepr o2) with
   | (o1          , o2          ) when o1 == o2 -> true
+  | (OUVar(v1)   , OUVar(v2)   ) -> eq_ouvar v1 v2
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal c o1 o2 && eq_ord_wit c w1 w2
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal c o1 o2
   | (OTInt n1    , OTInt n2    ) -> n1 = n2
   | (_           , _           ) -> false
+
+and eq_ouvar : ouvar -> ouvar -> bool = (==)
 
 and eq_ord_wit c w1 w2 = match w1, w2 with
   | (In(t1,f1)    , In(t2,f2)    )

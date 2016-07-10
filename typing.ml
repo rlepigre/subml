@@ -142,7 +142,7 @@ let kuvar_list : kind -> kuvar list = fun k ->
     | KFixN(o,f)   -> fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)     -> fn (subst f (OTInt(-42)))
-    | KUVar(u)     -> if not (List.exists (fun v -> u.kuvar_key = v.kuvar_key) !r) then r := u :: !r
+    | KUVar(u)     -> if not (List.exists (eq_kuvar u) !r) then r := u :: !r
     | KDefi(d,_,a) -> Array.iter fn a
     | KWith(k,c)   -> fn k; fn (snd c)
     (* we ommit Dprj above because the kind in term are only
@@ -151,7 +151,7 @@ let kuvar_list : kind -> kuvar list = fun k ->
   in
   fn k; !r
 
-let ouvar_list : kind -> ordinal option ref list = fun k ->
+let ouvar_list : kind -> ouvar list = fun k ->
   let r = ref [] in
   let rec fn k =
     match repr k with
@@ -172,7 +172,7 @@ let ouvar_list : kind -> ordinal option ref list = fun k ->
   and gn o =
     match orepr o with
     | OSucc(o) -> gn o
-    | OUVar(v) -> if not (List.exists ((==) v) !r) then r := v :: !r
+    | OUVar(v) -> if not (List.exists (eq_ouvar v) !r) then r := v :: !r
     | _        -> ()
   in
   fn k; !r
