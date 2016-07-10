@@ -652,8 +652,9 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       exit 1
   in (t, c, r)
 
-let subtype : term -> kind -> kind -> sub_prf * calls_graph
-  = fun t a b ->
+let subtype : term option -> kind -> kind -> sub_prf * calls_graph =
+  fun t a b ->
+  let t = from_opt t (generic_tcnst a b) in
   let calls = ref [] in
   let ctxt = { induction_hyp = []; positive_ordinals = []; calls } in
   try
@@ -666,9 +667,6 @@ let subtype : term -> kind -> kind -> sub_prf * calls_graph
     if not (sct calls) then subtype_error "loop";
     (p, (arities, calls))
   with e -> delayed := []; reset_all (); raise e
-
-let generic_subtype : kind -> kind -> sub_prf * calls_graph = fun a b ->
-  subtype (generic_tcnst a b) a b
 
 let type_check : term -> kind option -> kind * typ_prf * calls_graph =
   fun t ko ->
