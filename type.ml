@@ -32,7 +32,7 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
     | TAbst(ko,f) -> let ko = map_opt kn ko in
                      tabst t.pos ko (in_pos t.pos (binder_name f))
                        (fun x -> fn (subst f (dummy_pos (TVari x))))
-    | TFixY(n,f) ->  tfixy t.pos n (in_pos t.pos (binder_name f))
+    | TFixY(n,f)  -> tfixy t.pos n (in_pos t.pos (binder_name f))
                        (fun x -> fn (subst f (dummy_pos (TVari x))))
     | TKAbs(f)    -> tkabs t.pos (dummy_pos (binder_name f))
                        (fun x -> fn (subst f (KVari x)))

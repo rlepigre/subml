@@ -26,15 +26,15 @@ let treat_exception fn a =
     fn a; true
   with
   | End_of_file          -> true
-  | Stopped              -> io.stderr "Stopped\n%!"; true
-  | Arity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
-  | Positivity_error(loc,msg) -> io.stderr "%a:\n%s\n%!" print_position loc msg; false
+  | Stopped              -> Io.err "Stopped\n%!"; true
+  | Arity_error(loc,msg) -> Io.err "%a:\n%s\n%!" print_position loc msg; false
+  | Positivity_error(loc,msg) -> Io.err "%a:\n%s\n%!" print_position loc msg; false
   | Parse_error(fname,lnum,cnum,_,_)
-                         -> io.stderr "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
-  | Unbound(s)           -> io.stderr "%a:\nUnbound: %s\n%!" print_position s.pos s.elt; false
+                         -> Io.err "%a:\nSyntax error\n%!" position2 (fname, lnum, cnum); false
+  | Unbound(s)           -> Io.err "%a:\nUnbound: %s\n%!" print_position s.pos s.elt; false
   | Type_error(loc, msg)
-                         -> io.stderr "%a:\nType error: %s\n%!" print_position loc msg; false
-  | e                    -> io.stderr "Uncaught fucking exception %s\n%!" (Printexc.to_string e);
+                         -> Io.err "%a:\nType error: %s\n%!" print_position loc msg; false
+  | e                    -> Io.err "Uncaught fucking exception %s\n%!" (Printexc.to_string e);
                             false
 
 let js_object = Js.Unsafe.variable "Object"
@@ -44,8 +44,8 @@ let syncloadsubmlfile = Js.Unsafe.variable "syncloadsubmlfile"
 let onmessage event =
   let filename = Js.to_string event##data##fname in
   let s = Js.to_string event##data##args in
-  let b = treat_exception (parse_string ~filename file_contents subml_blank) s in
-  io.log "Editor content loaded\n%!";
+  let b = treat_exception (full_of_string filename) s in
+  Io.log "Editor content loaded\n%!";
   let result = if b then Js.string "OK" else Js.string "ERROR" in
   let response = jsnew js_object () in
   Js.Unsafe.set response (Js.string "typ") (Js.string "result");
@@ -68,9 +68,11 @@ let output = fun chname format ->
     ignore (Js.Unsafe.call postMessage (Js.Unsafe.variable "self") [|Js.Unsafe.inject response|]);
     Buffer.clear buf) fbuf format
 
-let _ = io.stdout <- (fun format -> output "stdout" format)
-let _ = io.log    <- (fun format -> output "log"    format)
-let _ = io.stderr <- (fun format -> output "stderr" format)
+let _ =
+  let open Io in
+  fmts.out <- (fun fmt -> output "stdout" fmt);
+  fmts.log <- (fun fmt -> output "log"    fmt);
+  fmts.err <- (fun fmt -> output "stderr" fmt)
 
 let _ = io.files  <- (fun filename  ->
   let args = [|Js.Unsafe.inject (Js.string filename)|] in
@@ -79,6 +81,6 @@ let _ = io.files  <- (fun filename  ->
   Input.buffer_from_string ~filename s)
 
 let _ =
-  let s = io.files "lib/prelude.typ" in
+  let s = Io.file "lib/prelude.typ" in
   ignore (treat_exception (parse_buffer file_contents subml_blank) s);
-  io.log "File \"lib/prelude.typ\" loaded\n%!"
+  Io.log "File \"lib/prelude.typ\" loaded\n%!"

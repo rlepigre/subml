@@ -1,23 +1,21 @@
 open Format
 
 type fmts =
-  { mutable out   : formatter
-  ; mutable err   : formatter
-  ; mutable log   : formatter
-  ; mutable latex : formatter
-  }
+  { mutable out : formatter
+  ; mutable err : formatter
+  ; mutable log : formatter
+  ; mutable tex : formatter }
 
 let fmts =
-  { out   = std_formatter
-  ; err   = err_formatter
-  ; log   = err_formatter
-  ; latex = std_formatter
-  }
+  { out = std_formatter
+  ; err = err_formatter
+  ; log = err_formatter
+  ; tex = std_formatter }
 
-let out   ff = fprintf fmts.out   ff
-let err   ff = fprintf fmts.err   ff
-let log   ff = fprintf fmts.log   ff
-let latex ff = fprintf fmts.latex ff
+let out ff = fprintf fmts.out ff
+let err ff = fprintf fmts.err ff
+let log ff = fprintf fmts.log ff
+let tex ff = fprintf fmts.tex ff
 
 let open_out, close_out =
   let tbl = Hashtbl.create 31 in

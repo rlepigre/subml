@@ -531,9 +531,9 @@ let parser command top =
   | f:flag$ val_kw (n,k,t):val_def$               -> new_val f n k t
   | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
-  | latex_kw t:tex_text$             when not top -> Io.latex "%a%!" Latex.output t
+  | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t
   | _:set_kw "verbose" b:enables                  -> verbose := b
-  | _:set_kw "texfile" fn:string_lit when not top -> Io.(fmts.latex <- fmt_of_file fn)
+  | _:set_kw "texfile" fn:string_lit when not top -> Io.(fmts.tex <- fmt_of_file fn)
   | _:clear_kw                       when top     -> System.clear ()
   | {quit_kw | exit_kw}              when top     -> raise End_of_file
 
@@ -556,6 +556,9 @@ and val_def =
 
 let toplevel_of_string : string -> unit =
   parse_string (command true) subml_blank
+
+let full_of_string : string -> string -> unit = fun filename ->
+  parse_string ~filename (parser _:(command false)*) subml_blank
 
 let rec eval_file fn =
   read_file := eval_file;
