@@ -2,14 +2,6 @@ open Format
 open Parser
 open Io
 
-let _ = System.handle_stop true
-
-let quit    = ref false
-let prelude = ref true
-let files   = ref ([] : string list)
-
-let add_file fn = files := !files @ [fn]
-
 let js_object = Js.Unsafe.variable "Object"
 let postMessage = Js.Unsafe.variable "postMessage"
 let syncloadsubmlfile = Js.Unsafe.variable "syncloadsubmlfile"
