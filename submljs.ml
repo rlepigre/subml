@@ -33,15 +33,10 @@ let output : string -> formatter = fun chname ->
   in
   make_formatter out flush
 
-
-(*
-let _ = io.files  <- (fun filename  ->
+let input : string -> Input.buffer = fun filename ->
   let args = [|Js.Unsafe.inject (Js.string filename)|] in
-  let res = Js.Unsafe.fun_call  syncload args in
-  let s = Js.to_string res in
-  Input.buffer_from_string ~filename s)
-*)
-
+  let res = Js.to_string (Js.Unsafe.fun_call syncload args) in
+  Input.buffer_from_string ~filename res
 
 let _ =
   (* Setup the IO stuff. *)
@@ -49,7 +44,7 @@ let _ =
   fmts.err <- output "stderr";
   fmts.log <- output "log";
   fmts.tex <- output "tex";
-  (* FIXME file stuff *)
+  (* FIXME do something with "input" *)
   (* Register callback. *)
   Js.Unsafe.set js_self (Js.string "onmessage") onmessage;
   (* Load the prelude. *)
