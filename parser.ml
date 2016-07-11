@@ -565,3 +565,20 @@ let rec eval_file fn =
   let buf = Io.file fn in
   Io.out "## loading file %S\n%!" fn;
   parse_buffer (parser _:(command false)*) subml_blank buf
+
+let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
+  let pos1 = print_position in
+  let pos2 ff (f,l,c) = fprintf ff "File %S, line %d, characters %d" f l c in
+  try fn v; true with
+  | End_of_file            -> true
+  | System.Stopped         -> Io.err "\n[Interrupted]\n%!"; false
+  | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false
+  | Positivity_error(p,m)  -> Io.err "%a:\n%s\n%!" pos1 p m; false
+  | Parse_error(f,l,c,_,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (f,l,c);
+                              false
+  | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
+                              false
+  | Type_error(p,m)        -> Io.err "%a:\nType error: %s\n%!" pos1 p m; false
+  | e                      -> Io.err "Uncaught exception %s\n%!"
+                                (Printexc.to_string e);
+                              false
