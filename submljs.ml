@@ -44,7 +44,7 @@ let _ =
   fmts.err <- output "stderr";
   fmts.log <- output "log";
   fmts.tex <- output "tex";
-  (* FIXME do something with "input" *)
+  Io.read_file := input;
   (* Register callback. *)
   Js.Unsafe.set js_self (Js.string "onmessage") onmessage;
   (* Load the prelude. *)

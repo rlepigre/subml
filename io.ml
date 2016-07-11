@@ -6,6 +6,11 @@ type fmts =
   ; mutable log : formatter
   ; mutable tex : formatter }
 
+let read_file : (string -> Input.buffer) ref =
+  let read_file filename =
+    Input.buffer_from_channel ~filename (open_in filename)
+  in ref read_file
+
 let fmts =
   { out = std_formatter
   ; err = err_formatter
@@ -33,7 +38,7 @@ let (open_out, close_out) =
   in
   (open_out, close_out)
 
-let file fn = Input.buffer_from_channel ~filename:fn (open_in fn)
+let file fn = !read_file fn
 
 let fmt_of_file fn = formatter_of_out_channel (open_out fn)
 
