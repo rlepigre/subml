@@ -560,6 +560,9 @@ let toplevel_of_string : string -> unit =
 let full_of_string : string -> string -> unit = fun filename ->
   parse_string ~filename (parser _:(command false)*) subml_blank
 
+let full_of_buffer : Input.buffer -> unit =
+  parse_buffer (parser _:(command false)*) subml_blank
+
 let rec eval_file fn =
   read_file := eval_file;
   let buf = Io.file fn in
