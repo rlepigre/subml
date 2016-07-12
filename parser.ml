@@ -401,7 +401,7 @@ and latex_atom =
   | hash "check" (a,b):sub "#" ->
       let a = unbox (unsugar_kind empty_env a) in
       let b = unbox (unsugar_kind empty_env b) in
-      let (prf, cg) = subtype None a b in
+      let (prf, cg) = subtype a b in
       Latex.SProof (prf, cg)
   | hash br:int_lit?[0] ":" id:lident "#" ->
       Latex.Kind (br, false, (Hashtbl.find val_env id).ttype)
@@ -486,7 +486,7 @@ let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
   let a = unbox (unsugar_kind empty_env a) in
   let b = unbox (unsugar_kind empty_env b) in
   begin
-    try ignore (subtype None a b) with
+    try ignore (subtype a b) with
     | Subtype_error s ->
         begin
           match f with

@@ -624,31 +624,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
               let a = recompose a ov in
               Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
-              let prf =
-                (* FIXME: factorise with global subtype below *)
-                let time = Timed.Time.save () in
-                let calls = !(ctxt.calls) in
-                let saved_delayed = !(ctxt.delayed) in
-                ctxt.calls := [];
-                ctxt.delayed := [];
-                try (* If all these subtyping fails,
-                       it is only a problem of terminaison *)
-                  let prf = subtype ctxt t a c in
-                  List.iter (fun f -> f ()) !(ctxt.delayed);
-                  let calls0 = inline !(ctxt.calls) in
-                  if not (sct calls0) then subtype_error "loop(in Y)";
-                  ctxt.calls := !(ctxt.calls) @ calls;
-                  ctxt.delayed := saved_delayed;
-                  prf
-                with Subtype_error _ ->
-                  ctxt.calls := calls;
-                  ctxt.delayed := saved_delayed;
-                  Timed.Time.rollback time;
-                  raise Exit
-                | e ->
-                   Io.err "unexpected exception from subtype %s\n%!" (Printexc.to_string e);
-                  assert false
-              in
+              (* need full subtype to be sure to fail if sct fails *)
+              let prf, _ = full_subtype ~ctxt ~term:t  a c in
               match ctxt.induction_hyp with
               | [] -> assert false
               | (cur,_,os0)::_   ->
@@ -660,7 +637,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                    (*Io.log "%d %a\n%!" afnum (print_call (Sct.arities ())) (fnum, cur, m);*)
                    ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
                 Typ_YH(fnum,prf)
-            with Exit -> fn hyps
+            with Subtype_error _ -> fn hyps
        in
        (try fn hyps with Not_found ->
        if n = 0 then type_error t.pos "can not relate termination depth" else
@@ -692,19 +669,30 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       exit 1
   in (t, c, r)
 
-let subtype : term option -> kind -> kind -> sub_prf * calls_graph =
-  fun t a b ->
-    let t = from_opt t (generic_tcnst a b) in
-    let ctxt = empty_ctxt () in
+and full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
+  fun ?ctxt:ctxt0 ?term a b ->
+    let t = from_opt term (generic_tcnst a b) in
+    let ctxt =
+      { (from_opt ctxt0 (empty_ctxt ())) with calls = ref []; delayed = ref [] }
+    in
+    let time = Timed.Time.save () in
     try
       let p = subtype ctxt t a b in
       List.iter (fun f -> f ()) !(ctxt.delayed);
       let calls = inline !(ctxt.calls) in
       let arities = Sct.arities () in
       if not (sct calls) then subtype_error "loop";
-      reset_all ();
+      if ctxt0 = None then reset_all ();
       (p, (arities, calls))
-    with e -> reset_all (); raise e
+    with Subtype_error _ as e ->
+      if ctxt0 = None then reset_all ();
+      Timed.Time.rollback time;
+      raise e
+    | e ->
+      Io.err "unexpected exception from subtype %s\n%!" (Printexc.to_string e);
+      assert false
+
+let subtype = full_subtype
 
 let type_check : term -> kind option -> kind * typ_prf * calls_graph =
   fun t k ->

@@ -356,9 +356,8 @@ let (new_uvar, reset_uvar) =
 
 (* Resset all counters. *)
 let reset_all () =
-  let reset = [reset_uvar] in
-  List.iter (fun x -> x ()) reset;
-  Sct.reset_function ()
+  (* FIXME: should have everything in the ctxt *)
+  reset_uvar (); Sct.reset_function ()
 
 (****************************************************************************
  *                     Definition of widely used types                      *
