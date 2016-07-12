@@ -17,6 +17,7 @@ let subtype_error : string -> 'a =
 type subtype_ctxt =
   { induction_hyp     : (int * induction_type * (int * ordinal) list) list
   ; calls             : pre_calls ref
+  ; delayed           : (unit -> unit) list ref
   ; positive_ordinals : (ordinal * ordinal) list }
 
 and induction_type =
@@ -24,7 +25,10 @@ and induction_type =
   | Rec of (term,term) binder * kind * kind
 
 let empty_ctxt () =
-  { induction_hyp = [] ; calls = ref [] ; positive_ordinals = [] }
+  { induction_hyp = []
+  ; calls = ref []
+  ; delayed = ref []
+  ; positive_ordinals = [] }
 
 let find_indexes pos index index' a b =
   Io.log_mat "build matrix for %d %d\n" index index';
@@ -207,8 +211,6 @@ let add_positives ctxt gamma =
 
 exception Induction_hyp of int
 
-let delayed = ref []
-
 (* The boolean is true if we can apply the induction hypothesis. *)
 let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option * subtype_ctxt =
   fun t ctxt a b ->
@@ -242,18 +244,18 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
           match ctxt.induction_hyp with
           | (index',_,os')::_ ->
              Io.log_sub "By induction\n\n%!";
-             Timed.(delayed := (fun () ->
+             Timed.(ctxt.delayed := (fun () ->
                let m = find_indexes pos index index' os os' in
-               ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed);
+               ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !(ctxt.delayed));
              raise (Induction_hyp index)
           | _ -> assert false
         )) ctxt.induction_hyp;
       let fnum = new_function "S" (List.map Latex.ordinal_to_printer os) in
       (match ctxt.induction_hyp with
       | (index',_,os')::_ ->
-           Timed.(delayed := (fun () ->
+           Timed.(ctxt.delayed := (fun () ->
              let m = find_indexes pos fnum index' os os' in
-             ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed);
+             ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !(ctxt.delayed));
       | _ -> ());
       let ctxt = { ctxt with
                    induction_hyp = (fnum, Sub(p', a', b'), os)::ctxt.induction_hyp }
@@ -624,24 +626,23 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
               let prf =
                 (* FIXME: factorise with global subtype below *)
-                (* FIXME: delayed in ctxt *)
                 let time = Timed.Time.save () in
                 let calls = !(ctxt.calls) in
-                let saved_delayed = !delayed in
+                let saved_delayed = !(ctxt.delayed) in
                 ctxt.calls := [];
-                delayed := [];
+                ctxt.delayed := [];
                 try (* If all these subtyping fails,
                        it is only a problem of terminaison *)
                   let prf = subtype ctxt t a c in
-                  List.iter (fun f -> f ()) !delayed;
+                  List.iter (fun f -> f ()) !(ctxt.delayed);
                   let calls0 = inline !(ctxt.calls) in
                   if not (sct calls0) then subtype_error "loop(in Y)";
                   ctxt.calls := !(ctxt.calls) @ calls;
-                  delayed := saved_delayed;
+                  ctxt.delayed := saved_delayed;
                   prf
                 with Subtype_error _ ->
                   ctxt.calls := calls;
-                  delayed := saved_delayed;
+                  ctxt.delayed := saved_delayed;
                   Timed.Time.rollback time;
                   raise Exit
                 | e ->
@@ -651,13 +652,13 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               match ctxt.induction_hyp with
               | [] -> assert false
               | (cur,_,os0)::_   ->
-                 Timed.(delayed := (fun () ->
+                 Timed.(ctxt.delayed := (fun () ->
                    Io.log_typ "searching induction hyp (2):\n  %a => %a %a\n%!"
                      (print_kind false) a (print_kind false) c print_positives ctxt;
                    let m = find_indexes pos fnum cur ov os0 in
                    let call = (fnum, cur, m, true) in
                    (*Io.log "%d %a\n%!" afnum (print_call (Sct.arities ())) (fnum, cur, m);*)
-                   ctxt.calls := call :: !(ctxt.calls)) :: !delayed);
+                   ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
                 Typ_YH(fnum,prf)
             with Exit -> fn hyps
        in
@@ -671,10 +672,10 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          begin match ctxt.induction_hyp with
          | [] -> ()
          | (cur,_,os0)::_   ->
-            Timed.(delayed := (fun () ->
+            Timed.(ctxt.delayed := (fun () ->
               let m = find_indexes pos fnum cur os os0 in
               let call = (fnum, cur, m, false) in
-              ctxt.calls := call :: !(ctxt.calls)) :: !delayed);
+              ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
          end;
          { ctxt with induction_hyp = (fnum, Rec(f,a,c0), os)::ctxt.induction_hyp }
        in
@@ -697,14 +698,13 @@ let subtype : term option -> kind -> kind -> sub_prf * calls_graph =
     let ctxt = empty_ctxt () in
     try
       let p = subtype ctxt t a b in
-      List.iter (fun f -> f ()) !delayed;
-      delayed := [];
+      List.iter (fun f -> f ()) !(ctxt.delayed);
       let calls = inline !(ctxt.calls) in
       let arities = Sct.arities () in
       if not (sct calls) then subtype_error "loop";
       reset_all ();
       (p, (arities, calls))
-    with e -> delayed := []; reset_all (); raise e
+    with e -> reset_all (); raise e
 
 let type_check : term -> kind option -> kind * typ_prf * calls_graph =
   fun t k ->
@@ -713,14 +713,13 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
     let (prf, calls) =
       try
         let p = type_check ctxt t k in
-        List.iter (fun f -> f ()) !delayed;
-        delayed := [];
+        List.iter (fun f -> f ()) !(ctxt.delayed);
         let calls = inline !(ctxt.calls) in
         let arities = Sct.arities () in
         if not (sct calls) then subtype_error "loop";
         reset_all ();
         (p, (arities, calls))
-      with e -> delayed := []; reset_all (); raise e
+      with e -> reset_all (); raise e
     in
     let fn v =
       match !(v.kuvar_state) with
