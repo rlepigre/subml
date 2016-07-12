@@ -13,6 +13,7 @@ include "lib/church/inf_david.typ"
 
 (* Scott encoding. *)
 include "lib/scott/nat.typ"
+include "lib/scott/stream.typ"
 
 (* Test files. *)
 include "lib/dotproj.typ"

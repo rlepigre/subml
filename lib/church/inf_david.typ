@@ -50,8 +50,8 @@ val init : Nat → Nat → Nat → Nat → CBool =λn.λm.λp.λq. ctru
 
 val iteration : (Nat → Nat → Nat → Nat → CBool) → (Nat → Nat → Nat → Nat → CBool) =
   λg.λn.λm.λk.λp.
-	(m (λx.
-	n (λx. test n k (test m k (g n m (s k) k) cfls)
+        (m (λx.
+        n (λx. test n k (test m k (g n m (s k) k) cfls)
           (test m k ctru ((nstore (dif m p) (nstore (dif n p) g)) zero zero))) ctru) cfls)
 
 val inf : Nat → Nat → CBool =λn.λm. (s (s (s ( s (s (s ( s (s n))))))) iteration init n m zero zero)

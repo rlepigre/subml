@@ -339,8 +339,9 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        Sub_Lower
 
     (* Handling of unification variables (immitation). *)
-    | (KUVar ua,(KUVar _ as b)) ->
-        set_kuvar true ua b;
+    | ((KUVar ua as a),(KUVar ub as b)) ->
+        if !(ua.kuvar_state) = Free then set_kuvar true ua b
+        else set_kuvar false ub a;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (KUVar ua, b            ) ->
