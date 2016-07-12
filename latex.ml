@@ -344,42 +344,45 @@ let rec to_string = function
   | List(l) -> "{" ^ String.concat "" (List.map to_string l) ^"}"
   | _       -> assert false
 
-let print_calls ch arities calls =
-  let print_cmp ch c =
+let print_calls ff arities calls =
+  let print_cmp ff c =
     match c with
-    | Sct.Unknown -> fprintf ch "?"
-    | Sct.Less    -> fprintf ch "<"
-    | Sct.Leq     -> fprintf ch "="
+    | Sct.Unknown -> fprintf ff "?"
+    | Sct.Less    -> fprintf ff "<"
+    | Sct.Leq     -> fprintf ff "="
   in
-  fprintf ch "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
-  let print_args ch j =
+  fprintf ff "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
+  let print_args ff j =
     let (_, aj, prj) = try List.assoc j arities with Not_found -> assert false in
     for j = 0 to aj - 1 do
-      fprintf ch "%s%t" (if j = 0 then "" else ",") (snd prj.(j))
+      fprintf ff "%s%t" (if j = 0 then "" else ",") (snd prj.(j))
     done
   in
   let f (j,_) =
-    fprintf ch "    N%d [ label = \"I_%d(%a)\" ];\n" j j print_args j
+    fprintf ff "    N%d [ label = \"I_%d(%a)\" ];\n" j j print_args j
   in
   List.iter f (List.filter (fun (i,_) ->
     List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
   let print_call arities (i,j,m) =
-    let (_, aj, prj) = try List.assoc j arities with Not_found -> assert false in
-    fprintf ch "    N%d -> N%d [label = \"(" j i;
-    Array.iteri (fun j l ->
-      if j > 0 then fprintf ch ",";
+    let (namej, aj, prj) = try List.assoc j arities with Not_found -> assert false in
+    let (namei, ai, pri) = try List.assoc i arities with Not_found -> assert false in
+    fprintf ff "    N%d -> N%d [label = \"(" j i;
+    for i = 0 to ai - 1 do
+      if i > 0 then fprintf ff ",";
       let some = ref false in
-      Array.iteri (fun i c ->
-        if c <> Sct.Unknown then (
+      for j = 0 to aj - 1 do
+	let c = m.(j).(i) in
+	if c <> Sct.Unknown then (
           let sep = if !some then " " else "" in
-          fprintf ch "%s%a%t" sep print_cmp c (snd prj.(j));
-          some := true
-        )) l;
-      if not !some then fprintf ch "?") m;
-    fprintf ch ")\"]\n%!"
+          fprintf ff "%s%a%t" sep print_cmp c (snd prj.(j));
+          some := true)
+      done;
+      if not !some then fprintf ff "?";
+    done;
+    fprintf ff ")\"]\n%!"
   in
   List.iter (print_call arities) calls;
-  fprintf ch "  }\n\\end{dot2tex}\n"
+  fprintf ff "  }\n\\end{dot2tex}\n"
 
 let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   let open Proof in
