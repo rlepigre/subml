@@ -205,6 +205,7 @@ let set_kw     = new_keyword "set"
 let include_kw = new_keyword "include"
 let check_kw   = new_keyword "check"
 let latex_kw   = new_keyword "latex"
+let html_kw    = new_keyword "html"
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -522,6 +523,14 @@ let include_file : string -> unit = fun fn ->
   !read_file fn;
   ignore_latex := s
 
+let output_html : strpos -> unit = fun id ->
+  try
+    let d = Hashtbl.find val_env id.elt in
+    let p = d.proof in
+    let p = Latex.typ2proof p in
+    Graph.output_html std_formatter p
+  with Not_found -> unbound id
+
 (****************************************************************************
  *                            Parsing of commands                           *
  ****************************************************************************)
@@ -537,6 +546,7 @@ let parser command top =
   | f:flag$ val_kw (n,k,t):val_def$               -> new_val f n k t
   | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
+  | _:html_kw id:lident$                          -> output_html (in_pos _loc_id id)
   | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t
   | _:set_kw "verbose" b:enables                  -> verbose := b
   | _:set_kw "texfile" fn:string_lit when not top -> Io.(fmts.tex <- fmt_of_file fn)

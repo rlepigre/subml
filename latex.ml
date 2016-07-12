@@ -42,7 +42,6 @@ and print_kind unfold wrap ff t =
   let pordi = print_ordinal false in
   let pkindw = print_kind false true in
   let t = (*if unfold then fun x -> x else !ftry_fold_def*) (repr t) in
-  Io.log "--> %a\n%!" (Print.print_kind false) t;
   match t with
   | KVari(x) ->
       pp_print_string ff (name_of x)
