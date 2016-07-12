@@ -10,6 +10,7 @@ include "lib/church/bool.typ"
 include "lib/church/nat.typ"
 include "lib/church/data.typ"
 include "lib/church/inf_david.typ"
+include "lib/church/error.typ"
 
 (* Scott encoding. *)
 include "lib/scott/nat.typ"
