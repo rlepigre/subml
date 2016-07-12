@@ -41,18 +41,8 @@ and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
   let pordi = print_ordinal false in
   let pkindw = print_kind false true in
-  let t = repr t in
-  let key, _, ords = decompose All t (KProd[]) in
-  try
-    if unfold then raise Not_found;
-    let d = find_tdef key in
-    let ords = List.filter (fun (_,o) -> orepr o <> OConv) ords in
-    match ords with
-    | [] -> fprintf ff "%s" d.tdef_tex_name
-    | _  -> fprintf ff "%s_{%a}" d.tdef_tex_name
-       (fun ff l -> List.iter (fun (i, o) -> fprintf ff "%s%a" (if i <> 0 then "," else "")
-         (print_ordinal false) o) l) ords
-  with Not_found ->
+  let t = (*if unfold then fun x -> x else !ftry_fold_def*) (repr t) in
+  Io.log "--> %a\n%!" (Print.print_kind false) t;
   match t with
   | KVari(x) ->
       pp_print_string ff (name_of x)
@@ -455,14 +445,15 @@ let rec output ch = function
   | TProof p       -> print_typing_proof ch p
   | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(n,t)     ->
-      assert false (* TODO *)
-      (*
      let name = t.tdef_tex_name in
      let f = t.tdef_value in
-     let args = mbinder_names f in
-     let params = Array.map (fun s -> free_of (new_kvari s)) args in
-     let k = msubst f params in
-     let print_array cg a =
+     let oargs = mbinder_names f in
+     let oparams = Array.map (fun s -> free_of (new_ovari s)) oargs in
+     let k = msubst f oparams in
+     let kargs = mbinder_names k in
+     let kparams = Array.map (fun s -> free_of (new_kvari s)) kargs in
+     let k = msubst k kparams in
+     let print_array ch a =
        if Array.length a = 0 then () else
        fprintf ch "(%s%a)" a.(0) (fun ch a ->
          for i = 1 to Array.length a - 1 do
@@ -470,9 +461,9 @@ let rec output ch = function
          done) a
      in
      break_hint := n;
-     fprintf ch "%s%a &= %a" name print_array args (print_kind true) k;
+     fprintf ch "%s%a &= %a" name
+       print_array (Array.append oargs kargs) (print_kind true) k;
      break_hint := 0
-     *)
   | Sct (arities,calls) ->
       print_calls ch arities calls
 

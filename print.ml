@@ -110,7 +110,7 @@ and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pordi = print_ordinal unfold in
   let pkindw = print_kind unfold true in
-  let t = repr t in
+  let t = (*!ftry_fold_def*) (repr t) in
   match t with
   | KVari(x) ->
       pp_print_string ff (name_of x)
@@ -194,7 +194,6 @@ and print_occur ff = function
 
 and pkind_def unfold ff kd =
   fprintf ff "type %s" kd.tdef_name;
-  let parray = print_array pp_print_string "," in
   let pkind = print_kind unfold false in
   let onames = mbinder_names kd.tdef_value in
   let os = new_mvar mk_free_ovari onames in
@@ -202,18 +201,20 @@ and pkind_def unfold ff kd =
   let knames = mbinder_names k in
   let ks = new_mvar mk_free_kvari knames in
   let k = msubst k (Array.map free_of ks) in
-  assert(Array.length knames = Array.length kd.tdef_variance);
-  let knames = Array.mapi (fun i n -> (n, kd.tdef_variance.(i))) knames in
+  assert(Array.length knames = Array.length kd.tdef_kvariance);
+  assert(Array.length onames = Array.length kd.tdef_ovariance);
+  let onames = Array.mapi (fun i n -> (n, kd.tdef_ovariance.(i))) onames in
+  let knames = Array.mapi (fun i n -> (n, kd.tdef_kvariance.(i))) knames in
   let print_elt ff (n,v) = fprintf ff "%s%a" n print_occur v in
-  let parray' = print_array print_elt "," in
+  let parray = print_array print_elt "," in
   if Array.length knames = 0 && Array.length onames = 0 then
     fprintf ff " = %a" pkind k
   else if Array.length onames = 0 then
-    fprintf ff "(%a) = %a" parray' knames pkind k
+    fprintf ff "(%a) = %a" parray knames pkind k
   else if Array.length knames = 0 then
     fprintf ff "(%a) = %a" parray onames pkind k
   else
-    fprintf ff "(%a,%a) = %a" parray onames parray' knames pkind k
+    fprintf ff "(%a,%a) = %a" parray onames parray knames pkind k
 
 (****************************************************************************
  *                           Printing of a term                             *

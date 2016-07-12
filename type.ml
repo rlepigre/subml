@@ -163,10 +163,12 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | KFixN(o,f) -> aux occ (aux3 acc o) (subst f kdummy)
     | KDPrj(t,_) -> aux2 acc t
     | KWith(a,_) -> aux occ acc a (* FIXME *)
-    | KDefi(d,_,a) ->
+    | KDefi(d,o,a) ->
        let acc = ref acc in
+       Array.iteri (fun i o ->
+         acc := aux3 !acc o) o;
        Array.iteri (fun i k ->
-         acc := aux (compose occ d.tdef_variance.(i)) !acc k) a;
+         acc := aux (compose occ d.tdef_kvariance.(i)) !acc k) a;
        !acc
     | KUCst(t,f)
     | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
@@ -406,7 +408,10 @@ let decompose : occur -> kind -> kind ->
        kfixm (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        kfixn (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
-    | KDefi(d,o,a) -> fn pos (msubst (msubst d.tdef_value o) a)
+    | KDefi(d,o,a) ->
+       kdefi d
+         (Array.mapi (fun i -> search (compose pos d.tdef_ovariance.(i))) o)
+         (Array.mapi (fun i -> fn (compose pos d.tdef_kvariance.(i))) a)
     | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn Eps a)
     | KVari(x)   -> box_of_var x
@@ -437,7 +442,7 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
     | KFixM(o, f) -> kfixm (binder_name f) (get o) (fun x -> fn (subst f (KVari x)))
     | KFixN(o, f) -> kfixn (binder_name f) (get o) (fun x -> fn (subst f (KVari x)))
     | KVari(x)   -> box_of_var x
-    | KDefi(d,o,a) -> fn (msubst (msubst d.tdef_value o) a)
+    | KDefi(d,o,a) -> kdefi d (Array.map get o) (Array.map fn a)
     | KDPrj(t,s) -> kdprj (map_term fn t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
     | MuRec _

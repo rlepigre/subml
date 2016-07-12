@@ -47,9 +47,9 @@ val pred3 : CNat → CNat = fun n ↦ n
         (fun p x y ↦ p (s x) x)
         (fun x y ↦ y) z z
 
-(* FIXME: should pass giving the type of m only in the def of a *)
 val inf : CNat -> CNat -> CNat = fun n m ↦
   let a = fun u m ↦
     let k = λc. pair (s (pi1 c)) (s (u (pi1 c))) in
-    ((m k (pair z z)):Pair(CNat,CNat)) (fun x y ↦ y) in
+    pi2 (m k (pair z z))
+  in
   n a (λp.z) m

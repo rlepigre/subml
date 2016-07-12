@@ -77,7 +77,8 @@ and type_def =
   (* Arity of the constructor. *)
   ; tdef_oarity   : int
   ; tdef_karity   : int
-  ; tdef_variance : occur array
+  ; tdef_ovariance : occur array
+  ; tdef_kvariance : occur array
   (* Definition of the constructor. *)
   ; tdef_value    : (ordinal, (kind, kind) mbinder) mbinder }
 
@@ -231,6 +232,9 @@ let fprint_kind : (bool -> formatter -> kind -> unit) ref =
   ref (fun _ -> assert false)
 
 let fprint_ordinal : (bool -> formatter -> ordinal -> unit) ref =
+  ref (fun _ -> assert false)
+
+let ftry_fold_def : (kind -> kind) ref =
   ref (fun _ -> assert false)
 
 (****************************************************************************

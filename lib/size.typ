@@ -1,5 +1,9 @@
 type F(X) = [ Z | S of X]
 type N = μX F(X)
+type NS(α) = μα X F(X)
+type NP(α,A) = (A × (μα X F(X))) → {}
+type NS'(α) = να X F(X)
+type NP'(α,A) = (A × (να X F(X))) → {}
 
 val rec idt : ∀α ((μα X F(X)) → (μα X F(X))) = fun n →
   case n of

@@ -441,19 +441,21 @@ let new_type : name -> (string list * string list) -> pkind -> unit =
     let karg_names = Array.of_list kargs in
     let tdef_oarity = Array.length oarg_names in
     let tdef_karity = Array.length karg_names in
-    let tdef_variance = Array.make tdef_karity Non in
+    let tdef_ovariance = Array.make tdef_oarity Non in
+    let tdef_kvariance = Array.make tdef_karity Non in
 
     let fn oargs =
       let gn kargs =
         let kinds = ref [] in
         let f i k =
-          let v = (k, (Reg(i,tdef_variance))) in
+          let v = (k, (Reg(i,tdef_kvariance))) in
           kinds := (karg_names.(i), v) :: !kinds
         in
         Array.iteri f kargs;
         let ordis = ref [] in
         let f i o =
-          ordis := (oarg_names.(i), o) :: !ordis
+          let v = (o, (Reg(i,tdef_ovariance))) in
+          ordis := (oarg_names.(i), v) :: !ordis
         in
         Array.iteri f oargs;
         unsugar_kind {empty_env with kinds = !kinds ; ordinals = !ordis} k
@@ -465,7 +467,7 @@ let new_type : name -> (string list * string list) -> pkind -> unit =
     let tdef_value = unbox b in
     let td =
       { tdef_name = name ; tdef_tex_name ; tdef_karity ; tdef_oarity
-      ; tdef_value ; tdef_variance }
+      ; tdef_value ; tdef_kvariance ; tdef_ovariance }
     in
     if !verbose then Io.out "%a\n%!" (print_kind_def false) td;
     Hashtbl.add typ_env name td
@@ -546,7 +548,7 @@ and kind_def = tex_name? uident kind_def_args "=" kind
 and kind_def_args =
   | EMPTY                             -> ([], [])
   | "(" ks:(list_sep' uident ",") ")" -> ([], ks)
-  | "(" os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")} ")"
+  | "(" os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")}?[[]] ")"
 
 and val_def =
   | r:is_rec tex:tex_name? id:lident k:{":" kind}? "=" t:term ->

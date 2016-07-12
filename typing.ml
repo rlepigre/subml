@@ -132,6 +132,7 @@ let has_uvar : kind -> bool = fun k ->
   and gn o =
     match orepr o with
     | OUVar _ -> raise Exit
+    | OSucc(o) -> gn o
     | _       -> ()
   in
   try
@@ -721,3 +722,42 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
     let k = List.fold_left (fun acc v -> KKAll (bind_kuvar v acc)) k ul in
     let k = List.fold_left (fun acc v -> KOAll (bind_ouvar v acc)) k ol in
     (k, prf, calls)
+
+let try_fold_def : kind -> kind = fun k ->
+  let match_def k def =
+    let kargs = Array.init def.tdef_karity (fun n -> new_uvar ()) in
+    let oargs = Array.init def.tdef_oarity (fun n -> OUVar(ref None)) in
+    let k' = KDefi(def,oargs,kargs) in
+    let time = Timed.Time.save () in
+    try
+      (* FIXME: a weak unification must be written *)
+      ignore (subtype k' k);
+      ignore (subtype k k');
+      k
+    with
+      Subtype_error e ->
+        Timed.Time.rollback time;
+        raise Not_found
+  in
+  let save_debug = !Io.debug in
+  (*  Io.debug := "";*)
+  let res =
+    match repr k with
+    | KDefi _ -> k
+    | k when has_uvar k -> k
+    | _ ->
+       let defs = Hashtbl.fold (fun _ a l -> a::l) typ_env [] in
+       let rec fn = function
+         | [] -> k
+         | def::l ->
+            try
+              match_def k def
+            with
+              Not_found -> fn l
+       in
+       fn defs
+  in
+  Io.debug := save_debug;
+  res
+
+let _ = Ast.ftry_fold_def := try_fold_def

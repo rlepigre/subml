@@ -95,18 +95,18 @@ let apply_rpat x t =
 type env =
   { terms    : (string * tbox) list
   ; kinds    : (string * (kbox * occur)) list
-  ; ordinals : (string * obox) list }
+  ; ordinals : (string * (obox * occur)) list }
 
 let empty_env : env = { terms = [] ; kinds = [] ; ordinals = [] }
 
 let add_term : string -> tbox -> env -> env = fun x t env ->
   { env with terms = (x,t) :: env.terms }
 
-let add_kind : string -> kbox -> occur -> env -> env = fun x k o env ->
-  { env with kinds = (x,(k,o)) :: env.kinds }
+let add_kind : string -> kbox -> occur -> env -> env = fun x k occ env ->
+  { env with kinds = (x,(k,occ)) :: env.kinds }
 
-let add_ordinal : string -> obox -> env -> env = fun x o env ->
-  { env with ordinals = (x,o) :: env.ordinals }
+let add_ordinal : string -> obox -> occur -> env -> env = fun x o occ env ->
+  { env with ordinals = (x,(o,occ)) :: env.ordinals }
 
 exception Unbound of strpos
 let unbound s = raise (Unbound(s))
@@ -127,8 +127,12 @@ let term_variable : env -> strpos -> tbox = fun env s ->
   with Not_found -> unbound s
 
 (* Lookup an ordinal variable in the environment. *)
-let ordinal_variable : env -> strpos -> obox = fun env s ->
-  try List.assoc s.elt env.ordinals with Not_found -> unbound s
+let ordinal_variable : occur -> env -> strpos -> obox = fun pos env s ->
+  try
+    let (o, pos') = List.assoc s.elt env.ordinals in
+    let _ = compose2 pos' pos in
+    o
+  with Not_found -> unbound s
 
 (* Lookup a kind variable in the environment. If it does not appear, look for
    the name in the list of type definitions. *)
@@ -160,9 +164,10 @@ let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array 
             s.elt td.tdef_karity karity
         in arity_error s.pos msg
       else
-      let os = Array.map (unsugar_ordinal env) os in
+      let os = Array.mapi (fun i o ->
+        unsugar_ordinal ~pos:(compose2 (td.tdef_ovariance.(i)) pos) env o) os in
       let ks = Array.mapi (fun i k ->
-        unsugar_kind ~pos:(compose2 (td.tdef_variance.(i)) pos) env k) ks
+        unsugar_kind ~pos:(compose2 (td.tdef_kvariance.(i)) pos) env k) ks
       in
       kdefi td os ks
     with Not_found -> unbound s
@@ -171,11 +176,11 @@ let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array 
  *                           Desugaring functions                           *
  ****************************************************************************)
 
-and unsugar_ordinal : env -> pordinal -> obox = fun env po ->
+and unsugar_ordinal : ?pos:occur -> env -> pordinal -> obox = fun ?(pos=Pos) env po ->
   match po.elt with
   | PConv   -> oconv
-  | PVari s -> ordinal_variable env (in_pos po.pos s)
-  | PSucc o -> osucc (unsugar_ordinal env o)
+  | PVari s -> ordinal_variable pos env (in_pos po.pos s)
+  | PSucc o -> osucc (unsugar_ordinal ~pos env o)
 
 and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   fun ?(pos=Pos) (env:env) pk ->
@@ -191,16 +196,16 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                       unsugar_kind (add_kind x (box_of_var xk) Non env) k
                     in kkexi x f
   | POAll(o,k)   -> let f xo =
-                      unsugar_kind (add_ordinal o (box_of_var xo) env) k
+                      unsugar_kind (add_ordinal o (box_of_var xo) Non env) k
                     in koall o f
   | POExi(o,k)   -> let f xo =
-                      unsugar_kind (add_ordinal o (box_of_var xo) env) k
+                      unsugar_kind (add_ordinal o (box_of_var xo) Non env) k
                     in koexi o f
-  | PFixM(o,x,k) -> let o = unsugar_ordinal env o in
+  | PFixM(o,x,k) -> let o = unsugar_ordinal ~pos env o in
                     let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
                     in kfixm x o f
-  | PFixN(o,x,k) -> let o = unsugar_ordinal env o in
+  | PFixN(o,x,k) -> let o = unsugar_ordinal ~pos:(neg pos) env o in
                     let f xk =
                       unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
                     in kfixn x o f
@@ -232,7 +237,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                      unsugar_term (add_kind s.elt (box_of_var xk) Non env) f
                    in tkabs s.pos s f
   | POAbs(s,f)  -> let f xo =
-                      unsugar_term (add_ordinal s.elt (box_of_var xo) env) f
+                      unsugar_term (add_ordinal s.elt (box_of_var xo) Non env) f
                    in toabs s.pos s f
   | PCoer(t,k)  -> tcoer pt.pos (unsugar_term env t) (unsugar_kind env k)
   | PAppl(t,u)  -> tappl pt.pos (unsugar_term env t) (unsugar_term env u)
