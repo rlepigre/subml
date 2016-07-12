@@ -20,22 +20,28 @@ type subtype_ctxt =
   ; positive_ordinals : (ordinal * ordinal) list }
 
 and induction_type =
-  | Sub of kind * kind
+  | Sub of int list * kind * kind
   | Rec of (term,term) binder * kind * kind
 
 let empty_ctxt () =
   { induction_hyp = [] ; calls = ref [] ; positive_ordinals = [] }
 
 let find_indexes pos index index' a b =
+  Io.log_mat "build matrix for %d %d\n" index index';
   let c = Sct.arity index and l = Sct.arity index' in
   let m = Array.init l (fun _ -> Array.make c Unknown) in
   let pos = List.map fst pos in
   List.iter (fun (j,o') ->
     List.iter (fun (i,o) ->
-      (*Io.log "  compare %d %a <? %d %a\n%!" i (print_ordinal false) o
-        j (print_ordinal false) o'; *)
-      if less_ordinal pos o o' then m.(j).(i) <- Less
-      else if leq_ordinal pos o o' then m.(j).(i) <- min m.(j).(i) Leq
+      Io.log_mat "  compare %d %a <=? %d %a => %!" i (print_ordinal false) o
+        j (print_ordinal false) o';
+      let r =
+        if less_ordinal pos o o' then Less
+        else if leq_ordinal pos o o' then Leq
+        else Unknown
+      in
+      Io.log_mat "%a\n%!" print_cmp r;
+      m.(j).(i) <- r
     ) a) b;
   m
 
@@ -186,8 +192,8 @@ let add_pos positives o o' =
   match o with
   | OConv | OSucc _ -> positives
   | _ ->
-  if List.exists (fun (o',_) -> eq_ordinal o o') positives then positives else
-    (o, o') :: positives
+    (*  if List.exists (fun (o',_) -> eq_ordinal o o') positives then positives else*)
+    (o, o') :: List.filter (fun (o',_) -> not (eq_ordinal o o')) positives
 
 let add_positive ctxt o o' =
   { ctxt with positive_ordinals = add_pos ctxt.positive_ordinals o o' }
@@ -220,15 +226,22 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       (match a with MuRec _ | NuRec _ -> raise Exit | _ -> ());
       (match b with MuRec _ | NuRec _ -> raise Exit | _ -> ());
       let (a', b', os) = decompose Pos a b in
+      let p' =
+        let l =
+          List.filter (fun (i,o) -> List.exists (fun (o',_) -> eq_ordinal o o')
+            ctxt.positive_ordinals) os
+        in
+        List.sort compare (List.map fst l)
+      in
       (*Io.log "\n\nIND len(os) = %d\n%!" (List.length os);
         Io.log "IND (%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
       let pos = ctxt.positive_ordinals in
-      List.iter (function (_,Rec _,_) -> () | (index,Sub(a0,b0),os0) ->
-        if Timed.pure_test (fun () -> eq_kind a' a0 && eq_kind b0 b') () then (
+      List.iter (function (_,Rec _,_) -> () | (index,Sub(p0,a0,b0),os0) ->
+        if Timed.pure_test (fun () -> p' = p0 && eq_kind a' a0 && eq_kind b0 b') () then (
           assert (List.length os = Sct.arity index);
           match ctxt.induction_hyp with
           | (index',_,os')::_ ->
-             (*Io.log "FOUND\n%!";*)
+             Io.log_sub "By induction\n\n%!";
              Timed.(delayed := (fun () ->
                let m = find_indexes pos index index' os os' in
                ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !delayed);
@@ -242,26 +255,29 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
              let m = find_indexes pos fnum index' os os' in
              ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !delayed);
       | _ -> ());
-      let ctxt = { ctxt with induction_hyp = (fnum, Sub(a', b'), os)::ctxt.induction_hyp } in
+      let ctxt = { ctxt with
+                   induction_hyp = (fnum, Sub(p', a', b'), os)::ctxt.induction_hyp }
+      in
       (Some fnum, None, ctxt)
     with Exit -> (None, None, ctxt)
        | Induction_hyp n -> (None, Some n, ctxt)
 
 let fixpoint_depth = ref 3
 
+let print_positives ff ctxt =
+  let p_aux ch (o1,o2) = Format.fprintf ff "%a < %a"
+    (print_ordinal false) o2 (print_ordinal false) o1
+  in
+  match ctxt.positive_ordinals with
+      | [] -> ()
+      | l -> Io.log "  (%a)\n\n%!" (print_list p_aux ", ") l
+
 let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a0 b0 ->
   let a = full_repr a0 in
   let b = full_repr b0 in
-  if !debug then
-    begin
-      Io.log "%a\n" (print_term false) t;
-      Io.log "  ∈ %a\n" (print_kind false) a;
-      Io.log "  ⊂ %a\n" (print_kind false) b;
-      let p_aux ch (o,_) = print_ordinal false ch o in
-      match ctxt.positive_ordinals with
-      | [] -> Io.log "\n%!"
-      | l  -> Io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
-    end;
+  Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
+    (print_term false) t (print_kind false) a (print_kind false) b
+    print_positives ctxt;
   if eq_kind a b then (t, a0, b0, None, Sub_Lower) else
   let (ind_ref, ind_hyp, ctxt) = check_rec t ctxt a b in
   let r = (* FIXME: le témoin n'est pas le bon *)
@@ -443,8 +459,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         in
         let o' = oless o (NotIn(t,unbox g)) in
         let ctxt = add_positive ctxt o o' in
-        if !debug then
-          Io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+        Io.log_sub "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixN(o', f) in
         let prf = subtype ctxt t a0 (subst f cst) in
         Sub_FixN_r prf
@@ -461,8 +476,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         in
         let o' = oless o (In(t,unbox g)) in
         let ctxt = add_positive ctxt o o' in
-        if !debug then
-          Io.log "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
+        Io.log_sub "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixM(o', f) in
         let prf = subtype ctxt t (subst f cst) b0 in
         Sub_FixM_l prf
@@ -472,7 +486,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         begin
           try
             let o' = find_positive ctxt o in
-            let a = if o' = o then a else KFixN(o',f) in
+            let a = if eq_ordinal o' o then a else KFixN(o',f) in
             let p = subtype ctxt t (subst f a) b0 in
             Sub_FixM_r(p)
           with Not_found -> subtype_error "Subtyping clash (no rule apply)."
@@ -482,7 +496,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         begin
           try
             let o' = find_positive ctxt o in
-            let b = if o' = o then b else KFixM(o',f) in
+            let b = if eq_ordinal o' o then b else KFixM(o',f) in
             let p = subtype ctxt t a0 (subst f b) in
             Sub_FixN_l(p)
           with Not_found -> subtype_error "Subtyping clash (no rule apply)."
@@ -503,15 +517,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
 and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
-  if !debug then
-    begin
-      Io.log "%a :\n" (print_term false) t;
-      Io.log "  %a\n" (print_kind false) c;
-      let p_aux ch (o, _) = print_ordinal false ch o in
-      match ctxt.positive_ordinals with
-      | [] -> Io.log "\n%!"
-      | l  -> Io.log "  (0 < %a)\n\n%!" (print_list p_aux ", ") l
-    end;
+  Io.log_typ "%a :\n  %a\n  %a\n\n%!"
+    (print_term false) t (print_kind false) c print_positives ctxt;
   let r =
     try
     match t.elt with
@@ -546,7 +553,6 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Func_e(p1, p2)
     | TAppl(t,u) ->
         let a = new_uvar () in
-        (*        let ctxt = add_positives ctxt (gamma_mu_term t) in*)
         let p1 = type_check ctxt u a in
         let p2 = type_check ctxt t (KFunc(a,c)) in
         Typ_Func_e(p1, p2)
@@ -605,40 +611,50 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        let prf = subtype ctxt t a c in
        let (_, c0, os) = decompose Pos (KProd []) c in
        let pos = ctxt.positive_ordinals in
-       if !debug then
-         begin
-           Io.log "searching induction hyp (1):\n" ;
-           Io.log "  %a (%a > 0)\n%!"
-             (print_kind false) c
-             (fun ch -> List.iter (fun (o,_) -> print_ordinal false ch o)) pos;
-         end;
+       Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
+         (print_kind false) c print_positives ctxt;
        let rec fn = function
          | [] -> raise Not_found
          | (_,Sub _, _) :: hyps -> fn hyps
          | (_,Rec(_,_,a),[]) :: hyps -> fn hyps
          | (fnum,Rec(_,_,a),os') :: hyps ->
             try
+              let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
+              let a = recompose a ov in
+              Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
               let prf =
+                (* FIXME: factorise with global subtype below *)
+                (* FIXME: delayed in ctxt *)
                 let time = Timed.Time.save () in
+                let calls = !(ctxt.calls) in
+                let saved_delayed = !delayed in
+                ctxt.calls := [];
+                delayed := [];
                 try (* If all these subtyping fails,
                        it is only a problem of terminaison *)
-                  subtype ctxt t a c0
+                  let prf = subtype ctxt t a c in
+                  List.iter (fun f -> f ()) !delayed;
+                  let calls0 = inline !(ctxt.calls) in
+                  if not (sct calls0) then subtype_error "loop(in Y)";
+                  ctxt.calls := !(ctxt.calls) @ calls;
+                  delayed := saved_delayed;
+                  prf
                 with Subtype_error _ ->
+                  ctxt.calls := calls;
+                  delayed := saved_delayed;
                   Timed.Time.rollback time;
                   raise Exit
+                | e ->
+                   Io.err "unexpected exception from subtype %s\n%!" (Printexc.to_string e);
+                  assert false
               in
               match ctxt.induction_hyp with
               | [] -> assert false
               | (cur,_,os0)::_   ->
                  Timed.(delayed := (fun () ->
-                   if !debug then
-                     begin
-                       Io.log "searching induction hyp (2):\n";
-                       Io.log "  %a => %a (%a > 0)\n%!" (print_kind false) a
-                         (print_kind false) c
-                         (fun ch -> List.iter (fun (o,_) -> print_ordinal false ch o)) pos
-                     end;
-                   let m = find_indexes pos fnum cur os os0 in
+                   Io.log_typ "searching induction hyp (2):\n  %a => %a %a\n%!"
+                     (print_kind false) a (print_kind false) c print_positives ctxt;
+                   let m = find_indexes pos fnum cur ov os0 in
                    let call = (fnum, cur, m, true) in
                    (*Io.log "%d %a\n%!" afnum (print_call (Sct.arities ())) (fnum, cur, m);*)
                    ctxt.calls := call :: !(ctxt.calls)) :: !delayed);
@@ -648,12 +664,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
        (try fn hyps with Not_found ->
        if n = 0 then type_error t.pos "can not relate termination depth" else
        let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
-       if !debug then
-         begin
-           Io.log "Adding induction hyp (1) %d:\n" fnum;
-           Io.log "  %a => %a\n%!" (print_kind false) c
-             (print_kind false) c0;
-         end;
+       Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+         (print_kind false) c (print_kind false) c0;
        let pos = ctxt.positive_ordinals in
        let ctxt =
          begin match ctxt.induction_hyp with
@@ -689,8 +701,8 @@ let subtype : term option -> kind -> kind -> sub_prf * calls_graph =
       delayed := [];
       let calls = inline !(ctxt.calls) in
       let arities = Sct.arities () in
-      reset_all ();
       if not (sct calls) then subtype_error "loop";
+      reset_all ();
       (p, (arities, calls))
     with e -> delayed := []; reset_all (); raise e
 
@@ -705,8 +717,8 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
         delayed := [];
         let calls = inline !(ctxt.calls) in
         let arities = Sct.arities () in
-        reset_all ();
         if not (sct calls) then subtype_error "loop";
+        reset_all ();
         (p, (arities, calls))
       with e -> delayed := []; reset_all (); raise e
     in

@@ -34,11 +34,8 @@ let spec = Arg.align
     , Arg.Set_int Typing.fixpoint_depth
     , "i  Set the maximal unrolling depth for fixpoints" )
   ; ( "--debug"
-    , Arg.Set Ast.debug
-    , "  Display the debugging informations" )
-  ; ( "--debug-scp"
-    , Arg.Set Sct.debug_sct
-    , "  Display the debugging informations for the SCP" )
+    , Arg.String Io.set_debug
+    , "s  Display the debugging informations\n   't': typing\n   's': subtyping\n   'u': unification\n   'y': size change principle\n   'm': matrix coefficient" )
   ]
 
 let usage = Printf.sprintf "Usage: %s [ARGS] [FILES]" Sys.argv.(0)

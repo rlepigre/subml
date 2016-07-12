@@ -12,8 +12,8 @@ type cmp = Less | Leq | Unknown
 
    more precisely, a call (i,j,m) represents a call
    to the function numbered i inside the function numbered j.
-   m is a matrix. the coefficient m.(i).(j) give the relation
-   between the i-th parameter of the caller and the j-th argument
+   m is a matrix. the coefficient m.(a).(b) give the relation
+   between the a-th parameter of the caller and the b-th argument
    of the called function.
 
    The boolean in pre_call indicates a recursive call, that must no be
@@ -31,9 +31,6 @@ type pre_calls = pre_call list
 type printer = (formatter -> unit) * (formatter -> unit) (* normal / latex *)
 type arities = (int * (string * int * printer array)) list
 type calls_graph = arities * calls
-
-let debug_sct = ref false
-let summary_sct = ref false
 
 let mat_prod l1 c1 c2 m1 m2 =
   Array.init l1 (fun i ->
@@ -54,24 +51,26 @@ let print_cmp ff c =
 
 let print_call tbl ff (i,j,m) =
   let (_, aj, prj) = try List.assoc j tbl with Not_found -> assert false in
-  let print_args ff i =
+  let (_, ai, _) = try List.assoc i tbl with Not_found -> assert false in
+  let print_args ff =
     for j = 0 to aj - 1 do
       fprintf ff "%s%t" (if j = 0 then "" else ",") (fst prj.(j))
     done
   in
   let (namei, _, _) = try List.assoc i tbl with Not_found -> assert false in
   let (namej, _, _) = try List.assoc j tbl with Not_found -> assert false in
-  fprintf ff "%s%d(%a) <- %s%d(" namej j print_args j namei i;
-  Array.iteri (fun j l ->
-    if j > 0 then fprintf ff ",";
+  fprintf ff "%s%d(%t%!) <- %s%d%!(" namej j print_args namei i;
+  for i = 0 to ai - 1 do
+    if i > 0 then fprintf ff ",";
     let some = ref false in
-   Array.iteri (fun i c ->
+    for j = 0 to aj - 1 do
+      let c = m.(j).(i) in
       if c <> Unknown then (
-        let sep = if !some then " " else "" in
-        fprintf ff "%s%a%t" sep print_cmp c (fst prj.(j));
-        some := true
-      )) l;
-      if not !some then fprintf ff "?") m;
+      let sep = if !some then " " else "" in
+      fprintf ff "%s%a%t" sep print_cmp c (fst prj.(j));
+      some := true)
+    done
+  done;
   fprintf ff ")%!"
 
 let print_calls tbl ff (l:calls) =
@@ -99,7 +98,7 @@ module IAMap = Map.Make(IntArray)
 (* function needs to be declared. calling sct will
    reset the function table *)
 let (new_function : string -> printer list -> int),
-    reset_function, pr_call, arities, arity =
+    get_function, reset_function, pr_call, arities, arity =
   let count = ref 0 in
   let fun_table = ref [] in (* the table is only used for debugging messages *)
   (fun name args ->
@@ -111,9 +110,10 @@ let (new_function : string -> printer list -> int),
     n),
   (fun () ->
     let res = (!count, !fun_table) in
-    count := 0;
-    fun_table := [];
     res),
+  (fun () ->
+    count := 0;
+    fun_table := []),
   (fun ch ->
     print_call !fun_table ch),
   (fun () -> !fun_table),
@@ -130,8 +130,8 @@ let subsume m1 m2 =
 
 (* the main function *)
 let sct: calls -> bool = fun ls ->
-  if !debug_sct then Io.log "SCT starts...\n%!";
-  let num_fun, arities = reset_function () in
+  Io.log_sct "SCT starts...\n%!";
+  let num_fun, arities = get_function () in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun []) in
   let print_call = print_call arities in
   (* counters to count added and composed edges *)
@@ -142,7 +142,7 @@ let sct: calls -> bool = fun ls ->
     (* test idempotent edges as soon as they are discovered *)
     let (_, a, _) = List.assoc i arities in
     if i = j && mat_prod a a a m m = m && not (decrease m) then begin
-      if !debug_sct then Io.log "edge %a idempotent and looping\n%!" print_call (i,j,m);
+      Io.log_sct "edge %a idempotent and looping\n%!" print_call (i,j,m);
       raise Exit;
     end;
     let ti = tbl.(i) in
@@ -156,47 +156,39 @@ let sct: calls -> bool = fun ls ->
   in
   (* adding initial edges *)
   try
-    if !debug_sct then (
-      Io.log "initial edges to be added:\n%!";
-      List.iter (fun c -> Io.log "\t%a\n%!" print_call c) ls);
+    Io.log_sct "initial edges to be added:\n%!";
+    List.iter (fun c -> Io.log_sct "\t%a\n%!" print_call c) ls;
     let new_edges = ref ls in
     (* compute the transitive closure of the call graph *)
-    if !debug_sct then Io.log "start completion\n%!";
+    Io.log_sct "start completion\n%!";
     let rec fn () =
       match !new_edges with
         [] -> ()
       | (i,j,m)::l ->
          new_edges := l;
         if add_edge i j m then begin
-          if !debug_sct then Io.log "\tedge %a added\n%!" print_call (i,j,m);
+          Io.log_sct "\tedge %a added\n%!" print_call (i,j,m);
           incr added;
           let t' = tbl.(j) in
           Array.iteri (fun k t -> List.iter (fun m' ->
-            if !debug_sct then
-              Io.log "\tcompose: %a * %a = %!"
-                print_call (i,j,m)
-                print_call (j,k,m');
+            Io.log_sct "\tcompose: %a * %a = %!" print_call (i,j,m) print_call (j,k,m');
             let (_, a, _) = List.assoc k arities in
             let (_, b, _) = List.assoc j arities in
             let (_, c, _) = List.assoc i arities in
             let m'' = mat_prod a b c m' m in
             incr composed;
             new_edges := (i,k,m'') :: !new_edges;
-            if !debug_sct then
-              Io.log "%a\n%!"
-                print_call (i,k,m'');
+            Io.log_sct "%a\n%!" print_call (i,k,m'');
           ) t) t'
         end else
-          if !debug_sct then Io.log "\tedge %a is old\n%!" print_call (i,j,m);
+          Io.log_sct "\tedge %a is old\n%!" print_call (i,j,m);
         fn ()
     in
     fn ();
-    if !debug_sct || !summary_sct then
-      Io.log "SCT passed (%5d edges added, %6d composed)\t%!" !added !composed;
+    Io.log_sct "SCT passed (%5d edges added, %6d composed)\t%!" !added !composed;
     true
   with Exit ->
-    if !debug_sct || !summary_sct then
-      Io.log "SCT failed (%5d edges added, %6d composed)\t%!" !added !composed;
+    Io.log_sct "SCT failed (%5d edges added, %6d composed)\t%!" !added !composed;
     false
 
 

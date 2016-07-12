@@ -17,10 +17,11 @@ let fmts =
   ; log = err_formatter
   ; tex = std_formatter }
 
-let out ff = fprintf fmts.out ff
-let err ff = fprintf fmts.err ff
-let log ff = fprintf fmts.log ff
-let tex ff = fprintf fmts.tex ff
+let out ff = fprintf  fmts.out ff
+let err ff = fprintf  fmts.err ff
+let log ff = fprintf  fmts.log ff
+let tex ff = fprintf  fmts.tex ff
+let nul ff = ifprintf fmts.log ff
 
 let (open_out, close_out) =
   let tbl = Hashtbl.create 31 in
@@ -41,5 +42,22 @@ let (open_out, close_out) =
 let file fn = !read_file fn
 
 let fmt_of_file fn = formatter_of_out_channel (open_out fn)
+
+let debug = ref ""
+let debug_sct = 'y'
+let debug_uni = 'u'
+let debug_sub = 's'
+let debug_typ = 't'
+let debug_mat = 'm'
+let debug_all = "musyt"
+
+let log_sct ff = if String.contains !debug debug_sct then log ff else nul ff
+let log_uni ff = if String.contains !debug debug_uni then log ff else nul ff
+let log_sub ff = if String.contains !debug debug_sub then log ff else nul ff
+let log_typ ff = if String.contains !debug debug_typ then log ff else nul ff
+let log_mat ff = if String.contains !debug debug_mat then log ff else nul ff
+
+let set_debug s =
+  debug := if s = "all" then debug_all else s
 
 (*FIXME: close file, just need remembering the file *)

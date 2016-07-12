@@ -248,7 +248,7 @@ let set_kuvar side v k =
     | Pos -> KFixM(OConv,bind_kuvar v k)
     | _   -> if side then bot else top
   in
-  if !debug then Io.log "set %a <- %a\n\n%!"
+  Io.log_uni "set %a <- %a\n\n%!"
     (!fprint_kind false) (KUVar v) (!fprint_kind false) k;
   Timed.(v.kuvar_val := Some k)
 

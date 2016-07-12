@@ -3,8 +3,6 @@ open Refinter
 open Format
 open Position
 
-let debug = ref false
-
 let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
   match o with None -> None | Some e -> Some (f e)
 
@@ -359,7 +357,8 @@ let (new_uvar, reset_uvar) =
 (* Resset all counters. *)
 let reset_all () =
   let reset = [reset_uvar] in
-  List.iter (fun x -> x ()) reset
+  List.iter (fun x -> x ()) reset;
+  Sct.reset_function ()
 
 (****************************************************************************
  *                     Definition of widely used types                      *
