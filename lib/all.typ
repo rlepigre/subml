@@ -9,6 +9,7 @@ include "lib/natbin.typ"
 include "lib/church/bool.typ"
 include "lib/church/nat.typ"
 include "lib/church/data.typ"
+include "lib/church/inf_david.typ"
 
 (* Scott encoding. *)
 include "lib/scott/nat.typ"

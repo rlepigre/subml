@@ -327,7 +327,11 @@ and let_var =
   | id:lident ":" k:kind -> (in_pos _loc_id id, Some k)
 
 and term_llet = let_kw r:is_rec pat:rpat "=" t:term in_kw u:term ->
-  let t = if not r then t else
+  let t =
+    if not r then
+      match pat with Simple (Some(_,Some k)) -> in_pos _loc_t (PCoer(t,k))
+      | _ -> t
+    else
       match pat with Simple (Some id) -> pfixY id _loc_t t
       | _ -> give_up ""
   in
@@ -350,7 +354,7 @@ and pats = _:"|"? ps:(list_sep case "|")
 
 and rpat =
   | EMPTY                              -> Simple None
-  | x:var                              -> Simple (Some x)
+  | x:let_var                          -> Simple (Some x)
   | "(" x:var ")"                      -> Simple (Some x)
   | "{" ls:(list_sep (parser l:lident "=" x:var) ";") "}"
                                        -> Record ls
