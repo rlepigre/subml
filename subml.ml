@@ -43,6 +43,8 @@ let spec = Arg.align
         'm': sct matrix coefficient" )
   ]
 
+open Graph
+
 let usage = Printf.sprintf "Usage: %s [ARGS] [FILES]" Sys.argv.(0)
 
 let rec interact () =
