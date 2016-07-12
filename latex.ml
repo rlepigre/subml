@@ -371,8 +371,8 @@ let print_calls ff arities calls =
       if i > 0 then fprintf ff ",";
       let some = ref false in
       for j = 0 to aj - 1 do
-	let c = m.(j).(i) in
-	if c <> Sct.Unknown then (
+        let c = m.(j).(i) in
+        if c <> Sct.Unknown then (
           let sep = if !some then " " else "" in
           fprintf ff "%s%a%t" sep print_cmp c (snd prj.(j));
           some := true)
