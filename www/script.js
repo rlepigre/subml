@@ -104,6 +104,26 @@ $(function() {
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u00D7 ");
                 break;
+              case "\\alpha" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u03B1 ");
+                break;
+              case "\\beta" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u03B2 ");
+                break;
+              case "\\gamma" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u03B3 ");
+                break;
+              case "\\delta" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u03B4 ");
+                break;
+              case "\\epsilon" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u03B5 ");
+                break;
               default :
                 instance.replaceSelection(" ");
             }
