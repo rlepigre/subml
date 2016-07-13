@@ -67,6 +67,7 @@ clean:
 distclean: clean
 	rm -f *~ lib/*~
 	rm -rf subml-latest subml-latest.tar.gz
+	rm -f subml.js
 
 install: all
 	install ./subml.native $(DESTDIR)/subml
