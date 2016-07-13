@@ -11,8 +11,6 @@ val rec add : Nat → Nat → Nat = fun n m ↦
   | Z   → m
   | S x → S(add x m)
 
-html add
-
 val rec mul : Nat → Nat → Nat = fun n m ↦
   case n of
   | Z   → Z

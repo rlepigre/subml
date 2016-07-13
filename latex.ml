@@ -407,6 +407,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_Y(n,p1,p)     ->
      let name = sprintf "$I_%d$" n in
      binaryN name c (sub2proof p1) (typ2proof p)
+  | Typ_Unfinished    -> axiomN "AXIOM" c
 
 and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let open Proof in

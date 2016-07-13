@@ -100,7 +100,8 @@ module IAMap = Map.Make(IntArray)
 let (new_function : string -> printer list -> int),
     get_function, reset_function, pr_call, arities, arity =
   let count = ref 0 in
-  let fun_table = ref [] in (* the table is only used for debugging messages *)
+  let init_fun_table = [(-1, ("R", 0, [||]))] in
+  let fun_table = ref init_fun_table in (* the table is only used for debugging messages *)
   (fun name args ->
     let args = Array.of_list args in
     let arity = Array.length args in
@@ -113,11 +114,11 @@ let (new_function : string -> printer list -> int),
     res),
   (fun () ->
     count := 0;
-    fun_table := []),
+    fun_table := init_fun_table),
   (fun ch ->
     print_call !fun_table ch),
   (fun () -> !fun_table),
-  (fun i -> try let (_,a,_) = List.assoc i !fun_table in a with Not_found -> assert false)
+  (fun i -> try let (_,a,_) = List.assoc i !fun_table in a with Not_found -> Io.err "==> %d\n%!" i; assert false)
 
 let subsume m1 m2 =
   try
