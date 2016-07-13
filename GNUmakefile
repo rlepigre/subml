@@ -1,7 +1,10 @@
 all: subml.byte subml.native
 
-.PHONY: js
-js: subml.js
+.PHONY: www
+www: subml.js tutorial.typ
+	cp -r lib www/subml/lib
+	cp tutorial.typ www/subml
+	cp subml.js www/subml
 
 DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
