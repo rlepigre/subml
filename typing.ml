@@ -728,16 +728,7 @@ let try_fold_def : kind -> kind = fun k ->
     let kargs = Array.init def.tdef_karity (fun n -> new_uvar ()) in
     let oargs = Array.init def.tdef_oarity (fun n -> OUVar(ref None)) in
     let k' = KDefi(def,oargs,kargs) in
-    let time = Timed.Time.save () in
-    try
-      (* FIXME: a weak unification must be written *)
-      ignore (subtype k' k);
-      ignore (subtype k k');
-      k
-    with
-      Subtype_error e ->
-        Timed.Time.rollback time;
-        raise Not_found
+    if match_kind k' k then k' else raise Not_found
   in
   let save_debug = !Io.debug in
   (*  Io.debug := "";*)
@@ -747,6 +738,10 @@ let try_fold_def : kind -> kind = fun k ->
     | k when has_uvar k -> k
     | _ ->
        let defs = Hashtbl.fold (fun _ a l -> a::l) typ_env [] in
+       let defs = List.sort
+         (fun d1 d2 -> compare (d1.tdef_karity + d1.tdef_oarity)
+                               (d2.tdef_karity + d2.tdef_oarity)) defs
+       in
        let rec fn = function
          | [] -> k
          | def::l ->

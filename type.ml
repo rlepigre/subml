@@ -450,3 +450,42 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
     | t          -> box t
   in
   unbox (fn k)
+
+(* Matching kind, used for printing only *)
+
+let rec match_kind : kind -> kind -> bool = fun p k ->
+  match full_repr p, full_repr k with
+  | KUVar(ua), k -> set_kuvar true ua k; true
+  | KFunc(p1,p2), KFunc(k1,k2) -> match_kind p1 k1 && match_kind p2 k2
+  | KDSum(ps1), KDSum(ps2)
+  | KProd(ps1), KProd(ps2) ->
+     List.length ps1 = List.length ps2 &&
+     let ps1 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps1 in
+     let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
+     List.for_all2 (fun (s1,p1) (s2,k1) ->
+       s1 = s2 && match_kind p1 k1) ps1 ps2
+  | KDPrj(t1,s1), KDPrj(t2,s2) ->
+     s1 = s2 && eq_term t1 t2
+  | KWith(p1,(s1,p2)), KWith(k1,(s2,k2)) ->
+     s1 = s2 && match_kind p1 k1 && match_kind p2 k2
+  | KKAll(f), KKAll(g)
+  | KKExi(f), KKExi(g) ->
+     let v = new_kvari (binder_name f) in
+     match_kind (subst f (free_of v)) (subst g (free_of v))
+  | KOAll(f), KOAll(g)
+  | KOExi(f), KOExi(g) ->
+     let v = new_ovari (binder_name f) in
+     match_kind (subst f (free_of v)) (subst g (free_of v))
+  | KFixM(o1,f), KFixM(o2,g)
+  | KFixN(o1,f), KFixN(o2,g) ->
+     let v = new_kvari (binder_name f) in
+     match_ordinal o1 o2 &&
+       match_kind (subst f (free_of v)) (subst g (free_of v))
+  | KVari(v1), KVari(v2) -> compare_variables v1 v2 = 0
+  | p, k -> eq_kind p k
+
+and match_ordinal : ordinal -> ordinal -> bool = fun p o ->
+  match orepr p, orepr o with
+  | OUVar(uo), o -> set_ouvar uo o; true
+  | OSucc(p), OSucc(o) -> match_ordinal p o
+  | p, k -> eq_ordinal p k

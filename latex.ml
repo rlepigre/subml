@@ -4,6 +4,7 @@ open Ast
 open Print
 open Type
 open Position
+open Compare
 
 (****************************************************************************
  *                           Printing of a type                             *
@@ -41,7 +42,7 @@ and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
   let pordi = print_ordinal false in
   let pkindw = print_kind false true in
-  let t = (*if unfold then fun x -> x else !ftry_fold_def*) (repr t) in
+  let t = (if unfold then fun x -> x else !ftry_fold_def) (repr t) in
   match t with
   | KVari(x) ->
       pp_print_string ff (name_of x)
@@ -109,13 +110,13 @@ and print_kind unfold wrap ff t =
       if unfold then
         print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
       else if Array.length ks = 0 && Array.length os = 0 then
-        pp_print_string ff td.tdef_name
+        pp_print_string ff td.tdef_tex_name
       else if Array.length os = 0 then
-        fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") ks
+        fprintf ff "%s(%a)" td.tdef_tex_name (print_array pkind ", ") ks
       else if Array.length ks = 0 then
-        fprintf ff "%s(%a)" td.tdef_name (print_array pordi ", ") os
+        fprintf ff "%s_{%a}" td.tdef_tex_name (print_array pordi ", ") os
       else
-        fprintf ff "%s(%a, %a)" td.tdef_name (print_array pordi ", ") os
+        fprintf ff "%s_{%a}(%a)" td.tdef_tex_name (print_array pordi ", ") os
           (print_array pkind ", ") ks
   | KDPrj(t,s) ->
      fprintf ff "%a.%s" (print_term false 2) t s
@@ -148,9 +149,9 @@ and pkind_def unfold ff kd =
   else if Array.length onames = 0 then
     fprintf ff "(%a) = %a" parray knames pkind k
   else if Array.length knames = 0 then
-    fprintf ff "(%a) = %a" parray onames pkind k
+    fprintf ff "_{%a} = %a" parray onames pkind k
   else
-    fprintf ff "(%a,%a) = %a" parray onames parray knames pkind k
+    fprintf ff "_{%a}(%a) = %a" parray onames parray knames pkind k
 
 (****************************************************************************
  *                           Printing of a term                             *
@@ -254,8 +255,16 @@ and print_term unfold lvl ff t =
           fprintf ff "\\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
        | _          ->
           fprintf ff "\\mathrm{%s} \\rightarrow %a" c (print_term 0) b
-      in
-      fprintf ff "\\case{%a}{%a}" (print_term 0) t (print_list pvariant "| ") l
+     in
+     begin
+       match l with
+       | [c,{elt = TAbst(_,f)}] when
+             let x = free_of (new_tvari' (binder_name f)) in subst f x == x ->
+          fprintf ff "\\mathrm{%s}.%a" c (print_term 0) t
+       | _ ->
+          fprintf ff "\\case{%a}{%a}"
+            (print_term 0) t (print_list pvariant "| ") l
+     end
   | TDefi(v) ->
      if unfold then
        nprint_term lvl ff v.orig_value
@@ -404,8 +413,9 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let t2s = term_to_string false and k2s = kind_to_string false in
   let c = sprintf "$%s \\in %s \\subset %s$" (t2s t) (k2s a) (k2s b) in
   match r with
+  | _ when eq_kind a b-> axiomN "$=$" c (* usefull because of unification *)
   | Sub_Delay(pr)     -> sub2proof !pr
-  | Sub_Lower         -> hyp (sprintf "$%s \\leq %s$" (k2s a) (k2s b))
+  | Sub_Lower         -> axiomN "$=$" c
   | Sub_Func(p1,p2)   -> binaryN "$\\to$" c (sub2proof p1) (sub2proof p2)
   | Sub_Prod(ps)      -> n_aryN "$\\times$" c (List.map sub2proof ps)
   | Sub_DSum(ps)      -> n_aryN "$+$" c (List.map sub2proof ps)
