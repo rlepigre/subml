@@ -42,7 +42,7 @@ let tail = ";
 let to_nodes : formatter -> string proof -> unit = fun ch p ->
   let rec to_nodes ch = function
     | Hyp(s)       -> fprintf ch "{ innerHTML: \"%s\" }" s
-    | Rule(ps,c,_) -> fprintf ch "{ innerHTML: \"%s\", collapsed: false," c;
+    | Rule(ps,c,_) -> fprintf ch "{ innerHTML: \"%s\", collapsed: true," c;
                       let rec children ch = function
                         | []  -> ()
                         | [c] -> to_nodes ch c

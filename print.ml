@@ -181,8 +181,8 @@ and print_kind unfold wrap ff t =
       fprintf ff "?%i" u.kuvar_key
   | KTInt(n) ->
      fprintf ff "!%i" n
-  | MuRec(_,a) -> fprintf ff "REC(%a)" pkind a
-  | NuRec(_,a) -> fprintf ff "REC(%a)" pkind a
+  | MuRec(_,a) -> pkind ff a
+  | NuRec(_,a) -> pkind ff a
 
 and print_occur ff = function
   | Eps    -> pp_print_string ff "ε"
@@ -295,6 +295,75 @@ and print_term ?(in_proj=false) unfold ff t =
       fprintf ff "TAG(%i)" i
 
 (****************************************************************************
+ *                             Proof generation                             *
+ ****************************************************************************)
+
+let term_to_string unfold t =
+  print_term unfold str_formatter t;
+  flush_str_formatter ()
+
+let kind_to_string unfold k =
+  print_kind unfold false str_formatter k;
+  flush_str_formatter ()
+
+let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
+  let open Proof in
+  let t2s = term_to_string true and k2s = kind_to_string false in
+  let c = sprintf "%s : %s" (t2s t) (k2s k) in
+  match r with
+  | Typ_Coer(p1,p2)   -> binaryN "⊆" c (sub2proof p1) (typ2proof p2)
+  | Typ_KAbs(p)       -> unaryN "Λ" c (typ2proof p)
+  | Typ_OAbs(p)       -> unaryN "Λo" c (typ2proof p)
+  | Typ_Defi(p)       -> hyp ""
+  | Typ_Prnt(p)       -> unaryN "print" c (sub2proof p)
+  | Typ_Cnst(p)       -> unaryN "=" c (sub2proof p)
+  | Typ_Func_i(p1,p2) -> binaryN "→i" c (sub2proof p1) (typ2proof p2)
+  | Typ_Func_e(p1,p2) -> binaryN "→e" c (typ2proof p1) (typ2proof p2)
+  | Typ_Prod_i(p,ps)  -> n_aryN "×i" c (sub2proof p :: List.map typ2proof ps)
+  | Typ_Prod_e(p)     -> unaryN "×e" c (typ2proof p)
+  | Typ_DSum_i(p1,p2) -> binaryN "+i" c (sub2proof p1) (typ2proof p2)
+  | Typ_DSum_e(p,ps)  -> n_aryN "+e" c (typ2proof p :: List.map typ2proof ps)
+  | Typ_YH(n,p)          ->
+     let name = sprintf "$H_%d$" n in
+     unaryN name c (sub2proof p)
+  | Typ_Y(n,p1,p)     ->
+     let name = sprintf "$I_%d$" n in
+     binaryN name c (sub2proof p1) (typ2proof p)
+
+and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
+  let open Proof in
+  let t2s = term_to_string true and k2s = kind_to_string false in
+  let c = sprintf "%s ∈ %s ⊆ %s" (t2s t) (k2s a) (k2s b) in
+  match r with
+  | Sub_Delay(pr)     -> sub2proof !pr
+  | Sub_Lower         -> axiomN "=" c
+  | Sub_Func(p1,p2)   -> binaryN "→" c (sub2proof p1) (sub2proof p2)
+  | Sub_Prod(ps)      -> n_aryN "χ" c (List.map sub2proof ps)
+  | Sub_DSum(ps)      -> n_aryN "+" c (List.map sub2proof ps)
+  | Sub_DPrj_l(p1,p2) -> binaryN "πl" c (typ2proof p1) (sub2proof p2)
+  | Sub_DPrj_r(p1,p2) -> binaryN "πr" c (typ2proof p1) (sub2proof p2)
+  | Sub_With_l(p)     -> unaryN "wl" c (sub2proof p)
+  | Sub_With_r(p)     -> unaryN "wr" c (sub2proof p)
+  | Sub_KAll_r(p)     -> unaryN "∀r" c (sub2proof p)
+  | Sub_KAll_l(p)     -> unaryN "∀l" c (sub2proof p)
+  | Sub_KExi_l(p)     -> unaryN "∃l" c (sub2proof p)
+  | Sub_KExi_r(p)     -> unaryN "∃r" c (sub2proof p)
+  | Sub_OAll_r(p)     -> unaryN "∀or" c (sub2proof p)
+  | Sub_OAll_l(p)     -> unaryN "∀ol" c (sub2proof p)
+  | Sub_OExi_l(p)     -> unaryN "∃ol" c (sub2proof p)
+  | Sub_OExi_r(p)     -> unaryN "∃or" c (sub2proof p)
+  | Sub_FixM_r(p)     -> unaryN "μr" c (sub2proof p)
+  | Sub_FixN_l(p)     -> unaryN "νl" c (sub2proof p)
+  | Sub_FixM_l(p)     -> unaryN "μl" c (sub2proof p)
+  | Sub_FixN_r(p)     -> unaryN "νr" c (sub2proof p)
+  | Sub_Ind(n)        -> axiomN (sprintf "$H_%d$" n) c
+  | Sub_Dummy         -> assert false (* Should not happen. *)
+
+let print_typing_proof    ch p = Proof.output ch (typ2proof p)
+let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
+
+
+(****************************************************************************
  *                          Interface functions                             *
  ****************************************************************************)
 
@@ -344,3 +413,5 @@ let find_tdef : kind -> type_def = fun t ->
     raise Not_found
   with
     Find_tdef(t) -> t
+
+

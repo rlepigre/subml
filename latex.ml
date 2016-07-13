@@ -385,7 +385,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_Prnt(p)       -> unaryN "$print$" c (sub2proof p)
   | Typ_Cnst(p)       -> unaryN "$=$" c (sub2proof p)
   | Typ_Func_i(p1,p2) -> binaryN "$\\to_i$" c (sub2proof p1) (typ2proof p2)
-  | Typ_Func_e(p1,p2) -> binaryN "$\\to_i$" c (typ2proof p1) (typ2proof p2)
+  | Typ_Func_e(p1,p2) -> binaryN "$\\to_e$" c (typ2proof p1) (typ2proof p2)
   | Typ_Prod_i(p,ps)  -> n_aryN "$\\times_i$" c
                            (sub2proof p :: List.map typ2proof ps)
   | Typ_Prod_e(p)     -> unaryN "$\\times_e$" c (typ2proof p)

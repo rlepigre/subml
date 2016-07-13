@@ -527,7 +527,7 @@ let output_html : strpos -> unit = fun id ->
   try
     let d = Hashtbl.find val_env id.elt in
     let p = d.proof in
-    let p = Latex.typ2proof p in
+    let p = Print.typ2proof p in
     Graph.output_html std_formatter p
   with Not_found -> unbound id
 
