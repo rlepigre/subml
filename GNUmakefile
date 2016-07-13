@@ -1,11 +1,12 @@
 all: subml.byte subml.native
 
 .PHONY: www
-www: subml.js tutorial.typ
+www: subml.js tutorial.typ subml-latest.tar.gz
 	rm -rf www/subml/*
 	cp -r lib www/subml/lib
 	cp tutorial.typ www/subml
 	cp subml.js www/subml
+	cp subml-latest.tar.gz www/docs/
 
 DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
@@ -25,28 +26,6 @@ submljs.byte: $(MLFILES) submljs.ml
 
 subml.js: submljs.byte
 	js_of_ocaml --pretty --noinline +weak.js submljs.byte -o subml.js
-
-installjs: subml.js subml-latest.tar.gz
-	cp subml.js ../subml/subml/
-	scp subml.js lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
-	rm -f lib/*~
-	ssh lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/subml/lib
-	scp -r lib lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
-	scp subml-latest.tar.gz lama.univ-savoie.fr:/home/rlepi/WWW/subml/docs/
-
-rodinstalljs: subml.js subml-latest.tar.gz
-	scp subml.js rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
-	rm -f lib/*~
-	ssh rlepi@lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/subml/lib
-	scp -r lib rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/subml/
-	scp subml-latest.tar.gz rlepi@lama.univ-savoie.fr:/home/rlepi/WWW/subml/docs/
-
-rodlinstalljs: subml.js subml-latest.tar.gz
-	cp subml.js /home/rodolphe/public_html/subml/subml/
-	rm -f lib/*~
-	rm -rf /home/rodolphe/public_html/subml/subml/lib
-	cp -r lib /home/rodolphe/public_html/subml/subml/
-	cp subml-latest.tar.gz /home/rodolphe/public_html/subml/docs/
 
 run: all
 	ledit ./subml.native --verbose
