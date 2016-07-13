@@ -39,6 +39,7 @@ let input : string -> Input.buffer = fun filename ->
   Input.buffer_from_string ~filename res
 
 let _ =
+  Ast.verbose := true;
   (* Setup the IO stuff. *)
   fmts.out <- output "stdout";
   fmts.err <- output "stderr";
