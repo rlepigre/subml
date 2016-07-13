@@ -1,12 +1,22 @@
 all: subml.byte subml.native
 
 .PHONY: www
-www: subml.js tutorial.typ subml-latest.tar.gz
+www: subml.js clean tutorial.typ subml-latest.tar.gz
 	rm -rf www/subml/*
 	cp -r lib www/subml/lib
 	cp tutorial.typ www/subml
 	cp subml.js www/subml
 	cp subml-latest.tar.gz www/docs/
+
+LOGIN:=raffalli
+ifeq ($(shell whoami), rodolphe)
+	LOGIN:=rlepi
+endif
+
+.PHONY: deploy
+deploy: www
+	ssh $(LOGIN)@lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/*
+	scp -r www/* $(LOGIN)@lama.univ-savoie.fr:/home/rlepi/WWW/subml
 
 DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
