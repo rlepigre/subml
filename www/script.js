@@ -175,9 +175,8 @@ function add_to_term(s) {
     var doc = term.getDoc();
     var cursor = doc.getCursor(); // gets the line number in the cursor position
     var line = doc.getLine(cursor.line); // get the line contents
-    var n = '';
-    if (line.length > 0) { cursor.ch = line.length; n = '\n'; }
-    doc.replaceRange(n + s, cursor); // adds a new line
+    if (line.length > 0) { cursor.ch = line.length; }
+    doc.replaceRange(s, cursor); // adds a new line
 }
 
 worker.onmessage =
