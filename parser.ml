@@ -577,11 +577,13 @@ let full_of_string : string -> string -> unit = fun filename ->
 let full_of_buffer : Input.buffer -> unit =
   parse_buffer (parser _:(command false)*) subml_blank
 
-let rec eval_file fn =
-  read_file := eval_file;
-  let buf = Io.file fn in
-  Io.out "## loading file %S\n%!" fn;
-  parse_buffer (parser _:(command false)*) subml_blank buf
+let eval_file =
+  let eval_file fn =
+    let buf = Io.file fn in
+    Io.out "## loading file %S\n%!" fn;
+    parse_buffer (parser _:(command false)*) subml_blank buf
+  in
+  read_file := eval_file; eval_file
 
 let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
   let pos1 = print_position in
