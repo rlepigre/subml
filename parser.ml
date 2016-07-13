@@ -525,10 +525,8 @@ let include_file : string -> unit = fun fn ->
 
 let output_html : strpos -> unit = fun id ->
   try
-    let d = Hashtbl.find val_env id.elt in
-    let p = d.proof in
-    let p = Print.typ2proof p in
-    Graph.output_html std_formatter p
+    let prf = (Hashtbl.find val_env id.elt).proof in
+    Graph.output_html Io.(fmts.htm) (Print.typ2proof prf)
   with Not_found -> unbound id
 
 (****************************************************************************

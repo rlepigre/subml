@@ -4,7 +4,8 @@ type fmts =
   { mutable out : formatter
   ; mutable err : formatter
   ; mutable log : formatter
-  ; mutable tex : formatter }
+  ; mutable tex : formatter
+  ; mutable htm : formatter }
 
 let read_file : (string -> Input.buffer) ref =
   let read_file filename =
@@ -15,7 +16,8 @@ let fmts =
   { out = std_formatter
   ; err = err_formatter
   ; log = err_formatter
-  ; tex = std_formatter }
+  ; tex = std_formatter
+  ; htm = std_formatter }
 
 let out ff = fprintf  fmts.out ff
 let err ff = fprintf  fmts.err ff

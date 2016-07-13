@@ -12,6 +12,9 @@ let spec = Arg.align
   ; ( "--no-prelude"
     , Arg.Clear prelude
     , "  Do not load the prelude" )
+  ; ( "--htm-file"
+    , Arg.String Io.(fun s -> fmts.htm <- fmt_of_file s)
+    , "fn  Choose the TeX output file" )
   ; ( "--tex-file"
     , Arg.String Io.(fun s -> fmts.tex <- fmt_of_file s)
     , "fn  Choose the TeX output file" )
