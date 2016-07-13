@@ -26,7 +26,7 @@ val falsetrue : {fst : [True | False] ; snd : [True | False]} =
 (* they should be provided with all their arguments when used in a value.   *)
 
 type Either(A,B) = [InL of A | InR of B]
-val inlBool : Boolean → Either(Boolean, Boolean) = fun b ↦ InL[b]
+val inlBool : Boolean → Either(Boolean, Boolean) = fun b ↦ InL b
 
 (* Note that the arrow symbol [→] denotes the function type. In the editor, *)
 (* it can be entered with the character sequence [->], followed by a space. *)
@@ -51,7 +51,7 @@ type Maybe(A) = [Nothing | Just of A]
 val fromJust : ∀A Maybe(A) → A → A = fun m d ↦
   case m of
   | Nothing → d
-  | Just[v] → v
+  | Just v  → v
 
 val id : ∀X X → X = fun x ↦ x
 
@@ -62,14 +62,14 @@ val id : ∀X X → X = fun x ↦ x
 type Unary = μN [Zero | Succ of N]
 
 val zero  : Unary = Zero
-val one   : Unary = Succ[Zero]
-val two   : Unary = Succ[Succ[Zero]]
-val three : Unary = Succ[Succ[Succ[Zero]]]
+val one   : Unary = Succ Zero
+val two   : Unary = Succ (Succ Zero)
+val three : Unary = Succ (Succ (Succ Zero))
 
 val rec add : Unary → Unary → Unary = fun n m ↦
   case n of
-  | Zero     → m
-  | Succ[n'] → Succ[add n' m]
+  | Zero    → m
+  | Succ n' → Succ (add n' m)
 
 (* The buttons [Load] below the editor is used to typecheck the contents of *)
 (* this editor. The result is then displayed in the log at the bottom.      *)

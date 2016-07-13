@@ -2,6 +2,7 @@ all: subml.byte subml.native
 
 .PHONY: www
 www: subml.js tutorial.typ
+	rm -rf www/subml/*
 	cp -r lib www/subml/lib
 	cp tutorial.typ www/subml
 	cp subml.js www/subml
