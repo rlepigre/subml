@@ -692,7 +692,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TVari(_) -> assert false (* Cannot happen. *)
     with Subtype_error msg ->
       Io.err "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
-      exit 1
+      type_error dummy_position msg
   in (t, c, r)
 
 and full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
