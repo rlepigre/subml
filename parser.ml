@@ -586,10 +586,10 @@ let eval_file =
   in
   read_file := eval_file; eval_file
 
-let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
+let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   let pos1 = print_position in
   let pos2 ff (f,l,c) = fprintf ff "File %S, line %d, characters %d" f l c in
-  try fn v; true with
+  try fn v; not intop with
   | End_of_file            -> true
   | System.Stopped         -> Io.err "\n[Interrupted]\n%!"; false
   | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false

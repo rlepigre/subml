@@ -53,13 +53,13 @@ let usage = Printf.sprintf "Usage: %s [ARGS] [FILES]" Sys.argv.(0)
 let rec interact () =
   Printf.printf ">> %!";
   let loop () = Parser.toplevel_of_string (read_line ()) in
-  if Parser.handle_exception loop () then exit 0;
+  if Parser.handle_exception true loop () then exit 0;
   interact ()
 
 let _ =
   System.handle_stop true;
   Arg.parse spec (fun fn -> files := !files @ [fn]) usage;
   let files = if !prelude then "lib/prelude.typ" :: !files else !files in
-  let eval = Parser.handle_exception Parser.eval_file in
+  let eval = Parser.handle_exception false Parser.eval_file in
   if not (List.for_all eval files) then exit 1;
   if not !quit then interact ()
