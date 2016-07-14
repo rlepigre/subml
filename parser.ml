@@ -518,10 +518,11 @@ let eval_term : pterm -> unit = fun t ->
 let read_file : (string -> unit) ref = ref (fun _ -> assert false)
 let include_file : string -> unit = fun fn ->
   let open Latex in
-  let s = !ignore_latex in ignore_latex := true;
+  let s_ignore_latex = !ignore_latex in ignore_latex := true;
+  let s_verbose = !Ast.verbose in Ast.verbose := false;
   (* FIXME should we save something else ? *)
   !read_file fn;
-  ignore_latex := s
+  ignore_latex := s_ignore_latex; Ast.verbose := s_verbose
 
 let output_html : strpos -> unit = fun id ->
   try
