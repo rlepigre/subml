@@ -10,7 +10,7 @@ module Time =
     let rollback : t -> unit = fun t ->
       let rec fn = function
         | None   -> ()
-        | Some t -> t.undo (); fn t.next; t.next <- None
+        | Some t -> fn t.next; t.undo (); t.next <- None
       in fn t.next; t.next <- None; current := t
   end
 
@@ -25,10 +25,16 @@ let decr : int ref -> unit = fun r -> r := !r - 1
 
 let pure_apply : ('a -> 'b) -> 'a -> 'b = fun f v ->
   let t = Time.save () in
-  let r = f v in
-  Time.rollback t; r
+  try
+    let r = f v in
+    Time.rollback t; r
+  with e ->
+    Time.rollback t; raise e
 
 let pure_test : ('a -> bool) -> 'a -> bool = fun f v ->
   let t = Time.save () in
-  let r = f v in
-  if not r then Time.rollback t; r
+  try
+    let r = f v in
+    if not r then Time.rollback t; r
+  with e ->
+    Time.rollback t; raise e
