@@ -53,6 +53,15 @@ let find_indexes pos index index' a b =
     ) a) b;
   m
 
+let add_call ctxt fnum os is_induction_hyp =
+  let pos = ctxt.positive_ordinals in
+  let calls = ctxt.calls in
+  let cur, os0 = ctxt.top_induction in
+  Timed.(ctxt.delayed := (fun () ->
+    let m = find_indexes pos fnum cur os os0 in
+    let call = (fnum, cur, m, is_induction_hyp) in
+    calls := call :: !calls) :: !(ctxt.delayed))
+
 let rec find_positive ctxt o =
   let o = orepr o in
   (*  Io.log "find positive %a\n%!" (print_ordinal false) o;*)
@@ -242,22 +251,15 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
       in
       (*Io.log "\n\nIND len(os) = %d\n%!" (List.length os);
         Io.log "IND (%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
-      let pos = ctxt.positive_ordinals in
       List.iter (function Rec _ -> () | Sub(index,p0,a0,b0,os0) ->
         if Timed.pure_test (fun () -> p' = p0 && eq_kind a' a0 && eq_kind b0 b') () then (
           assert (List.length os = Sct.arity index);
-          let index', os' = ctxt.top_induction in
-             Io.log_sub "By induction\n\n%!";
-             Timed.(ctxt.delayed := (fun () ->
-               let m = find_indexes pos index index' os os' in
-               ctxt.calls := (index, index', m, true) :: !(ctxt.calls)) :: !(ctxt.delayed));
-             raise (Induction_hyp index)
+          Io.log_sub "By induction\n\n%!";
+          add_call ctxt index os true;
+          raise (Induction_hyp index)
         )) ctxt.induction_hyp;
       let fnum = new_function "S" (List.map Latex.ordinal_to_printer os) in
-      let index', os' = ctxt.top_induction in
-           Timed.(ctxt.delayed := (fun () ->
-             let m = find_indexes pos fnum index' os os' in
-             ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !(ctxt.delayed));
+      add_call ctxt fnum os false;
       let ctxt = { ctxt with
         induction_hyp = Sub(fnum, p', a', b', os)::ctxt.induction_hyp;
         top_induction = (fnum, os)
@@ -621,12 +623,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
          Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
            (print_kind false) c (print_kind false) c0;
-         let pos = ctxt.positive_ordinals in
-         let cur, os0 = ctxt.top_induction in
-         Timed.(ctxt.delayed := (fun () ->
-           let m = find_indexes pos fnum cur os os0 in
-           let call = (fnum, cur, m, false) in
-           ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
+         add_call ctxt fnum os false;
          let hyps = if os <> [] then [fnum,c0,os] else [] in
          let ctxt =
            { ctxt with
@@ -647,7 +644,6 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          in
          kn n
        | Some ({contents = hyps } as hyps_ptr) ->
-         let pos = ctxt.positive_ordinals in
          Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
            (print_kind false) c print_positives ctxt;
          let rec fn acc = function
@@ -661,14 +657,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
               (* need full subtype to be sure to fail if sct fails *)
               let prf, _ = full_subtype ~ctxt ~term:t  a c in
-              let cur, os0 = ctxt.top_induction in
-              Timed.(ctxt.delayed := (fun () ->
-                Io.log_typ "searching induction hyp (2):\n  %a => %a %a\n%!"
-                  (print_kind false) a (print_kind false) c print_positives ctxt;
-                let m = find_indexes pos fnum cur ov os0 in
-                let call = (fnum, cur, m, true) in
-                   (*Io.log "%d %a\n%!" afnum (print_call (Sct.arities ())) (fnum, cur, m);*)
-                ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
+              add_call ctxt fnum ov true;
               Typ_YH(fnum,prf)
             with Subtype_error _ -> fn acc hyps
          in
@@ -676,12 +665,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
            let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
            Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
              (print_kind false) c (print_kind false) c0;
-           let pos = ctxt.positive_ordinals in
-           let cur, os0 = ctxt.top_induction in
-           Timed.(ctxt.delayed := (fun () ->
-             let m = find_indexes pos fnum cur os os0 in
-             let call = (fnum, cur, m, false) in
-             ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
+           add_call ctxt fnum os false;
            if os <> [] then hyps_ptr := (fnum, c0, os) :: !hyps_ptr;
            let ctxt = { ctxt with top_induction = (fnum, os) } in
            let ptr = ref dummy_proof in
