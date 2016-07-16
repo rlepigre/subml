@@ -306,7 +306,8 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
   | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
   | id:lident                     when p = `Atm -> in_pos _loc (PLVar(id))
-  | fix_kw x:var mapto u:term$    when p = `Lam -> pfixY x _loc_u u
+  | fix_kw n:int_lit? x:var arrow u:term$
+                                  when p = `Lam -> pfixY x _loc_u n u
   | "[" term_list "]"             when p = `Atm
   | term_llet                     when p = `Lam
   | term_cond                     when p = `Atm
