@@ -205,12 +205,14 @@ and typ_rule =
   | Typ_Prod_e of typ_prf
   | Typ_DSum_i of sub_prf * typ_prf
   | Typ_DSum_e of typ_prf * typ_prf list
-  | Typ_Y      of int * sub_prf * typ_prf
+  | Typ_TFix   of int * sub_prf * typ_prf ref
   | Typ_YH     of int * sub_prf
-  | Typ_Unfinished
+  | Typ_Hole   (* used by dummy_proof below *)
 and typ_prf =
   term * kind * typ_rule
 
+(* used by Typ_Link as initial value *)
+let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
 
 (* Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function

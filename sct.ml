@@ -118,7 +118,8 @@ let (new_function : string -> printer list -> int),
   (fun ch ->
     print_call !fun_table ch),
   (fun () -> !fun_table),
-  (fun i -> try let (_,a,_) = List.assoc i !fun_table in a with Not_found -> Io.err "==> %d\n%!" i; assert false)
+  (fun i ->
+    try let (_,a,_) = List.assoc i !fun_table in a with Not_found -> assert false)
 
 let subsume m1 m2 =
   try
@@ -144,7 +145,7 @@ let sct: calls -> bool = fun ls ->
     let (_, a, _) = List.assoc i arities in
     if i = j && mat_prod a a a m m = m && not (decrease m) then begin
       Io.log_sct "edge %a idempotent and looping\n%!" print_call (i,j,m);
-      raise Exit;
+      raise Exit
     end;
     let ti = tbl.(i) in
     let ms = ti.(j) in
@@ -175,8 +176,8 @@ let sct: calls -> bool = fun ls ->
             Io.log_sct "\tcompose: %a * %a = %!" print_call (i,j,m) print_call (j,k,m');
             let (_, a, _) = List.assoc k arities in
             let (_, b, _) = List.assoc j arities in
-            let (_, c, _) = List.assoc i arities in
-            let m'' = mat_prod a b c m' m in
+            let (_, d, _) = List.assoc i arities in
+            let m'' = mat_prod a b d m' m in
             incr composed;
             new_edges := (i,k,m'') :: !new_edges;
             Io.log_sct "%a\n%!" print_call (i,k,m'');
@@ -186,10 +187,10 @@ let sct: calls -> bool = fun ls ->
         fn ()
     in
     fn ();
-    Io.log_sct "SCT passed (%5d edges added, %6d composed)\t%!" !added !composed;
+    Io.log_sct "SCT passed (%5d edges added, %6d composed)\n%!" !added !composed;
     true
   with Exit ->
-    Io.log_sct "SCT failed (%5d edges added, %6d composed)\t%!" !added !composed;
+    Io.log_sct "SCT failed (%5d edges added, %6d composed)\n%!" !added !composed;
     false
 
 

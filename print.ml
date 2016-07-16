@@ -323,13 +323,13 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_Prod_e(p)     -> unaryN "×e" c (typ2proof p)
   | Typ_DSum_i(p1,p2) -> binaryN "+i" c (sub2proof p1) (typ2proof p2)
   | Typ_DSum_e(p,ps)  -> n_aryN "+e" c (typ2proof p :: List.map typ2proof ps)
-  | Typ_YH(n,p)          ->
+  | Typ_YH(n,p)       ->
      let name = sprintf "$H_%d$" n in
      unaryN name c (sub2proof p)
-  | Typ_Y(n,p1,p)     ->
+  | Typ_TFix(n,p1,p)     ->
      let name = sprintf "$I_%d$" n in
-     binaryN name c (sub2proof p1) (typ2proof p)
-  | Typ_Unfinished    -> axiomN "AXIOM" c
+     binaryN name c (sub2proof p1) (typ2proof !p)
+  | Typ_Hole          -> axiomN "AXIOM" c
 
 and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let open Proof in

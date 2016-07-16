@@ -11,8 +11,10 @@ val rec f : ((Nat → Nat) → Nat) → Nat =
     | Z   → (Z:Nat)
     | S p → (f (fun g ↦ x (fun q ↦ add q (g p)))))
 
-val rec g : ∀α (((μα X [ Z | S of X ]) → Nat) → Nat) → Nat =
+(*
+val rec f' : ∀α (((μα X [ Z | S of X ]) → Nat) → Nat) → Nat =
   Λα fun x ↦ x (fun n ↦
     case (n:μα X [ Z | S of X ]) of
     | Z   → (Z:Nat)
-    | S p → (f (fun g ↦ x (fun q ↦ add q (g p)))))
+    | S p → (f' (fun g ↦ x (fun q ↦ add q (g p)))))
+*)

@@ -33,7 +33,7 @@ val rec idt' : ∀α (να X G(X)) → (να X G(X)) = fun n u →
   case (n {}) of
   | S n → S(idt' n)
 (*
-!val rec idt2' : ∀α (G(να X G(X))) → (G(να X G(X)))
+!val rec idt2' : ∀α (να+1 X G(X)) → (να+1 X G(X))
         = fun n u → case (n {}) of
           | S n → S (idt2' n)
 *)

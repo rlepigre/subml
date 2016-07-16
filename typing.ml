@@ -24,7 +24,8 @@ type subtype_ctxt =
 and induction_type =
   | Sub of int * int list * kind * kind * (int * ordinal) list
   | Rec of (term,term) binder * kind *
-      (int * kind * (int * ordinal) list) list ref * bool ref
+      (int * kind * (int * ordinal) list) list ref *      (* induction hyps *)
+      (subtype_ctxt * term * kind * typ_prf ref) list ref (* missing proofs *)
 
 let empty_ctxt () =
   { induction_hyp = []
@@ -259,14 +260,14 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
              ctxt.calls := (fnum, index', m, false) :: !(ctxt.calls)) :: !(ctxt.delayed));
       let ctxt = { ctxt with
         induction_hyp = Sub(fnum, p', a', b', os)::ctxt.induction_hyp;
-	top_induction = (fnum, os)
+        top_induction = (fnum, os)
       }
       in
       (Some fnum, None, ctxt)
     with Exit -> (None, None, ctxt)
        | Induction_hyp n -> (None, Some n, ctxt)
 
-let fixpoint_depth = ref 3
+let fixpoint_depth = ref 2
 
 let print_positives ff ctxt =
   let p_aux ch (o1,o2) = Format.fprintf ff "%a < %a"
@@ -607,50 +608,52 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TFixY(n,f) ->
        let hyps = List.filter (function Rec(f',_,_,_) -> f' == f | _ -> false)
          ctxt.induction_hyp in
-       let a, success, hyps =
+       let a, remains, hyps =
          match hyps with
          | [Rec(_,a,l,s)] -> a, s, Some (l)
-         | [] -> c, ref true, None
-	 | _ -> assert false
+         | [] -> c, ref [], None
+         | _ -> assert false
        in
        (* This is the subtyping that means that the program is typed *)
-       let prf = subtype ctxt t a c in
+       let prf0 = subtype ctxt t a c in
        let (_, c0, os) = decompose Pos (KProd []) c in
        begin match hyps with None ->
-	 let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
-	 Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+         let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
+         Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
            (print_kind false) c (print_kind false) c0;
-	 let pos = ctxt.positive_ordinals in
+         let pos = ctxt.positive_ordinals in
          let cur, os0 = ctxt.top_induction in
          Timed.(ctxt.delayed := (fun () ->
-	   let m = find_indexes pos fnum cur os os0 in
-	   let call = (fnum, cur, m, false) in
-	   ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
-	 let hyps = if os <> [] then [fnum,c0,os] else [] in
-	 let ctxt =
-	   { ctxt with
-	     induction_hyp = Rec(f,a,ref hyps, success)::ctxt.induction_hyp;
-	     top_induction = fnum, os
-	   }
-	 in
-	 let rec kn m =
-	   let saved_delayed = !(ctxt.delayed) in
-	   success := true;
-	   let p = type_check ctxt (subst f (in_pos t.pos (TFixY(m,f)))) c in
-	   if !success then
-	     Typ_Y(fnum,prf,p)
-	   else if m < n then
-	     (ctxt.delayed := saved_delayed; kn (m+1))
-	   else
-	     type_error t.pos "can not relate termination depth"
-	 in
-	 kn 1
+           let m = find_indexes pos fnum cur os os0 in
+           let call = (fnum, cur, m, false) in
+           ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
+         let hyps = if os <> [] then [fnum,c0,os] else [] in
+         let ctxt =
+           { ctxt with
+             induction_hyp = Rec(f,a,ref hyps, remains)::ctxt.induction_hyp;
+             top_induction = fnum, os
+           }
+         in
+         let ptr = ref dummy_proof in
+         remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
+         let rec kn n =
+           if n = 0 && !remains <> [] then
+             type_error t.pos "can not relate termination depth"
+           else
+             let l = !remains in
+             remains := [];
+             List.iter (fun (c,t,k,ptr) -> ptr := type_check c t k) l;
+             if !remains = [] then Typ_TFix(fnum,prf0,ptr) else kn (n-1)
+         in
+         kn n
        | Some ({contents = hyps } as hyps_ptr) ->
-	 let pos = ctxt.positive_ordinals in
-	 Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
+         let pos = ctxt.positive_ordinals in
+         Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
            (print_kind false) c print_positives ctxt;
-	 let rec fn = function
-         | [] -> raise Not_found
+         let rec fn acc = function
+         | _ when n > 0 -> raise Not_found
+         | [] -> (match acc with [] -> raise Not_found
+             | x::_ -> Io.log "--> %d\n%!" (List.length acc); x)
          | (fnum, a, os') :: hyps ->
             try
               let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
@@ -658,7 +661,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
               (* need full subtype to be sure to fail if sct fails *)
               let prf, _ = full_subtype ~ctxt ~term:t  a c in
-	      let cur, os0 = ctxt.top_induction in
+              let cur, os0 = ctxt.top_induction in
               Timed.(ctxt.delayed := (fun () ->
                 Io.log_typ "searching induction hyp (2):\n  %a => %a %a\n%!"
                   (print_kind false) a (print_kind false) c print_positives ctxt;
@@ -667,23 +670,23 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                    (*Io.log "%d %a\n%!" afnum (print_call (Sct.arities ())) (fnum, cur, m);*)
                 ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
               Typ_YH(fnum,prf)
-            with Subtype_error _ -> fn hyps
-	 in
-	 (try fn hyps with Not_found ->
-	   let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
-	   Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+            with Subtype_error _ -> fn acc hyps
+         in
+         try fn [] hyps with Not_found ->
+           let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
+           Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
              (print_kind false) c (print_kind false) c0;
-	   let pos = ctxt.positive_ordinals in
+           let pos = ctxt.positive_ordinals in
            let cur, os0 = ctxt.top_induction in
            Timed.(ctxt.delayed := (fun () ->
-	     let m = find_indexes pos fnum cur os os0 in
-	     let call = (fnum, cur, m, false) in
-	     ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
-	   if os <> [] then hyps_ptr := (fnum, c0, os) :: !hyps_ptr;
-	   if n = 0 then (success := false; Typ_Unfinished) else
-             let ctxt = { ctxt with top_induction = (fnum, os) } in
-	     let p = type_check ctxt (subst f (in_pos t.pos (TFixY(n-1,f)))) c in
-	     Typ_Y(fnum,prf,p)) (* FIXME *)
+             let m = find_indexes pos fnum cur os os0 in
+             let call = (fnum, cur, m, false) in
+             ctxt.calls := call :: !(ctxt.calls)) :: !(ctxt.delayed));
+           if os <> [] then hyps_ptr := (fnum, c0, os) :: !hyps_ptr;
+           let ctxt = { ctxt with top_induction = (fnum, os) } in
+           let ptr = ref dummy_proof in
+           remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
+           Typ_TFix(fnum,prf0,ptr)
        end
     | TCnst(_,a,b) ->
         let p = subtype ctxt t a c in
