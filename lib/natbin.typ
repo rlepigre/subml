@@ -25,8 +25,7 @@ val 10 : Bin = succ 9
 
 val times2 : Bin → Bin = fun x →
   case x of | End      → End
-            | Zero x   → Zero(Zero x)
-            | One  x   → Zero(One  x)
+            | x        → Zero x
 
 val rec pred : Bin → Bin = fun x →
   case x of
@@ -38,22 +37,19 @@ val opp : RBin → RBin = fun x →
   case x of
     End     → End
   | Minus n → n
-  | Zero  n → Minus(Zero n)
-  | One   n → Minus(One  n)
+  | n       → Minus(n)
 
 val rsucc : RBin → RBin = fun x →
   case x of
   | Minus n → opp (pred n)
   | End     → 1
-  | Zero  n → succ (Zero n)
-  | One   n → succ (One  n)
+  | n       → succ n
 
 val rpred : RBin → RBin = fun x →
   case x of
   | Minus n → opp (succ n)
   | End     → Minus 1
-  | Zero  n → pred (Zero n)
-  | One   n → pred (One  n)
+  | n       → pred n
 
 type Carry = [Zero | One]
 
@@ -149,15 +145,11 @@ val rec divmod : Bin → Bin → Bin × Bin =
     | Zero x' → let r = divmod x' q in
                  (case sub (times2 r.2) q of
                     Error → (times2 r.1, times2 r.2)
-                  | End → (One r.1, End)
-                  | Zero x → (One r.1, Zero x)
-                  | One x → (One r.1, One x))
+                  | x → (One r.1, x))
     | One x'  → let r = divmod x' q in (* x' = r.1 * q + r.2 ⇒ 2x'+ 1 = 2 r.1 q + 2 r.2 + 1  *)
                  (case sub (One r.2) q of
                     Error → (times2 r.1, One r.2)
-                  | End → (One r.1, End)
-                  | Zero x → (One r.1, Zero x)
-                  | One x → (One r.1, One x))
+                  | x → (One r.1, x))
 
 val div : Bin → Bin → Bin = fun x p → (divmod x p).1
 val mod : Bin → Bin → Bin = fun x p → (divmod x p).2
@@ -209,8 +201,7 @@ val rec gcd : Bin → Bin → EBin =
       End →
       (case y of
         End → Error
-      | Zero y → Zero y
-      | One  y → One y)
+      | y → y)
     | Zero x' →
       (case y of
         End  → x
@@ -222,8 +213,6 @@ val rec gcd : Bin → Bin → EBin =
       | One y' →
          (case sub x' y' of
            Error → catch (gcd x) (sub y' x')
-         | End → gcd y End
-         | Zero z → gcd y (Zero z)
-         | One z → gcd y (One z))
+         | z → gcd y z)
       | Zero y' → gcd x y')
 *)

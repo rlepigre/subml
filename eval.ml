@@ -34,16 +34,19 @@ let rec eval : term -> term = fun t0 ->
         | t         -> dummy_pos (TProj(t',l))
       end
   | TCons(s,t) -> in_pos t0.pos (TCons(s, eval t))
-  | TCase(t,l) ->
+  | TCase(t,l,d) ->
       begin
         let t' = eval t in
         match t'.elt with
         | TCons(c,v) ->
             begin
               try eval (dummy_pos (TAppl(List.assoc c l, v)))
-              with Not_found -> dummy_pos (TCase(t',l))
+              with Not_found ->
+		match d with
+		| None -> dummy_pos (TCase(t',l,d))
+		| Some f -> eval (dummy_pos (TAppl(f, t')))
             end
-        | t          -> dummy_pos (TCase(t',l))
+        | t          -> dummy_pos (TCase(t',l,d))
       end
   | TDefi(v)   -> eval v.value
   | TPrnt(s)   -> Io.out "%s%!" s; in_pos t0.pos (TReco [])

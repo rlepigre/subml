@@ -12,6 +12,12 @@ let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list -> ('a * 'b) list
   List.for_all (fun (k,_) -> List.mem_assoc k l1) l2 &&
   List.for_all (fun (k,e1) -> eq e1 (List.assoc k l2)) l1
 
+let eq_option : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
+  = fun eq o1 o2 -> match o1, o2 with
+  | None, None -> true
+  | Some t1, Some t2 -> eq t1 t2
+  | _ -> false
+
 let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
   let rec eq_kind k1 k2 = k1 == k2 ||
     match (full_repr k1, full_repr k2) with
@@ -72,7 +78,8 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
     | (TReco(fs1)  , TReco(fs2)  ) -> eq_assoc eq_term fs1 fs2
     | (TProj(t1,l1), TProj(t2,l2)) -> l1 = l2 && eq_term t1 t2
     | (TCons(c1,t1), TCons(c2,t2)) -> c1 = c2 && eq_term t1 t2
-    | (TCase(t1,l1), TCase(t2,l2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
+    | (TCase(t1,l1,d1), TCase(t2,l2,d2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
+                                            && eq_option eq_term d1 d2
     | (TPrnt(s1)   , TPrnt(s2)   ) -> s1 = s2
     | (TCnst(c1)   , TCnst(c2)   ) -> eq_tcnst c c1 c2
     | (_           , _           ) -> false

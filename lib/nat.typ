@@ -1,6 +1,11 @@
 (* Unary natural number library. *)
 type Nat = μX [Z | S of X]
 
+val pred : Nat → Nat = fun n →
+  case n of
+  | Z → Z
+  | S x → x
+
 val rec print_nat : Nat → {} = fun n →
   case n of
   | Z   → print("Z\n")

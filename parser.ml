@@ -301,7 +301,8 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | "print(" - s:string_lit - ")" when p = `Atm -> in_pos _loc (PPrnt(s))
   | c:uident                      when p = `Atm -> in_pos _loc (PCons(c,None))
   | t:tatm "." l:lident           when p = `Atm -> in_pos _loc (PProj(t,l))
-  | case_kw t:term of_kw ps:pats$ when p = `Lam -> in_pos _loc (PCase(t,ps))
+  | case_kw t:term of_kw ps:pats d:default? $
+                                  when p = `Lam -> in_pos _loc (PCase(t,ps,d))
   | "{" fs:term_reco "}"          when p = `Atm -> in_pos _loc (PReco(fs))
   | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
   | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
@@ -339,7 +340,7 @@ and term_llet = let_kw r:is_rec n:int_lit? pat:rpat "=" t:term in_kw u:term ->
   in_pos _loc (PAppl(apply_rpat pat u, t))
 
 and term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
-  in_pos _loc (PCase(c, [("Tru", Simple None, t); ("Fls", Simple None, e)]))
+  in_pos _loc (PCase(c, [("Tru", Simple None, t); ("Fls", Simple None, e)], None))
 
 and term_reco = (list_sep field ";") _:";"?
 and term_prod = l:(glist_sep'' term comma) -> build_prod l
@@ -366,7 +367,9 @@ and pattern =
   | "[" "]"         -> ("Nil", Simple None)
   | x:var"::"y:var  -> ("Cons", Record [("hd",x) ; ("tl",y)])
 
-and case = (c,x):pattern _:arrow t:term -> (c, x, t)
+and case = (c,x):pattern arrow t:term -> (c, x, t)
+
+and default = '|' x:let_var arrow t:term -> (Simple (Some x), t)
 
 (****************************************************************************
  *                                LaTeX parser                              *

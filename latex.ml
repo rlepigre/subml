@@ -246,7 +246,7 @@ and print_term unfold lvl ff t =
      (match t.elt with
      | TReco([]) -> fprintf ff "\\mathrm{%s}" c
      | _         -> fprintf ff "\\mathrm{%s} %a" c (print_term 0) t)
-  | TCase(t,l) ->
+  | TCase(t,l,d) ->
      let pvariant ff (c,b) =
        match b.elt with
        | TAbst(_,f) ->
@@ -256,14 +256,24 @@ and print_term unfold lvl ff t =
        | _          ->
           fprintf ff "\\mathrm{%s} \\rightarrow %a" c (print_term 0) b
      in
+     let pdefault ff = function
+       | None                 -> ()
+       | Some{elt=TAbst(_,f)} ->
+          let x = binder_name f in
+          let t = subst f (free_of (new_tvari' x)) in
+          fprintf ff "%s \\rightarrow %a" x (print_term 0) t
+       | Some b               ->
+          fprintf ff "\\_ \\rightarrow %a" (print_term 0) b
+     in
      begin
-       match l with
-       | [c,{elt = TAbst(_,f)}] when
+       match l,d with
+       | [c,{elt = TAbst(_,f)}], None when
              let x = free_of (new_tvari' (binder_name f)) in subst f x == x ->
           fprintf ff "\\mathrm{%s}.%a" c (print_term 0) t
        | _ ->
-          fprintf ff "\\case{%a}{%a}"
-            (print_term 0) t (print_list pvariant "| ") l
+          fprintf ff "\\case{%a}{%a%a}"
+            (print_term 0) t (print_list pvariant "| ") l pdefault d
+
      end
   | TDefi(v) ->
      if unfold then
@@ -399,8 +409,8 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
                            (sub2proof p :: List.map typ2proof ps)
   | Typ_Prod_e(p)     -> unaryN "$\\times_e$" c (typ2proof p)
   | Typ_DSum_i(p1,p2) -> binaryN "$+_i$" c (sub2proof p1) (typ2proof p2)
-  | Typ_DSum_e(p,ps)  -> n_aryN "$+_e$" c
-                           (typ2proof p :: List.map typ2proof ps)
+  | Typ_DSum_e(p,ps,_)-> n_aryN "$+_e$" c
+                           (typ2proof p :: List.map typ2proof ps) (* FIXME*)
   | Typ_YH(n,p)          ->
      let name = sprintf "$H_%d$" n in
      unaryN name c (sub2proof p)

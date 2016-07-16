@@ -133,7 +133,7 @@ and term' =
   (* Variant. *)
   | TCons of string * term
   (* Case analysis. *)
-  | TCase of term * (string * term) list
+  | TCase of term * (string * term) list * term option
   (* User-defined term. *)
   | TDefi of value_def
   (* Print a string (side effect) and behave like the term. *)
@@ -204,7 +204,7 @@ and typ_rule =
   | Typ_Prod_i of sub_prf * typ_prf list
   | Typ_Prod_e of typ_prf
   | Typ_DSum_i of sub_prf * typ_prf
-  | Typ_DSum_e of typ_prf * typ_prf list
+  | Typ_DSum_e of typ_prf * typ_prf list * typ_prf option
   | Typ_TFix   of int * sub_prf * typ_prf ref
   | Typ_YH     of int * sub_prf
   | Typ_Hole   (* used by dummy_proof below *)
@@ -353,10 +353,10 @@ let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
 (* Unification variable management. Useful for typing. *)
 let (new_uvar, reset_uvar) =
   let c = ref 0 in
-  let new_uvar () = KUVar {
+  let new_uvar ?(state=Free) () = KUVar {
     kuvar_key = (incr c; !c);
     kuvar_val = ref None;
-    kuvar_state = ref Free;
+    kuvar_state = ref state;
   } in
   let reset_uvar () = c := 0 in
   (new_uvar, reset_uvar)
@@ -407,8 +407,8 @@ let tproj_p : pos -> term -> string -> term =
 let tcons_p : pos -> string -> term -> term =
   fun p c t -> in_pos p (TCons(c,t))
 
-let tcase_p : pos -> term -> (string * term) list -> term =
-  fun p t cs -> in_pos p (TCase(t,cs))
+let tcase_p : pos -> term -> (string * term) list -> term option -> term =
+  fun p t cs cd -> in_pos p (TCase(t,cs,cd))
 
 let tdefi_p : pos -> value_def -> term =
   fun p v -> in_pos p (TDefi(v))
@@ -455,10 +455,10 @@ let treco : pos -> (string * tbox) list -> tbox =
 let tproj : pos -> tbox -> string -> tbox =
   fun p t l -> box_apply (fun t -> tproj_p p t l) t
 
-let tcase : pos -> tbox -> (string * tbox) list -> tbox =
-  fun p t cs ->
+let tcase : pos -> tbox -> (string * tbox) list -> tbox option -> tbox =
+  fun p t cs cd ->
     let aux (c,t) = box_apply (fun t -> (c,t)) t in
-    box_apply2 (tcase_p p) t (box_list (List.map aux cs))
+    box_apply3 (tcase_p p) t (box_list (List.map aux cs)) (box_opt cd)
 
 let tcons : pos -> string -> tbox -> tbox =
   fun p c t -> box_apply (fun t -> tcons_p p c t) t

@@ -345,8 +345,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar ua as a),(KUVar ub as b)) ->
-        if !(ua.kuvar_state) = Free then set_kuvar true ua b
-        else set_kuvar false ub a;
+        if !(ub.kuvar_state) = Free then set_kuvar true ub a
+        else set_kuvar false ua b;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (KUVar ua, b            ) ->
@@ -386,7 +386,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (* Sum type. *)
     | (KDSum(csa)  , KDSum(csb)  ) ->
         let check_variant (c,a) =
-          let t = unbox (tcase dummy_position (box t) [(c, idt)]) in
+          let t = unbox (tcase dummy_position (box t) [(c, idt)] None) in
           let b =
             try List.assoc c csb
             with Not_found -> subtype_error ("Constructor clash: " ^ c)
@@ -589,17 +589,30 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p2 = type_check ctxt v a in
         Typ_DSum_i(p1, p2)
-    | TCase(t,l) ->
+    | TCase(t,l,d) ->
         let ts = List.map (fun (c,_) -> (c, new_uvar ())) l in
+        let k =
+          match d with
+            None -> KDSum ts
+          | _    -> new_uvar ~state:(Sum ts) ()
+        in
         let ptr = Refinter.create () in
-        let p1 = type_check ctxt t (MuRec(ptr,(KDSum(ts)))) in
+        let p1 = type_check ctxt t (MuRec(ptr,k)) in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let check (d,f) =
           let cc = List.assoc d ts in
           type_check ctxt f (KFunc(cc,c))
         in
         let p2s = List.map check l in
-        Typ_DSum_e(p1, p2s)
+        let p3 =
+          match d, k with
+          | None, _ -> None
+          | Some f, KUVar { kuvar_state = { contents = Sum ts }}  ->
+             let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
+             Some (type_check ctxt f (KFunc(KDSum ts,c)))
+          | _ -> assert false
+        in
+        Typ_DSum_e(p1, p2s, p3)
     | TDefi(v) ->
         let p = subtype ctxt v.value v.ttype c in
         Typ_Defi(p)

@@ -42,7 +42,8 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
     | TReco(fs)   -> treco t.pos (List.map (fun (s,a) -> (s, fn a)) fs)
     | TProj(a,s)  -> tproj t.pos (fn a) s
     | TCons(s,a)  -> tcons t.pos s (fn a)
-    | TCase(a,fs) -> tcase t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
+    |TCase(a,fs,d)-> tcase t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
+                                        (map_opt fn d)
     | u           -> box_apply (in_pos t.pos) (box u)
   in fn t
 
@@ -62,7 +63,7 @@ let is_normal : term -> bool = fun t ->
     | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
     | TProj(a,s)  -> false
     | TCons(s,a)  -> fn a
-    | TCase(a,fs) -> fn a
+    | TCase(a,_,_)-> fn a
     | TDefi(d)    -> fn d.value
     | TCnst _     -> true
     | TPrnt _     -> false
@@ -85,7 +86,7 @@ let is_neutral : term -> bool = fun t ->
     | TReco(fs)   -> false
     | TProj(a,s)  -> fn a
     | TCons(s,a)  -> false
-    | TCase(a,fs) -> fn a
+    | TCase(a,_,_)-> fn a
     | TDefi(d)    -> true
     | TCnst _     -> true
     | TPrnt _     -> false
@@ -190,7 +191,9 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TOAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
-    | TCase(t,l)     -> List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
+    | TCase(t,l,d)   ->
+       let acc = match d with None -> acc | Some t -> aux2 acc t in
+       List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
     | TVari(_)
     | TDefi(_)
     | TPrnt(_)

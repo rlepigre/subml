@@ -37,7 +37,7 @@ and pterm' =
   | PReco of (string * pterm) list
   | PProj of pterm * string
   | PCons of string * pterm option
-  | PCase of pterm * (string * ppat * pterm) list
+  | PCase of pterm * (string * ppat * pterm) list * (ppat * pterm) option
   | PKAbs of strpos * pterm
   | POAbs of strpos * pterm
   | PPrnt of string
@@ -253,8 +253,9 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                      | Some u -> unsugar_term env u
                    in tcons pt.pos c u
   | PProj(t,l)  -> tproj pt.pos (unsugar_term env t) l
-  | PCase(t,cs) -> let f (c,x,t) = (c, unsugar_term env (apply_rpat x t))
-                   in tcase pt.pos (unsugar_term env t) (List.map f cs)
+  |PCase(t,cs,d)-> let f (c,x,t) = (c, unsugar_term env (apply_rpat x t)) in
+		   let g (x,t) = unsugar_term env (apply_rpat x t) in
+                   tcase pt.pos (unsugar_term env t) (List.map f cs) (map_opt g d)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
   | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in

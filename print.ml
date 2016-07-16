@@ -178,11 +178,32 @@ and print_kind unfold wrap ff t =
      let name, index =search_type_tbl u f is_exists in
      fprintf ff "%s_%d" name index
   | KUVar(u) ->
-      fprintf ff "?%i" u.kuvar_key
+      fprintf ff "?%i%a" u.kuvar_key print_state u.kuvar_state
   | KTInt(n) ->
      fprintf ff "!%i" n
   | MuRec(_,a) -> pkind ff a
   | NuRec(_,a) -> pkind ff a
+
+and print_state ff s = match !s with
+  | Free -> ()
+  | Prod(fs) ->
+     if is_tuple fs && List.length fs > 0 then begin
+       pp_print_string ff "(";
+       for i = 1 to List.length fs do
+         if i >= 2 then fprintf ff " × ";
+         fprintf ff "%a" (print_kind false true) (List.assoc (string_of_int i) fs)
+       done;
+       pp_print_string ff ")"
+     end else begin
+       let pfield ff (l,a) = fprintf ff "%s : %a" l (print_kind false true) a in
+       fprintf ff "{%a}" (print_list pfield "; ") fs
+     end
+  | Sum(cs) ->
+      let pvariant ff (c,a) =
+        if a = KProd [] then pp_print_string ff c
+        else fprintf ff "%s of %a" c (print_kind false true) a
+      in
+      fprintf ff "[%a]" (print_list pvariant " | ") cs
 
 and print_occur ff = function
   | Eps    -> pp_print_string ff "ε"
@@ -266,7 +287,7 @@ and print_term ?(in_proj=false) unfold ff t =
      (match t.elt with
      | TReco([]) -> fprintf ff "%s" c
      | _         -> fprintf ff "%s %a" c print_term t)
-  | TCase(t,l) ->
+  | TCase(t,l,d) ->
      let pvariant ff (c,b) =
        match b.elt with
        | TAbst(_,f) ->
@@ -275,8 +296,17 @@ and print_term ?(in_proj=false) unfold ff t =
            fprintf ff "| %s[%s] → %a" c x print_term t
        | _          ->
            fprintf ff "| %s → %a" c print_term b
-      in
-      fprintf ff "case %a of %a" print_term t (print_list pvariant "; ") l
+     in
+     let pdefault ff = function
+       | None -> ()
+       | Some({elt = TAbst(_,f)}) ->
+           let x = binder_name f in
+           let t = subst f (free_of (new_tvari' x)) in
+           fprintf ff "| %s → %a" x print_term t
+       | Some b           ->
+          fprintf ff "| _ → %a" print_term b (* FIXME: assert false ? *)
+     in
+     fprintf ff "case %a of %a%a" print_term t (print_list pvariant "; ") l pdefault d
   | TDefi(v) ->
      if unfold then
        print_term ff v.orig_value
@@ -322,7 +352,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_Prod_i(p,ps)  -> n_aryN "×i" c (sub2proof p :: List.map typ2proof ps)
   | Typ_Prod_e(p)     -> unaryN "×e" c (typ2proof p)
   | Typ_DSum_i(p1,p2) -> binaryN "+i" c (sub2proof p1) (typ2proof p2)
-  | Typ_DSum_e(p,ps)  -> n_aryN "+e" c (typ2proof p :: List.map typ2proof ps)
+  | Typ_DSum_e(p,ps,_)-> n_aryN "+e" c (typ2proof p :: List.map typ2proof ps) (* FIXME *)
   | Typ_YH(n,p)       ->
      let name = sprintf "$H_%d$" n in
      unaryN name c (sub2proof p)
