@@ -65,44 +65,7 @@
         below.
       </p>
       <h2>Advanced examples</h2>
-      <p class="error">
-        This section is under construction, many examples to come...
-      </p>
-      <h3>Church encoding</h3>
-      <ul>
-        <li><a class="submlfile" href="javascript:loadsubmlfile('lib/church/bool.typ')">
-            Church booleans (lib/church/bool.typ)</a></li>
-        <li><a class="submlfile" href="javascript:loadsubmlfile('lib/church/nat.typ')">
-            Church natural numbers (lib/church/nat.typ)</a></li>
-        <li><a class="submlfile" href="javascript:loadsubmlfile('lib/church/data.typ')">
-            Church encoded sums and products (lib/church/data.typ)</a></li>
-      </ul>
-      <h3>Scott encoding</h3>
-      <ul>
-        <li><a class="submlfile" href="javascript:loadsubmlfile('lib/scott/nat.typ')">
-            Scott natural numbers (lib/scott/nat.typ)</a></li>
-      </ul>
-      <h3>Mixed inductive and coinductive types</h3>
-      <p>
-        SubML is well-suited for handling mixed inductive and coinductive
-        types. In the current implementation, typechecking seems to be
-        complete for programs witout universal or existential types. For
-        instance, the system is able to derive every correct subtyping
-        relation between alternating sequences of fixpoint of size
-        <a class="submlfile" href="javascript:loadsubmlfile('lib/munu/munu2.typ')">two</a> or
-        <a class="submlfile" href="javascript:loadsubmlfile('lib/munu/munu3.typ')">three</a>
-        (and up to five).
-      </p>
-      <h3>Dot projection</h3>
-      <ul>
-        <li><a class="submlfile" href="javascript:loadsubmlfile('lib/dotproj.typ')">
-            Dot projection example (lib/dotproj.typ)</a></li>
-      </ul>
-      <h3>Miscellaneous examples</h3>
-      <ul>
-        <li><a class="submlfile" href="javascript:loadsubmlfile('lib/tree.typ')">
-            Binary search trees and red-black trees (lib/tree.typ)</a></li>
-      </ul>
+      <?php include 'examples.html'; ?>
     </div>
   </div>
 </body>
