@@ -608,70 +608,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Prnt(p)
 
     | TFixY(n,f) ->
-       let hyps = List.filter (function Rec(f',_,_,_) -> f' == f | _ -> false)
-         ctxt.induction_hyp in
-       let a, remains, hyps =
-         match hyps with
-         | [Rec(_,a,l,s)] -> a, s, Some (l)
-         | [] -> c, ref [], None
-         | _ -> assert false
-       in
-       (* This is the subtyping that means that the program is typed *)
-       let prf0 = subtype ctxt t a c in
-       let (_, c0, os) = decompose Pos (KProd []) c in
-       begin match hyps with None ->
-         let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
-         Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
-           (print_kind false) c (print_kind false) c0;
-         add_call ctxt fnum os false;
-         let hyps = if os <> [] then [fnum,c0,os] else [] in
-         let ctxt =
-           { ctxt with
-             induction_hyp = Rec(f,a,ref hyps, remains)::ctxt.induction_hyp;
-             top_induction = fnum, os
-           }
-         in
-         let ptr = ref dummy_proof in
-         remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
-         let rec kn n =
-           if n = 0 && !remains <> [] then
-             type_error t.pos "can not relate termination depth"
-           else
-             let l = !remains in
-             remains := [];
-             List.iter (fun (c,t,k,ptr) -> ptr := type_check c t k) l;
-             if !remains = [] then Typ_TFix(fnum,prf0,ptr) else kn (n-1)
-         in
-         kn n
-       | Some ({contents = hyps } as hyps_ptr) ->
-         Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
-           (print_kind false) c print_positives ctxt;
-         let rec fn acc = function
-         | _ when n > 0 -> raise Not_found
-         | [] -> (match acc with [] -> raise Not_found
-             | x::_ -> Io.log "--> %d\n%!" (List.length acc); x)
-         | (fnum, a, os') :: hyps ->
-            try
-              let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
-              let a = recompose a ov in
-              Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
-              (* need full subtype to be sure to fail if sct fails *)
-              let prf, _ = full_subtype ~ctxt ~term:t  a c in
-              add_call ctxt fnum ov true;
-              Typ_YH(fnum,prf)
-            with Subtype_error _ -> fn acc hyps
-         in
-         try fn [] hyps with Not_found ->
-           let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
-           Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
-             (print_kind false) c (print_kind false) c0;
-           add_call ctxt fnum os false;
-           if os <> [] then hyps_ptr := (fnum, c0, os) :: !hyps_ptr;
-           let ctxt = { ctxt with top_induction = (fnum, os) } in
-           let ptr = ref dummy_proof in
-           remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
-           Typ_TFix(fnum,prf0,ptr)
-       end
+        check_fix ctxt t n f c
     | TCnst(_,a,b) ->
         let p = subtype ctxt t a c in
         Typ_Cnst(p)
@@ -681,6 +618,71 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       Io.err "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
       type_error dummy_position msg
   in (t, c, r)
+
+and check_fix ctxt t n f c =
+  let hyps = List.filter (function Rec(f',_,_,_) -> f' == f | _ -> false)
+    ctxt.induction_hyp in
+  let a, remains, hyps =
+    match hyps with
+    | [Rec(_,a,l,s)] -> a, s, Some (l)
+    | [] -> c, ref [], None
+    | _ -> assert false
+  in
+  (* This is the subtyping that means that the program is typed *)
+  let prf0 = subtype ctxt t a c in
+  let (_, c0, os) = decompose Pos (KProd []) c in
+  match hyps with None ->
+    let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
+    Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+      (print_kind false) c (print_kind false) c0;
+    add_call ctxt fnum os false;
+    let hyps = if os <> [] then [fnum,c0,os] else [] in
+    let ctxt =
+      { ctxt with
+        induction_hyp = Rec(f,a,ref hyps, remains)::ctxt.induction_hyp;
+        top_induction = fnum, os
+      }
+    in
+    let ptr = ref dummy_proof in
+    remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
+    let rec kn n =
+      if n = 0 && !remains <> [] then
+        type_error t.pos "can not relate termination depth"
+      else
+        let l = !remains in
+        remains := [];
+        List.iter (fun (c,t,k,ptr) -> ptr := type_check c t k) l;
+        if !remains = [] then Typ_TFix(fnum,prf0,ptr) else kn (n-1)
+    in
+    kn n
+  | Some ({contents = hyps } as hyps_ptr) ->
+     Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
+       (print_kind false) c print_positives ctxt;
+    let rec fn = function
+      | _ when n > 0 -> raise Not_found
+      | [] -> raise Not_found
+      | (fnum, a, os') :: hyps ->
+         try
+           let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
+           let a = recompose a ov in
+           Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
+              (* need full subtype to be sure to fail if sct fails *)
+           let prf, _ = full_subtype ~ctxt ~term:t  a c in
+           add_call ctxt fnum ov true;
+           Typ_YH(fnum,prf)
+         with Subtype_error _ -> fn hyps
+    in
+    try fn hyps with Not_found ->
+      let fnum = new_function "Y" (List.map Latex.ordinal_to_printer os) in
+      Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+        (print_kind false) c (print_kind false) c0;
+      add_call ctxt fnum os false;
+      if os <> [] then hyps_ptr := (fnum, c0, os) :: !hyps_ptr;
+      let ctxt = { ctxt with top_induction = (fnum, os) } in
+      let ptr = ref dummy_proof in
+      remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
+      Typ_TFix(fnum,prf0,ptr)
+
 
 and full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
   fun ?ctxt:ctxt0 ?term a b ->
