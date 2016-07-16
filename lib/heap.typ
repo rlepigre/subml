@@ -4,7 +4,7 @@ type G(A,B) = [ Cons of { hd : A; tl : B } ]
 
 
 val rec split : ∀A G(A,List(A)) → List(A) × List(A) =
-  fun l ↦
+  fun l →
     case l of
     | x::l → case l of
              | []   → (x::[], [])

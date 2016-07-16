@@ -216,7 +216,6 @@ let parser time   : unit grammar = "×" | "*"
 let parser lambda : unit grammar = "λ"
 let parser klam   : unit grammar = "Λ" | "/\\"
 let parser dot    : unit grammar = "."
-let parser mapto  : unit grammar = "->" | "→" | "↦"
 let parser comma  : unit grammar = ","
 let parser subset : unit grammar = "⊂" | "⊆" | "<"
 let parser infty  : unit grammar = "∞"
@@ -292,7 +291,7 @@ and tatm = (pterm `Atm)
 
 and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | lambda xs:var+ dot t:term$    when p = `Lam -> in_pos _loc (PLAbs(xs,t))
-  | fun_kw xs:var+ mapto t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
+  | fun_kw xs:var+ arrow t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
   | klam x:uident t:term$         when p = `Lam -> let x = in_pos _loc_x x in
                                                    in_pos _loc (PKAbs(x,t))
   | klam o:lgident t:term$        when p = `Lam -> let o = in_pos _loc_o o in
@@ -307,7 +306,7 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
   | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
   | id:lident                     when p = `Atm -> in_pos _loc (PLVar(id))
-  | fix_kw x:var mapto u:term$    when p = `Lam -> pfixY x _loc_u u
+  | fix_kw x:var arrow u:term$    when p = `Lam -> pfixY x _loc_u u
   | "[" term_list "]"             when p = `Atm
   | term_llet                     when p = `Lam
   | term_cond                     when p = `Atm

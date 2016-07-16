@@ -5,7 +5,7 @@ type SNode(A,T) = {value : A; left : T; right : T}
 type Tree(A) = μX [Leaf | Node of SNode(A,X)]
 
 val rec mem : ∀X (X → X → Cmp) → X → Tree(X) → Bool =
-  fun cmp e t ↦
+  fun cmp e t →
     case t of
     | Leaf    → fls
     | Node{value=v;left=l;right=r} →
@@ -14,7 +14,7 @@ val rec mem : ∀X (X → X → Cmp) → X → Tree(X) → Bool =
         | Ls → mem cmp e l
         | Gt → mem cmp e r)
 
-val rec add : ∀X (X → X → Cmp) → X → Tree(X) → Tree(X) = fun cmp e t ↦
+val rec add : ∀X (X → X → Cmp) → X → Tree(X) → Tree(X) = fun cmp e t →
   case t of
   | Leaf    → Node{value = e; left = Leaf; right = Leaf}
   | Node{value=v;left=l;right=r} →
@@ -25,12 +25,12 @@ val rec add : ∀X (X → X → Cmp) → X → Tree(X) → Tree(X) = fun cmp e t
       | Gt → let r = add cmp e r in
              Node{value = v; left = l; right = r})
 
-val is_empty : ∀X Tree(X) → Bool = fun t ↦
+val is_empty : ∀X Tree(X) → Bool = fun t →
   case t of
   | Leaf    → tru
   | Node n → fls
 
-val singleton : ∀X X → Tree(X) = fun e ↦
+val singleton : ∀X X → Tree(X) = fun e →
   Node{ value = e ; left = Leaf ; right = Leaf }
 
 (* Interface of the set library. *)
@@ -42,7 +42,7 @@ type Set(X) = ∃S
   ; add       : X → S → S
   ; singleton : X → S }
 
-val makeSet : ∀X Ord(X) → Set(X) = ΛX fun o ↦
+val makeSet : ∀X Ord(X) → Set(X) = ΛX fun o →
   { empty     : Tree(X)               = Leaf
   ; is_empty  : Tree(X) → Bool        = is_empty
   ; mem       : X → Tree(X) → Bool    = mem o.compare

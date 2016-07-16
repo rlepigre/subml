@@ -10,7 +10,7 @@ type RBTree(A) = μX [Leaf | Node of RBNode(A,X)]
 check RBTree({}) ⊆ Tree({})
 
 (* Lookup function on simple binary trees. *)
-val rec contains : ∀X (X → X → Cmp) → X → Tree(X) → Bool = fun cmp e t ↦
+val rec contains : ∀X (X → X → Cmp) → X → Tree(X) → Bool = fun cmp e t →
   case t of
   | Leaf    → fls
   | Node{value=v;left=l;right=r} →
@@ -27,19 +27,19 @@ val containsRB : ∀X (X → X → Cmp) → X → RBTree(X) → Bool =
 
 (* Shortcut function to build a red-black tree node. *)
 val node : ∀X X → [R | B] → RBTree(X) → RBTree(X) → RBNode(X, RBTree(X)) =
-  fun e c l r ↦ {value = e; color = c; left = l; right = r}
+  fun e c l r → {value = e; color = c; left = l; right = r}
 
 (* Color in black the root of a tree. If the strict subtrees of the input
    tree respect the invariants, then so does the output tree. *)
-val blackRoot : ∀X RBTree(X) → RBTree(X) = fun t ↦
+val blackRoot : ∀X RBTree(X) → RBTree(X) = fun t →
   case t of
   | Leaf                         → Leaf
   | Node{value=v;left=l;right=r} → Node(node v B l r)
 
 (* Local balancing function. *)
-val balance : ∀X RBNode(X, RBTree(X)) → RBTree(X) = fun n ↦ Node n
+val balance : ∀X RBNode(X, RBTree(X)) → RBTree(X) = fun n → Node n
 
-val rec insert_aux : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = fun cmp e t ↦
+val rec insert_aux : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = fun cmp e t →
   case t of
   | Leaf    → Node(node e R Leaf Leaf)
   | Node{value=v;left=l;right=r;color=c} →
@@ -50,7 +50,7 @@ val rec insert_aux : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = 
      | Gt → let r = insert_aux cmp e r in
             balance (node v c l r))
 
-val insert : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = fun cmp e t ↦
+val insert : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = fun cmp e t →
   blackRoot (insert_aux cmp e t)
 
 

@@ -1,3 +1,6 @@
+(* Tutorial. *)
+include "tutorial.typ"
+
 (* Standard library. *)
 include "lib/nat.typ"
 include "lib/list.typ"
