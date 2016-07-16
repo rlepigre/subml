@@ -41,7 +41,7 @@ and pterm' =
   | PKAbs of strpos * pterm
   | POAbs of strpos * pterm
   | PPrnt of string
-  | PFixY of strpos * pterm
+  | PFixY of strpos * int * pterm
 and ppat =
   | Simple of (strpos * pkind option) option
   | Record of (string * (strpos * pkind option)) list
@@ -61,10 +61,14 @@ let sequence _loc t u =
   let dum = (in_pos _loc "_", Some(in_pos _loc (PProd []))) in
   in_pos _loc (PAppl(in_pos _loc (PLAbs([dum],u)), t))
 
-let pfixY (id, ko) _loc t =
+let pfixY (id, ko) _loc n t =
+  let n = match n with
+    | None -> !(Typing.fixpoint_depth)
+    | Some n -> n
+  in
   match ko with
-  | None   -> in_pos _loc (PFixY(id, t))
-  | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, t)), k))
+  | None   -> in_pos _loc (PFixY(id, n, t))
+  | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, n, t)), k))
 
 let rec padd _loc o n =
   if n <= 0 then o else in_pos _loc (PSucc(padd _loc o (n-1)))
@@ -253,5 +257,5 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    in tcase pt.pos (unsugar_term env t) (List.map f cs)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
-  | PFixY(x,t)  -> let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in
-                   tfixy pt.pos !(Typing.fixpoint_depth) x f
+  | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in
+                   tfixy pt.pos n x f

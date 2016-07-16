@@ -665,11 +665,11 @@ and check_fix ctxt t n f c =
          try
            let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
            let a = recompose a ov in
-           Io.log_typ "searching induction hyp (1) with %d:\n%!" fnum;
+           Io.log_typ "searching induction hyp (2) with %d:\n%!" fnum;
               (* need full subtype to be sure to fail if sct fails *)
            let prf, _ = full_subtype ~ctxt ~term:t  a c in
            add_call ctxt fnum ov true;
-           Typ_YH(fnum,prf)
+           Typ_YH(fnum,prf) (* FIXME: should we keep prf0 too ? *)
          with Subtype_error _ -> fn hyps
     in
     try fn hyps with Not_found ->

@@ -48,8 +48,10 @@ validate: clean
 
 test: all
 	./subml.native --quit lib/all.typ
-	@ echo -n "Lines with a tabulation: "
+	@ echo -n "Lines with a tabulation in .ml: "
 	@ grep -P '\t' *.ml | wc -l
+	@ echo -n "Lines with a tabulation in .typ: "
+	@ grep -P '\t' lib/*.typ | wc -l
 	@ echo -n "Longest line:           "
 	@ wc -L *.ml | tail -n 1 | colrm 1 3 | colrm 4 10
 	@ echo "(Use \"grep -n -P '\t' *.ml\" to find the tabulations...)"

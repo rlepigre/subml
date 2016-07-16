@@ -306,7 +306,7 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
   | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
   | id:lident                     when p = `Atm -> in_pos _loc (PLVar(id))
-  | fix_kw x:var arrow u:term$    when p = `Lam -> pfixY x _loc_u u
+  | fix_kw x:var mapto u:term$    when p = `Lam -> pfixY x _loc_u u
   | "[" term_list "]"             when p = `Atm
   | term_llet                     when p = `Lam
   | term_cond                     when p = `Atm
@@ -326,13 +326,13 @@ and let_var =
   | id:lident            -> (in_pos _loc_id id, None)
   | id:lident ":" k:kind -> (in_pos _loc_id id, Some k)
 
-and term_llet = let_kw r:is_rec pat:rpat "=" t:term in_kw u:term ->
+and term_llet = let_kw r:is_rec n:int_lit? pat:rpat "=" t:term in_kw u:term ->
   let t =
     if not r then
       match pat with Simple (Some(_,Some k)) -> in_pos _loc_t (PCoer(t,k))
       | _ -> t
     else
-      match pat with Simple (Some id) -> pfixY id _loc_t t
+      match pat with Simple (Some id) -> pfixY id _loc_t n t
       | _ -> give_up ""
   in
   in_pos _loc (PAppl(apply_rpat pat u, t))
@@ -560,9 +560,9 @@ and kind_def_args =
   | "(" os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")}?[[]] ")"
 
 and val_def =
-  | r:is_rec tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
+  | r:is_rec n:int_lit? tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
       let t =
-        if not r then t else pfixY (in_pos _loc_id id, k) _loc_t t
+        if not r then t else pfixY (in_pos _loc_id id, k) _loc_t n t
       in ((tex,id), k, t)
 
 (****************************************************************************
