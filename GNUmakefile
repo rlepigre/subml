@@ -5,6 +5,7 @@ www: subml.js clean tutorial.typ subml-latest.tar.gz
 	rm -rf www/subml/*
 	cp -r lib www/subml/lib
 	cp tutorial.typ www/subml
+	cd genex && make && ./genex ../lib/all.typ > ../www/examples.html
 	cp subml.js www/subml
 	cp subml-latest.tar.gz www/docs/
 
@@ -61,6 +62,8 @@ distclean: clean
 	rm -f *~ lib/*~
 	rm -rf subml-latest subml-latest.tar.gz
 	rm -f subml.js
+	rm -f www/examples.html
+	cd genex && make distclean
 
 install: all
 	install ./subml.native $(DESTDIR)/subml
