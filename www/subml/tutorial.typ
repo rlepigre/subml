@@ -26,17 +26,15 @@ val falsetrue : {fst : [True | False] ; snd : [True | False]} =
 (* they should be provided with all their arguments when used in a value.   *)
 
 type Either(A,B) = [InL of A | InR of B]
-val inlBool : Boolean → Either(Boolean, Boolean) = fun b ↦ InL b
+val inlBool : Boolean → Either(Boolean, Boolean) = fun b → InL b
 
 (* Note that the arrow symbol [→] denotes the function type. In the editor, *)
 (* it can be entered with the character sequence [->], followed by a space. *)
 (* In general, unicode characters can be entered using corresponding  LaTex *)
-(* macro name ([\to] in the case of [→]). The symbol [↦] is obtained  using *)
-(* [\mapsto]. It is used to separate the arguments and the body in function *)
-(* definitions. Usual record projections and (shallow) pattern matching are *)
-(* provided.                                                                *)
+(* macro name ([\to] in the case of [→]). Usual projections for records and *)
+(* (shallow) pattern matching are provided.                                 *)
 
-val cond : ∀X Boolean → X → X → X = fun c t e ↦
+val cond : ∀X Boolean → X → X → X = fun c t e →
   case c of
   | True  → t
   | False → e
@@ -48,12 +46,12 @@ val fst : Pair → Boolean = fun p → p.fst
 (* over a type variable.                                                    *)
 
 type Maybe(A) = [Nothing | Just of A]
-val fromJust : ∀A Maybe(A) → A → A = fun m d ↦
+val fromJust : ∀A Maybe(A) → A → A = fun m d →
   case m of
   | Nothing → d
   | Just v  → v
 
-val id : ∀X X → X = fun x ↦ x
+val id : ∀X X → X = fun x → x
 
 (* In the system, types are not implicitly recursive. Inductive  types  and *)
 (* coinductive types are defined explicitly using the binders [μ]  and  [ν] *)
@@ -66,7 +64,7 @@ val one   : Unary = Succ Zero
 val two   : Unary = Succ (Succ Zero)
 val three : Unary = Succ (Succ (Succ Zero))
 
-val rec add : Unary → Unary → Unary = fun n m ↦
+val rec add : Unary → Unary → Unary = fun n m →
   case n of
   | Zero    → m
   | Succ n' → Succ (add n' m)
@@ -82,7 +80,7 @@ eval (fun x y z → x)
 (* obtained value is the displayed in the log. Note than an error is raised *)  
 (* if the type of the expression cannot be inferred.                        *)
 
-val idCurry : ∀X X → X = ΛX fun (x : X) ↦ (x : X)
+val idCurry : ∀X X → X = ΛX fun (x : X) → (x : X)
 
 (* In the system, type annotations are sometimes to help the  type-checker. *)
 (* Type indications can be given by the used on function arguments  and  on *)
