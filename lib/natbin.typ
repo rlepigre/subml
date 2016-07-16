@@ -85,10 +85,10 @@ val rec add_aux : Carry → Bin → Bin → Bin = fun c x y →
 val add : Bin → Bin → Bin = add_aux Zero
 
 val catch : (Bin → EBin) → EBin → EBin =
-  fun f x → case x of Error → Error | End → f End | Zero x → f (Zero x) | One x → f (One x)
+  fun f x → case x of Error → Error | x → f x
 
 val eOne : EBin → EBin =
-  fun x → case x of Error → Error | End → One End | Zero x → One (Zero x) | One x → One (One x)
+  fun x → case x of Error → Error | x → One x
 
 val epred : Bin → EBin =
 fun x →
