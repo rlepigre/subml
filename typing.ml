@@ -633,7 +633,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TVari(_) -> assert false (* Cannot happen. *)
     with Subtype_error msg ->
       Io.err "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
-      type_error dummy_position msg
+      type_error t.pos msg
   in (t, c, r)
 
 and check_fix ctxt t n f c =
