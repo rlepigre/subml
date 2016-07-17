@@ -56,7 +56,7 @@ and eq_obinder c f1 f2 = f1 == f2 ||
   eq_kind c (subst f1 i) (subst f2 i)
 
 and eq_tbinder c f1 f2 = f1 == f2 ||
-  let i = incr c; dummy_pos (TTInt(!c)) in
+  let i = incr c; TTInt(!c) in
   eq_term c (subst f1 i) (subst f2 i)
 
 and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->

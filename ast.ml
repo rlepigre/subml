@@ -121,9 +121,9 @@ and term' =
   (* Type coercion. *)
   | TCoer of term * kind
   (* Free λ-variable. *)
-  | TVari of term variable
+  | TVari of term' variable
   (* λ-abstraction. *)
-  | TAbst of kind option * (term, term) binder
+  | TAbst of kind option * (term', term) binder
   (* Application. *)
   | TAppl of term * term
   (* Record. *)
@@ -139,7 +139,7 @@ and term' =
   (* Print a string (side effect) and behave like the term. *)
   | TPrnt of string
   (* Fixpoint combinator. *)
-  | TFixY of int * (term,term) binder
+  | TFixY of int * (term', term) binder
   (* Lambda on a type, semantics via epsilon *)
   | TKAbs of (kind, term) binder
   (* Lambda on an ordinal, semantics via epsilon *)
@@ -147,7 +147,7 @@ and term' =
   (**** Special constructors (not accessible to user) ****)
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
-  | TCnst of ((term, term) binder * kind * kind)
+  | TCnst of ((term', term) binder * kind * kind)
   (* Integer tag. *)
   | TTInt of int
 
@@ -253,7 +253,7 @@ let val_env : val_env = Hashtbl.create 17
 let verbose : bool ref = ref false
 
 (* Bindbox type shortcuts. *)
-type tvar = term variable
+type tvar = term' variable
 type tbox = term bindbox
 
 type kvar = kind variable
@@ -270,14 +270,11 @@ let new_kvari : string -> kind variable =
   new_var mk_free_kvari
 
 (* Term variable management. *)
-let mk_free_tvari : pos -> term variable -> term =
-  fun p x -> in_pos p (TVari(x))
+let mk_free_tvari : term' variable -> term' =
+  fun x -> TVari(x)
 
-let new_tvari : pos -> string -> term variable =
-  fun p -> new_var (mk_free_tvari p)
-
-let new_tvari' : string -> term variable =
-  new_tvari dummy_position
+let new_tvari : string -> term' variable =
+  new_var mk_free_tvari
 
 (* Ordinal variable management. *)
 let mk_free_ovari : ovar -> ordinal =
@@ -383,10 +380,10 @@ let top : kind =
 let tcoer_p : pos -> term -> kind -> term =
   fun p t k -> in_pos p (TCoer(t,k))
 
-let tvari_p : pos -> term variable -> term =
+let tvari_p : pos -> term' variable -> term =
   fun p x -> in_pos p (TVari(x))
 
-let tabst_p : pos -> kind option -> (term, term) binder -> term =
+let tabst_p : pos -> kind option -> (term', term) binder -> term =
   fun p ko b -> in_pos p (TAbst(ko,b))
 
 let tkabs_p : pos -> (kind, term) binder -> term =
@@ -416,7 +413,7 @@ let tdefi_p : pos -> value_def -> term =
 let tprnt_p : pos -> string -> term =
   fun p s -> in_pos p (TPrnt(s))
 
-let tfixy_p : pos -> int -> (term, term) binder -> term =
+let tfixy_p : pos -> int -> (term', term) binder -> term =
   fun p n t -> in_pos p (TFixY(n,t))
 
 (****************************************************************************
@@ -426,12 +423,12 @@ let tfixy_p : pos -> int -> (term, term) binder -> term =
 let tcoer : pos -> tbox -> kbox -> tbox =
   fun p -> box_apply2 (tcoer_p p)
 
-let tvari : pos -> term variable -> tbox =
-  fun p x -> box_of_var x
+let tvari : pos -> term' variable -> tbox =
+  fun p x -> box_apply (in_pos p) (box_of_var x)
 
 let tabst : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
   fun p ko x f ->
-    box_apply2 (tabst_p p) (box_opt ko) (vbind (tvari_p x.pos) x.elt f)
+    box_apply2 (tabst_p p) (box_opt ko) (vbind mk_free_tvari x.elt f)
 
 let tkabs : pos -> strpos -> (kvar -> tbox) -> tbox =
   fun p x f ->
@@ -442,7 +439,7 @@ let toabs : pos -> strpos -> (ovar -> tbox) -> tbox =
     box_apply (toabs_p p) (vbind mk_free_ovari o.elt f)
 
 let idt : tbox =
-  tabst dummy_position None (dummy_pos "x") (fun x -> box_of_var x)
+  tabst dummy_position None (dummy_pos "x") (fun x -> box_apply dummy_pos (box_of_var x))
 
 let tappl : pos -> tbox -> tbox -> tbox =
   fun p -> box_apply2 (tappl_p p)
@@ -471,13 +468,13 @@ let tprnt : pos -> string -> tbox =
 
 let tfixy : pos -> int -> strpos -> (tvar -> tbox) -> tbox =
   fun p n x f -> box_apply (tfixy_p p n)
-                    (vbind (tvari_p x.pos) x.elt f)
+                    (vbind mk_free_tvari x.elt f)
 
 (* Build a constant. Useful during typing. *)
-let tcnst : (term, term) binder -> kind -> kind -> term =
-  fun s a b -> dummy_pos (TCnst(s,a,b))
+let tcnst : (term', term) binder -> kind -> kind -> term' =
+  fun s a b -> TCnst(s,a,b)
 
 let generic_tcnst : kind -> kind -> term =
   fun a b ->
-    let f = bind (tvari_p dummy_position) "x" (fun x -> x) in
+    let f = bind mk_free_tvari "x" (fun x -> box_apply dummy_pos x) in
     dummy_pos (TCnst(unbox f,a,b))

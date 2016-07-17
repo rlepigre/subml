@@ -171,7 +171,7 @@ and print_term unfold lvl ff t =
      let rec fn ff t = match t.elt with
        | TAbst(ao,b) ->
           let x = binder_name b in
-          let t = subst b (free_of (new_tvari' x)) in
+          let t = subst b (free_of (new_tvari x)) in
           begin
             match ao with
             | None   -> fprintf ff " %s%a" x fn t
@@ -251,7 +251,7 @@ and print_term unfold lvl ff t =
        match b.elt with
        | TAbst(_,f) ->
           let x = binder_name f in
-          let t = subst f (free_of (new_tvari' x)) in
+          let t = subst f (free_of (new_tvari x)) in
           fprintf ff "\\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
        | _          ->
           fprintf ff "\\mathrm{%s} \\rightarrow %a" c (print_term 0) b
@@ -260,7 +260,7 @@ and print_term unfold lvl ff t =
        | None                 -> ()
        | Some{elt=TAbst(_,f)} ->
           let x = binder_name f in
-          let t = subst f (free_of (new_tvari' x)) in
+          let t = subst f (free_of (new_tvari x)) in
           fprintf ff "%s \\rightarrow %a" x (print_term 0) t
        | Some b               ->
           fprintf ff "\\_ \\rightarrow %a" (print_term 0) b
@@ -268,7 +268,7 @@ and print_term unfold lvl ff t =
      begin
        match l,d with
        | [c,{elt = TAbst(_,f)}], None when
-             let x = free_of (new_tvari' (binder_name f)) in subst f x == x ->
+             let x = free_of (new_tvari (binder_name f)) in (subst f x).elt == x ->
           fprintf ff "\\mathrm{%s}.%a" c (print_term 0) t
        | _ ->
           fprintf ff "\\case{%a}{%a%a}"
@@ -285,7 +285,7 @@ and print_term unfold lvl ff t =
   | TFixY(ko,f) ->
      if lvl > 0 then pp_print_string ff "(";
       let x = binder_name f in
-      let t = subst f (free_of (new_tvari' x)) in
+      let t = subst f (free_of (new_tvari x)) in
       fprintf ff "Y %s . %a" x (print_term 0) t;
      if lvl > 0 then pp_print_string ff ")";
   | TCnst(f,a,b) ->
@@ -317,7 +317,7 @@ let print_kind_def unfold ff kd =
 
 let print_epsilon_tbls ch =
   List.iter (fun (f,(name,index,a,b)) ->
-    let x = new_tvari dummy_position (binder_name f) in
+    let x = new_tvari (binder_name f) in
     let t = subst f (free_of x) in
     fprintf ch "%s_{%d} &= \\epsilon_{%s \\in %a}(%a \\notin %a)\\\\\n"
       name index (name_of x) (print_kind false) a (print_term false) t

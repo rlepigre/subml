@@ -97,13 +97,13 @@ let apply_rpat x t =
  ****************************************************************************)
 
 type env =
-  { terms    : (string * tbox) list
+  { terms    : (string * tvar) list
   ; kinds    : (string * (kbox * occur)) list
   ; ordinals : (string * (obox * occur)) list }
 
 let empty_env : env = { terms = [] ; kinds = [] ; ordinals = [] }
 
-let add_term : string -> tbox -> env -> env = fun x t env ->
+let add_term : string -> tvar -> env -> env = fun x t env ->
   { env with terms = (x,t) :: env.terms }
 
 let add_kind : string -> kbox -> occur -> env -> env = fun x k occ env ->
@@ -124,7 +124,7 @@ let positivity_error loc s = raise (Positivity_error (loc,s))
 (* Lookup a term variable in the environment. If it does not appear, look for
    the name in the list of term definitions. *)
 let term_variable : env -> strpos -> tbox = fun env s ->
-  try List.assoc s.elt env.terms with Not_found ->
+  try tvari s.pos (List.assoc s.elt env.terms) with Not_found ->
   try
     let vd = Hashtbl.find val_env s.elt in
     tdefi s.pos vd
@@ -229,7 +229,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                      | []           -> unsugar_term env t
                      | (x,ko) :: xs ->
                          let ko = map_opt (unsugar_kind env) ko in
-                         let f xt = aux false (add_term x.elt (box_of_var xt) env) xs in
+                         let f xt = aux false (add_term x.elt xt env) xs in
                          let pos =
                            if first then pt.pos else
                            let open Position in
@@ -254,9 +254,9 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    in tcons pt.pos c u
   | PProj(t,l)  -> tproj pt.pos (unsugar_term env t) l
   |PCase(t,cs,d)-> let f (c,x,t) = (c, unsugar_term env (apply_rpat x t)) in
-		   let g (x,t) = unsugar_term env (apply_rpat x t) in
+                   let g (x,t) = unsugar_term env (apply_rpat x t) in
                    tcase pt.pos (unsugar_term env t) (List.map f cs) (map_opt g d)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
-  | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt (box_of_var xt) env) t in
+  | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in
                    tfixy pt.pos n x f

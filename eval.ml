@@ -16,8 +16,8 @@ let rec eval : term -> term = fun t0 ->
         let rec fn t =
           let t' = eval t in
           match t'.elt with
-          | TAbst(_,b) -> eval (subst b u')
-          | TFixY(_,f) -> fn (subst f t')
+          | TAbst(_,b) -> eval (subst b u'.elt)
+          | TFixY(_,f) -> fn (subst f t'.elt)
           | t          -> dummy_pos (TAppl(t',u'))
         in fn t
       end
@@ -42,9 +42,9 @@ let rec eval : term -> term = fun t0 ->
             begin
               try eval (dummy_pos (TAppl(List.assoc c l, v)))
               with Not_found ->
-		match d with
-		| None -> dummy_pos (TCase(t',l,d))
-		| Some f -> eval (dummy_pos (TAppl(f, t')))
+                match d with
+                | None -> dummy_pos (TCase(t',l,d))
+                | Some f -> eval (dummy_pos (TAppl(f, t')))
             end
         | t          -> dummy_pos (TCase(t',l,d))
       end

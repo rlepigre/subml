@@ -23,7 +23,7 @@ type subtype_ctxt =
 
 and induction_type =
   | Sub of int * int list * kind * kind * (int * ordinal) list
-  | Rec of (term,term) binder * kind *
+  | Rec of (term',term) binder * kind *
       (int * kind * (int * ordinal) list) list ref *      (* induction hyps *)
       (subtype_ctxt * term * kind * typ_prf ref) list ref (* missing proofs *)
 
@@ -363,16 +363,16 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
-        let f x = tappl dummy_position (box t) x in
-        let bnd = unbox (bind (tvari_p dummy_position) "x" f) in
+        let f x = tappl dummy_position (box t) (box_apply dummy_pos x) in
+        let bnd = unbox (bind mk_free_tvari "x" f) in
         let wit = tcnst bnd a2 b2 in
         if has_uvar b1 then
-          let p2 = subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2 in
-          let p1 = subtype ctxt wit a2 a1 in
+          let p2 = subtype ctxt (dummy_pos (TAppl(t,dummy_pos wit))) b1 b2 in
+          let p1 = subtype ctxt (dummy_pos wit) a2 a1 in
           Sub_Func(p1, p2)
         else
-          let p1 = subtype ctxt wit a2 a1 in
-          let p2 = subtype ctxt (dummy_pos (TAppl(t,wit))) b1 b2 in
+          let p1 = subtype ctxt (dummy_pos wit) a2 a1 in
+          let p2 = subtype ctxt (dummy_pos (TAppl(t,dummy_pos wit))) b1 b2 in
           Sub_Func(p1, p2)
 
     (* Product type. *)
@@ -661,7 +661,7 @@ and check_fix ctxt t n f c =
       }
     in
     let ptr = ref dummy_proof in
-    remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
+    remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;
     let rec kn n =
       if n = 0 && !remains <> [] then
         type_error t.pos "can not relate termination depth"
@@ -697,7 +697,7 @@ and check_fix ctxt t n f c =
       if os <> [] then hyps_ptr := (fnum, c0, os) :: !hyps_ptr;
       let ctxt = { ctxt with top_induction = (fnum, os) } in
       let ptr = ref dummy_proof in
-      remains := (ctxt, subst f (in_pos t.pos (TFixY(n-1,f))), c, ptr) :: !remains;
+      remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;
       Typ_TFix(fnum,prf0,ptr)
 
 

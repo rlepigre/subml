@@ -262,7 +262,7 @@ and print_term ?(in_proj=false) unfold ff t =
       pp_print_string ff (name_of x)
   | TAbst(ao,b) ->
       let x = binder_name b in
-      let t = subst b (free_of (new_tvari' x)) in
+      let t = subst b (free_of (new_tvari x)) in
       begin
         match ao with
         | None   -> fprintf ff "λ%s %a" x print_term t
@@ -292,7 +292,7 @@ and print_term ?(in_proj=false) unfold ff t =
        match b.elt with
        | TAbst(_,f) ->
            let x = binder_name f in
-           let t = subst f (free_of (new_tvari' x)) in
+           let t = subst f (free_of (new_tvari x)) in
            fprintf ff "| %s[%s] → %a" c x print_term t
        | _          ->
            fprintf ff "| %s → %a" c print_term b
@@ -301,7 +301,7 @@ and print_term ?(in_proj=false) unfold ff t =
        | None -> ()
        | Some({elt = TAbst(_,f)}) ->
            let x = binder_name f in
-           let t = subst f (free_of (new_tvari' x)) in
+           let t = subst f (free_of (new_tvari x)) in
            fprintf ff "| %s → %a" x print_term t
        | Some b           ->
           fprintf ff "| _ → %a" print_term b (* FIXME: assert false ? *)
@@ -316,7 +316,7 @@ and print_term ?(in_proj=false) unfold ff t =
       fprintf ff "print(%S)" s
   | TFixY(_,f) ->
       let x = binder_name f in
-      let t = subst f (free_of (new_tvari' x)) in
+      let t = subst f (free_of (new_tvari x)) in
       fprintf ff "fix %s → %a" x print_term t
   | TCnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
@@ -417,7 +417,7 @@ let print_position ff o =
 
 let print_epsilon_tbls ff =
   List.iter (fun (f,(name,index,a,b)) ->
-    let x = new_tvari dummy_position (binder_name f) in
+    let x = new_tvari (binder_name f) in
     let t = subst f (free_of x) in
     fprintf ff "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index (name_of x)
       (print_kind false) a (print_term false) t (print_kind false) b)

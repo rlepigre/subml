@@ -28,12 +28,12 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
   let rec fn t =
     match t.elt with
     | TCoer(t,k)  -> tcoer t.pos (fn t) (kn k)
-    | TVari(x)    -> box_of_var x
+    | TVari(x)    -> tvari t.pos x
     | TAbst(ko,f) -> let ko = map_opt kn ko in
                      tabst t.pos ko (in_pos t.pos (binder_name f))
-                       (fun x -> fn (subst f (dummy_pos (TVari x))))
+                       (fun x -> fn (subst f (TVari x)))
     | TFixY(n,f)  -> tfixy t.pos n (in_pos t.pos (binder_name f))
-                       (fun x -> fn (subst f (dummy_pos (TVari x))))
+                       (fun x -> fn (subst f (TVari x)))
     | TKAbs(f)    -> tkabs t.pos (dummy_pos (binder_name f))
                        (fun x -> fn (subst f (KVari x)))
     | TOAbs(f)    -> toabs t.pos (dummy_pos (binder_name f))
@@ -178,15 +178,15 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | MuRec(_,k)
     | NuRec(_,k) -> aux occ acc k)
   and aux2 acc t =
-    if List.memq t !adone_t then acc else (
-    adone_t := t :: !adone_t;
+    if List.memq t.elt !adone_t then acc else (
+    adone_t := t.elt :: !adone_t;
     match t.elt with
-    | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (dummy_pos (TReco [])))
+    | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (TReco []))
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
     | TFixY(_,f)
-    | TAbst(_,f)     -> aux2 acc (subst f (dummy_pos (TReco [])))
+    | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
     | TKAbs(f)       -> aux2 acc (subst f (KProd []))
     | TOAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
