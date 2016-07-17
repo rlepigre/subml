@@ -23,7 +23,7 @@ val rec mul : Nat → Nat → Nat = fun n m →
 
 val rec compare : Nat → Nat → Cmp = fun n m →
   case n of
-  | Z   → (case m of Z → Eq | S m → Ls)
+  | Z   → (case m of Z → Eq | S _ → Ls)
   | S n → (case m of Z → Gt | S m → compare n m)
 
 val eq  : Nat → Nat → Bool = fun n m →

@@ -162,8 +162,9 @@ let ident first =
   let lident = change_layout lident no_blank in
   Decap.apply (fun id -> check_not_keyword id; id) lident
 
-let lident = ident lidentfirst
+let parser lident = s:(ident lidentfirst) -> if s = "_" then give_up ""; s
 let uident = ident uppercase
+let parser loptident = lident | "_" -> ""
 
 let parser lgident =
   | "α" -> "α"
@@ -321,12 +322,12 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | tcol when p = `App
 
 and var =
-  | id:lident                    -> (in_pos _loc_id id, None)
-  | "(" id:lident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
+  | id:loptident                    -> (in_pos _loc_id id, None)
+  | "(" id:loptident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
 
 and let_var =
-  | id:lident            -> (in_pos _loc_id id, None)
-  | id:lident ":" k:kind -> (in_pos _loc_id id, Some k)
+  | id:loptident            -> (in_pos _loc_id id, None)
+  | id:loptident ":" k:kind -> (in_pos _loc_id id, Some k)
 
 and term_llet = let_kw r:is_rec n:int_lit? pat:rpat "=" t:term in_kw u:term ->
   let t =
@@ -357,7 +358,7 @@ and pats = _:"|"? ps:(list_sep case "|")
 and rpat =
   | EMPTY                              -> Simple None
   | x:let_var                          -> Simple (Some x)
-  | "(" x:var ")"                      -> Simple (Some x)
+  | "(" x:let_var ")"                      -> Simple (Some x)
   | "{" ls:(list_sep (parser l:lident "=" x:var) ";") "}"
                                        -> Record ls
   | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)
