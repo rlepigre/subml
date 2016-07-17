@@ -345,8 +345,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar ua as a),(KUVar ub as b)) ->
-        if !(ub.kuvar_state) = Free then set_kuvar true ub a
-        else set_kuvar false ua b;
+        begin (* make the correct choice, depending if Sum or Prod *)
+          match !(ua.kuvar_state), !(ub.kuvar_state) with
+          | _, Sum _ -> set_kuvar false ua b
+          | Prod _, _ -> set_kuvar false ub a
+          | _ -> set_kuvar false ub a (* arbitrary choice *)
+	end;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (KUVar ua, b            ) ->
