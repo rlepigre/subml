@@ -7,15 +7,20 @@ let parse = Decap.parse_file (parser sect*) Decap.no_blank
 
 let output_html ss =
   let output_sect (n, is) =
-    Printf.printf "<h3>%s</h3>\n" n;
-    Printf.printf "<ul>\n";
-    let print_link l =
-      Printf.printf "  <li><a class=\"submlfile\" href=\"javascript:";
-      Printf.printf "loadsubmlfile('%s')" l;
-      Printf.printf "\">%s</a></li>\n" l
-    in
-    List.iter print_link is;
-    Printf.printf "</ul>\n"
+    match is with
+    | []  -> ()
+    | [l] -> Printf.printf "<h3>%s (<a class=\"submlfile\" href=\"" n;
+             Printf.printf "javascript:loadsubmlfile('%s')" l;
+             Printf.printf "\">%s</a>)</h3>\n" l;
+    | _   -> Printf.printf "<h3>%s</h3>\n" n;
+             Printf.printf "<ul>\n";
+             let print_link l =
+               Printf.printf "  <li><a class=\"submlfile\" href=\"";
+               Printf.printf "javascript:loadsubmlfile('%s')" l;
+               Printf.printf "\">%s</a></li>\n" l
+             in
+             List.iter print_link is;
+             Printf.printf "</ul>\n"
   in
   List.iter output_sect ss
 

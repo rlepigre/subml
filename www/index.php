@@ -64,7 +64,7 @@
         advanced examples expoiting subtyping are given in the example section
         below.
       </p>
-      <h2>Advanced examples</h2>
+      <h2>Full list of examples</h2>
       <?php include 'examples.html'; ?>
     </div>
   </div>
