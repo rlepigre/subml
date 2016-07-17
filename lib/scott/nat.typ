@@ -71,3 +71,7 @@ val sc : ∀P ∀K G(P) -> T(P) = fun f p r →
 
 val fixp : ∀P ∀K G(P) → SNat → P = ΛP fun f n →
   (n : ∀P T(P) → U(P) → T(P) → P) (sc f) (zz f) (sc f)
+
+(* a recursive function *)
+val rec eqN : SNat → SNat → Bool = fun n m →
+  n (λnp. m (λmp. eqN np mp) Fls) (m (λmp. Fls) Tru)
