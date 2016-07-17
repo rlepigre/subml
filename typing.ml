@@ -365,14 +365,14 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
         let f x = tappl dummy_position (box t) (box_apply dummy_pos x) in
         let bnd = unbox (bind mk_free_tvari "x" f) in
-        let wit = tcnst bnd a2 b2 in
+        let wit = dummy_pos (tcnst bnd a2 b2) in
         if has_uvar b1 then
-          let p2 = subtype ctxt (dummy_pos (TAppl(t,dummy_pos wit))) b1 b2 in
-          let p1 = subtype ctxt (dummy_pos wit) a2 a1 in
+          let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
+          let p1 = subtype ctxt wit a2 a1 in
           Sub_Func(p1, p2)
         else
-          let p1 = subtype ctxt (dummy_pos wit) a2 a1 in
-          let p2 = subtype ctxt (dummy_pos (TAppl(t,dummy_pos wit))) b1 b2 in
+          let p1 = subtype ctxt wit a2 a1 in
+          let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
           Sub_Func(p1, p2)
 
     (* Product type. *)
