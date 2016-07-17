@@ -7,17 +7,17 @@ val z : CNat = fun s z → z
 val s : CNat → CNat = fun n f x → f (n f x)
 
 (* Names for the first 10 natural numbers. *)
-val zero  : CNat = z
-val one   : CNat = s zero
-val two   : CNat = s one
-val three : CNat = s two
-val four  : CNat = s three
-val five  : CNat = s four
-val six   : CNat = s five
-val seven : CNat = s six
-val eight : CNat = s seven
-val nine  : CNat = s eight
-val ten   : CNat = s nine
+val 0 : CNat = z
+val 1 : CNat = s 0
+val 2 : CNat = s 1
+val 3 : CNat = s 2
+val 4 : CNat = s 3
+val 5 : CNat = s 4
+val 6 : CNat = s 5
+val 7 : CNat = s 6
+val 8 : CNat = s 7
+val 9 : CNat = s 8
+val 10: CNat = s 9
 
 (* Addition and product. *)
 val add : CNat → CNat → CNat = fun n m f x → n f (m f x)
@@ -37,6 +37,8 @@ val leq : CNat → CNat → CBool = fun n m →
   n (fun f g → g f) (fun i → ctru)
   (m (fun f g → g f) (fun i → cfls))
 
+val eq : CNat → CNat → CBool = fun n m →
+  and (leq n m) (leq m n)
 
 include "lib/church/data.typ"
 val pred2 : CNat → CNat = fun n → pi2 (n
@@ -53,3 +55,6 @@ val inf : CNat -> CNat -> CNat = fun n m →
     pi2 (m k (pair z z))
   in
   n a (λp.z) m
+
+val printCNat : CNat → {} = fun n →
+  n (fun f _ → print("s"); f {}) (fun _ → print("0")) {}

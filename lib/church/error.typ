@@ -7,3 +7,6 @@ val bind : ∀K∀K' (Err(K) → (K → Err(K')) → Err(K'))
   = fun n f → n (λx. f x) error
 val catch : ∀K∀K' (Err(K) → (K → K') → K' → K')
   = fun e f g → e (λx. f x) g
+
+val printErr : ∀K (K → {}) → Err(K) → {}
+  = fun pr x → x (fun x _ → pr x) (fun _ → print("Error")) {}

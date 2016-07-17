@@ -14,10 +14,12 @@ include "lib/church/nat.typ"
 include "lib/church/data.typ"
 include "lib/church/inf_david.typ"
 include "lib/church/error.typ"
+include "lib/church/list.typ"
 
 (* Scott encoding *)
 include "lib/scott/nat.typ"
 include "lib/scott/stream.typ"
+include "lib/scott/natbin.typ"
 
 (* Mixed induction and coinduction *)
 include "lib/munu/munu2.typ"
@@ -38,4 +40,3 @@ include "lib/dotproj.typ"
 include "lib/tree.typ"
 include "lib/polyrec.typ"
 include "lib/tests.typ"
-
