@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <title>SubML language</title>
   <meta charset="UTF-8">
@@ -65,7 +65,10 @@
         below.
       </p>
       <h2>Full list of examples</h2>
-      <?php include 'examples.html'; ?>
+      <div id="examples"></div>
+      <script>
+        $("#examples").load("examples.html"); 
+      </script>
     </div>
   </div>
 </body>
