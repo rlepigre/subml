@@ -32,6 +32,10 @@ type printer = (formatter -> unit) * (formatter -> unit) (* normal / latex *)
 type arities = (int * (string * int * printer array)) list
 type calls_graph = arities * calls
 
+type fun_table =
+  { mutable current : int;
+    mutable table : (int * (string * int * printer array)) list }
+
 let mat_prod l1 c1 c2 m1 m2 =
   Array.init l1 (fun i ->
     Array.init c2 (fun j ->
@@ -95,31 +99,22 @@ end
 
 module IAMap = Map.Make(IntArray)
 
-(* function needs to be declared. calling sct will
-   reset the function table *)
-let (new_function : string -> printer list -> int),
-    get_function, reset_function, pr_call, arities, arity =
-  let count = ref 0 in
-  let init_fun_table = [(-1, ("R", 0, [||]))] in
-  let fun_table = ref init_fun_table in (* the table is only used for debugging messages *)
-  (fun name args ->
+let init_fun_table () =
+  { current = 0;
+    table = [(-1, ("R", 0, [||]))] }
+
+let new_function  =
+  fun ftbl name args ->
     let args = Array.of_list args in
     let arity = Array.length args in
-    let n = !count in
-    incr count;
-    fun_table := (n, (name, arity, args))::!fun_table;
-    n),
-  (fun () ->
-    let res = (!count, !fun_table) in
-    res),
-  (fun () ->
-    count := 0;
-    fun_table := init_fun_table),
-  (fun ch ->
-    print_call !fun_table ch),
-  (fun () -> !fun_table),
-  (fun i ->
-    try let (_,a,_) = List.assoc i !fun_table in a with Not_found -> assert false)
+    let n = ftbl.current in
+    ftbl.current <- n + 1;
+    ftbl.table <- (n, (name, arity, args))::ftbl.table;
+    n
+
+let arity i ftbl =
+  try let (_,a,_) = List.assoc i ftbl.table in a
+  with Not_found -> assert false
 
 let subsume m1 m2 =
   try
@@ -131,9 +126,10 @@ let subsume m1 m2 =
     Exit -> false
 
 (* the main function *)
-let sct: calls -> bool = fun ls ->
+let sct: fun_table -> calls -> bool = fun ftbl ls ->
   Io.log_sct "SCT starts...\n%!";
-  let num_fun, arities = get_function () in
+  let num_fun = ftbl.current in
+  let arities = ftbl.table in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun []) in
   let print_call = print_call arities in
   (* counters to count added and composed edges *)
@@ -204,7 +200,7 @@ let do_inline = ref true
 
 (* inline function that call only one function.
    TODO: inline function that are called at most once *)
-let inline calls =
+let inline ftbl calls =
   if not !do_inline then
     List.map (fun (i,j,m,_) -> (i,j,m)) calls
   else
@@ -220,9 +216,9 @@ let inline calls =
     try
       match Hashtbl.find tbl i with
       | One (_,k,m') ->
-         let a = arity k in
-         let b = arity i in
-         let c = arity j in
+         let a = arity k ftbl in
+         let b = arity i ftbl in
+         let c = arity j ftbl in
          let call = (j,k,mat_prod a b c m' m,r) in
          fn call
       | _ -> (j,i,m)
