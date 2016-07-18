@@ -14,7 +14,7 @@ val car : ∀A (List(A) → Err(A)) = ΛA λ(l:List(A)).l (λx y.unit x) error
 
 val cdr : ∀A (List(A) → List(A)) =
         ΛA λ(l:List(A)).l
-	     (λa p x y.p (cons a x) x)
+             (λa p x y.p (cons a x) x)
              (λx y.y) (nil:List(A)) (nil:List(A))
 
 
