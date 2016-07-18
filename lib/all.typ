@@ -8,6 +8,7 @@ include "lib/applist.typ"
 include "lib/set.typ"
 include "lib/natbin.typ"
 include "lib/stream.typ"
+include "lib/state_array.typ"
 
 (* Church encoding *)
 include "lib/church/bool.typ"
@@ -25,6 +26,7 @@ include "lib/scott/natbin.typ"
 include "lib/scott/list.typ"
 include "lib/scott/tree.typ"
 include "lib/scott/stream.typ"
+include "lib/scott/nat_as_prod.typ"
 
 (* Mixed induction and coinduction *)
 include "lib/munu/munu2.typ"
