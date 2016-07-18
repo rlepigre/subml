@@ -8,7 +8,7 @@ val car : ∀A (Stream(A) → A) =  fun s → s.car s.state
 val cdr : ∀A (Stream(A) → Stream(A)) = fun s → s.cdr s.state
 
 val scons : ∀A (A → Stream(A) → Stream(A)) =
-  fun a l → {car = (fun x → a); cdr = (fun x → l); state = {}}
+  fun a l → {car = (fun _ → a); cdr = (fun _ → l); state = {}}
 
 type T(A,P) = ∀Y (P × Y → { car : P × Y → A; cdr : Y; state : P × Y})
 
