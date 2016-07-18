@@ -48,7 +48,7 @@ val fix_nat : ∀P (∀K (K → P) → F_Nat(K) → P) → Nat → P =
   ΛP fun f n →
      let z' : ∀Y (Y → P) =
            fun r → f (fun x → x) (λx.x.z) in
-     let s' : T(P) =
+     let s' : T(P) = (* FIXME: z = r below give an error on f above ??? *)
            fun p r → f (fun s → p { z = z'; s = r } r) (λx.x.s p) in
      n:Nat' { z = z'; s = s'} s'
 
