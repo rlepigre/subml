@@ -193,7 +193,6 @@ let else_kw = new_keyword "else"
 let with_kw = new_keyword "with"
 let when_kw = new_keyword "when"
 let type_kw = new_keyword "type"
-let not_kw  = new_keyword "not"
 let max_kw  = new_keyword "max"
 
 let unfold_kw  = new_keyword "unfold"
@@ -224,10 +223,6 @@ let parser infty  : unit grammar = "∞"
 let parser is_rec =
   | EMPTY  -> false
   | rec_kw -> true
-
-let parser is_not =
-  | EMPTY  -> false
-  | not_kw -> true
 
 let parser enables =
   | "on"  -> true
