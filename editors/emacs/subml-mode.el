@@ -24,7 +24,9 @@
 (defconst subml-font-lock-keywords
   (list (cons (concat "\\<"
 		      (regexp-opt '("case" "of" "val" "let" "in" "rec" "fun" "eval"
-				    "include" "type" "if" "then" "else" "check"))
+				    "include" "type" "if" "then" "else" "check"
+                                    "fix" "unfold" "clear" "quit" "parse" "latex"
+                                    "exit" "set" "html" ))
                       "\\>")
               'font-lock-keyword-face)
         )
@@ -36,13 +38,15 @@
  "A transliteration scheme for Subml."
  nil t t t t nil t nil nil nil t)
 (quail-define-rules
- ("\\mu" ?μ)
- ("\\nu" ?ν)
- ("\\all" ?∀)
- ("\\exists" ?∃)
+ ("\\m" ?μ)
+ ("\\n" ?ν)
+ ("\\l" ?λ)
+ ("\\L" ?Λ)
+ ("\\a" ?∀)
+ ("\\e" ?∃)
  ("->" ?→)
- ("\\times" ?×)
- ("\\sub" ?⊂))
+ ("\\*" ?×)
+ ("\\<" ?⊂))
 
 
  ;;;###autoload
