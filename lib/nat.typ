@@ -58,3 +58,15 @@ val rec iter'' : Nat → (Nat → Nat) → Nat → Nat =
   fun n f a → case n of
   | Z    → a
   | S p  → f (iter'' p f (f a))
+
+val 0 : Nat = Z
+val 1 : Nat = S 0
+val 2 : Nat = S 1
+val 3 : Nat = S 2
+val 4 : Nat = S 3
+val 5 : Nat = S 4
+val 6 : Nat = S 5
+val 7 : Nat = S 6
+val 8 : Nat = S 7
+val 9 : Nat = S 8
+val 10 : Nat = S 9

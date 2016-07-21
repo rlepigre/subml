@@ -110,7 +110,7 @@ and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
   let pordi = print_ordinal unfold in
   let pkindw = print_kind unfold true in
-  let t = (*!ftry_fold_def*) (repr t) in
+  let t = if unfold then repr t else !ftry_fold_def (repr t) in
   match t with
   | KVari(x) ->
       pp_print_string ff (name_of x)

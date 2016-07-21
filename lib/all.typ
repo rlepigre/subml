@@ -9,6 +9,7 @@ include "lib/set.typ"
 include "lib/natbin.typ"
 include "lib/stream.typ"
 include "lib/state_array.typ"
+include "lib/tree23.typ"
 
 (* Church encoding *)
 include "lib/church/bool.typ"

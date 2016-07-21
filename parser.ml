@@ -511,8 +511,9 @@ let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
 let eval_term : pterm -> unit = fun t ->
   let t = unbox (unsugar_term empty_env t) in
   let (k,_,_) = type_check t None in
+  let t = eval t in
   if !verbose then
-    Io.out "%a : %a\n%!" (print_term true) (eval t) (print_kind true) k
+    Io.out "%a : %a\n%!" (print_term true) t (print_kind false) k
 
 (* Load a file. *)
 let read_file : (string -> unit) ref = ref (fun _ -> assert false)
