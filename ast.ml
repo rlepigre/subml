@@ -12,6 +12,9 @@ let from_opt : 'a option -> 'a -> 'a = fun o d ->
 let from_opt' : 'a option -> (unit -> 'a) -> 'a = fun o f ->
   match o with None -> f () | Some e -> e
 
+let map_snd : ('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list = fun f l ->
+  List.map (fun (k, v) -> (k, f v)) l
+
 (****************************************************************************
  *              AST for kinds (or types), ordinals and terms                *
  ****************************************************************************)
@@ -439,7 +442,8 @@ let toabs : pos -> strpos -> (ovar -> tbox) -> tbox =
     box_apply (toabs_p p) (vbind mk_free_ovari o.elt f)
 
 let idt : tbox =
-  tabst dummy_position None (dummy_pos "x") (fun x -> box_apply dummy_pos (box_of_var x))
+  let fn x = box_apply dummy_pos (box_of_var x) in
+  tabst dummy_position None (dummy_pos "x") fn
 
 let tappl : pos -> tbox -> tbox -> tbox =
   fun p -> box_apply2 (tappl_p p)

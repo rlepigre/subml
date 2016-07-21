@@ -33,7 +33,8 @@ let rec eq_kind : int ref -> kind -> kind -> bool = fun c k1 k2 ->
     | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_ordinal c o1 o2 && eq_kbinder c f1 f2
     | (KDPrj(t1,s1), KDPrj(t2,s2)) -> s1 = s2 && eq_term c t1 t2
     | (KWith(a1,e1), KWith(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
-                                      eq_kind a1 a2 && s1 = s2 && eq_kind b1 b2
+                                      eq_kind a1 a2 && s1 = s2 &&
+                                      eq_kind b1 b2
     | (KUCst(t1,f1), KUCst(t2,f2))
     | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder c f1 f2 && eq_term c t1 t2
     | (KUVar(u1)   , KUVar(u2)   ) -> eq_kuvar u1 u2
@@ -63,26 +64,27 @@ and eq_term : int ref -> term -> term -> bool = fun c t1 t2 ->
   let rec eq_term t1 t2 =
     t1.elt == t2.elt ||
     match (t1.elt, t2.elt) with
-    | (TCoer(t1,_) , _           ) -> eq_term t1 t2
-    | (_           , TCoer(t2,_) ) -> eq_term t1 t2
-    | (TDefi(d1)   , _           ) -> eq_term d1.value t2
-    | (_           , TDefi(d2)   ) -> eq_term t1 d2.value
-    | (TKAbs(f)    , _           ) -> eq_term (subst f (KProd[])) t2
-    | (_           , TKAbs(f)    ) -> eq_term t1 (subst f (KProd[]))
-    | (TOAbs(f)    , _           ) -> eq_term (subst f (OTInt(-1))) t2
-    | (_           , TOAbs(f)    ) -> eq_term t1 (subst f (OTInt(-1)))
-    | (TVari(x1)   , TVari(x2)   ) -> eq_variables x1 x2
-    | (TAbst(_,f1) , TAbst(_,f2) )
-    | (TFixY(_,f1) , TFixY(_,f2) ) -> eq_tbinder c f1 f2
-    | (TAppl(t1,u1), TAppl(t2,u2)) -> eq_term t1 t2 && eq_term u1 u2
-    | (TReco(fs1)  , TReco(fs2)  ) -> eq_assoc eq_term fs1 fs2
-    | (TProj(t1,l1), TProj(t2,l2)) -> l1 = l2 && eq_term t1 t2
-    | (TCons(c1,t1), TCons(c2,t2)) -> c1 = c2 && eq_term t1 t2
-    | (TCase(t1,l1,d1), TCase(t2,l2,d2)) -> eq_term t1 t2 && eq_assoc eq_term l1 l2
-                                            && eq_option eq_term d1 d2
-    | (TPrnt(s1)   , TPrnt(s2)   ) -> s1 = s2
-    | (TCnst(c1)   , TCnst(c2)   ) -> eq_tcnst c c1 c2
-    | (_           , _           ) -> false
+    | (TCoer(t1,_)    , _              ) -> eq_term t1 t2
+    | (_              , TCoer(t2,_)    ) -> eq_term t1 t2
+    | (TDefi(d1)      , _              ) -> eq_term d1.value t2
+    | (_              , TDefi(d2)      ) -> eq_term t1 d2.value
+    | (TKAbs(f)       , _              ) -> eq_term (subst f (KProd[])) t2
+    | (_              , TKAbs(f)       ) -> eq_term t1 (subst f (KProd[]))
+    | (TOAbs(f)       , _              ) -> eq_term (subst f (OTInt(-1))) t2
+    | (_              , TOAbs(f)       ) -> eq_term t1 (subst f (OTInt(-1)))
+    | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
+    | (TAbst(_,f1)    , TAbst(_,f2)    )
+    | (TFixY(_,f1)    , TFixY(_,f2)    ) -> eq_tbinder c f1 f2
+    | (TAppl(t1,u1)   , TAppl(t2,u2)   ) -> eq_term t1 t2 && eq_term u1 u2
+    | (TReco(fs1)     , TReco(fs2)     ) -> eq_assoc eq_term fs1 fs2
+    | (TProj(t1,l1)   , TProj(t2,l2)   ) -> l1 = l2 && eq_term t1 t2
+    | (TCons(c1,t1)   , TCons(c2,t2)   ) -> c1 = c2 && eq_term t1 t2
+    | (TCase(t1,l1,d1), TCase(t2,l2,d2)) -> eq_term t1 t2 &&
+                                            eq_assoc eq_term l1 l2 &&
+                                            eq_option eq_term d1 d2
+    | (TPrnt(s1)      , TPrnt(s2)      ) -> s1 = s2
+    | (TCnst(c1)      , TCnst(c2)      ) -> eq_tcnst c c1 c2
+    | (_              , _              ) -> false
   in eq_term t1 t2
 
 and eq_tcnst c (f1,a1,b1) (f2,a2,b2) =

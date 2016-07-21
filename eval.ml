@@ -1,55 +1,65 @@
+open Position
 open Bindlib
 open Ast
-open Format
-open Position
 
+(* Call-by-value function. Raises the exception Assert_failure on runtime
+   error, but this should never happen... *)
 let rec eval : term -> term = fun t0 ->
   match t0.elt with
-  | TCoer(t,_) -> eval t
-  | TVari(_)   -> t0
-  | TAbst(_,_) -> t0
-  | TKAbs(f)   -> eval (subst f (KProd []))
-  | TOAbs(f)   -> eval (subst f (OTInt(-1)))
-  | TAppl(t,u) ->
+  (* Type annotations are ignored. *)
+  | TCoer(t,_)   -> eval t
+  | TKAbs(f)     -> eval (subst f (KProd []))
+  | TOAbs(f)     -> eval (subst f (OTInt(-1)))
+  (* Unfold definition. *)
+  | TDefi(v)     -> eval v.value
+  (* A value has been reached. *)
+  | TVari(_)     -> t0
+  | TAbst(_,_)   -> t0
+  | TFixY(_)     -> t0
+  (* Evaluate under products and constructors. *)
+  | TReco(l)     -> treco_p t0.pos (map_snd eval l)
+  | TCons(s,t)   -> tcons_p t0.pos s (eval t)
+  (* Print instruction. *)
+  | TPrnt(s)     -> Io.out "%s%!" s; treco_p t0.pos []
+  (* Constructors that should never appear in evaluation. *)
+  | TCnst(_)     -> assert false
+  | TTInt(_)     -> assert false
+  (* Call-by-value application (λ-abstraction and fixpoint). *)
+  | TAppl(t,u)   ->
       begin
-        let u' = eval u in
+        let u = eval u in
         let rec fn t =
-          let t' = eval t in
-          match t'.elt with
-          | TAbst(_,b) -> eval (subst b u'.elt)
-          | TFixY(_,f) -> fn (subst f t'.elt)
-          | t          -> dummy_pos (TAppl(t',u'))
+          let t = eval t in
+          match t.elt with
+          | TAbst(_,b) -> eval (subst b u.elt)
+          | TFixY(_,f) -> fn (subst f t.elt)
+          | _          -> assert false
         in fn t
       end
-  | TReco(l)   -> in_pos t0.pos (TReco (List.map (fun (s,t) -> (s, eval t)) l))
-  | TProj(t,l) ->
+  (* Record projection. *)
+  | TProj(t,l)   ->
       begin
-        let t' = eval t in
-        match t'.elt with
+        let t = eval t in
+        match t.elt with
         | TReco(fs) ->
             begin
-              try eval (List.assoc l fs)
-              with Not_found -> dummy_pos (TProj(t',l))
+              try List.assoc l fs (* Fields already evaluated. *)
+              with Not_found -> assert false
             end
-        | t         -> dummy_pos (TProj(t',l))
+        | _         -> assert false
       end
-  | TCons(s,t) -> in_pos t0.pos (TCons(s, eval t))
+  (* Case analysis. *)
   | TCase(t,l,d) ->
       begin
-        let t' = eval t in
-        match t'.elt with
+        let t = eval t in
+        match t.elt with
         | TCons(c,v) ->
             begin
-              try eval (dummy_pos (TAppl(List.assoc c l, v)))
+              try eval (tappl_p dummy_position (List.assoc c l) v)
               with Not_found ->
                 match d with
-                | None -> dummy_pos (TCase(t',l,d))
-                | Some f -> eval (dummy_pos (TAppl(f, t')))
+                | None   -> assert false
+                | Some d -> eval (tappl_p dummy_position d t)
             end
-        | t          -> dummy_pos (TCase(t',l,d))
+        | _          -> assert false
       end
-  | TDefi(v)   -> eval v.value
-  | TPrnt(s)   -> Io.out "%s%!" s; in_pos t0.pos (TReco [])
-  | TFixY(_)   -> t0
-  | TCnst(_)   -> invalid_arg "Constant during evaluation."
-  | TTInt(_)   -> invalid_arg "Integer tag during evaluation."
