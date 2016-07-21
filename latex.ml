@@ -268,7 +268,8 @@ and print_term unfold lvl ff t =
      begin
        match l,d with
        | [c,{elt = TAbst(_,f)}], None when
-             let x = free_of (new_tvari (binder_name f)) in (subst f x).elt == x ->
+             let x = free_of (new_tvari (binder_name f)) in
+             (subst f x).elt == x ->
           fprintf ff "\\mathrm{%s}.%a" c (print_term 0) t
        | _ ->
           fprintf ff "\\case{%a}{%a%a}"
@@ -327,7 +328,8 @@ let print_epsilon_tbls ch =
     let k = subst f (free_of x) in
     let symbol = if is_exists then "\\in" else "\\notin" in
       fprintf ch "%s_{%d} &= \\epsilon_{%s}(%a %s %a)\\\\\n" name index
-      (name_of x) (print_term false) u symbol (print_kind false) k) !epsilon_type_tbl;
+      (name_of x) (print_term false) u symbol (print_kind false) k)
+    !epsilon_type_tbl;
   List.iter (fun (o,n) ->
     fprintf ch "%a &= %a\\\\\n" (print_ordinal false) o
     (print_ordinal true) o) !ordinal_tbl
@@ -361,7 +363,9 @@ let print_calls ff arities calls =
   in
   fprintf ff "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
   let print_args ff j =
-    let (_, aj, prj) = try List.assoc j arities with Not_found -> assert false in
+    let (_, aj, prj) =
+      try List.assoc j arities with Not_found -> assert false
+    in
     for j = 0 to aj - 1 do
       fprintf ff "%s%t" (if j = 0 then "" else ",") (snd prj.(j))
     done
@@ -372,8 +376,12 @@ let print_calls ff arities calls =
   List.iter f (List.filter (fun (i,_) ->
     List.exists (fun (j,k,_) -> i = j || i =k) calls) arities);
   let print_call arities (i,j,m) =
-    let (namej, aj, prj) = try List.assoc j arities with Not_found -> assert false in
-    let (namei, ai, pri) = try List.assoc i arities with Not_found -> assert false in
+    let (namej, aj, prj) =
+      try List.assoc j arities with Not_found -> assert false
+    in
+    let (namei, ai, pri) =
+      try List.assoc i arities with Not_found -> assert false
+    in
     fprintf ff "    N%d -> N%d [label = \"(" j i;
     for i = 0 to ai - 1 do
       if i > 0 then fprintf ff ",";
@@ -453,18 +461,18 @@ let print_typing_proof    ch p = Proof.output ch (typ2proof p)
 let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
 
 let rec output ch = function
-  | Kind(n,unfold,k) -> break_hint := n; print_kind unfold ch k; break_hint := 0
-  | Term(n,unfold,t) -> break_hint := n; print_term unfold ch t; break_hint := 0
-  | Text(t)        -> fprintf ch "%s" t
-  | List(l)        -> fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
+  | Kind(n,ufd,k) -> break_hint := n; print_kind ufd ch k; break_hint := 0
+  | Term(n,ufd,t) -> break_hint := n; print_term ufd ch t; break_hint := 0
+  | Text(t)       -> fprintf ch "%s" t
+  | List(l)       -> fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof (p,(arities,calls)) ->
      print_subtyping_proof ch p;
      fprintf ch "\\begin{center}\n";
      if calls <> [] then print_calls ch arities calls;
      fprintf ch "\\end{center}\n%!";
-  | TProof p       -> print_typing_proof ch p
-  | Witnesses      -> print_epsilon_tbls ch; reset_epsilon_tbls ()
-  | KindDef(n,t)     ->
+  | TProof p      -> print_typing_proof ch p
+  | Witnesses     -> print_epsilon_tbls ch; reset_epsilon_tbls ()
+  | KindDef(n,t)  ->
      let name = t.tdef_tex_name in
      let f = t.tdef_value in
      let oargs = mbinder_names f in

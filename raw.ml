@@ -92,6 +92,10 @@ let apply_rpat x t =
      in
      in_pos t.pos (PLAbs([in_pos t.pos name, None],t))
 
+let pcond _loc c t e =
+  let l = [("Tru", Simple None, t); ("Fls", Simple None, e)] in
+  in_pos _loc (PCase(c, l, None))
+
 (****************************************************************************
  *                         Environment management                           *
  ****************************************************************************)

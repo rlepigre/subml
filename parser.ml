@@ -334,7 +334,7 @@ and term_llet = let_kw r:is_rec n:int_lit? pat:rpat "=" t:term in_kw u:term ->
   in_pos _loc (PAppl(apply_rpat pat u, t))
 
 and term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
-  in_pos _loc (PCase(c, [("Tru", Simple None, t); ("Fls", Simple None, e)], None))
+  pcond _loc c t e
 
 and term_reco = (list_sep field ";") _:";"?
 and term_prod = l:(glist_sep'' term comma) -> build_prod l
