@@ -34,6 +34,7 @@ let output : string -> formatter = fun chname ->
   make_formatter out flush
 
 let input : string -> Input.buffer = fun filename ->
+  let filename = Filename.concat "lib/" filename in
   let args = [|Js.Unsafe.inject (Js.string filename)|] in
   let res = Js.to_string (Js.Unsafe.fun_call syncload args) in
   Input.buffer_from_string ~filename res

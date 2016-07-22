@@ -520,8 +520,13 @@ let include_file : string -> unit = fun fn ->
   let s_ignore_latex = !ignore_latex in ignore_latex := true;
   let s_verbose = !Ast.verbose in Ast.verbose := false;
   (* FIXME should we save something else ? *)
-  !read_file fn;
-  ignore_latex := s_ignore_latex; Ast.verbose := s_verbose
+  try
+    !read_file fn;
+    ignore_latex := s_ignore_latex; Ast.verbose := s_verbose
+  with e ->
+    ignore_latex := s_ignore_latex; Ast.verbose := s_verbose;
+    raise e
+
 
 let output_html : strpos -> unit = fun id ->
   try

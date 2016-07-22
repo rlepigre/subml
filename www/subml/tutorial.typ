@@ -77,7 +77,7 @@ eval (fun x y → x) zero two
 eval (fun x y z → x)
 
 (* The command [eval] can be used in the editor to  evaluate  a  term.  The *)
-(* obtained value is the displayed in the log. Note than an error is raised *)  
+(* obtained value is the displayed in the log. Note than an error is raised *)
 (* if the type of the expression cannot be inferred.                        *)
 
 val idCurry : ∀X X → X = ΛX fun (x : X) → (x : X)
@@ -89,7 +89,7 @@ val idCurry : ∀X X → X = ΛX fun (x : X) → (x : X)
 (* the bound type variables should correspond exactly to the  name  of  the *)
 (* corresponding variable in the type.                                      *)
 
-include "lib/list.typ"
+include "list.typ"
 
 val l : List(Boolean) = cons True (cons False nil)
 
