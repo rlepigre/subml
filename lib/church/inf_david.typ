@@ -1,5 +1,5 @@
 (* l'inf de René David sur les entier de Church ... prove que le typage de René est correct *)
-include "lib/church/bool.typ"
+include "church/bool.typ"
 
 type Nat = ∀X ((X → X) → X → X)
 type List(A) = ∀X ((A → X → X) → X → X)

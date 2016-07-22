@@ -1,6 +1,6 @@
 (* state monad, using Church encoding for pairs *)
 
-include "lib/church/data.typ"
+include "church/data.typ"
 
 type State(V,X) = V → Pair(V,X)
 type Unit = ∀X (X → X)

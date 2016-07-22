@@ -1,7 +1,7 @@
 (* Scott like encoding for streams with co-inductive type*)
 
-include "lib/church/data.typ"
-include "lib/scott/natbin.typ"
+include "church/data.typ"
+include "scott/natbin.typ"
 
 type F_Stream(A,K) = ∃S Triple(S,S→A,S→K)
 type Stream(A) = νK F_Stream(A,K)

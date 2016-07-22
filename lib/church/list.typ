@@ -1,9 +1,9 @@
 (* list using Church encoding *)
 
-include "lib/church/nat.typ"
-include "lib/church/bool.typ"
-include "lib/church/data.typ"
-include "lib/church/error.typ"
+include "church/nat.typ"
+include "church/bool.typ"
+include "church/data.typ"
+include "church/error.typ"
 
 type List(A) = ∀X ((A → X → X) → X → X)
 

@@ -1,5 +1,5 @@
 (* List library. *)
-include "lib/nat.typ"
+include "nat.typ"
 
 type List(A) = μX [Nil of {} | Cons of {hd : A; tl : X}]
 

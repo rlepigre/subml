@@ -34,7 +34,7 @@ val rec mapAList : ∀X ∀Y (X → Y) → AList(X) → AList(Y) = fun f l →
   | e::l                → f e :: mapAList f l
   | App{left=l;right=r} → App{left = mapAList f l; right = mapAList f r}
 
-include "lib/list.typ"
+include "list.typ"
 
 (* A term in the type List(A) can be used as a term type AList(A). *)
 val fromList : ∀X List(X) → AList(X) = fun l → l

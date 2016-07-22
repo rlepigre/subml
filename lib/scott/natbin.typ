@@ -1,8 +1,8 @@
 (* Binary coding of natural numbers, using Church encoding and typed *)
 
-include "lib/church/bool.typ"
-include "lib/church/data.typ"
-include "lib/church/error.typ"
+include "church/bool.typ"
+include "church/data.typ"
+include "church/error.typ"
 
 type FBin(K) = ∀X((K → X) → (K → X) → X → X)
 type Bin = μK FBin(K)

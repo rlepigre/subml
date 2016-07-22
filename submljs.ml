@@ -49,5 +49,5 @@ let _ =
   (* Register callback. *)
   Js.Unsafe.set js_self (Js.string "onmessage") onmessage;
   (* Load the prelude. *)
-  ignore (handle_exception false full_of_buffer (Io.file "lib/prelude.typ"));
-  Io.log "File \"lib/prelude.typ\" loaded\n%!"
+  ignore (handle_exception false full_of_buffer (Io.file "prelude.typ"));
+  Io.log "File \"prelude.typ\" loaded\n%!"

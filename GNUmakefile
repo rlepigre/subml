@@ -1,3 +1,5 @@
+include Makefile.config
+
 all: subml.byte subml.native
 
 .PHONY: www
@@ -19,10 +21,9 @@ deploy: www
 	ssh $(LOGIN)@lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/*
 	scp -r www/* $(LOGIN)@lama.univ-savoie.fr:/home/rlepi/WWW/subml
 
-DESTDIR=/usr/local/bin
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
 	bindlib/bindlib.ml decap/ahash.ml decap/input.ml decap/decap.ml \
-	system.ml io.ml timed.ml refinter.ml position.ml ast.ml compare.ml \
+  config.ml system.ml io.ml timed.ml refinter.ml position.ml ast.ml compare.ml \
   type.ml eval.ml print.ml latex.ml sct.ml raw.ml typing.ml parser.ml \
   proof.ml graph.ml
 
@@ -31,6 +32,9 @@ subml.native: $(MLFILES) subml.ml
 
 subml.byte: $(MLFILES) subml.ml
 	ocamlbuild -cflags -w,-3-30 $@
+
+config.ml: config.tmpl
+	sed -e 's!_PATH_!\"$(LIBDIR)\"!' $< > $@
 
 submljs.byte: $(MLFILES) submljs.ml
 	ocamlbuild -pkgs lwt.syntax,js_of_ocaml,js_of_ocaml.syntax -cflags -syntax,camlp4o,-w,-3-30 -use-ocamlfind $@
@@ -68,7 +72,12 @@ distclean: clean
 	cd genex && make distclean
 
 install: all
-	install ./subml.native $(DESTDIR)/subml
+	install ./subml.native $(BINDIR)/subml
+	install -d $(LIBDIR) $(LIBDIR)/church $(LIBDIR)/scott $(LIBDIR)/munu
+	install ./lib/*.typ	$(LIBDIR)
+	install ./lib/church/*.typ	$(LIBDIR)/church
+	install ./lib/scott/*.typ	$(LIBDIR)/scott
+	install ./lib/munu/*.typ	$(LIBDIR)/munu
 
 subml-latest.tar.gz: $(MLFILES)
 	rm -rf subml-latest

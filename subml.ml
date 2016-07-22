@@ -59,7 +59,7 @@ let rec interact () =
 let _ =
   System.handle_stop true;
   Arg.parse spec (fun fn -> files := !files @ [fn]) usage;
-  let files = if !prelude then "lib/prelude.typ" :: !files else !files in
+  let files = if !prelude then "prelude.typ" :: !files else !files in
   let eval = Parser.handle_exception false Parser.eval_file in
   if not (List.for_all eval files) then exit 1;
   if not !quit then interact ()

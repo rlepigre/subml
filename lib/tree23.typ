@@ -31,9 +31,12 @@ type ITree23(A,B) = [
 
 check Tree23([A],[B]) ⊂ ITree23([A],[B])
 
-val node4 = fun t →
-  let (t1,y1,d1,t2,y2,d2,t3,y3,d3,t4) = t in
-    INode2(Node2(t1,y1,d1,t2),y2,d2,Node2(t3,y3,d3,t4))
+val node4 : ∀A∀B (Tree23(A,B) × A × B ×
+                   Tree23(A,B) × A × B ×
+                   Tree23(A,B) × A × B × Tree23(A,B) → ITree23(A,B))
+  = fun t →
+    let (t1,y1,d1,t2,y2,d2,t3,y3,d3,t4) = t in
+      INode2(Node2(t1,y1,d1,t2),y2,d2,Node2(t3,y3,d3,t4))
 
 val rec insert_aux : ∀A∀B (A → A → Cmp) → A → B → Tree23(A,B) → ITree23(A,B) =
   fun compare x d t →
@@ -70,7 +73,7 @@ val insert : ∀A∀B (A → A → Cmp) → A → B → Tree23(A,B) → Tree23(A
     | INode2(t21,y21,d21,t22) →  Node2(t21,y21,d21,t22)
     | t → t
 
-include "lib/nat.typ"
+include "nat.typ"
 
 val t0 = insert compare 0 0 Nil
 val t1 = insert compare 1 1 t0

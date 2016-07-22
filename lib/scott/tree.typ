@@ -1,6 +1,6 @@
 (* Scott like encoding for binary trees with inductive type *)
 
-include "lib/scott/natbin.typ"
+include "scott/natbin.typ"
 
 (* Type of trees with data of type A at leaves and data of type B at nodes *)
 

@@ -1,5 +1,5 @@
 (* Encoding of streams with co-inductive types and native products *)
-include "lib/nat.typ"
+include "nat.typ"
 
 type Stream(A) = ν K ∃S { car : S → A; cdr : S → K; state : S}
 type Stream0(A,S) = ν K { car : S → A; cdr : S → K; state : S}

@@ -1,7 +1,7 @@
 (* State monad, with an array (a list in fact) as state *)
 
-include "lib/list.typ"
-include "lib/nat.typ"
+include "list.typ"
+include "nat.typ"
 
 type State(T,X) = List(Nat × T) → List(Nat × T) × X
 

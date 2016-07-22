@@ -10,14 +10,14 @@ val tail : ∀A Stream(A) → Stream(A) = λs.s (λs1 f a.pack (f s1) f a)
 
 val map = λf s.pack s tail (λs.f (head s))
 
-include "lib/church/data.typ"
+include "church/data.typ"
 
 val cons : ∀A A → Stream(A) → Stream(A) =
     ΛA λa s.pack (inl a):Sum(A,Stream(A))
               (λx.caseof x (λa.inr s) (λs.inr (tail s)))
               (λx.caseof x (λa.a)     (λs.head s))
 
-include "lib/church/nat.typ"
+include "church/nat.typ"
 
 val all_int = pack 0 (λx.add x 1) (λx.x)
 

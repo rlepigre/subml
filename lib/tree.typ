@@ -54,7 +54,7 @@ val insert : ∀X (X → X → Cmp) → X → RBTree(X) → RBTree(X) = fun cmp 
   blackRoot (insert_aux cmp e t)
 
 
-include "lib/nat.typ"
+include "nat.typ"
 type NTree = RBTree(Nat)
 
 val insert : Nat → NTree → NTree = insert compare

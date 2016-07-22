@@ -1,5 +1,5 @@
-include "lib/list.typ"
-include "lib/nat.typ"
+include "list.typ"
+include "nat.typ"
 
 type T(A) = μX List(A × X)
 

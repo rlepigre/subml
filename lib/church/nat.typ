@@ -32,7 +32,7 @@ val pred : CNat → CNat = fun n →
   n (fun p x y → p (s x) x) (fun x y → y) z z
 
 (* Maurey's inferior function. *)
-include "lib/church/bool.typ"
+include "church/bool.typ"
 val leq : CNat → CNat → CBool = fun n m →
   n (fun f g → g f) (fun i → ctru)
   (m (fun f g → g f) (fun i → cfls))
@@ -40,7 +40,7 @@ val leq : CNat → CNat → CBool = fun n m →
 val eq : CNat → CNat → CBool = fun n m →
   and (leq n m) (leq m n)
 
-include "lib/church/data.typ"
+include "church/data.typ"
 val pred2 : CNat → CNat = fun n → pi2 (n
         (fun p →  pair (s (pi1 p)) (pi1 p))
         (pair z z))

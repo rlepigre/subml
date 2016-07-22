@@ -7,11 +7,6 @@ type fmts =
   ; mutable tex : formatter
   ; mutable htm : formatter }
 
-let read_file : (string -> Input.buffer) ref =
-  let read_file filename =
-    Input.buffer_from_channel ~filename (open_in filename)
-  in ref read_file
-
 let fmts =
   { out = std_formatter
   ; err = err_formatter
@@ -40,6 +35,18 @@ let (open_out, close_out) =
     | exception Not_found -> invalid_arg ("The file " ^ fn ^ " is not open.")
   in
   (open_out, close_out)
+
+let read_file : (string -> Input.buffer) ref = ref (fun name ->
+  let rec fn = function
+    | [] -> err "Can not open file %S\n%!" name; exit 1
+    | path::l ->
+       try
+	 let filename = Filename.concat path name in
+	 Input.buffer_from_channel ~filename (open_in filename)
+       with
+	 _ -> fn l
+  in
+  fn !Config.path)
 
 let file fn = !read_file fn
 
