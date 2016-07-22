@@ -44,6 +44,9 @@ let spec = Arg.align
         'u': unification
         'y': size change principle
         'm': sct matrix coefficient" )
+  ; ( "-I"
+    , Arg.String (fun s -> Config.path := s :: ! Config.path)
+    , "s  Add the given directory to the path")
   ]
 
 open Graph

@@ -65,6 +65,7 @@ clean:
 	ocamlbuild -clean
 
 distclean: clean
+	rm -f config.ml
 	rm -f *~ lib/*~
 	rm -rf subml-latest subml-latest.tar.gz
 	rm -f subml.js
