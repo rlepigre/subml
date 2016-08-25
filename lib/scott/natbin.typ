@@ -138,6 +138,9 @@ val mod : Bin → Bin → Bin n m = pi2 (euclide n m)
 val rec printb : Bin → {} = fun n →
   n (λnp. printb np; print("0")) (λnp. printb np; print("1")) {}
 
+val printb : Bin → {} = fun n →
+  printb n; print("\n")
+
 (* Printing in decimal (quite slow)*)
 val print_dec : Bin → {} = fun n → n
   (λnp.np (λnpp.npp (λx.print("8")) (λx.print("4")) print("?"))
@@ -145,6 +148,9 @@ val print_dec : Bin → {} = fun n → n
   (λnp.np (λnpp.npp (λx.print("9")) (λx.print("5")) print("?"))
           (λnpp.npp (λx.print("?")) (λx.print("7")) print("3")) print("1"))
   print("0")
+
+val print_dec : Bin → {} = fun n →
+  print_dec n; print("\n")
 
 (* fail termination
 val rec print : Bin → {} = λn. (euclide n 10)

@@ -57,4 +57,7 @@ val inf : CNat -> CNat -> CNat = fun n m →
   n a (λp.z) m
 
 val printCNat : CNat → {} = fun n →
-  n (fun f _ → print("s"); f {}) (fun _ → print("0")) {}
+  n (fun f _ → print("S"); f {}) (fun _ → print("0")) {}
+
+val printCNat : CNat → {} = fun n →
+  printCNat n; print("\n");

@@ -9,4 +9,4 @@ val catch : ∀K∀K' (Err(K) → (K → K') → K' → K')
   = fun e f g → e (λx. f x) g
 
 val printErr : ∀K (K → {}) → Err(K) → {}
-  = fun pr x → x (fun x _ → pr x) (fun _ → print("Error")) {}
+  = fun pr x → x (fun x _ → pr x) (fun _ → print("Error\n")) {}
