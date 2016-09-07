@@ -15,23 +15,23 @@ let subtype_error : string -> 'a =
   fun msg -> raise (Subtype_error msg)
 
 type subtype_ctxt =
-  { induction_hyp     : induction_type list
+  { sub_induction_hyp : sub_induction list
+  ; fix_induction_hyp : fix_induction list
   ; top_induction     : int * (int * ordinal) list
   ; fun_table         : fun_table
   ; calls             : pre_calls ref
   ; delayed           : (unit -> unit) list ref
   ; positive_ordinals : (ordinal * ordinal) list }
 
-and induction_type =
+and sub_induction =
   (* induction hypothesis for subtyping *)
-  | Sub of
       int                  (* the index of the induction hyp *)
     * int list             (* the index of positive ordinals *)
     * kind * kind          (* the two kinds *)
     * (int * ordinal) list (* the ordinal parameters *)
 
   (* induction hypothesis for typing recursive programs *)
-  | Rec of
+and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
     * kind                    (* the initial type *)
               (* the induction hypothesis collected so far for this fixpoint *)
@@ -44,7 +44,8 @@ and induction_type =
          inductive proof. Depth first here is bad, using too large depth *)
 
 let empty_ctxt () =
-  { induction_hyp = []
+  { sub_induction_hyp = []
+  ; fix_induction_hyp = []
   ; top_induction = (-1, [])
   ; fun_table = init_fun_table ()
   ; calls = ref []
@@ -277,7 +278,7 @@ let check_rec
       (* Search for the inductive hypothesis *)
       (*Io.log "\n\nIND len(os) = %d\n%!" (List.length os);
         Io.log "IND (%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
-      List.iter (function Rec _ -> () | Sub(index,p0,a0,b0,os0) ->
+      List.iter (function (index,p0,a0,b0,os0) ->
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
@@ -286,11 +287,11 @@ let check_rec
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index os true;
           raise (Induction_hyp index)
-        )) ctxt.induction_hyp;
+        )) ctxt.sub_induction_hyp;
       let fnum = new_function ctxt.fun_table "S" (List.map Latex.ordinal_to_printer os) in
       add_call ctxt fnum os false;
       let ctxt = { ctxt with
-        induction_hyp = Sub(fnum, p', a', b', os)::ctxt.induction_hyp;
+        sub_induction_hyp = (fnum, p', a', b', os)::ctxt.sub_induction_hyp;
         top_induction = (fnum, os)
       }
       in
@@ -669,11 +670,10 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
 and check_fix ctxt t n f c =
   (* filter the relevant hypothesis *)
-  let hyps = List.filter (function Rec(f',_,_,_) -> f' == f | _ -> false)
-    ctxt.induction_hyp in
+  let hyps = List.filter (function (f',_,_,_) -> f' == f) ctxt.fix_induction_hyp in
   let a, remains, hyps =
     match hyps with
-    | [Rec(_,a,l,r)] -> a, r, Some (l) (* see comment on Rec above *)
+    | [(_,a,l,r)] -> a, r, Some (l) (* see comment on Rec above *)
     | [] -> c, ref [], None
     | _ -> assert false
   in
@@ -700,7 +700,7 @@ and check_fix ctxt t n f c =
     let hyps = if os <> [] then [fnum,c0,os] else [] in
     let ctxt =
       { ctxt with
-        induction_hyp = Rec(f,a,ref hyps, remains)::ctxt.induction_hyp;
+        fix_induction_hyp = (f,a,ref hyps, remains)::ctxt.fix_induction_hyp;
         top_induction = fnum, os
       }
     in
