@@ -23,10 +23,25 @@ type subtype_ctxt =
   ; positive_ordinals : (ordinal * ordinal) list }
 
 and induction_type =
-  | Sub of int * int list * kind * kind * (int * ordinal) list
-  | Rec of (term',term) binder * kind *
-      (int * kind * (int * ordinal) list) list ref *      (* induction hyps *)
-      (subtype_ctxt * term * kind * typ_prf ref) list ref (* missing proofs *)
+  (* induction hypothesis for subtyping *)
+  | Sub of
+      int                  (* the index of the induction hyp *)
+    * int list             (* the index of positive ordinals *)
+    * kind * kind          (* the two kinds *)
+    * (int * ordinal) list (* the ordinal parameters *)
+
+  (* induction hypothesis for typing recursive programs *)
+  | Rec of
+      (term',term) binder     (* the argument of the fixpoint combinator *)
+    * kind                    (* the initial type *)
+              (* the induction hypothesis collected so far for this fixpoint *)
+    * (int                    (* reference of the inductive hyp *)
+       * kind                 (* the type for this hypothesis *)
+       * (int * ordinal) list (* the ordinal parameters *))
+      list ref
+    * (subtype_ctxt * term * kind * typ_prf ref) list ref (* proofs yet to be done *)
+      (* The use of references here is to do a breadth-first search for
+         inductive proof. Depth first here is bad, using too large depth *)
 
 let empty_ctxt () =
   { induction_hyp = []
@@ -228,12 +243,19 @@ let add_positives ctxt gamma =
 
 exception Induction_hyp of int
 
-(* The boolean is true if we can apply the induction hypothesis. *)
-let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option * subtype_ctxt =
-  fun t ctxt a b ->
+type induction =
+  | UseInduction of int
+  | NewInduction of int option
+
+(* check is a subtyping can be deduced from an induction hypothesis,
+   if this is not possible, the subtyping may be added as induction
+   hypothesis that we can use later *)
+let check_rec
+    : term -> subtype_ctxt -> kind -> kind -> induction * subtype_ctxt
+  = fun t ctxt a b ->
     (* the test (has_uvar a || has_uvar b) is important to
        - avoid occur chek for induction variable
-       - to keep the invariant that no ordinal <> OConv occur in
+       - to preserve, when possible, the invariant that no ordinal <> OConv occur in
        positive mus and negative nus *)
     (* has_leading_exists, is to keep maximum information about
        existential witnesses otherwise some dot projection fail *)
@@ -252,9 +274,13 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
         in
         List.sort compare (List.map fst l)
       in
+      (* Search for the inductive hypothesis *)
       (*Io.log "\n\nIND len(os) = %d\n%!" (List.length os);
         Io.log "IND (%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
       List.iter (function Rec _ -> () | Sub(index,p0,a0,b0,os0) ->
+        (* hypothesis apply if same type up to the parameter and same positive ordinals.
+           An inclusion beween p' and p0 should be enough, but this seems complete that
+           way *)
         if Timed.pure_test (fun () -> p' = p0 && eq_kind a' a0 && eq_kind b0 b') () then (
           assert (List.length os = Sct.arity index ctxt.fun_table);
           Io.log_sub "By induction\n\n%!";
@@ -268,9 +294,9 @@ let check_rec : term -> subtype_ctxt -> kind -> kind -> int option * int option 
         top_induction = (fnum, os)
       }
       in
-      (Some fnum, None, ctxt)
-    with Exit -> (None, None, ctxt)
-       | Induction_hyp n -> (None, Some n, ctxt)
+      (NewInduction (Some fnum), ctxt)
+    with Exit -> (NewInduction None, ctxt)
+       | Induction_hyp n -> (UseInduction n, ctxt)
 
 let fixpoint_depth = ref 2
 
@@ -289,11 +315,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (print_term false) t (print_kind false) a (print_kind false) b
     print_positives ctxt;
   if eq_kind a b then (t, a0, b0, None, Sub_Lower) else (
-  let (ind_ref, ind_hyp, ctxt) = check_rec t ctxt a b in
+    let (ind_res, ctxt) = check_rec t ctxt a b in
+
+  match ind_res with
+  | UseInduction n -> (t, a0, b0, None, Sub_Ind n)
+  | NewInduction ind_ref ->
   let r = (* FIXME: le témoin n'est pas le bon *)
-    match ind_hyp with
-    | Some n -> Sub_Ind n
-    | _ ->
     match (a,b) with
     | (MuRec(ptr,a), _           ) ->
        Sub_FixM_l(subtype ctxt t a b0)
@@ -639,23 +666,37 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       type_error t.pos msg
   in (t, c, r)
 
+(* Check if the typing of a fixpoint comes from an induction hypothesis *)
 and check_fix ctxt t n f c =
+  (* filter the relevant hypothesis *)
   let hyps = List.filter (function Rec(f',_,_,_) -> f' == f | _ -> false)
     ctxt.induction_hyp in
   let a, remains, hyps =
     match hyps with
-    | [Rec(_,a,l,s)] -> a, s, Some (l)
+    | [Rec(_,a,l,r)] -> a, r, Some (l) (* see comment on Rec above *)
     | [] -> c, ref [], None
     | _ -> assert false
   in
-  (* This is the subtyping that means that the program is typed *)
+  (* This is the subtyping that means that the program is typed, as in ML
+     x : A |- t : A => Y \x.t : A *)
   let prf0 = subtype ctxt t a c in
   let (_, c0, os) = decompose Pos (KProd []) c in
-  match hyps with None ->
+  match hyps with
+  | None ->
+    (* No induction hypothesis was found, we create a new one, unroll
+       the fixpoint and initiate the proof search in breadth-first.
+       Remark: in general, fixpoint are unrolled twice (except when
+       using explicitely sized types).  The first time, mu/nu are
+       annotated with size, the second time to try applying the
+       induction hypothesis.
+       Fixpoint may be unrolled more that twice. This is important for some
+       function. However, this is expensive ...
+    *)
     let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os) in
     Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
       (print_kind false) c (print_kind false) c0;
     add_call ctxt fnum os false;
+    (* do not register any hypothesis if the are no ordinal parameters *)
     let hyps = if os <> [] then [fnum,c0,os] else [] in
     let ctxt =
       { ctxt with
@@ -665,17 +706,26 @@ and check_fix ctxt t n f c =
     in
     let ptr = ref dummy_proof in
     remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;
-    let rec kn n =
+    (* The main function doing the breadth-first search for the proof *)
+    (* n : the current depth *)
+    let rec breadth_first n =
       if n = 0 && !remains <> [] then
+         (* the fixpoint was unrolled as much as allowed, and
+            no applicable induction hyp was found. *)
         type_error t.pos "can not relate termination depth"
       else
+        (* otherwise we unroll once more, and type-check *)
         let l = !remains in
         remains := [];
         List.iter (fun (c,t,k,ptr) -> ptr := type_check c t k) l;
-        if !remains = [] then Typ_TFix(fnum,prf0,ptr) else kn (n-1)
+        if !remains = [] then Typ_TFix(fnum,prf0,ptr) else breadth_first (n-1)
     in
-    kn n
+    breadth_first n
+
+  (* we reach this point when we are call from type_check inside
+     breadth_fitst above *)
   | Some ({contents = hyps } as hyps_ptr) ->
+     (* fn search for an applicable inductive hypothesis *)
      Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
        (print_kind false) c print_positives ctxt;
     let rec fn = function
@@ -686,13 +736,15 @@ and check_fix ctxt t n f c =
            let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
            let a = recompose a ov in
            Io.log_typ "searching induction hyp (2) with %d:\n%!" fnum;
-              (* need full subtype to be sure to fail if sct fails *)
+           (* need full subtype to rollback unification of variables it it fails *)
            let prf, _ = full_subtype ~ctxt ~term:t  a c in
            add_call ctxt fnum ov true;
-           Typ_YH(fnum,prf) (* FIXME: should we keep prf0 too ? *)
+           Typ_YH(fnum,prf) (* FIXME: should we keep prf0 in the proof too ? *)
          with Subtype_error _ -> fn hyps
     in
     try fn hyps with Not_found ->
+      (* No inductive hypothesis applies, we add a new induction hyp and
+         record the unproved judgment with the other *)
       let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os) in
       Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
         (print_kind false) c (print_kind false) c0;
