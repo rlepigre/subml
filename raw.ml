@@ -237,7 +237,8 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                          let pos =
                            if first then pt.pos else
                            let open Position in
-                           { pt.pos with loc_start = x.pos.loc_start }
+                           { pt.pos with line_start = x.pos.line_start
+                           ; col_start = x.pos.col_start }
                          in
                          tabst pos ko x f
                    in aux true env vs

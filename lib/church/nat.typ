@@ -60,4 +60,4 @@ val printCNat : CNat → {} = fun n →
   n (fun f _ → print("S"); f {}) (fun _ → print("0")) {}
 
 val printCNat : CNat → {} = fun n →
-  printCNat n; print("\n");
+  printCNat n; print("\n")

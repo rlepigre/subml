@@ -111,7 +111,7 @@ val rec maps : ∀A ∀B (A → B) → ∀α S(α,A) → S(α,B) =
   fun f s _ → let { car = a; cdr = s } = s {} in { car = f a ; cdr = maps f s }
 
 val cons : ∀A ∀α A → S(α,A) → S(α+1,A) =
-  fun a s _ →  { car = a; cdr = s };
+  fun a s _ →  { car = a; cdr = s }
 
 type S(A) = νX {} → { car : A ; cdr : X }
 val maps' = maps : ∀A ∀B (A → B) → S(A) → S(B)

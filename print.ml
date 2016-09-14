@@ -240,14 +240,10 @@ and pkind_def unfold ff kd =
 (****************************************************************************
  *                           Printing of a term                             *
  ****************************************************************************)
- and position ff loc =
+ and position ff pos =
   let open Position in
-  let open Lexing in
-  let fname  = loc.loc_start.pos_fname in
-  let lnum   = loc.loc_start.pos_lnum in
-  let cstart = loc.loc_start.pos_cnum - loc.loc_start.pos_bol in
-  let cend   = loc.loc_end.pos_cnum   - loc.loc_start.pos_bol in
-  fprintf ff "File %S, line %d, characters %d-%d" fname lnum cstart cend
+  fprintf ff "File %S, line %d, characters %d-%d"
+    pos.filename pos.line_start pos.col_start pos.col_end
 
 and print_term ?(in_proj=false) unfold ff t =
   let print_term = print_term unfold in

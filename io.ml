@@ -41,10 +41,9 @@ let read_file : (string -> Input.buffer) ref = ref (fun name ->
     | [] -> err "Can not open file %S\n%!" name; exit 1
     | path::l ->
        try
-	 let filename = Filename.concat path name in
-	 Input.buffer_from_channel ~filename (open_in filename)
-       with
-	 _ -> fn l
+         let filename = Filename.concat path name in
+         Input.buffer_from_channel ~filename (open_in filename)
+       with _ -> fn l
   in
   fn !Config.path)
 

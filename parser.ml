@@ -592,13 +592,17 @@ let eval_file =
 
 let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   let pos1 = print_position in
-  let pos2 ff (f,l,c) = fprintf ff "File %S, line %d, characters %d" f l c in
+  let pos2 ff (buf,pos) =
+    let open Input in
+    fprintf ff "File %S, line %d, characters %d" (fname buf) (line_num buf)
+      (utf8_col_num buf pos)
+  in
   try fn v; not intop with
   | End_of_file            -> true
   | System.Stopped         -> Io.err "\n[Interrupted]\n%!"; false
   | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false
   | Positivity_error(p,m)  -> Io.err "%a:\n%s\n%!" pos1 p m; false
-  | Parse_error(f,l,c,_,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (f,l,c);
+  | Parse_error(buf,pos,_,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
                               false
   | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
                               false

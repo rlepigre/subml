@@ -6,9 +6,9 @@ type G(A,B) = [ Cons of { hd : A; tl : B } ]
 val rec split : ∀A G(A,List(A)) → List(A) × List(A) =
   fun l →
     case l of
-    | x::l → case l of
-             | []   → (x::[], [])
-             | y::l → let (l1,l2) = split (y::l) in (x::l2, l1)
+    | x::l → (case l of
+              | []   → (x::[], [])
+              | y::l → let (l1,l2) = split (y::l) in (x::l2, l1))
 
 val rec split2 : ∀α ∀A (μα X F(A,X)) → (μα X F(A,X)) × (μα X F(A,X)) =
   fun l →

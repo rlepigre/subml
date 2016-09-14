@@ -45,73 +45,87 @@
   ======================================================================
 *)
 
-type buffer = buffer_aux Lazy.t
-and  buffer_aux =
-  { is_empty     : bool     (* Is the buffer empty? *)
-  ; name         : string   (* The name of the buffer. *)
-  ; lnum         : int      (* Current line number. *)
-  ; bol          : int      (* Offset to current line. *)
-  ; length       : int      (* Length of the current line. *)
-  ; contents     : string   (* Contents of the line. *)
-  ; mutable next : buffer   (* Rest of the buffer. *)
-  ; ident        : int }    (* Unique identifier for comparison *)
+type line =
+  { is_eof       : bool   (* Has the end of the buffer been reached? *)
+  ; lnum         : int    (* Line number (startig at 1)              *)
+  ; loff         : int    (* Offset to the line                      *)
+  ; llen         : int    (* Length of the line                      *)
+  ; data         : string (* Contents of the line                    *)
+  ; mutable next : buffer (* Following line                          *)
+  ; name         : string (* The name of the buffer (e.g. file name) *)
+  ; uid          : int }  (* Unique identifier                       *)
 
-let rec read (lazy b as b0) i =
-  if b.is_empty then ('\255', b0, 0) else
-  match compare (i+1) b.length with
-    | -1 -> b.contents.[i], b0, i+1
-    | 0 -> b.contents.[i], b.next, 0
-    | _ -> read b.next (i - b.length)
+and buffer = line Lazy.t
 
-let rec get (lazy b) i =
-  if b.is_empty then '\255' else
-  if i < b.length then
-    b.contents.[i]
-  else
-    get b.next (i - b.length)
-
-let gen_ident =
+(* Generate a unique identifier. *)
+let new_uid =
   let c = ref 0 in
-  fun () -> let x = !c in c := x + 1; x
+  fun () -> let uid = !c in incr c; uid
 
-let empty_buffer fn lnum bol =
-  let rec res =
-    lazy { is_empty = true
-         ; name     = fn
-         ; lnum     = lnum
-         ; bol      = bol
-         ; length   = 0
-         ; contents = ""
-         ; next     = res
-         ; ident    = gen_ident ()
-         }
-  in res
+(* Emtpy buffer. *)
+let empty_buffer name lnum loff =
+  let rec line = lazy
+    { is_eof = true ; name ; lnum ; loff ; llen = 0
+    ; data = "" ; next = line ; uid = new_uid () }
+  in line
 
-let rec is_empty (lazy b) pos =
-  if pos < b.length then false
-  else if pos = 0 then
-    b.is_empty
-  else is_empty b.next (pos - b.length)
+(* Test if a buffer is empty. *)
+let rec is_empty (lazy l) pos =
+  if pos < l.llen then false
+  else if pos = 0 then l.is_eof
+  else is_empty l.next (pos - l.llen)
 
+(* Read the character at the given position in the given buffer. *)
+let rec read (lazy l as b) i =
+  if l.is_eof then ('\255', b, 0) else
+  match compare (i+1) l.llen with
+  | -1 -> (l.data.[i], b     , i+1)
+  | 0  -> (l.data.[i], l.next, 0  )
+  | _  -> read l.next (i - l.llen)
+
+(* Get the character at the given position in the given buffer. *)
+let rec get (lazy l) i =
+  if l.is_eof then '\255' else
+  if i < l.llen then l.data.[i]
+  else get l.next (i - l.llen)
+
+(* Get the name of a buffer. *)
 let fname (lazy b) = b.name
 
+(* Get the current line number of a buffer. *)
 let line_num (lazy b) = b.lnum
 
-let line_beginning (lazy b) = b.bol
+(* Get the offset of the current line in the full buffer. *)
+let line_beginning (lazy b) = b.loff
 
-let line (lazy b) = b.contents
+(* Get the current line as a string. *)
+let line (lazy b) = b.data
+
+(* Get the utf8 column number corresponding to the given position. *)
+let utf8_col_num (lazy {data}) i =
+  let rec find num pos =
+    if pos < i then
+      let cc = Char.code data.[pos] in
+      if cc lsr 7 = 0 then find (num+1) (pos+1) else
+      if (cc lsr 6) land 1 = 0 then -1 else (* Invalid utf8 character *)
+      if (cc lsr 5) land 1 = 0 then find (num+1) (pos+2) else
+      if (cc lsr 4) land 1 = 0 then find (num+1) (pos+3) else
+      if (cc lsr 3) land 1 = 0 then find (num+1) (pos+4) else
+      -0 (* Invalid utf8 character. *)
+    else num
+  in find 0 0
 
 let rec normalize (lazy b as str) pos =
-  if pos >= b.length then
-    if b.is_empty then str, 0 else normalize b.next (pos - b.length)
+  if pos >= b.llen then
+    if b.is_eof then str, 0 else normalize b.next (pos - b.llen)
   else str, pos
 
 let lexing_position str pos =
-  let bol = line_beginning str in
+  let loff = line_beginning str in
   Lexing.({ pos_fname = fname str
           ; pos_lnum  = line_num str
-          ; pos_cnum  = bol +pos
-          ; pos_bol   = bol })
+          ; pos_cnum  = loff +pos
+          ; pos_bol   = loff })
 
 type cont_info = EndOfFile
 
@@ -125,8 +139,9 @@ let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
         let bol' = bol + len in
         (fun () ->
            if active then (
-               { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ;
-                 next = lazy (fn fname active num bol' cont); ident = gen_ident () })
+               { is_eof = false; name = fname; lnum = num; loff = bol'; llen = len
+               ; data = line ; next = lazy (fn fname active num bol' cont)
+               ; uid = new_uid () })
            else fn fname active num bol' cont)
       with
         End_of_file -> fun () -> finalise data; cont fname EndOfFile num bol
@@ -191,19 +206,19 @@ let buffer_from_string ?(filename="") str =
   let data = (str, ref 0) in
   buffer_from_fun filename get_string_line data
 
-type 'a buf_table = (buffer_aux * int * 'a list) list
+type 'a buf_table = (line * int * 'a list) list
 
 let empty_buf = []
 
-let eq_buf (lazy b1) (lazy b2) = b1.ident = b2.ident
+let eq_buf (lazy b1) (lazy b2) = b1.uid = b2.uid
 
-let cmp_buf (lazy b1) (lazy b2) = b1.ident - b2.ident
+let cmp_buf (lazy b1) (lazy b2) = b1.uid - b2.uid
 
-let buf_ident (lazy buf) = buf.ident
+let buf_ident (lazy buf) = buf.uid
 
 let leq_buf b1 i1 b2 i2 =
   match (b1, b2) with
-    ({ ident=ident1; }, { ident=ident2; }) ->
+    ({ uid=ident1; }, { uid=ident2; }) ->
       (ident1 = ident2 && i1 <= i2) || ident1 < ident2
 
 let insert_buf buf pos x tbl =
@@ -211,7 +226,7 @@ let insert_buf buf pos x tbl =
   let rec fn acc = function
   | [] -> List.rev_append acc [(buf, pos, [x])]
   | ((buf',pos', y as c) :: rest) as tbl ->
-     if pos = pos' && buf.ident = buf'.ident then
+     if pos = pos' && buf.uid = buf'.uid then
        List.rev_append acc ((buf', pos', (x::y)) :: rest)
      else if leq_buf buf pos buf' pos' then
        List.rev_append acc ((buf, pos, [x]) :: tbl)
