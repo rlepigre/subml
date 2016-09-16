@@ -228,7 +228,10 @@ let rec full_repr : kind -> kind = function
   | KDefi({tdef_value = v}, os, ks) -> full_repr (msubst (msubst v os) ks)
   | k                               -> k
 
-let rec orepr = function OUVar({contents = Some o}) -> orepr o | o -> o
+let rec orepr = function
+  | OUVar({contents = Some o}) -> orepr o
+  | OSucc o -> OSucc (orepr o)
+  | o -> o
 
 (* Printing function from "print.ml" *)
 let fprint_term : (bool -> formatter -> term -> unit) ref =

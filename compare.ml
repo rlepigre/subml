@@ -119,22 +119,16 @@ let rec leq_ordinal pos c o1 o2 =
   | (o1         , OUVar(p)   ) -> set_ouvar p o1; true
   | (_          , OConv      ) -> true
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
-  (* case loosing information, the first one loose less *)
-  | (OLess(o1,_), OSucc o2   ) when List.exists (eq_ordinal c o1) pos
+  | (OSucc(OLess(o1,_)), o2  ) when List.exists (eq_ordinal c o1) pos
                                -> leq_ordinal pos c o1 o2
+  (* case loosing information, the first one loose less *)
   | (OLess(o1,_), o2         ) when List.exists (eq_ordinal c o1) pos
                                -> leq_ordinal pos c o1 o2
   | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (_          , _          ) -> false
 
 and less_ordinal pos c o1 o2 =
-  let o1 = orepr o1 and o2 = orepr o2 in
-  match o1, o2 with
-  | (OSucc(o1) , OSucc(o2)) -> less_ordinal pos c o1 o2
-  | (o1        , OSucc(o2)) -> leq_ordinal pos c o1 o2
-  | (OLess(o,_), _        ) when List.exists (eq_ordinal c o) pos
-                            -> leq_ordinal pos c o o2
-  | _                          -> false
+  leq_ordinal pos c (OSucc o1) o2
 
 let eq_kind : kind -> kind -> bool =
   fun k1 k2 -> Timed.pure_test (eq_kind (ref 0) k1) k2
