@@ -30,6 +30,9 @@ let spec = Arg.align
   ; ( "--no-inline"
     , Arg.Clear Sct.do_inline
     , "  Do not optimize the SCP call graph by inlining" )
+  ; ( "--sn"
+    , Arg.Set Typing.strong_normalisation
+    , "  Only accept strongly normalising terms" )
   ; ( "--no-contr"
     , Arg.Clear Type.contract_mu
     , "  Do not contract the fixpoints" )

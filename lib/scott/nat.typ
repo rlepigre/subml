@@ -7,18 +7,6 @@ type SNat = μK FSNat(K)
 val z : SNat = fun f x → x
 val s : SNat → SNat = fun n f x → f n
 
-val zero  : SNat = z
-val one   : SNat = s zero
-val two   : SNat = s one
-val three : SNat = s two
-val four  : SNat = s three
-val five  : SNat = s four
-val six   : SNat = s five
-val seven : SNat = s six
-val eight : SNat = s seven
-val nine  : SNat = s eight
-val ten   : SNat = s nine
-
 (* Constant time predecessor. *)
 val pred : SNat → SNat = fun n → n (fun p → p) z
 
@@ -38,13 +26,24 @@ val iter : ∀P P → (P → P) → SNat → P = ΛP fun a f n →
 (* Common functions. *)
 val add : SNat → SNat → SNat = fun n m → iter n s m
 val mul : SNat → SNat → SNat = fun n m → iter z (fun x → add n x) m
+val printu : SNat → {} = fun n → iter (λx.print("0\n")) (λx.print("s");x) n {}
 
-val twenty : SNat = add ten ten
-val thirty : SNat = mul six five
-
-(* Equality function (using general recursion). *)
-val rec eq : SNat → SNat → Bool = fun n m →
-  n (fun np → m (fun mp → eq np mp) fls) (m (fun mp → fls) tru)
+(* Some numbers *)
+val 0 = z
+val 1 = s 0
+val 2 = s 1
+val 3 = s 2
+val 4 = s 3
+val 5 = s 4
+val 6 = s 5
+val 7 = s 6
+val 8 = s 7
+val 9 = s 8
+val 10 = s 9
+val 20 = add 10 10
+val 30 = add 20 10
+val 40 = add 30 10
+val 100 = mul 10 10
 
 (* Recursor. *)
 type U(P) = ∀Y Y → SNat → P
@@ -71,7 +70,3 @@ val sc : ∀P ∀K G(P) -> T(P) = fun f p r →
 
 val fixp : ∀P ∀K G(P) → SNat → P = ΛP fun f n →
   (n : ∀P T(P) → U(P) → T(P) → P) (sc f) (zz f) (sc f)
-
-(* a recursive function *)
-val rec eqN : SNat → SNat → Bool = fun n m →
-  n (λnp. m (λmp. eqN np mp) Fls) (m (λmp. Fls) Tru)

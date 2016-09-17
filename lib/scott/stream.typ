@@ -1,7 +1,7 @@
 (* Scott like encoding for streams with co-inductive type*)
 
 include "church/data.typ"
-include "scott/natbin.typ"
+include "scott/nat.typ"
 
 type F_Stream(A,K) = ∃S Triple(S,S→A,S→K)
 type Stream(A) = νK F_Stream(A,K)
@@ -52,36 +52,36 @@ val map : ∀A∀B (A → B) → Stream(A) → Stream(B) = fun f →
 val map2 : ∀A∀B (A → B) → Stream(A) → Stream(B) = fun f →
   corec (fun g s → triple s (fun s → f (head s)) (fun s → g (tail s)))
 
-val all_ints : Stream(Bin) = coiter (fun n → pair (s n) n) 0
+val all_ints : Stream(SNat) = coiter (fun n → pair (s n) n) 0
 
-val all_ints2 : Stream(Bin) = corec (fun f n → triple n (fun x → x) (fun n → f (s n))) 0
+val all_ints2 : Stream(SNat) = corec (fun f n → triple n (fun x → x) (fun n → f (s n))) 0
 
-eval printb (head all_ints)
-eval printb (head (tail all_ints))
-eval printb (head (tail (tail all_ints)))
-eval printb (head (tail (tail (tail all_ints))))
-eval printb (head (tail (tail (tail (tail all_ints)))))
+eval printu (head all_ints)
+eval printu (head (tail all_ints))
+eval printu (head (tail (tail all_ints)))
+eval printu (head (tail (tail (tail all_ints))))
+eval printu (head (tail (tail (tail (tail all_ints)))))
 
-eval printb (head all_ints2)
-eval printb (head (tail all_ints2))
-eval printb (head (tail (tail all_ints2)))
-eval printb (head (tail (tail (tail all_ints2))))
-eval printb (head (tail (tail (tail (tail all_ints2)))))
+eval printu (head all_ints2)
+eval printu (head (tail all_ints2))
+eval printu (head (tail (tail all_ints2)))
+eval printu (head (tail (tail (tail all_ints2))))
+eval printu (head (tail (tail (tail (tail all_ints2)))))
 
 val all_pairs = map (fun x → mul x 2) all_ints
 
-eval printb (head all_pairs)
-eval printb (head (tail all_pairs))
-eval printb (head (tail (tail all_pairs)))
-eval printb (head (tail (tail (tail all_pairs))))
-eval printb (head (tail (tail (tail (tail all_pairs)))))
+eval printu (head all_pairs)
+eval printu (head (tail all_pairs))
+eval printu (head (tail (tail all_pairs)))
+eval printu (head (tail (tail (tail all_pairs))))
+eval printu (head (tail (tail (tail (tail all_pairs)))))
 
 val all_pairs2 = map2 (fun x → mul x 2) all_ints
 
-eval printb (head all_pairs2)
-eval printb (head (tail all_pairs2))
-eval printb (head (tail (tail all_pairs2)))
-eval printb (head (tail (tail (tail all_pairs2))))
-eval printb (head (tail (tail (tail (tail all_pairs2)))))
+eval printu (head all_pairs2)
+eval printu (head (tail all_pairs2))
+eval printu (head (tail (tail all_pairs2)))
+eval printu (head (tail (tail (tail all_pairs2))))
+eval printu (head (tail (tail (tail (tail all_pairs2)))))
 
 val test : ∀A (Stream(A) → ∃S S) =λs. pi31 s

@@ -121,7 +121,7 @@ let rec leq_ordinal pos c o1 o2 =
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (OSucc(OLess(o1,_)), o2  ) when List.exists (eq_ordinal c o1) pos
                                -> leq_ordinal pos c o1 o2
-  (* case loosing information, the first one loose less *)
+  (* case loosing information, the first one looses less *)
   | (OLess(o1,_), o2         ) when List.exists (eq_ordinal c o1) pos
                                -> leq_ordinal pos c o1 o2
   | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2

@@ -63,7 +63,7 @@ let is_normal : term -> bool = fun t ->
     | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
     | TProj(a,s)  -> false
     | TCons(s,a)  -> fn a
-    | TCase(a,_,_)-> fn a
+    | TCase(a,_,_)-> false
     | TDefi(d)    -> fn d.value
     | TCnst _     -> true
     | TPrnt _     -> false

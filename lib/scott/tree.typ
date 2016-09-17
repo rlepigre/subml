@@ -1,6 +1,5 @@
 (* Scott like encoding for binary trees with inductive type *)
-
-include "scott/natbin.typ"
+include "scott/nat.typ"
 
 (* Type of trees with data of type A at leaves and data of type B at nodes *)
 
@@ -82,10 +81,13 @@ val tree375 = node tree3 7 tree5
 val tree154 = node tree1 5 tree4
 val tree1549375 = node tree154 9 tree375
 
-val sum_all = iter (fun (a:Bin) → a) (fun (l:Bin) (b:Bin) (r:Bin) → add (add l r) b)
-val sum_leaf = iter (fun (a:Bin) → a) (fun (l:Bin) (b:Bin) (r:Bin) → add l r)
-val sum_node = iter (fun (a:Bin) → 0) (fun (l:Bin) (b:Bin) (r:Bin) → add (add l r) b)
+val sum_all = iter (fun (a:SNat) → a) (fun (l:SNat) (b:SNat) (r:SNat) → add (add l r) b)
+(*
+val sum_leaf = iter (fun (a:SNat) → a) (fun (l:SNat) (b:SNat) (r:SNat) → add l r)
+val sum_node = iter (fun (a:SNat) → 0) (fun (l:SNat) (b:SNat) (r:SNat) → add (add l r) b)
 
-eval printb (sum_all tree1549375)
-eval printb (sum_leaf tree1549375)
-eval printb (sum_node tree1549375)
+
+eval printu (sum_all tree1549375)
+eval printu (sum_leaf tree1549375)
+eval printu (sum_node tree1549375)
+*)

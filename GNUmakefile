@@ -51,7 +51,10 @@ validate: clean
 	@ grep -n -P '\t' *.ml || exit 0
 
 test: all
+	@ echo normal test
 	./subml.native --quit lib/all.typ
+	@ echo SN test
+	./subml.native --quit --sn lib/allsn.typ
 	@ echo -n "Lines with a tabulation in .ml: "
 	@ grep -P '\t' *.ml | wc -l
 	@ echo -n "Lines with a tabulation in .typ: "
