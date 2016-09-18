@@ -300,7 +300,6 @@ let check_rec
        | Induction_hyp n -> (UseInduction n, ctxt)
 
 let fixpoint_depth = ref 2
-let strong_normalisation = ref false
 
 let print_positives ff ctxt =
   let p_aux ch (o1,o2) = Format.fprintf ff "%a < %a"
@@ -591,7 +590,6 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TAppl(t,u) when is_neutral t && not (is_neutral u)->
         let a = new_uvar () in
         let ptr = Refinter.create () in
-        let ctxt = if !strong_normalisation then { ctxt with positive_ordinals = [] } else ctxt in
         let p2 = type_check ctxt t (MuRec(ptr,KFunc(a,c))) in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p1 = type_check ctxt u a in
@@ -605,7 +603,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
         let ptr = Refinter.create () in
         let c' = KProd(ts) in
-        let c' = if is_normal t || !strong_normalisation then NuRec(ptr,c') else c' in
+        let c' = if is_normal t then NuRec(ptr,c') else c' in
         let p1 = subtype ctxt t c' c in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let check (l,t) =
@@ -621,7 +619,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let a = new_uvar () in
         let c' = KDSum([(d,a)]) in
         let ptr = Refinter.create () in
-        let c' = if is_normal t || !strong_normalisation then NuRec(ptr,c') else c' in
+        let c' = if is_normal t then NuRec(ptr,c') else c' in
         let p1 = subtype ctxt t c' c in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p2 = type_check ctxt v a in
@@ -634,7 +632,6 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
           | _    -> new_uvar ~state:(Sum ts) ()
         in
         let ptr = Refinter.create () in
-        let ctxt = if !strong_normalisation then { ctxt with positive_ordinals = [] } else ctxt in
         let p1 = type_check ctxt t (MuRec(ptr,k)) in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let check (d,f) =
@@ -658,9 +655,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let p = subtype ctxt t (KProd []) c in
         Typ_Prnt(p)
     | TFixY(n,f) ->
-        if !strong_normalisation then
-          type_error t.pos "Recursive programm illegal with --sn"
-        else check_fix ctxt t n f c
+        check_fix ctxt t n f c
     | TCnst(_,a,b) ->
         let p = subtype ctxt t a c in
         Typ_Cnst(p)
