@@ -28,7 +28,7 @@ MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
   proof.ml graph.ml error.ml
 
 doc:
-	ocamlbuild -I bindlib -I decap subml.docdir/index.html
+	ocamlbuild -I bindlib -I decap -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
 
 subml.native: $(MLFILES) subml.ml
 	ocamlbuild -cflags -w,-3-30 $@
