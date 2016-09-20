@@ -15,9 +15,9 @@ exception Subtype_error of string
 let subtype_error : string -> 'a =
   fun msg -> raise (Subtype_error msg)
 
-exception Loop_error
-let loop_error : unit -> 'a =
-  fun () -> raise Loop_error
+exception Loop_error of pos
+let loop_error : pos -> 'a =
+  fun p -> raise (Loop_error p)
 
 type subtype_ctxt =
   { sub_induction_hyp : sub_induction list
@@ -746,7 +746,7 @@ and check_fix ctxt t n f c =
 	   check_sub_proof prf;
            add_call ctxt fnum ov true;
            Typ_YH(fnum,prf) (* FIXME: should we keep prf0 in the proof too ? *)
-         with Error.Error _ | Loop_error -> fn hyps
+         with Error.Error _ | Loop_error _ -> fn hyps
     in
     try fn hyps with Not_found ->
       (* No inductive hypothesis applies, we add a new induction hyp and
@@ -778,10 +778,10 @@ and full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf *
       let p = subtype ctxt t a b in
       List.iter (fun f -> f ()) !(ctxt.delayed);
       let calls = inline ctxt.fun_table !(ctxt.calls) in
-      if not (sct ctxt.fun_table calls) then loop_error ();
+      if not (sct ctxt.fun_table calls) then loop_error dummy_position;
       if ctxt0 = None then reset_all ();
       (p, (ctxt.fun_table.table, calls))
-    with Subtype_error _ | Loop_error as e ->
+    with Subtype_error _ | Loop_error _ as e ->
       if ctxt0 = None then reset_all ();
       Timed.Time.rollback time;
       raise e
@@ -801,7 +801,7 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
 	check_typ_proof p;
         List.iter (fun f -> f ()) !(ctxt.delayed);
         let calls = inline ctxt.fun_table !(ctxt.calls) in
-        if not (sct ctxt.fun_table calls) then loop_error ();
+        if not (sct ctxt.fun_table calls) then loop_error t.pos;
         reset_all ();
         (p, (ctxt.fun_table.table, calls))
       with e -> reset_all (); raise e

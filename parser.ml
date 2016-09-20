@@ -498,10 +498,10 @@ let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
           | MustFail -> ()
           | CanFail  -> ()
         end
-    | Loop_error ->
+    | Loop_error p ->
         begin
           match f with
-          | MustPass -> Io.err "CHECK FAILED: LOOP\n%!"; failwith "check"
+          | MustPass -> Io.err "CHECK FAILED: LOOP at %a\n%!" print_position p; failwith "check"
           | MustFail -> ()
           | CanFail  -> ()
         end
@@ -614,7 +614,7 @@ let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
     false
   | Error.Error l          -> Io.err "%a" Error.display_errors l; false
-  | Loop_error             -> Io.err "Oups, loops\n%!"; false
+  | Loop_error p            -> Io.err "Oups, loops at %a\n%!" print_position p; false
   | e                      -> Io.err "Uncaught exception %s\n%!"
                                 (Printexc.to_string e);
                               false
