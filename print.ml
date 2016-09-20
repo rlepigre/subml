@@ -356,6 +356,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
      let name = sprintf "$I_%d$" n in
      binaryN name c (sub2proof p1) (typ2proof !p)
   | Typ_Hole          -> axiomN "AXIOM" c
+  | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 
 and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let open Proof in
@@ -384,7 +385,7 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_FixM_l(p)     -> unaryN "μl" c (sub2proof p)
   | Sub_FixN_r(p)     -> unaryN "νr" c (sub2proof p)
   | Sub_Ind(n)        -> axiomN (sprintf "$H_%d$" n) c
-  | Sub_Dummy         -> assert false (* Should not happen. *)
+  | Sub_Error(msg)    -> axiomN (sprintf "ERROR(%s)" msg) c
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
 let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
@@ -400,7 +401,7 @@ let print_term unfold ff t =
 let print_kind unfold ff t =
   print_kind unfold false ff t; pp_print_flush ff ()
 
-let _ = fprint_kind := print_kind
+let _ = fprint_kind := print_kind; fprint_term := print_term
 
 let print_kind_def unfold ff kd =
   pkind_def unfold ff kd; pp_print_flush ff ()

@@ -5,14 +5,19 @@ open Sct
 open Position
 open Compare
 open Type
+open Error
 
-exception Type_error of pos * string
-let type_error : pos -> string -> 'a =
-  fun p msg -> raise (Type_error(p,msg))
+exception Type_error of string
+let type_error : string -> 'a =
+  fun msg -> raise (Type_error(msg))
 
 exception Subtype_error of string
 let subtype_error : string -> 'a =
   fun msg -> raise (Subtype_error msg)
+
+exception Loop_error
+let loop_error : unit -> 'a =
+  fun () -> raise Loop_error
 
 type subtype_ctxt =
   { sub_induction_hyp : sub_induction list
@@ -322,7 +327,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   | UseInduction n -> (t, a0, b0, None, Sub_Ind n)
   | NewInduction ind_ref ->
   let r = (* FIXME: le témoin n'est pas le bon *)
-    match (a,b) with
+    try match (a,b) with
     | (MuRec(ptr,a), _           ) ->
        Sub_FixM_l(subtype ctxt t a b0)
 
@@ -555,8 +560,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Subtype clash. *)
     | (_           , _           ) ->
-        subtype_error "Subtyping clash (no rule apply)."
+       subtype_error "Subtyping clash (no rule apply)."
+  with Subtype_error e -> Sub_Error e
   in (t, a0, b0, ind_ref, r))
+
 
 and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
@@ -661,9 +668,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Cnst(p)
     | TTInt(_) -> assert false (* Cannot happen. *)
     | TVari(_) -> assert false (* Cannot happen. *)
-    with Subtype_error msg ->
-      Io.err "Typing failed: %a : %a\n%!" (print_term false) t (print_kind false) c;
-      type_error t.pos msg
+    with Subtype_error msg -> assert false
+    | Type_error msg -> Typ_Error msg
   in (t, c, r)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
@@ -711,7 +717,7 @@ and check_fix ctxt t n f c =
       if n = 0 && !remains <> [] then
          (* the fixpoint was unrolled as much as allowed, and
             no applicable induction hyp was found. *)
-        type_error t.pos "can not relate termination depth"
+        type_error "can not relate termination depth"
       else
         (* otherwise we unroll once more, and type-check *)
         let l = !remains in
@@ -735,11 +741,12 @@ and check_fix ctxt t n f c =
            let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
            let a = recompose a ov in
            Io.log_typ "searching induction hyp (2) with %d:\n%!" fnum;
-           (* need full subtype to rollback unification of variables it it fails *)
+           (* need full subtype to rollback unification of variables if it fails *)
            let prf, _ = full_subtype ~ctxt ~term:t  a c in
+	   check_sub_proof prf;
            add_call ctxt fnum ov true;
            Typ_YH(fnum,prf) (* FIXME: should we keep prf0 in the proof too ? *)
-         with Subtype_error _ -> fn hyps
+         with Error.Error _ | Loop_error -> fn hyps
     in
     try fn hyps with Not_found ->
       (* No inductive hypothesis applies, we add a new induction hyp and
@@ -771,10 +778,10 @@ and full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf *
       let p = subtype ctxt t a b in
       List.iter (fun f -> f ()) !(ctxt.delayed);
       let calls = inline ctxt.fun_table !(ctxt.calls) in
-      if not (sct ctxt.fun_table calls) then subtype_error "loop";
+      if not (sct ctxt.fun_table calls) then loop_error ();
       if ctxt0 = None then reset_all ();
       (p, (ctxt.fun_table.table, calls))
-    with Subtype_error _ as e ->
+    with Subtype_error _ | Loop_error as e ->
       if ctxt0 = None then reset_all ();
       Timed.Time.rollback time;
       raise e
@@ -791,9 +798,10 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
     let (prf, calls) =
       try
         let p = type_check ctxt t k in
+	check_typ_proof p;
         List.iter (fun f -> f ()) !(ctxt.delayed);
         let calls = inline ctxt.fun_table !(ctxt.calls) in
-        if not (sct ctxt.fun_table calls) then subtype_error "loop";
+        if not (sct ctxt.fun_table calls) then loop_error ();
         reset_all ();
         (p, (ctxt.fun_table.table, calls))
       with e -> reset_all (); raise e
@@ -809,6 +817,11 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
     let k = List.fold_left (fun acc v -> KKAll (bind_kuvar v acc)) k ul in
     let k = List.fold_left (fun acc v -> KOAll (bind_ouvar v acc)) k ol in
     (k, prf, calls)
+
+let full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
+  fun ?ctxt ?term a b ->
+    let (p, _ as res) = full_subtype ?ctxt ?term a b in
+    check_sub_proof p; res
 
 let try_fold_def : kind -> kind = fun k ->
   let match_def k def =

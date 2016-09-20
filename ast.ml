@@ -168,7 +168,6 @@ and typ_jdg = term * kind
 and sub_jdg = term * kind * kind
 
 and sub_rule =
-  | Sub_Dummy
   | Sub_Delay  of sub_prf ref
   | Sub_Lower
   | Sub_Func   of sub_prf * sub_prf
@@ -191,6 +190,7 @@ and sub_rule =
   | Sub_FixM_l of sub_prf
   | Sub_FixN_r of sub_prf
   | Sub_Ind    of int
+  | Sub_Error  of string
 and sub_prf =
   (* the integer is referenced by induction hyp *)
   term * kind * kind * int option * sub_rule
@@ -211,6 +211,7 @@ and typ_rule =
   | Typ_TFix   of int * sub_prf * typ_prf ref
   | Typ_YH     of int * sub_prf
   | Typ_Hole   (* used by dummy_proof below *)
+  | Typ_Error  of string
 and typ_prf =
   term * kind * typ_rule
 

@@ -426,6 +426,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
      let name = sprintf "$I_%d$" n in
      binaryN name c (sub2proof p1) (typ2proof !p)
   | Typ_Hole          -> axiomN "AXIOM" c
+  | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 
 and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let open Proof in
@@ -455,7 +456,7 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_FixM_l(p)     -> unaryN "$\\mu_l$" c (sub2proof p)
   | Sub_FixN_r(p)     -> unaryN "$\\nu_r$" c (sub2proof p)
   | Sub_Ind(n)        -> axiomN (sprintf "$H_%d$" n) c
-  | Sub_Dummy         -> assert false (* Should not happen. *)
+  | Sub_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
 let print_subtyping_proof ch p = Proof.output ch (sub2proof p)

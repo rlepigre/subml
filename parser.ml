@@ -491,10 +491,17 @@ let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
   let b = unbox (unsugar_kind empty_env b) in
   begin
     try ignore (subtype a b) with
-    | Subtype_error s ->
+    | Error.Error l ->
         begin
           match f with
-          | MustPass -> Io.err "CHECK FAILED: %s\n%!" s; failwith "check"
+          | MustPass -> Io.err "CHECK FAILED: %a\n%!" Error.display_errors l; failwith "check"
+          | MustFail -> ()
+          | CanFail  -> ()
+        end
+    | Loop_error ->
+        begin
+          match f with
+          | MustPass -> Io.err "CHECK FAILED: LOOP\n%!"; failwith "check"
           | MustFail -> ()
           | CanFail  -> ()
         end
@@ -605,8 +612,9 @@ let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   | Parse_error(buf,pos,_,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
                               false
   | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
-                              false
-  | Type_error(p,m)        -> Io.err "%a:\nType error: %s\n%!" pos1 p m; false
+    false
+  | Error.Error l          -> Io.err "%a" Error.display_errors l; false
+  | Loop_error             -> Io.err "Oups, loops\n%!"; false
   | e                      -> Io.err "Uncaught exception %s\n%!"
                                 (Printexc.to_string e);
                               false
