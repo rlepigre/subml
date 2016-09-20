@@ -1,3 +1,5 @@
+(** Main function for typing and subtyping *)
+
 open Bindlib
 open Ast
 open Print
@@ -7,14 +9,19 @@ open Compare
 open Type
 open Error
 
+(** Raised in case of type error, not propagated because replaced by
+    an error constructor in the proof *)
 exception Type_error of string
 let type_error : string -> 'a =
   fun msg -> raise (Type_error(msg))
 
+(** Raised in case of subtyping error, not propagated because replaced by
+    an error constructor in the proof *)
 exception Subtype_error of string
 let subtype_error : string -> 'a =
   fun msg -> raise (Subtype_error msg)
 
+(** Raised when the termination checkers fails, propagated *)
 exception Loop_error of pos
 let loop_error : pos -> 'a =
   fun p -> raise (Loop_error p)
@@ -28,14 +35,14 @@ type subtype_ctxt =
   ; delayed           : (unit -> unit) list ref
   ; positive_ordinals : (ordinal * ordinal) list }
 
+(** induction hypothesis for subtyping *)
 and sub_induction =
-  (* induction hypothesis for subtyping *)
-      int                  (* the index of the induction hyp *)
-    * int list             (* the index of positive ordinals *)
-    * kind * kind          (* the two kinds *)
-    * (int * ordinal) list (* the ordinal parameters *)
+      int                  (** the index of the induction hyp *)
+    * int list             (** the index of positive ordinals *)
+    * kind * kind          (** the two kinds *)
+    * (int * ordinal) list (** the ordinal parameters *)
 
-  (* induction hypothesis for typing recursive programs *)
+(** induction hypothesis for typing recursive programs *)
 and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
     * kind                    (* the initial type *)
@@ -48,6 +55,7 @@ and fix_induction =
       (* The use of references here is to do a breadth-first search for
          inductive proof. Depth first here is bad, using too large depth *)
 
+(** the initial empty context *)
 let empty_ctxt () =
   { sub_induction_hyp = []
   ; fix_induction_hyp = []

@@ -27,6 +27,9 @@ MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
   type.ml eval.ml print.ml latex.ml sct.ml raw.ml typing.ml parser.ml \
   proof.ml graph.ml error.ml
 
+doc:
+	ocamlbuild -I bindlib -I decap subml.docdir/index.html
+
 subml.native: $(MLFILES) subml.ml
 	ocamlbuild -cflags -w,-3-30 $@
 

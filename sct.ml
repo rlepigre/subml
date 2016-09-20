@@ -1,12 +1,12 @@
 open Format
 
-(* implementation of the sct we need for subtyping:
-   all arguments of a call correpond to a parameter
-   with a know relation : Less of Less of equal *)
+(** implementation of the sct we need for subtyping and typing:
+    all arguments of a call correpond to a parameter
+    with a know relation : Less of Less of equal *)
 
 type cmp = Less | Leq | Unknown
 
-(* a call g(x0-1,x1,x1-1) inside f(x0,x1) is
+(**a call g(x0-1,x1,x1-1) inside f(x0,x1) is
    represented by (g_n, f_n, [|[| Less; Unknown; Unknown |];
                                [| Unknown; Leq; Less  |]|], b)
 
@@ -46,7 +46,7 @@ let mat_prod l1 c1 c2 m1 m2 =
       !r
     ))
 
-(* printing function for debugging *)
+(** printing function for debugging *)
 let print_cmp ff c =
   match c with
   | Unknown -> fprintf ff "?"
@@ -80,8 +80,7 @@ let print_call tbl ff (i,j,m) =
 let print_calls tbl ff (l:calls) =
   List.iter (print_call tbl ff) l
 
-(* check is a call (supposed idempotnent) is
-   decreasing *)
+(** check if a call (supposed idempotnent) is decreasing *)
 let decrease m =
   try
     Array.iteri (fun i l ->
@@ -125,7 +124,7 @@ let subsume m1 m2 =
   with
     Exit -> false
 
-(* the main function *)
+(** the main function, checking if calls are well-founded *)
 let sct: fun_table -> calls -> bool = fun ftbl ls ->
   Io.log_sct "SCT starts...\n%!";
   let num_fun = ftbl.current in
@@ -198,8 +197,8 @@ let add_call n call = match n with
 
 let do_inline = ref true
 
-(* inline function that call only one function.
-   TODO: inline function that are called at most once *)
+(** inline function that calls only one function. *)
+(* TODO: inline function that are called at most once *)
 let inline ftbl calls =
   if not !do_inline then
     List.map (fun (i,j,m,_) -> (i,j,m)) calls

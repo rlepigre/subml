@@ -1,3 +1,5 @@
+(** Basic definition of the Ast of types and programs *)
+
 open Bindlib
 open Refinter
 open Format
@@ -15,64 +17,61 @@ let from_opt' : 'a option -> (unit -> 'a) -> 'a = fun o f ->
 let map_snd : ('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list = fun f l ->
   List.map (fun (k, v) -> (k, f v)) l
 
-(****************************************************************************
- *              AST for kinds (or types), ordinals and terms                *
- ****************************************************************************)
-
-(* Occurence markers for variables. *)
+(** {2         AST for kinds (or types), ordinals and terms              }  *)
+(** Occurence markers for variables. *)
 type occur =
-  (* The variable does not occur. *)
+  (** The variable does not occur. *)
   | Non
-  (* The variable occurs only positively. *)
+  (** The variable occurs only positively. *)
   | Pos
-  (* The variable occurs only negatively. *)
+  (** The variable occurs only negatively. *)
   | Neg
-  (* The variable occurs both positively and negatively. *)
+  (** The variable occurs both positively and negatively. *)
   | All
-  (* The variable occurs under an epsilon witness (special case). *)
+  (** The variable occurs under an epsilon witness (special case). *)
   | Eps
-  (* Special constructor for constructing the variance of definitions. *)
+  (** Special constructor for constructing the variance of definitions. *)
   | Reg of int * occur array
 
-(* Ast of kinds (or types). *)
+(** Ast of kinds (or types). *)
 type kind =
-  (**** Main type constructors ****)
-  (* Type variable. *)
+  (** Main type constructors *)
   | KVari of kind variable
-  (* Function type: A ⇒ B. *)
+  (** Type variable. *)
   | KFunc of kind * kind
-  (* Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
+  (** Function type: A ⇒ B. *)
   | KProd of (string * kind) list
-  (* Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
+  (** Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
   | KDSum of (string * kind) list
-  (* Quantifiers over a type: ∀/∃X A. *)
+  (** Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
   | KKAll of (kind, kind) binder
   | KKExi of (kind, kind) binder
-  (* Quantifiers over an ordinal: ∀/∃o A. *)
+  (** Quantifiers over a type: ∀/∃X A. *)
   | KOAll of (ordinal, kind) binder
   | KOExi of (ordinal, kind) binder
-  (* Least and greatest fixpoint: μα X A, να X A. *)
+  (** Quantifiers over an ordinal: ∀/∃o A. *)
   | KFixM of ordinal * (kind, kind) binder
   | KFixN of ordinal * (kind, kind) binder
-  (* User-defined type applied to arguments: T(A1,...,An). *)
+  (** Least and greatest fixpoint: μα X A, να X A. *)
   | KDefi of type_def * ordinal array * kind array
-  (* Dot projection t.X. *)
+  (** User-defined type applied to arguments: T(A1,...,An). *)
   | KDPrj of term * string
-  (* With clause A with X = B. *)
+  (** Dot projection t.X. *)
   | KWith of kind * (string * kind)
-  (**** Special constructors (not accessible to user) ****)
-  (* Constants (a.k.a. epsilon) - used for subtyping. *)
+  (** With clause A with X = B. *)
+  (* Special constructors (not accessible to user) *)
   | KUCst of term * (kind, kind) binder
   | KECst of term * (kind, kind) binder
-  (* Unification variables - used for typechecking. *)
+  (** Constants (a.k.a. epsilon) - used for subtyping. *)
   | KUVar of kuvar
-  (* Integer tag for comparing kinds. *)
+  (** Unification variables - used for typechecking. *)
   | KTInt of int
-  (* Recording *)
+  (** Integer tag for comparing kinds. *)
   | MuRec of (ordinal, ordinal) refinter * kind
   | NuRec of (ordinal, ordinal) refinter * kind
+  (** Recording *)
 
-(* Type definition (user defined type). *)
+(** Type definition (user defined type). *)
 and type_def =
   (* Name of the type constructor. *)
   { tdef_name     : string
@@ -85,7 +84,7 @@ and type_def =
   (* Definition of the constructor. *)
   ; tdef_value    : (ordinal, (kind, kind) mbinder) mbinder }
 
-(* Unification variable identified by a key and possibly a value. *)
+(** Unification variable identified by a key and possibly a value. *)
 and kuvar =
   (* Unique key identifying the variable. *)
   { kuvar_key : int
@@ -97,27 +96,29 @@ and kuvar_state = Free
   | Sum  of (string * kind) list
   | Prod of (string * kind) list
 
-(* Abstract syntax tree for ordinals. *)
+(** Abstract syntax tree for ordinals. *)
 and ordinal =
-  (* Ordinal large enough to ensure convergence of all fixpoint. *)
   | OConv
-  (* Succesor *)
+  (** Ordinal large enough to ensure convergence of all fixpoints. *)
   | OSucc of ordinal
-  (* Ordinal created by the μl and νr rules. *)
+  (** Succesor *)
   | OLess of ordinal * ord_wit
-  (* Unification variables for ordinals. *)
+  (** Ordinal created by the μl and νr rules. *)
   | OUVar of ouvar
-  (* Ordinal variable. *)
+  (** Unification variables for ordinals. *)
   | OVari of ordinal variable
-  (* Integer tag used in decompose / recompose. *)
+  (** Ordinal variable. *)
   | OTInt of int
+  (** Integer tag used in decompose / recompose. *)
+
+(** ordinal constraints to build above [OLess] witness *)
 and ord_wit =
   | In     of term * (ordinal, kind) binder
   | NotIn  of term * (ordinal, kind) binder
 
 and ouvar = ordinal option ref
 
-(* Abstract syntax tree for terms. *)
+(** Abstract syntax tree for terms. *)
 and term = term' position
 and term' =
   (**** Main term constructors ****)
@@ -154,7 +155,7 @@ and term' =
   (* Integer tag. *)
   | TTInt of int
 
-(* Term definition (user defined term) *)
+(** Term definition (user defined term) *)
 and value_def =
   { name       : string      (* Name of the term. *)
   ; tex_name   : string      (* Latex name of the term. *)
@@ -215,15 +216,15 @@ and typ_rule =
 and typ_prf =
   term * kind * typ_rule
 
-(* used by Typ_Link as initial value *)
+(** used by Typ_Link as initial value *)
 let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
 
-(* Unfolding unification variable indirections. *)
+(** Unfolding unification variable indirections. *)
 let rec repr : kind -> kind = function
   | KUVar({kuvar_val = {contents = Some k}}) -> repr k
   | k                                        -> k
 
-(* Unfolding unification variable indirections and definitions *)
+(** Unfolding unification variable indirections and definitions *)
 let rec full_repr : kind -> kind = function
   | KUVar({kuvar_val = {contents = Some k}}) -> full_repr k
   | KDefi({tdef_value = v}, os, ks) -> full_repr (msubst (msubst v os) ks)
@@ -234,7 +235,7 @@ let rec orepr = function
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
-(* Printing function from "print.ml" *)
+(** Printing function from "print.ml" *)
 let fprint_term : (bool -> formatter -> term -> unit) ref =
   ref (fun _ -> assert false)
 
@@ -251,7 +252,7 @@ let ftry_fold_def : (kind -> kind) ref =
  *                   Frequently used types and functions                    *
  ****************************************************************************)
 
-(* Value and type environments. *)
+(** Value and type environments. *)
 type val_env = (string, value_def) Hashtbl.t
 type typ_env = (string, type_def ) Hashtbl.t
 
@@ -259,7 +260,7 @@ let typ_env : typ_env = Hashtbl.create 17
 let val_env : val_env = Hashtbl.create 17
 let verbose : bool ref = ref false
 
-(* Bindbox type shortcuts. *)
+(** Bindbox type shortcuts. *)
 type tvar = term' variable
 type tbox = term bindbox
 
@@ -269,28 +270,28 @@ type kbox = kind bindbox
 type ovar = ordinal variable
 type obox = ordinal bindbox
 
-(* Kind variable management. *)
+(** Kind variable management. *)
 let mk_free_kvari : kind variable -> kind =
   fun x -> KVari(x)
 
 let new_kvari : string -> kind variable =
   new_var mk_free_kvari
 
-(* Term variable management. *)
+(** Term variable management. *)
 let mk_free_tvari : term' variable -> term' =
   fun x -> TVari(x)
 
 let new_tvari : string -> term' variable =
   new_var mk_free_tvari
 
-(* Ordinal variable management. *)
+(** Ordinal variable management. *)
 let mk_free_ovari : ovar -> ordinal =
   fun o -> OVari(o)
 
 let new_ovari : string -> ovar =
   new_var mk_free_ovari
 
-(* sugaring for ordinals *)
+(** sugaring for ordinals *)
 let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
@@ -423,9 +424,9 @@ let tprnt_p : pos -> string -> term =
 let tfixy_p : pos -> int -> (term', term) binder -> term =
   fun p n t -> in_pos p (TFixY(n,t))
 
-(****************************************************************************
- *                     Smart constructors for terms                         *
- ****************************************************************************)
+(****************************************************************************)
+(** {0                   Smart constructors for terms                     } *)
+(****************************************************************************)
 
 let tcoer : pos -> tbox -> kbox -> tbox =
   fun p -> box_apply2 (tcoer_p p)
