@@ -12,11 +12,21 @@ open Compare
 
 let break_hint = ref 0
 
+let convert_ordinal = function
+  | "α" -> "\\alpha"
+  | "β" -> "\\beta"
+  | "γ" -> "\\gamma"
+  | "δ" -> "\\delta"
+  | "ε" -> "\\varepsilon"
+  | s   -> s
+
 let rec print_ordinal unfold ff o =
   let o = orepr o in
   match o with
   | OConv   -> pp_print_string ff "\\infty"
   | OTInt i -> fprintf ff "?%i" i
+  | OUVar _ -> fprintf ff "??"
+  | OSucc o -> fprintf ff "%a+1" (print_ordinal unfold) o
   | o       ->
      let n = search_ordinal_tbl o in
      match o with
@@ -31,8 +41,8 @@ let rec print_ordinal unfold ff o =
      | OLess(o,_) when unfold ->
        fprintf ff "{\\alpha_{%d<%a}}" n (print_ordinal false) o
      | OLess(_) -> fprintf ff "{\\kappa_{%d}}" n
-     | OVari(x) -> fprintf ff "%s" (name_of x)
-     | _ -> assert false
+     | OVari(x) -> fprintf ff "%s" (convert_ordinal (name_of x))
+     | OConv | OTInt _ | OSucc _ | OUVar _ -> assert false
 
 and print_index_ordinal ff o = match orepr o with
   | OConv -> ()
@@ -51,9 +61,10 @@ and print_kind unfold wrap ff t =
       fprintf ff "%a \\rightarrow %a" pkindw a pkind b;
       if wrap then pp_print_string ff ")"
   | KProd(fs) ->
-     if is_tuple fs then begin
+     if fs = [] then fprintf ff "\\{\\}"
+     else if is_tuple fs then begin
        for i = 1 to List.length fs do
-         if i = 2 then fprintf ff "{\\times}";
+         if i >= 2 then fprintf ff "{\\times}";
          fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
        done
      end else
@@ -87,12 +98,12 @@ and print_kind unfold wrap ff t =
   | KOAll(f)  ->
       if wrap then pp_print_string ff "(";
       let x = new_ovari (binder_name f) in
-      fprintf ff "\\forall %s.%a" (name_of x) pkind (subst f (free_of x));
+      fprintf ff "\\forall %s.%a" (convert_ordinal (name_of x)) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
   | KOExi(f)  ->
       if wrap then pp_print_string ff "(";
       let x = new_ovari (binder_name f) in
-      fprintf ff "\\exists%s.%a" (name_of x) pkind (subst f (free_of x));
+      fprintf ff "\\exists%s.%a" (convert_ordinal (name_of x)) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
   | KFixM(o,b) ->
       if wrap then pp_print_string ff "(";
@@ -130,8 +141,10 @@ and print_kind unfold wrap ff t =
   | KUVar(u) ->
       fprintf ff "?%i" u.kuvar_key
   | KTInt(_) -> assert false
-  | MuRec(_,a) -> pkind ff a
-  | NuRec(_,a) -> pkind ff a
+  | KMRec(p,a) -> fprintf ff "%a \\land %a" pkind a
+     (print_list (fun ff (o,_) -> pordi ff o) ", ") (Refinter.get p)
+  | KNRec(p,a) -> fprintf ff "%a \\lor %a" pkind a
+     (print_list (fun ff (o,_) -> pordi ff o) ", ") (Refinter.get p)
 
 
 and pkind_def unfold ff kd =
@@ -200,7 +213,7 @@ and print_term unfold lvl ff t =
        | TOAbs(b) ->
           let x = binder_name b in
           let t = subst b (free_of (new_ovari x)) in
-          fprintf ff " %s%a" x fn t
+          fprintf ff " %s%a" (convert_ordinal x) fn t
        | _        ->
           fprintf ff ".%a" (print_term 0) t
      in
@@ -251,6 +264,7 @@ and print_term unfold lvl ff t =
        match b.elt with
        | TAbst(_,f) ->
           let x = binder_name f in
+	  let x = if x = "_" then "" else x in
           let t = subst f (free_of (new_tvari x)) in
           fprintf ff "\\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
        | _          ->
@@ -400,38 +414,51 @@ let print_calls ff arities calls =
   List.iter (print_call arities) calls;
   fprintf ff "  }\n\\end{dot2tex}\n"
 
+let is_refl : sub_prf -> bool = fun (t,a,b,ir,r) -> eq_kind a b
+
 let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   let open Proof in
   let t2s = term_to_string false and k2s = kind_to_string false in
   let c = sprintf "$%s : %s$" (t2s t) (k2s k) in
   match r with
-  | Typ_Coer(p1,p2)   -> binaryN "$\\subset$" c (sub2proof p1) (typ2proof p2)
+  | Typ_Coer(p1,p2)   -> if is_refl p1 then typ2proof p2 else
+                         binaryN "$\\subset$" c (sub2proof p1) (typ2proof p2)
   | Typ_KAbs(p)       -> unaryN "$\\Lambda$" c (typ2proof p)
   | Typ_OAbs(p)       -> unaryN "$\\Lambda_o$" c (typ2proof p)
-  | Typ_Defi(p)       -> hyp ""
-  | Typ_Prnt(p)       -> unaryN "$print$" c (sub2proof p)
-  | Typ_Cnst(p)       -> unaryN "$=$" c (sub2proof p)
-  | Typ_Func_i(p1,p2) -> binaryN "$\\to_i$" c (sub2proof p1) (typ2proof p2)
+  | Typ_Defi(p)       -> unaryC "Def" c p
+  | Typ_Prnt(p)       -> unaryC "$print$" c p
+  | Typ_Cnst(p)       -> unaryC "$=$" c p
+  | Typ_Func_i(p1,p2) -> binaryC "$\\to_i$" c p1 p2
   | Typ_Func_e(p1,p2) -> binaryN "$\\to_e$" c (typ2proof p1) (typ2proof p2)
   | Typ_Prod_i(p,ps)  -> n_aryN "$\\times_i$" c
                            (sub2proof p :: List.map typ2proof ps)
   | Typ_Prod_e(p)     -> unaryN "$\\times_e$" c (typ2proof p)
-  | Typ_DSum_i(p1,p2) -> binaryN "$+_i$" c (sub2proof p1) (typ2proof p2)
+  | Typ_DSum_i(p1,p2) -> binaryC "$+_i$" c p1 p2
   | Typ_DSum_e(p,ps,_)-> n_aryN "$+_e$" c
                            (typ2proof p :: List.map typ2proof ps) (* FIXME*)
-  | Typ_YH(n,p)          ->
-     let name = sprintf "$H_%d$" n in
-     unaryN name c (sub2proof p)
-  | Typ_TFix(n,p1,p)     ->
-     let name = sprintf "$I_%d$" n in
-     binaryN name c (sub2proof p1) (typ2proof !p)
+  | Typ_YH(n,p)       -> let name = sprintf "$H_%d$" n in unaryC name c p
+  | Typ_TFix(n,p1,p)  -> let name = sprintf "$I_%d$" n in binaryC name c p1 !p
   | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 
-and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
+and binaryC s c p1 p2 =
   let open Proof in
-  let t2s = term_to_string false and k2s = kind_to_string false in
-  let c = sprintf "$%s \\in %s \\subset %s$" (t2s t) (k2s a) (k2s b) in
+  if is_refl p1 then
+    unaryN s c (typ2proof p2)
+  else
+    binaryN s c (sub2proof p1) (typ2proof p2)
+
+and unaryC s c p1 =
+  let open Proof in
+  if is_refl p1 then
+    axiomN s c
+  else
+    unaryN s c (sub2proof p1)
+
+and sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
+  let open Proof in
+  let k2s = kind_to_string false in
+  let c = sprintf "$%s \\subset %s$" (k2s a) (k2s b) in
   match r with
   | _ when eq_kind a b-> axiomN "$=$" c (* usefull because of unification *)
   | Sub_Delay(pr)     -> sub2proof !pr
@@ -455,17 +482,26 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_FixN_l(p)     -> unaryN "$\\nu_l$" c (sub2proof p)
   | Sub_FixM_l(p)     -> unaryN "$\\mu_l$" c (sub2proof p)
   | Sub_FixN_r(p)     -> unaryN "$\\nu_r$" c (sub2proof p)
+  | Sub_And_l(p)      -> unaryN "$\\land_l$" c (sub2proof p)
+  | Sub_And_r(p)      -> unaryN "$\\land_r$" c (sub2proof p)
+  | Sub_Or_l(p)       -> unaryN "$\\lor_l$" c (sub2proof p)
+  | Sub_Or_r(p)       -> unaryN "$\\lor_r$" c (sub2proof p)
   | Sub_Ind(n)        -> axiomN (sprintf "$H_%d$" n) c
   | Sub_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
 let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
 
-let rec output ch = function
+let rec output toplevel ch =
+  let output = output false in function
   | Kind(n,ufd,k) -> break_hint := n; print_kind ufd ch k; break_hint := 0
   | Term(n,ufd,t) -> break_hint := n; print_term ufd ch t; break_hint := 0
   | Text(t)       -> fprintf ch "%s" t
-  | List(l)       -> fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
+  | List(l)       ->
+     if toplevel then
+       fprintf ch "%a" (fun ch -> List.iter (output ch)) l
+     else
+       fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof (p,(arities,calls)) ->
      print_subtyping_proof ch p;
      fprintf ch "\\begin{center}\n";
@@ -495,6 +531,8 @@ let rec output ch = function
      break_hint := 0
   | Sct (arities,calls) ->
       print_calls ch arities calls
+
+let output = output true
 
 let ignore_latex = ref false
 

@@ -175,8 +175,8 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
     | KUVar(u)   -> if u.kuvar_key = i then combine acc occ else acc
     | KTInt(_)   -> assert false
-    | MuRec(_,k)
-    | NuRec(_,k) -> aux occ acc k)
+    | KMRec(_,k)
+    | KNRec(_,k) -> aux occ acc k)
   and aux2 acc t =
     if List.memq t.elt !adone_t then acc else (
     adone_t := t.elt :: !adone_t;
@@ -228,8 +228,8 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | MuRec(_,k)
-      | NuRec(_,k) -> fn k
+      | KMRec(_,k)
+      | KNRec(_,k) -> fn k
       | t          -> box t
     and gn o =
       match orepr o with
@@ -274,8 +274,8 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s)   -> kdprj (map_term fn t) s
       | KWith(t,c)   -> let (s,a) = c in kwith (fn t) s (fn a)
-      | MuRec(_,k)
-      | NuRec(_,k)   -> fn k
+      | KMRec(_,k)
+      | KNRec(_,k)   -> fn k
       | k            -> box k
     and gn o =
       match orepr o with
@@ -289,31 +289,32 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
  *                            lifting of kind                               *
  ****************************************************************************)
 
-let lift_kind : kind -> kind bindbox = fun k ->
-  let rec fn k =
-      match repr k with
-      | KFunc(a,b) -> kfunc (fn a) (fn b)
-      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
-      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KVari(x)   -> box_of_var x
-      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
-      | KDPrj(t,s) -> kdprj (map_term fn t) s
-      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | MuRec _
-      | NuRec _    -> assert false
-      | t          -> box t
-    and gn o =
-      match orepr o with
-      | OVari x -> box_of_var x
-      | o -> box o
-    in
-    fn k
+let rec lift_kind : kind -> kind bindbox = fun k ->
+  match repr k with
+  | KFunc(a,b) -> kfunc (lift_kind a) (lift_kind b)
+  | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, lift_kind a)) fs)
+  | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, lift_kind a)) cs)
+  | KKAll(f)   -> kkall (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
+  | KKExi(f)   -> kkexi (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
+  | KOAll(f)   -> koall (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
+  | KOExi(f)   -> koexi (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
+  | KFixM(o,f) -> kfixm (binder_name f) (lift_ordinal o) (fun x -> lift_kind (subst f (KVari x)))
+  | KFixN(o,f) -> kfixn (binder_name f) (lift_ordinal o) (fun x -> lift_kind (subst f (KVari x)))
+  | KVari(x)   -> box_of_var x
+  | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
+  | KDPrj(t,s) -> kdprj (map_term lift_kind t) s
+  | KWith(t,c) -> let (s,a) = c in kwith (lift_kind t) s (lift_kind a)
+  | KMRec _
+  | KNRec _    -> assert false
+  | t          -> box t
+and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
+  match orepr o with
+  | OVari x -> box_of_var x
+  | OSucc o -> osucc (lift_ordinal o)
+  | OLess _  -> assert false (* do not support binding trhough witness even if this
+                                is possible in principle *)
+  | OConv | OUVar _ | OTInt _ -> box o
+
 
 
 (****************************************************************************
@@ -338,8 +339,8 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | MuRec(_,k)
-      | NuRec(_,k) -> fn k
+      | KMRec(_,k)
+      | KNRec(_,k) -> fn k
       | t          -> box t
     and gn o =
       match orepr o with
@@ -349,6 +350,62 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | o -> box o
     in
     fn k))
+
+(****************************************************************************
+ *                Closedness tests for terms, kind and ordinals             *
+ ****************************************************************************)
+
+let rec has_boundvar k =
+  let k = repr k in
+  match k with
+  | KFunc(a,b) -> has_boundvar a; has_boundvar b
+  | KProd(ls)
+  | KDSum(ls)  -> List.iter (fun (l,a) -> has_boundvar a) ls
+  | KKAll(f)
+  | KKExi(f)   -> has_boundvar (subst f (KProd []))
+  | KFixM(o,f)
+  | KFixN(o,f) -> has_oboundvar o; has_boundvar (subst f (KProd []))
+  | KOAll(f)
+  | KOExi(f)   -> has_boundvar (subst f (OTInt 0))
+  | KDefi(d,o,a) -> Array.iter has_oboundvar o; Array.iter has_boundvar a
+  | KWith(k,c) -> let (_,b) = c in has_boundvar k; has_boundvar b
+  | KDPrj(t,s) -> has_tboundvar t
+  | KMRec(o,k) -> has_boundvar k (* In the current version, no bound ordinal in o *)
+  | KNRec(o,k) -> has_boundvar k (* In the current version, no bound ordinal in o *)
+    (* we ommit Dprj above because the kind in term are only
+       indication for the type-checker and they have no real meaning *)
+  | KVari _ -> raise Exit
+  | KUCst _ | KECst _ | KUVar _ | KTInt _ -> ()
+
+and has_tboundvar t =
+  match t.elt with
+  | TCoer(t,k) -> has_tboundvar t; has_boundvar k
+  | TVari _ -> raise Exit
+  | TAbst(ko, b) ->
+     has_tboundvar (subst b (TTInt 0)); (match ko with None -> () | Some k -> has_boundvar k)
+  | TAppl(t1,t2) -> has_tboundvar t1; has_tboundvar t2;
+  | TReco(l) -> List.iter (fun (_,t) -> has_tboundvar t) l
+  | TProj(t,s) -> has_tboundvar t
+  | TCons(s,t) -> has_tboundvar t
+  | TCase(t,l,ao) -> has_tboundvar t; List.iter (fun (_,t) ->  has_tboundvar t) l;
+    (match ao with None -> () | Some t -> has_tboundvar t)
+  | TFixY(_,b) -> has_tboundvar (subst b (TTInt 0))
+  | TKAbs(b) -> has_tboundvar (subst b (KTInt 0))
+  | TOAbs(b) -> has_tboundvar (subst b (OTInt 0))
+  | TDefi _ | TPrnt _ | TTInt _ | TCnst _ -> ()
+
+and has_oboundvar o =
+  let o = orepr o in
+    match o with
+    | OVari _ -> raise Exit
+    | OSucc o -> has_oboundvar o
+    | OLess(o,In(t,b)) | OLess(o,NotIn(t,b)) ->
+       has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
+    | OTInt _ | OUVar _ | OConv -> ()
+
+let closed_term t = try has_tboundvar t; true with Exit -> false
+let closed_kind k = try has_boundvar k; true with Exit -> false
+let closed_ordinal o = try has_oboundvar o; true with Exit -> false
 
 (****************************************************************************
  *                    Decomposition type, ordinals                          *
@@ -370,7 +427,7 @@ let decompose : occur -> kind -> kind ->
   let rec search pos o =
     let o = orepr o in
     match o with
-    | OLess _ when pos <> Eps->
+    | OLess _ when pos <> Eps && closed_ordinal o ->
        (try
           box (OTInt(assoc_ordinal o !res))
         with
@@ -418,8 +475,8 @@ let decompose : occur -> kind -> kind ->
     | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn Eps a)
     | KVari(x)   -> box_of_var x
-    | MuRec(_,k)
-    | NuRec(_,k) -> fn pos k
+    | KMRec(_,k)
+    | KNRec(_,k) -> fn pos k
     | t          -> box t
   in
   let k1 = unbox (fn (neg pos) k1) in
@@ -448,8 +505,8 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
     | KDefi(d,o,a) -> kdefi d (Array.map get o) (Array.map fn a)
     | KDPrj(t,s) -> kdprj (map_term fn t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-    | MuRec _
-    | NuRec _    -> assert false
+    | KMRec _
+    | KNRec _    -> assert false
     | t          -> box t
   in
   unbox (fn k)

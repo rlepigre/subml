@@ -181,8 +181,8 @@ and print_kind unfold wrap ff t =
       fprintf ff "?%i%a" u.kuvar_key print_state u.kuvar_state
   | KTInt(n) ->
      fprintf ff "!%i" n
-  | MuRec(_,a) -> pkind ff a
-  | NuRec(_,a) -> pkind ff a
+  | KMRec(_,a) -> pkind ff a
+  | KNRec(_,a) -> pkind ff a
 
 and print_state ff s = match !s with
   | Free -> ()
@@ -384,6 +384,10 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_FixN_l(p)     -> unaryN "νl" c (sub2proof p)
   | Sub_FixM_l(p)     -> unaryN "μl" c (sub2proof p)
   | Sub_FixN_r(p)     -> unaryN "νr" c (sub2proof p)
+  | Sub_And_l(p)      -> unaryN "∧l" c (sub2proof p)
+  | Sub_And_r(p)      -> unaryN "∧r" c (sub2proof p)
+  | Sub_Or_l(p)       -> unaryN "∨l" c (sub2proof p)
+  | Sub_Or_r(p)       -> unaryN "∨r" c (sub2proof p)
   | Sub_Ind(n)        -> axiomN (sprintf "$H_%d$" n) c
   | Sub_Error(msg)    -> axiomN (sprintf "ERROR(%s)" msg) c
 

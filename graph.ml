@@ -1,55 +1,58 @@
 open Proof
 open Format
 
-let head = "<!DOCTYPE html>
-<html>
-  <head>
-  <meta charset=\"utf-8\">
-  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">
-  <meta name=\"viewport\" content=\"width=device-width\">
-  <title> Collapsable example </title>
-  <link rel=\"stylesheet\" href=\"Treant.css\">
-  <link rel=\"stylesheet\" href=\"collapsable.css\">
-</head>
-<body>
-  <div class=\"chart\" id=\"proof\"></div>
-  <script src=\"vendor/raphael.js\"></script>
-  <script src=\"Treant.js\"></script>
-  <script src=\"vendor/jquery.min.js\"></script>
-  <script src=\"vendor/jquery.easing.js\"></script>
-  <script>
-    var nodes = "
+let head = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns/graphml\"
+  xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+  xmlns:y=\"http://www.yworks.com/xml/graphml\"
+  xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns/graphml
+                      http://www.yworks.com/xml/schema/graphml/1.0/ygraphml.xsd\">
+<key for=\"node\" id=\"d0\" yfiles.type=\"nodegraphics\"/>
+<key attr.name=\"url\" attr.type=\"string\" for=\"node\" id=\"d0\"/>
+<key for=\"edge\" id=\"d2\" yfiles.type=\"edgegraphics\"/>
+<key attr.name=\"description\" attr.type=\"string\" for=\"node\" id=\"d2\"/>
+<graph edgedefault=\"directed\" id=\"Typing map\">
+"
 
-let tail = ";
+let tail = "</graph>
+</graphml>
+"
 
-    tree = new Treant(
-      { chart:
-        { container     : \"#proof\"
-        , animateOnInit : true
-        , node          : { collapsable: true }
-        , animation     :
-          { nodeAnimation: \"easeOutBounce\"
-          , nodeSpeed    : 700
-          , connectorsAnimation: \"bounce\",
-                connectorsSpeed: 700
-            }
-        }
-        , nodeStructure: nodes});
-  </script>
-</body>
-</html>"
+let node ch = fprintf ch
+"<node id=\"%s\">
+ <data key=\"d0\">
+  <y:ShapeNode>
+   <y:Fill color=\"#88FF88\"/>
+   <y:NodeLabel>%s</y:NodeLabel>
+   <y:Shape type=\"rectangle\"/>
+  </y:ShapeNode>
+ </data>
+</node>
+"
+
+let edge ch = fprintf ch
+"<edge source=\"%s\" target=\"%s\">
+ <data key=\"d2\">
+  <y:PolyLineEdge>
+   <y:LineStyle type=\"line\" width=\"2\" color=\"#000000\"/>
+   <y:Arrows source=\"delta\" target=\"none\"/>
+   <y:EdgeLabel visible=\"false\">Less</y:EdgeLabel>
+  </y:PolyLineEdge>
+ </data>
+</edge>
+"
 
 let to_nodes : formatter -> string proof -> unit = fun ch p ->
-  let rec to_nodes ch = function
-    | Hyp(s)       -> fprintf ch "{ innerHTML: \"%s\" }" s
-    | Rule(ps,c,_) -> fprintf ch "{ innerHTML: \"%s\", collapsed: true," c;
-                      let rec children ch = function
-                        | []  -> ()
-                        | [c] -> to_nodes ch c
-                        | cs  -> List.iter (fprintf ch "%a, " to_nodes) cs
-                      in
-                      fprintf ch "children: [%a]}" children ps
-  in to_nodes ch p
+  let c = ref 0 in
+  let label () = let n = sprintf "node::[%d]" !c in incr c; n in
+  let rec to_nodes = function
+    | Hyp(s)       -> let l = label () in node ch l s; l
+    | Rule(ps,c,_) -> let labels = List.map to_nodes ps in
+		      let l0 = label () in node ch l0 c;
+		      List.iter (fun l -> edge ch l0 l) labels;
+		      l0
+  in
+  let _ = to_nodes p in ()
 
-let output_html : formatter -> string proof -> unit = fun ch p ->
+let output_graphml : formatter -> string proof -> unit = fun ch p ->
   fprintf ch "%s%a%s%!" head to_nodes p tail

@@ -168,7 +168,7 @@ let parser loptident = lident | "_" -> ""
 
 let parser lgident =
   | "α" -> "α"
-  | "β" -> "α"
+  | "β" -> "β"
   | "γ" -> "γ"
   | "δ" -> "δ"
   | "ε" -> "ε"
@@ -203,7 +203,7 @@ let set_kw     = new_keyword "set"
 let include_kw = new_keyword "include"
 let check_kw   = new_keyword "check"
 let latex_kw   = new_keyword "latex"
-let html_kw    = new_keyword "html"
+let graphml_kw = new_keyword "graphml"
 
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
@@ -535,10 +535,10 @@ let include_file : string -> unit = fun fn ->
     raise e
 
 
-let output_html : strpos -> unit = fun id ->
+let output_graphml : strpos -> unit = fun id ->
   try
     let prf = (Hashtbl.find val_env id.elt).proof in
-    Graph.output_html Io.(fmts.htm) (Print.typ2proof prf)
+    Graph.output_graphml Io.(fmts.htm) (Print.typ2proof prf)
   with Not_found -> unbound id
 
 (****************************************************************************
@@ -556,7 +556,7 @@ let parser command top =
   | f:flag$ val_kw (n,k,t):val_def$               -> new_val f n k t
   | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
-  | _:html_kw id:lident$                          -> output_html (in_pos _loc_id id)
+  | _:graphml_kw id:lident$                       -> output_graphml (in_pos _loc_id id)
   | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t
   | _:set_kw "verbose" b:enables                  -> verbose := b
   | _:set_kw "texfile" fn:string_lit when not top -> Io.(fmts.tex <- fmt_of_file fn)

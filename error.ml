@@ -36,7 +36,11 @@ let rec check_sub_proof (t, k1, k2, _, r) =
     | Sub_FixM_r p
     | Sub_FixN_l p
     | Sub_FixM_l p
-    | Sub_FixN_r p        -> check_sub_proof p
+    | Sub_FixN_r p
+    | Sub_And_l  p
+    | Sub_And_r  p
+    | Sub_Or_l   p
+    | Sub_Or_r   p        -> check_sub_proof p
     | Sub_Func   (p1, p2) -> check_sub_proof p1 &&& check_sub_proof p2
     | Sub_Prod   ps
     | Sub_DSum   ps       -> for_all check_sub_proof ps

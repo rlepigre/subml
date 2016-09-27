@@ -278,8 +278,8 @@ let check_rec
         (match a with KFixM _ -> false | _ -> true) &&
         (match b with KFixN _ -> false | _ -> true)
       then raise Exit;
-      (match a with MuRec _ | NuRec _ -> raise Exit | _ -> ());
-      (match b with MuRec _ | NuRec _ -> raise Exit | _ -> ());
+      (match a with KMRec _ | KNRec _ -> raise Exit | _ -> ());
+      (match b with KMRec _ | KNRec _ -> raise Exit | _ -> ());
       let (a', b', os) = decompose Pos a b in
       let p' =
         let l =
@@ -336,19 +336,19 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   | NewInduction ind_ref ->
   let r = (* FIXME: le témoin n'est pas le bon *)
     try match (a,b) with
-    | (MuRec(ptr,a), _           ) ->
-       Sub_FixM_l(subtype ctxt t a b0)
+    | (KMRec(ptr,a), _           ) ->
+       Sub_And_l(subtype ctxt t a b0)
 
-    | (_           , NuRec(ptr,b))->
-       Sub_FixN_r(subtype ctxt t a0 b)
+    | (_           , KNRec(ptr,b))->
+       Sub_Or_r(subtype ctxt t a0 b)
 
-    | (NuRec(ptr,a), KUVar _     )
+    | (KNRec(ptr,a), KUVar _     )
         when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
-       Sub_FixM_l(subtype ctxt t a b0)
+       Sub_Or_l(subtype ctxt t a b0)
 
-    | (KUVar _     , MuRec(ptr,b))
+    | (KUVar _     , KMRec(ptr,b))
         when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
-       Sub_FixN_r(subtype ctxt t a0 b)
+       Sub_And_r(subtype ctxt t a0 b)
 
     (* unification. (sum and product special) *)
     | (KUVar(ua)   , KProd(l))
@@ -558,13 +558,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
           with Not_found -> subtype_error "Subtyping clash (no rule apply)."
         end
 
-    | (NuRec(ptr, a), _          )
+    | (KNRec(ptr, a), _          )
         when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
-       Sub_FixM_l(subtype ctxt t a b0)
+       Sub_And_l(subtype ctxt t a b0)
 
-    | (_           , MuRec(ptr, b))
+    | (_           , KMRec(ptr, b))
         when Refinter.subset eq_ordinal ptr ctxt.positive_ordinals ->
-       Sub_FixN_r(subtype ctxt t a0 b)
+       Sub_Or_r(subtype ctxt t a0 b)
 
     (* Subtype clash. *)
     | (_           , _           ) ->
@@ -587,8 +587,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TAbst(ao,f) ->
         let a = match ao with None -> new_uvar () | Some a -> a in
         let b = new_uvar () in
-        let ptr = Refinter.create () in
-        let c' = NuRec(ptr,KFunc(a,b)) in
+        let ptr = Refinter.create ctxt.positive_ordinals in
+        let c' = KNRec(ptr,KFunc(a,b)) in
         let p1 = subtype ctxt t c' c in
         let ctxt =  add_positives ctxt (Refinter.get ptr) in
         let wit = tcnst f a b in
@@ -604,8 +604,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_OAbs(p)
     | TAppl(t,u) when is_neutral t && not (is_neutral u)->
         let a = new_uvar () in
-        let ptr = Refinter.create () in
-        let p2 = type_check ctxt t (MuRec(ptr,KFunc(a,c))) in
+        let ptr = Refinter.create ctxt.positive_ordinals in
+        let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p1 = type_check ctxt u a in
         Typ_Func_e(p1, p2)
@@ -616,9 +616,9 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Func_e(p1, p2)
     | TReco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
-        let ptr = Refinter.create () in
+        let ptr = Refinter.create ctxt.positive_ordinals in
         let c' = KProd(ts) in
-        let c' = if is_normal t then NuRec(ptr,c') else c' in
+        let c' = if is_normal t then KNRec(ptr,c') else c' in
         let p1 = subtype ctxt t c' c in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let check (l,t) =
@@ -633,8 +633,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TCons(d,v) ->
         let a = new_uvar () in
         let c' = KDSum([(d,a)]) in
-        let ptr = Refinter.create () in
-        let c' = if is_normal t then NuRec(ptr,c') else c' in
+        let ptr = Refinter.create ctxt.positive_ordinals in
+        let c' = if is_normal t then KNRec(ptr,c') else c' in
         let p1 = subtype ctxt t c' c in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p2 = type_check ctxt v a in
@@ -646,8 +646,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
             None -> KDSum ts
           | _    -> new_uvar ~state:(Sum ts) ()
         in
-        let ptr = Refinter.create () in
-        let p1 = type_check ctxt t (MuRec(ptr,k)) in
+        let ptr = Refinter.create ctxt.positive_ordinals in
+        let p1 = type_check ctxt t (KMRec(ptr,k)) in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let check (d,f) =
           let cc = List.assoc d ts in

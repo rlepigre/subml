@@ -67,9 +67,9 @@ type kind =
   (** Unification variables - used for typechecking. *)
   | KTInt of int
   (** Integer tag for comparing kinds. *)
-  | MuRec of (ordinal, ordinal) refinter * kind
-  | NuRec of (ordinal, ordinal) refinter * kind
-  (** Recording *)
+  | KMRec of (ordinal, ordinal) refinter * kind
+  | KNRec of (ordinal, ordinal) refinter * kind
+  (** Ordinal conjunction and disjunction *)
 
 (** Type definition (user defined type). *)
 and type_def =
@@ -190,6 +190,10 @@ and sub_rule =
   | Sub_FixN_l of sub_prf
   | Sub_FixM_l of sub_prf
   | Sub_FixN_r of sub_prf
+  | Sub_And_l  of sub_prf
+  | Sub_And_r  of sub_prf
+  | Sub_Or_l   of sub_prf
+  | Sub_Or_r   of sub_prf
   | Sub_Ind    of int
   | Sub_Error  of string
 and sub_prf =
@@ -228,6 +232,8 @@ let rec repr : kind -> kind = function
 let rec full_repr : kind -> kind = function
   | KUVar({kuvar_val = {contents = Some k}}) -> full_repr k
   | KDefi({tdef_value = v}, os, ks) -> full_repr (msubst (msubst v os) ks)
+  | KMRec(p,k) when Refinter.is_empty p -> full_repr k
+  | KNRec(p,k) when Refinter.is_empty p -> full_repr k
   | k                               -> k
 
 let rec orepr = function

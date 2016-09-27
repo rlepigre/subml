@@ -1,7 +1,8 @@
 (* List library. *)
 include "nat.typ"
 
-type List(A) = μX [Nil of {} | Cons of {hd : A; tl : X}]
+type SList(α,A) = μα X [Nil of {} | Cons of {hd : A; tl : X}]
+type List(A) = SList(∞,A)
 
 val cons : ∀A A → List(A) → List(A) = fun e l → e::l
 
@@ -12,10 +13,13 @@ val hd : ∀A List(A) → Option(A) = fun l →
   | []   → None
   | x::l → Some x
 
-val tl : ∀A (List(A) → Option(List(A))) = fun l →
+val tl : ∀A ∀α (SList(α+1,A) → Option(SList(α,A))) = fun l →
   case l of
   | []   → None
   | x::l → Some l
+
+(* Check that the above type is general enough *)
+val tl' : ∀A (List(A) → Option(List(A))) = tl
 
 val rec length : ∀A (List(A) → Nat) = fun l →
   case l of
@@ -27,10 +31,13 @@ val rec nth : ∀A (List(A) → Nat → Option(A)) = fun l n →
   | Z   → hd l
   | S x → (case l of [] → None | a::l → nth l x)
 
-val rec map : ∀A ∀B ((A → B) → List(A) → List(B)) = fun f l →
+val rec map : ∀A ∀B ∀α ((A → B) → SList(α,A) → SList(α,B)) = fun f l →
   case l of
   | []   → []
   | x::l → f x :: map f l
+
+(* Check that the above type is general enough *)
+val map' : ∀A ∀B ((A → B) → List(A) → List(B)) = map
 
 val rec append : ∀A (List(A) → List(A) → List(A)) = fun l1 l2 →
   case l1 of
