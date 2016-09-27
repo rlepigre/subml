@@ -472,44 +472,56 @@ let new_type : name -> (string list * string list) -> pkind -> unit =
 
 type flag = MustPass | MustFail | CanFail
 
+exception OK
+
+let check pos flag f a =
+  let res =
+    try f a with
+    | Error.Error l ->
+        begin
+          match flag with
+          | MustPass -> Io.err "CHECK FAILED: %a\n%!" Error.display_errors l; failwith "check"
+          | MustFail
+          | CanFail  -> raise OK
+        end
+    | Loop_error p ->
+        begin
+          match flag with
+          | MustPass -> Io.err "CHECK FAILED: LOOP at %a\n%!" print_position p; failwith "check"
+          | MustFail
+          | CanFail  -> raise OK
+        end
+    | e               ->
+        Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+        failwith "check"
+  in
+  if flag = CanFail then Io.out "A NEW TEST PASSED.\n%!";
+  if flag = MustFail then (
+    Io.err "CHECK FAILED: A WRONG TEST PASSED at %a\n%!" print_position pos;
+    failwith "check"
+  );
+  res
+
 (* New value definition. *)
-let new_val : flag -> name -> pkind option -> pterm -> unit = fun f nm k t ->
+let new_val : flag -> name -> pkind option -> pterm -> unit = fun flag nm k t ->
   let (tex_name, name) = nm in
   let tex_name = from_opt tex_name ("\\mathrm{" ^ name ^ "}") in
   let t = unbox (unsugar_term empty_env t) in
   let k = map_opt (fun k -> unbox (unsugar_kind empty_env k)) k in
   (* TODO handle flag. *)
-  let (k, proof, calls_graph) = type_check t k in
-  if !verbose then Io.out "val %s : %a\n%!" name (print_kind false) k;
-  Hashtbl.add val_env name
-    { name ; tex_name ; value = eval t ; orig_value = t
-    ; ttype = k ; proof ; calls_graph }
+  try
+    let (k, proof, calls_graph) = check t.pos flag (type_check t) k in
+    if !verbose then Io.out "val %s : %a\n%!" name (print_kind false) k;
+    Hashtbl.add val_env name
+      { name ; tex_name ; value = eval t ; orig_value = t
+      ; ttype = k ; proof ; calls_graph }
+  with OK -> ()
 
 (* Check a subtyping relation. *)
-let check_sub : flag -> pkind -> pkind -> unit = fun f a b ->
+let check_sub : pos -> flag -> pkind -> pkind -> unit = fun pos flag a b ->
   let a = unbox (unsugar_kind empty_env a) in
   let b = unbox (unsugar_kind empty_env b) in
-  begin
-    try ignore (subtype a b) with
-    | Error.Error l ->
-        begin
-          match f with
-          | MustPass -> Io.err "CHECK FAILED: %a\n%!" Error.display_errors l; failwith "check"
-          | MustFail -> ()
-          | CanFail  -> ()
-        end
-    | Loop_error p ->
-        begin
-          match f with
-          | MustPass -> Io.err "CHECK FAILED: LOOP at %a\n%!" print_position p; failwith "check"
-          | MustFail -> ()
-          | CanFail  -> ()
-        end
-    | e               ->
-        Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
-        failwith "check"
-  end;
-  if f = CanFail then Io.out "A NEW TEST PASSED.\n%!";
+  (try ignore (check pos flag (subtype a) b) with OK -> ());
   reset_epsilon_tbls ()
 
 (* Evaluate a term. *)
@@ -554,7 +566,7 @@ let parser command top =
   | type_kw (tn,n,args,k):kind_def$               -> new_type (tn,n) args k
   | eval_kw t:term$                               -> eval_term t
   | f:flag$ val_kw (n,k,t):val_def$               -> new_val f n k t
-  | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub f a b
+  | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub _loc f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
   | _:graphml_kw id:lident$                       -> output_graphml (in_pos _loc_id id)
   | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t
