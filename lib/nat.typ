@@ -6,10 +6,28 @@ val pred : Nat → Nat = fun n →
   | Z → Z
   | S x → x
 
+!val pred : Nat → Nat = fun n →
+  case n of
+  | S x → x
+
+!val pred : Nat → Nat = fun n →
+  case n of
+  | Z → Z
+
 val rec print_nat : Nat → {} = fun n →
   case n of
   | Z   → print("Z\n")
   | S x → print("S"); print_nat x
+
+!val rec print_nat2 : Nat → {} = fun n →
+  case n of
+  | Z   → print("Z\n")
+  | S x → print("S"); print_nat2 (S x)
+
+!val rec print_nat2 : Nat → {} = fun n →
+  case n of
+  | Z   → print("Z\n")
+  | S x → print("S"); print_nat2 n
 
 val rec add : Nat → Nat → Nat = fun n m →
   case n of

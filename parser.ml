@@ -508,7 +508,6 @@ let new_val : flag -> name -> pkind option -> pterm -> unit = fun flag nm k t ->
   let tex_name = from_opt tex_name ("\\mathrm{" ^ name ^ "}") in
   let t = unbox (unsugar_term empty_env t) in
   let k = map_opt (fun k -> unbox (unsugar_kind empty_env k)) k in
-  (* TODO handle flag. *)
   try
     let (k, proof, calls_graph) = check t.pos flag (type_check t) k in
     if !verbose then Io.out "val %s : %a\n%!" name (print_kind false) k;
@@ -565,8 +564,8 @@ let parser flag =
 let parser command top =
   | type_kw (tn,n,args,k):kind_def$               -> new_type (tn,n) args k
   | eval_kw t:term$                               -> eval_term t
-  | f:flag$ val_kw (n,k,t):val_def$               -> new_val f n k t
-  | f:flag$ check_kw a:kind$ _:subset b:kind$     -> check_sub _loc f a b
+  | f:flag val_kw (n,k,t):val_def$                -> new_val f n k t
+  | f:flag check_kw a:kind$ _:subset b:kind$      -> check_sub _loc f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
   | _:graphml_kw id:lident$                       -> output_graphml (in_pos _loc_id id)
   | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t
