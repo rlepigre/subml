@@ -264,7 +264,7 @@ and print_term unfold lvl ff t =
        match b.elt with
        | TAbst(_,f) ->
           let x = binder_name f in
-	  let x = if x = "_" then "" else x in
+          let x = if x = "_" then "" else x in
           let t = subst f (free_of (new_tvari x)) in
           fprintf ff "\\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
        | _          ->

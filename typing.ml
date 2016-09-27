@@ -750,11 +750,19 @@ and check_fix ctxt t n f c =
            let a = recompose a ov in
            Io.log_typ "searching induction hyp (2) with %d:\n%!" fnum;
            (* need full subtype to rollback unification of variables if it fails *)
-           let prf, _ = full_subtype ~ctxt ~term:t  a c in
-	   check_sub_proof prf;
+           let time = Timed.Time.save () in
+           let prf =
+             try
+               let prf = subtype ctxt t a c in
+               check_sub_proof prf;
+               prf
+             with Subtype_error _ ->
+               Timed.Time.rollback time;
+               raise Exit
+           in
            add_call ctxt fnum ov true;
            Typ_YH(fnum,prf) (* FIXME: should we keep prf0 in the proof too ? *)
-         with Error.Error _ | Loop_error _ -> fn hyps
+         with Error.Error _ | Loop_error _ | Exit -> fn hyps
     in
     try fn hyps with Not_found ->
       (* No inductive hypothesis applies, we add a new induction hyp and
@@ -769,35 +777,23 @@ and check_fix ctxt t n f c =
       remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;
       Typ_TFix(fnum,prf0,ptr)
 
-
-and full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
-  fun ?ctxt:ctxt0 ?term a b ->
-    let t = from_opt term (generic_tcnst a b) in
+let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
+  fun ?ctxt ?term a b ->
+    let term = generic_tcnst a b in
     let ctxt =
-      { (from_opt ctxt0 (empty_ctxt ())) with
+      {  (empty_ctxt ()) with
           fun_table = init_fun_table ()
         ; calls = ref []
         ; delayed = ref []
         ; top_induction = (-1, [])
       }
     in
-    let time = Timed.Time.save () in
-    try
-      let p = subtype ctxt t a b in
-      List.iter (fun f -> f ()) !(ctxt.delayed);
-      let calls = inline ctxt.fun_table !(ctxt.calls) in
-      if not (sct ctxt.fun_table calls) then loop_error dummy_position;
-      if ctxt0 = None then reset_all ();
-      (p, (ctxt.fun_table.table, calls))
-    with Subtype_error _ | Loop_error _ as e ->
-      if ctxt0 = None then reset_all ();
-      Timed.Time.rollback time;
-      raise e
-    | e ->
-      Io.err "unexpected exception from subtype %s\n%!" (Printexc.to_string e);
-      assert false
-
-let subtype = full_subtype
+    let p = subtype ctxt term a b in
+    List.iter (fun f -> f ()) !(ctxt.delayed);
+    let calls = inline ctxt.fun_table !(ctxt.calls) in
+    if not (sct ctxt.fun_table calls) then loop_error dummy_position;
+    check_sub_proof p;
+    (p, (ctxt.fun_table.table, calls))
 
 let type_check : term -> kind option -> kind * typ_prf * calls_graph =
   fun t k ->
@@ -806,7 +802,7 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
     let (prf, calls) =
       try
         let p = type_check ctxt t k in
-	check_typ_proof p;
+        check_typ_proof p;
         List.iter (fun f -> f ()) !(ctxt.delayed);
         let calls = inline ctxt.fun_table !(ctxt.calls) in
         if not (sct ctxt.fun_table calls) then loop_error t.pos;
@@ -825,11 +821,6 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
     let k = List.fold_left (fun acc v -> KKAll (bind_kuvar v acc)) k ul in
     let k = List.fold_left (fun acc v -> KOAll (bind_ouvar v acc)) k ol in
     (k, prf, calls)
-
-let full_subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
-  fun ?ctxt ?term a b ->
-    let (p, _ as res) = full_subtype ?ctxt ?term a b in
-    check_sub_proof p; res
 
 let try_fold_def : kind -> kind = fun k ->
   let match_def k def =

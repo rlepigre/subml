@@ -34,7 +34,7 @@ type calls_graph = arities * calls
 
 type fun_table =
   { mutable current : int;
-    mutable table : (int * (string * int * printer array)) list }
+    mutable table : arities }
 
 let mat_prod l1 c1 c2 m1 m2 =
   Array.init l1 (fun i ->

@@ -48,9 +48,9 @@ let to_nodes : formatter -> string proof -> unit = fun ch p ->
   let rec to_nodes = function
     | Hyp(s)       -> let l = label () in node ch l s; l
     | Rule(ps,c,_) -> let labels = List.map to_nodes ps in
-		      let l0 = label () in node ch l0 c;
-		      List.iter (fun l -> edge ch l0 l) labels;
-		      l0
+                      let l0 = label () in node ch l0 c;
+                      List.iter (fun l -> edge ch l0 l) labels;
+                      l0
   in
   let _ = to_nodes p in ()
 
