@@ -133,6 +133,9 @@ and less_ordinal pos c o1 o2 =
 let eq_kind : kind -> kind -> bool =
   fun k1 k2 -> Timed.pure_test (eq_kind (ref 0) k1) k2
 
+let eq_kbinder : (kind, kind) binder -> (kind, kind) binder -> bool =
+  fun f1 f2 -> Timed.pure_test (eq_kbinder (ref 0) f1) f2
+
 let eq_term : term -> term -> bool =
   fun t1 t2 -> Timed.pure_test (eq_term (ref 0) t1) t2
 

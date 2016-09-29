@@ -45,7 +45,7 @@ and sub_induction =
 (** induction hypothesis for typing recursive programs *)
 and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
-    * kind                    (* the initial type *)
+    * kind option             (* the initial type, if not initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
     * (int                    (* reference of the inductive hyp *)
        * kind                 (* the type for this hypothesis *)
@@ -504,11 +504,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
-        begin
+        begin (* FIXME: HEURISTIC THAT AVOID LOOPS *)
           match a with
-          | KFixN(o',_) -> let os = List.map fst ctxt.positive_ordinals in
-                           ignore (Timed.pure_test (leq_ordinal os o) o')
-          | _           -> ()
+          | KFixN(o',g) (*when eq_kbinder f g*) ->
+	     let os = List.map fst ctxt.positive_ordinals in
+             ignore (Timed.pure_test (leq_ordinal os o) o')
+          | _ -> ()
         end;
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
@@ -521,12 +522,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_FixN_r prf
 
     | (KFixM(o,f)   , _           ) ->
-        begin
+        begin (* FIXME: HEURISTIC THAT AVOID LOOPS *)
           match b with
-          | KFixM(o',_) -> let os = List.map fst ctxt.positive_ordinals in
-                           ignore (Timed.pure_test (leq_ordinal os o) o')
-          | _           -> ()
-        end;
+          | KFixM(o',g) (*when eq_kbinder f g*) ->
+	     let os = List.map fst ctxt.positive_ordinals in
+             ignore (Timed.pure_test (leq_ordinal os o) o')
+          | _ -> ()
+          end;
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
         in
@@ -687,12 +689,16 @@ and check_fix ctxt t n f c =
   let a, remains, hyps =
     match hyps with
     | [(_,a,l,r)] -> a, r, Some (l) (* see comment on Rec above *)
-    | [] -> c, ref [], None
+    | [] -> None, ref [], None
     | _ -> assert false
   in
   (* This is the subtyping that means that the program is typed, as in ML
-     x : A |- t : A => Y \x.t : A *)
-  let prf0 = subtype ctxt t a c in
+     x : A |- t : A => Y \x.t : A
+     This helps for polymorphic program ... But is wrong if initial type
+     has ordinal parameters
+  *)
+  (* FIXME: HEURISTIC THAT AVOID SOME FAILURE *)
+  (match a with Some a -> ignore (subtype ctxt t a c) | None -> ());
   let (_, c0, os) = decompose Pos (KProd []) c in
   match hyps with
   | None ->
@@ -710,7 +716,7 @@ and check_fix ctxt t n f c =
       (print_kind false) c (print_kind false) c0;
     add_call ctxt fnum os false;
     (* do not register any hypothesis if the are no ordinal parameters *)
-    let hyps = if os <> [] then [fnum,c0,os] else [] in
+    let a, hyps = if os <> [] then None, [fnum,c0,os] else Some c, [] in
     let ctxt =
       { ctxt with
         fix_induction_hyp = (f,a,ref hyps, remains)::ctxt.fix_induction_hyp;
@@ -731,7 +737,7 @@ and check_fix ctxt t n f c =
         let l = !remains in
         remains := [];
         List.iter (fun (c,t,k,ptr) -> ptr := type_check c t k) l;
-        if !remains = [] then Typ_TFix(fnum,prf0,ptr) else breadth_first (n-1)
+        if !remains = [] then Typ_TFix(fnum,ptr) else breadth_first (n-1)
     in
     breadth_first n
 
@@ -756,13 +762,13 @@ and check_fix ctxt t n f c =
                let prf = subtype ctxt t a c in
                check_sub_proof prf;
                prf
-             with Subtype_error _ ->
+             with _ ->
                Timed.Time.rollback time;
                raise Exit
            in
            add_call ctxt fnum ov true;
-           Typ_YH(fnum,prf) (* FIXME: should we keep prf0 in the proof too ? *)
-         with Error.Error _ | Loop_error _ | Exit -> fn hyps
+           Typ_YH(fnum,prf)
+         with Exit -> fn hyps
     in
     try fn hyps with Not_found ->
       (* No inductive hypothesis applies, we add a new induction hyp and
@@ -775,7 +781,7 @@ and check_fix ctxt t n f c =
       let ctxt = { ctxt with top_induction = (fnum, os) } in
       let ptr = ref dummy_proof in
       remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;
-      Typ_TFix(fnum,prf0,ptr)
+      Typ_TFix(fnum,ptr)
 
 let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
   fun ?ctxt ?term a b ->

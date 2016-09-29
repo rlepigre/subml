@@ -480,14 +480,14 @@ let check pos flag f a =
     | Error.Error l ->
         begin
           match flag with
-          | MustPass -> Io.err "CHECK FAILED: %a\n%!" Error.display_errors l; failwith "check"
+          | MustPass -> Io.err "%a\n%!" Error.display_errors l; failwith "check"
           | MustFail
           | CanFail  -> raise OK
         end
     | Loop_error p ->
         begin
           match flag with
-          | MustPass -> Io.err "CHECK FAILED: LOOP at %a\n%!" print_position p; failwith "check"
+          | MustPass -> Io.err "LOOP at %a\n%!" print_position p; failwith "check"
           | MustFail
           | CanFail  -> raise OK
         end
@@ -497,7 +497,7 @@ let check pos flag f a =
   in
   if flag = CanFail then Io.out "A NEW TEST PASSED.\n%!";
   if flag = MustFail then (
-    Io.err "CHECK FAILED: A WRONG TEST PASSED at %a\n%!" print_position pos;
+    Io.err "A WRONG TEST PASSED at %a\n%!" print_position pos;
     failwith "check"
   );
   res
