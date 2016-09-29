@@ -45,7 +45,7 @@ and sub_induction =
 (** induction hypothesis for typing recursive programs *)
 and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
-    * kind option             (* the initial type, if not initial ordinal params *)
+    * kind option             (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
     * (int                    (* reference of the inductive hyp *)
        * kind                 (* the type for this hypothesis *)
