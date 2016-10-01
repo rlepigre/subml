@@ -10,7 +10,7 @@ let rec assoc_ordinal o = function
 
 (* construction of an ordinal < o such that w *)
 
-let oless o w =
+let opred o w =
   let o = orepr o in
   match o with
   | OSucc o' -> o'
@@ -287,7 +287,7 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
 
 (****************************************************************************
  *                            lifting of kind                               *
- ****************************************************************************)
+****************************************************************************)
 
 let rec lift_kind : kind -> kind bindbox = fun k ->
   match repr k with
@@ -315,7 +315,7 @@ and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
                                 is possible in principle *)
   | OConv | OUVar _ | OTInt _ -> box o
 
-
+let lift_term = map_term lift_kind
 
 (****************************************************************************
  *                 Binding a unification variable in a type                 *
@@ -420,77 +420,31 @@ let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
-let decompose : occur -> kind -> kind ->
-                  kind * kind * (int * ordinal) list = fun pos k1 k2 ->
+let decompose : (ordinal * ordinal) list -> kind -> kind ->
+  (ordinal * ordinal) list * kind * kind * (int * ordinal) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
-  let rec search pos o =
+  let rec search o =
     let o = orepr o in
     match o with
-    | OLess _ when pos <> Eps && closed_ordinal o ->
+    | OLess _ when closed_ordinal o ->
        (try
           box (OTInt(assoc_ordinal o !res))
         with
           Not_found ->
             let n = !i in incr i; res := (o, n) :: !res; box (OTInt n))
-    | OSucc o -> osucc(search pos o)
+    | OLess(o',In(u,t)) ->
+       oless_In (search o) (map_term fn u)
+         (vbind mk_free_ovari (binder_name t) (fun x -> (fn (subst t (OVari x)))))
+    | OLess(o',NotIn(u,t)) ->
+       oless_NotIn (search o) (map_term fn u)
+         (vbind mk_free_ovari (binder_name t) (fun x -> (fn (subst t (OVari x)))))
+   | OSucc o -> osucc(search o)
     | OVari o -> box_of_var o
-    | _ -> box o
-  in
-  let rec fn pos k =
-    match repr k with
-    | KFunc(a,b) -> kfunc (fn (neg pos) a) (fn pos b)
-    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn pos a)) fs)
-    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
-    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn pos (subst f (KVari x)))
-    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn pos (subst f (KVari x)))
-    | KOAll(f)   -> koall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | KFixM(OConv,f) when !contract_mu && is_mu f ->
-       let aux x =
-         match full_repr (subst f x) with
-         | KFixM(OConv,g) -> subst g x
-         | _              -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) aux in
-       let a' = KFixM(OConv, f) in
-       fn pos a'
-    | KFixN(OConv,f) when !contract_mu && is_nu f ->
-       let aux x =
-         match full_repr (subst f x) with
-         | KFixN(OConv,g) -> subst g x
-         | _              -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) aux in
-       let a' = KFixN(OConv, f) in
-       fn pos a'
-    | KFixM(o,f) ->
-       kfixm (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
-    | KFixN(o,f) ->
-       kfixn (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
-    | KDefi(d,o,a) ->
-       kdefi d
-         (Array.mapi (fun i -> search (compose pos d.tdef_ovariance.(i))) o)
-         (Array.mapi (fun i -> fn (compose pos d.tdef_kvariance.(i))) a)
-    | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn pos t) s (fn Eps a)
-    | KVari(x)   -> box_of_var x
-    | KMRec(_,k)
-    | KNRec(_,k) -> fn pos k
-    | t          -> box t
-  in
-  let k1 = unbox (fn (neg pos) k1) in
-  let k2 = unbox (fn pos k2) in
-  (k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res)
-
-let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
-  let rec get o = match orepr o with
-      | OTInt i -> (try box (List.assoc i os) with Not_found -> assert false)
-      | OSucc o -> osucc (get o)
-      | OVari v -> box_of_var v
-      | o -> box o
-  in
-  let rec fn k =
+    | OUVar _
+    | OConv   -> box o
+    | OTInt _ -> assert false
+  and fn k =
     match repr k with
     | KFunc(a,b) -> kfunc (fn a) (fn b)
     | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
@@ -499,17 +453,81 @@ let recompose : kind -> (int * ordinal) list -> kind = fun k os ->
     | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
     | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
     | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | KFixM(o, f) -> kfixm (binder_name f) (get o) (fun x -> fn (subst f (KVari x)))
-    | KFixN(o, f) -> kfixn (binder_name f) (get o) (fun x -> fn (subst f (KVari x)))
-    | KVari(x)   -> box_of_var x
-    | KDefi(d,o,a) -> kdefi d (Array.map get o) (Array.map fn a)
+    | KFixM(OConv,f) when !contract_mu && is_mu f ->
+       let aux x =
+         match full_repr (subst f x) with
+         | KFixM(OConv,g) -> subst g x
+         | _              -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) aux in
+       let a' = KFixM(OConv, f) in
+       fn a'
+    | KFixN(OConv,f) when !contract_mu && is_nu f ->
+       let aux x =
+         match full_repr (subst f x) with
+         | KFixN(OConv,g) -> subst g x
+         | _              -> assert false (* Unreachable. *)
+       in
+       let f = binder_from_fun (binder_name f) aux in
+       let a' = KFixN(OConv, f) in
+       fn a'
+    | KFixM(o,f) ->
+       kfixm (binder_name f) (search o) (fun x -> fn (subst f (KVari x)))
+    | KFixN(o,f) ->
+       kfixn (binder_name f) (search o) (fun x -> fn (subst f (KVari x)))
+    | KDefi(d,o,a) -> kdefi d (Array.map search o) (Array.map fn a)
     | KDPrj(t,s) -> kdprj (map_term fn t) s
     | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+    | KVari(x)   -> box_of_var x
+    | KMRec(_,k)
+    | KNRec(_,k) -> fn k
+    | t          -> box t
+  in
+  let k1 = unbox (fn k1) in
+  let k2 = unbox (fn k2) in
+  (* for the context, we will only keep the ordinals that are usefull *)
+  let rec usefull keep remain =
+    let new_keep, remain = List.partition (fun (o1,_) ->
+      List.exists (fun (o2,_) -> eq_ordinal o1 o2) !res) remain in
+    if new_keep = [] then keep else
+      let keep = List.map (fun (o1,o2) -> (unbox (search o1),
+                                           unbox (search o2))) new_keep @ keep in
+      usefull keep remain
+  in
+  let pos = List.sort compare (usefull [] pos) in
+  (pos, k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res)
+
+let recompose : (ordinal * ordinal) list-> kind -> (int * ordinal) list ->
+      (ordinal * ordinal) list * kind
+  =
+  let rec get os o = match orepr o with
+      | OTInt i -> (try box (List.assoc i os) with Not_found -> assert false)
+      | OSucc o -> osucc (get os o)
+      | OVari v -> box_of_var v
+      | o -> box o
+  in
+  let rec fn os k =
+    match repr k with
+    | KFunc(a,b) -> kfunc (fn os a) (fn os b)
+    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn os a)) fs)
+    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn os a)) cs)
+    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn os (subst f (KVari x)))
+    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn os (subst f (KVari x)))
+    | KOAll(f)   -> koall (binder_name f) (fun x -> fn os (subst f (OVari x)))
+    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn os (subst f (OVari x)))
+    | KFixM(o, f) -> kfixm (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
+    | KFixN(o, f) -> kfixn (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
+    | KVari(x)   -> box_of_var x
+    | KDefi(d,o,a) -> kdefi d (Array.map (get os) o) (Array.map (fn os) a)
+    | KDPrj(t,s) -> kdprj (map_term (fn os) t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn os t) s (fn os a)
     | KMRec _
     | KNRec _    -> assert false
     | t          -> box t
   in
-  unbox (fn k)
+  fun pos k os ->
+    (List.map (fun (o1,o2) -> (unbox (get os o1), unbox (get os o2))) pos,
+     unbox (fn os k))
 
 (* Matching kind, used for printing only *)
 

@@ -38,7 +38,7 @@ type subtype_ctxt =
 (** induction hypothesis for subtyping *)
 and sub_induction =
       int                  (** the index of the induction hyp *)
-    * int list             (** the index of positive ordinals *)
+    * (ordinal * ordinal) list (** the positivity context *)
     * kind * kind          (** the two kinds *)
     * (int * ordinal) list (** the ordinal parameters *)
 
@@ -48,6 +48,7 @@ and fix_induction =
     * kind option             (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
     * (int                    (* reference of the inductive hyp *)
+       * (ordinal * ordinal) list (** the positivity context *)
        * kind                 (* the type for this hypothesis *)
        * (int * ordinal) list (* the ordinal parameters *))
       list ref
@@ -280,22 +281,15 @@ let check_rec
       then raise Exit;
       (match a with KMRec _ | KNRec _ -> raise Exit | _ -> ());
       (match b with KMRec _ | KNRec _ -> raise Exit | _ -> ());
-      let (a', b', os) = decompose Pos a b in
-      let p' =
-        let l =
-          List.filter (fun (i,o) -> List.exists (fun (o',_) -> eq_ordinal o o')
-            ctxt.positive_ordinals) os
-        in
-        List.sort compare (List.map fst l)
-      in
+      let (pos, a', b', os) = decompose ctxt.positive_ordinals a b in
       (* Search for the inductive hypothesis *)
       (*Io.log "\n\nIND len(os) = %d\n%!" (List.length os);
         Io.log "IND (%a < %a)\n%!" (print_kind false) a' (print_kind false) b';*)
-      List.iter (function (index,p0,a0,b0,os0) ->
+      List.iter (function (index,pos0,a0,b0,os0) ->
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
-        if Timed.pure_test (fun () -> p' = p0 && eq_kind a' a0 && eq_kind b0 b') () then (
+        if Timed.pure_test (fun () -> pos = pos0 && eq_kind a' a0 && eq_kind b0 b') () then (
           assert (List.length os = Sct.arity index ctxt.fun_table);
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index os true;
@@ -304,7 +298,7 @@ let check_rec
       let fnum = new_function ctxt.fun_table "S" (List.map Latex.ordinal_to_printer os) in
       add_call ctxt fnum os false;
       let ctxt = { ctxt with
-        sub_induction_hyp = (fnum, p', a', b', os)::ctxt.sub_induction_hyp;
+        sub_induction_hyp = (fnum, pos, a', b', os)::ctxt.sub_induction_hyp;
         top_induction = (fnum, os)
       }
       in
@@ -514,8 +508,15 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
         in
-        let o' = oless o (NotIn(t,unbox g)) in
-        let ctxt = add_positive ctxt o o' in
+        let o', ctxt =
+          match orepr o with
+          | OSucc o' -> o', ctxt
+          | OConv -> opred OConv (NotIn(t,unbox g)), ctxt
+          | o ->
+            let o' = opred o (NotIn(t,unbox g)) in
+            let ctxt = add_positive ctxt o o' in
+            o', ctxt
+        in
         Io.log_sub "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixN(o', f) in
         let prf = subtype ctxt t a0 (subst f cst) in
@@ -532,8 +533,15 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let g = bind mk_free_ovari (binder_name f) (fun o ->
           bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
         in
-        let o' = oless o (In(t,unbox g)) in
-        let ctxt = add_positive ctxt o o' in
+        let o', ctxt =
+          match orepr o with
+          | OSucc o' -> o', ctxt
+          | OConv -> opred OConv (In(t,unbox g)), ctxt
+          | o ->
+            let o' = opred o (In(t,unbox g)) in
+            let ctxt = add_positive ctxt o o' in
+            o', ctxt
+        in
         Io.log_sub "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixM(o', f) in
         let prf = subtype ctxt t (subst f cst) b0 in
@@ -699,7 +707,7 @@ and check_fix ctxt t n f c =
   *)
   (* FIXME: HEURISTIC THAT AVOID SOME FAILURE *)
   (match a with Some a -> ignore (subtype ctxt t a c) | None -> ());
-  let (_, c0, os) = decompose Pos (KProd []) c in
+  let (pos, _, c0, os) = decompose ctxt.positive_ordinals (KProd []) c in
   match hyps with
   | None ->
     (* No induction hypothesis was found, we create a new one, unroll
@@ -716,7 +724,7 @@ and check_fix ctxt t n f c =
       (print_kind false) c (print_kind false) c0;
     add_call ctxt fnum os false;
     (* do not register any hypothesis if the are no ordinal parameters *)
-    let a, hyps = if os <> [] then None, [fnum,c0,os] else Some c, [] in
+    let a, hyps = if os <> [] then None, [fnum,pos,c0,os] else Some c, [] in
     let ctxt =
       { ctxt with
         fix_induction_hyp = (f,a,ref hyps, remains)::ctxt.fix_induction_hyp;
@@ -750,17 +758,20 @@ and check_fix ctxt t n f c =
     let rec fn = function
       | _ when n > 0 -> raise Not_found
       | [] -> raise Not_found
-      | (fnum, a, os') :: hyps ->
+      | (fnum, pos', a, os') :: hyps ->
          try
            let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
-           let a = recompose a ov in
-           Io.log_typ "searching induction hyp (2) with %d:\n%!" fnum;
+           let (pos', a) = recompose pos' a ov in
+           Io.log_typ "searching induction hyp (2) with %d %a %a:\n%!" fnum (print_kind false) a print_positives { ctxt with positive_ordinals = pos'};
            (* need full subtype to rollback unification of variables if it fails *)
            let time = Timed.Time.save () in
            let prf =
              try
                let prf = subtype ctxt t a c in
                check_sub_proof prf;
+	       if not (List.for_all (fun (o1,o2) ->
+		 less_ordinal (List.map fst ctxt.positive_ordinals) o2 o1) pos')
+	       then (Printf.printf "coucou\n%!"; raise Exit);
                prf
              with _ ->
                Timed.Time.rollback time;
@@ -777,7 +788,7 @@ and check_fix ctxt t n f c =
       Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
         (print_kind false) c (print_kind false) c0;
       add_call ctxt fnum os false;
-      if os <> [] then hyps_ptr := (fnum, c0, os) :: !hyps_ptr;
+      if os <> [] then hyps_ptr := (fnum, pos, c0, os) :: !hyps_ptr;
       let ctxt = { ctxt with top_induction = (fnum, os) } in
       let ptr = ref dummy_proof in
       remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;

@@ -301,6 +301,8 @@ let new_ovari : string -> ovar =
 let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
+let oless_In    = box_apply3 (fun o t k -> OLess(o,In(t,k)))
+let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
