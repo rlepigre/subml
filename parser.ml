@@ -477,28 +477,28 @@ exception OK
 let check pos flag f a =
   let res =
     try f a with
-    | Error.Error l ->
+    | Error.Error l as e ->
         begin
           match flag with
-          | MustPass -> Io.err "%a\n%!" Error.display_errors l; failwith "check"
+          | MustPass -> Io.err "%a\n%!" Error.display_errors l; raise e
           | MustFail
           | CanFail  -> raise OK
         end
-    | Loop_error p ->
+    | Loop_error p as e ->
         begin
           match flag with
-          | MustPass -> Io.err "LOOP at %a\n%!" print_position p; failwith "check"
+          | MustPass -> Io.err "LOOP at %a\n%!" print_position p; raise e
           | MustFail
           | CanFail  -> raise OK
         end
     | e               ->
         Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
-        failwith "check"
+        raise e
   in
   if flag = CanFail then Io.out "A NEW TEST PASSED.\n%!";
   if flag = MustFail then (
     Io.err "A WRONG TEST PASSED at %a\n%!" print_position pos;
-    failwith "check"
+    exit 1;
   );
   res
 

@@ -113,17 +113,20 @@ let set_ouvar v o =
   (* FIXME: occur check *)
 
 let rec leq_ordinal pos c o1 o2 =
+  let ptr = ref o1 in
   match (orepr o1, orepr o2) with
   | (o1         , o2         ) when eq_ordinal c o1 o2 -> true
   | (OUVar(p)   , o2         ) -> set_ouvar p o2; true
   | (o1         , OUVar(p)   ) -> set_ouvar p o1; true
   | (_          , OConv      ) -> true
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
-  | (OSucc(OLess(o1,_)), o2  ) when List.exists (eq_ordinal c o1) pos
-                               -> leq_ordinal pos c o1 o2
+  | (OSucc o1   , o2         ) when
+      List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
+                               -> leq_ordinal pos c !ptr o2
   (* case loosing information, the first one looses less *)
-  | (OLess(o1,_), o2         ) when List.exists (eq_ordinal c o1) pos
-                               -> leq_ordinal pos c o1 o2
+  | (o1         , o2         ) when
+      List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
+                               -> leq_ordinal pos c !ptr o2
   | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (_          , _          ) -> false
 
@@ -145,8 +148,8 @@ let eq_ordinal : ordinal -> ordinal -> bool =
 let eq_ord_wit : ord_wit -> ord_wit -> bool =
   fun t1 t2 -> Timed.pure_test (eq_ord_wit (ref 0) t1) t2
 
-let leq_ordinal : ordinal list -> ordinal -> ordinal -> bool =
+let leq_ordinal : (ordinal * ordinal) list -> ordinal -> ordinal -> bool =
   fun pos t1 t2 -> Timed.pure_test (leq_ordinal pos (ref 0) t1) t2
 
-let less_ordinal : ordinal list -> ordinal -> ordinal -> bool =
+let less_ordinal : (ordinal * ordinal) list -> ordinal -> ordinal -> bool =
   fun pos t1 t2 -> Timed.pure_test (less_ordinal pos (ref 0) t1) t2

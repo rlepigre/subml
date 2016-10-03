@@ -70,7 +70,6 @@ let find_indexes ftbl pos index index' a b =
   Io.log_mat "build matrix for %d %d\n" index index';
   let c = Sct.arity index ftbl and l = Sct.arity index' ftbl in
   let m = Array.init l (fun _ -> Array.make c Unknown) in
-  let pos = List.map fst pos in
   List.iter (fun (j,o') ->
     List.iter (fun (i,o) ->
       Io.log_mat "  compare %d %a <=? %d %a => %!" i (print_ordinal false) o
@@ -501,8 +500,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         begin (* FIXME: HEURISTIC THAT AVOID LOOPS *)
           match a with
           | KFixN(o',g) (*when eq_kbinder f g*) ->
-	     let os = List.map fst ctxt.positive_ordinals in
-             ignore (Timed.pure_test (leq_ordinal os o) o')
+             ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o')
           | _ -> ()
         end;
         let g = bind mk_free_ovari (binder_name f) (fun o ->
@@ -526,8 +524,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         begin (* FIXME: HEURISTIC THAT AVOID LOOPS *)
           match b with
           | KFixM(o',g) (*when eq_kbinder f g*) ->
-	     let os = List.map fst ctxt.positive_ordinals in
-             ignore (Timed.pure_test (leq_ordinal os o) o')
+             ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o')
           | _ -> ()
           end;
         let g = bind mk_free_ovari (binder_name f) (fun o ->
@@ -705,7 +702,7 @@ and check_fix ctxt t n f c =
      This helps for polymorphic program ... But is wrong if initial type
      has ordinal parameters
   *)
-  (* FIXME: HEURISTIC THAT AVOID SOME FAILURE *)
+  (* FIXME: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS *)
   (match a with Some a -> ignore (subtype ctxt t a c) | None -> ());
   let (pos, _, c0, os) = decompose ctxt.positive_ordinals (KProd []) c in
   match hyps with
@@ -770,10 +767,10 @@ and check_fix ctxt t n f c =
                let prf = subtype ctxt t a c in
                check_sub_proof prf;
 	       if not (List.for_all (fun (o1,o2) ->
-		 less_ordinal (List.map fst ctxt.positive_ordinals) o2 o1) pos')
+		 less_ordinal ctxt.positive_ordinals o2 o1) pos')
 	       then (Printf.printf "coucou\n%!"; raise Exit);
                prf
-             with _ ->
+             with Exit | Subtype_error _ | Error.Error _ ->
                Timed.Time.rollback time;
                raise Exit
            in

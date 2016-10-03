@@ -427,19 +427,15 @@ let decompose : (ordinal * ordinal) list -> kind -> kind ->
   let rec search o =
     let o = orepr o in
     match o with
-    | OLess _ when closed_ordinal o ->
+    | OLess(bound,_) ->
+       assert (closed_ordinal o);
        (try
           box (OTInt(assoc_ordinal o !res))
         with
           Not_found ->
-            let n = !i in incr i; res := (o, n) :: !res; box (OTInt n))
-    | OLess(o',In(u,t)) ->
-       oless_In (search o) (map_term fn u)
-         (vbind mk_free_ovari (binder_name t) (fun x -> (fn (subst t (OVari x)))))
-    | OLess(o',NotIn(u,t)) ->
-       oless_NotIn (search o) (map_term fn u)
-         (vbind mk_free_ovari (binder_name t) (fun x -> (fn (subst t (OVari x)))))
-   | OSucc o -> osucc(search o)
+            let n = !i in incr i; res := (o, n) :: !res;
+	    box (OTInt n))
+    | OSucc o -> osucc(search o)
     | OVari o -> box_of_var o
     | OUVar _
     | OConv   -> box o
