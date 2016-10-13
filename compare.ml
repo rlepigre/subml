@@ -95,7 +95,7 @@ and eq_ordinal : int ref -> ordinal -> ordinal -> bool = fun c o1 o2 ->
   | (o1          , o2          ) when o1 == o2 -> true
   | (OUVar(v1)   , OUVar(v2)   ) -> eq_ouvar v1 v2
   | (OConv       , OConv       ) -> true
-  | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal c o1 o2 && eq_ord_wit c w1 w2
+  | (OLess(i1,_,_), OLess(i2,_,_)) -> i1 = i2 (* && eq_ordinal c o1 o2 && eq_ord_wit c w1 w2 *)
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal c o1 o2
   | (OTInt n1    , OTInt n2    ) -> n1 = n2
   | (_           , _           ) -> false

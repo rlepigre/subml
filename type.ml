@@ -17,8 +17,7 @@ let opred o w =
   | OUVar(p) ->
     let o' = OUVar(ref None) in
     set_ouvar p (OSucc o'); o'
-  | _ ->
-  OLess(o,w)
+  | _ -> OLess(oless_uid (), o,w)
 
  (***************************************************************************
  *                             mapping on terms                             *
@@ -199,7 +198,7 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TPrnt(_)
     | TTInt(_)       -> acc)
   and aux3 acc = function
-    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
+    | OLess(_,o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
     | OSucc o -> aux3 acc o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
@@ -399,7 +398,7 @@ and has_oboundvar o =
     match o with
     | OVari _ -> raise Exit
     | OSucc o -> has_oboundvar o
-    | OLess(o,In(t,b)) | OLess(o,NotIn(t,b)) ->
+    | OLess(_,o,(In(t,b) | NotIn(t,b))) ->
        has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
     | OTInt _ | OUVar _ | OConv -> ()
 
@@ -427,7 +426,7 @@ let decompose : (ordinal * ordinal) list -> kind -> kind ->
   let rec search o =
     let o = orepr o in
     match o with
-    | OLess(bound,_) ->
+    | OLess(_,bound,_) ->
        assert (closed_ordinal o);
        (try
           box (OTInt(assoc_ordinal o !res))

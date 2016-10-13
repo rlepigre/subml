@@ -128,20 +128,18 @@ let rec dot_proj t k s = match full_repr k with
   | k ->
      raise Not_found
 
-let rec lambda_kind t k s = match full_repr k with
-  | KKAll(f) ->
+let lambda_kind t k s = match full_repr k with
+  | KKAll(f) when binder_name f = s ->
      let c = KUCst(t,f) in
-     if binder_name f = s then c else lambda_kind t (subst f c) s
-  (* FIXME KOAll *)
-  | _ -> subtype_error ("can't find for all "^s)
+     c, (subst f c)
+  | _ -> type_error ("type lambda mismatch for "^s)
 
-let rec lambda_ordinal t k s =
+let lambda_ordinal t k s =
   match full_repr k with
-  | KOAll(f) ->
-     let c = OLess(OConv,NotIn(t,f)) in
-     if binder_name f = s then c else lambda_ordinal t (subst f c) s
-  (* FIXME KKAll *)
-  | _ -> subtype_error ("can't find for all (ord) "^s)
+  | KOAll(f) when binder_name f = s ->
+     let c = OLess(oless_uid (),OConv,NotIn(t,f)) in
+     c, (subst f c)
+  | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
 
 let has_leading_exists : kind -> bool = fun k ->
   let rec fn k =
@@ -479,7 +477,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Universal quantification over ordinals. *)
     | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (OLess(OConv,NotIn(t,f)))) in
+        let p = subtype ctxt t a0 (subst f (OLess(oless_uid (), OConv,NotIn(t,f)))) in
         Sub_OAll_r(p)
 
     | (KOAll(f)    , _           ) ->
@@ -488,7 +486,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Existantial quantification over ordinals. *)
     | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (OLess(OConv,In(t,f)))) b0 in
+        let p = subtype ctxt t (subst f (OLess(oless_uid (), OConv,In(t,f)))) b0 in
         Sub_OExi_l(p)
 
     | (_           , KOExi(f)    ) ->
@@ -602,12 +600,12 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let p2 = type_check ctxt (subst f wit) b in
         Typ_Func_i(p1, p2)
     | TKAbs(f) ->
-        let k = lambda_kind t c (binder_name f) in
-        let p = type_check ctxt (subst f k) c in
+        let k, b = lambda_kind t c (binder_name f) in
+        let p = type_check ctxt (subst f k) b in
         Typ_KAbs(p)
     | TOAbs(f) ->
-        let k = lambda_ordinal t c (binder_name f) in
-        let p = type_check ctxt (subst f k) c in
+        let k, b = lambda_ordinal t c (binder_name f) in
+        let p = type_check ctxt (subst f k) b in
         Typ_OAbs(p)
     | TAppl(t,u) when is_neutral t && not (is_neutral u)->
         let a = new_uvar () in
@@ -683,8 +681,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Cnst(p)
     | TTInt(_) -> assert false (* Cannot happen. *)
     | TVari(_) -> assert false (* Cannot happen. *)
-    with Subtype_error msg -> assert false
-    | Type_error msg -> Typ_Error msg
+    with Subtype_error msg
+       | Type_error msg -> Typ_Error msg
   in (t, c, r)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
@@ -768,7 +766,7 @@ and check_fix ctxt t n f c =
                check_sub_proof prf;
 	       if not (List.for_all (fun (o1,o2) ->
 		 less_ordinal ctxt.positive_ordinals o2 o1) pos')
-	       then (Printf.printf "coucou\n%!"; raise Exit);
+	       then raise Exit;
                prf
              with Exit | Subtype_error _ | Error.Error _ ->
                Timed.Time.rollback time;

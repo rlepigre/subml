@@ -10,14 +10,19 @@ val rec idt : ∀α ((μα X F(X)) → (μα X F(X))) = fun n →
   | Z    → Z
   | S(n) → S(idt n)
 
+val idt2 : ∀α ((μα X F(X)) → (μα X F(X))) = Λα fix 1 r → fun n →
+  case (n:μα X F(X)) of
+  | Z    → Z
+  | S(n) → S(r n)
+
 val rec idt3 : ∀α (F(μα X F(X)) → F(μα X F(X))) = idt
 val rec idt4 : ∀α (μα+1 X F(X)) → μα+1 X F(X) = idt
-(*
-!val rec idt2 : ∀α (F(μα X F(X)) → F(μα X F(X)))
-        = fun n → case n of
-          | Z → Z
-          | S n → S (idt2 n)
-*)
+
+val rec idt5 : ∀α (F(μα X F(X)) → F(μα X F(X))) = fun n →
+  case n of
+  | Z → Z
+  | S n → S (idt5 n)
+
 val pred : ∀α [ S of μα X F(X) ] → μα X F(X) = fun n →
   case n of
   | S n → n
@@ -32,11 +37,10 @@ type G(X) = {} -> [ S of X]
 val rec idt' : ∀α (να X G(X)) → (να X G(X)) = fun n u →
   case (n {}) of
   | S n → S(idt' n)
-(*
-!val rec idt2' : ∀α (να+1 X G(X)) → (να+1 X G(X))
-        = fun n u → case (n {}) of
-          | S n → S (idt2' n)
-*)
+
+val rec idt2' : ∀α (να+1 X G(X)) → (να+1 X G(X)) = fun n u →
+  case (n {}) of
+  | S n → S (idt2' n)
 
 val rec add : N → N → N = fun x y →
   case x of
@@ -48,11 +52,25 @@ val rec add' : N → N → N = fun x y →
   | Z    → y
   | S x' → S(add' (idt x') y)
 
-(*
-!val rec add'' : N → N → N = fun x y → case x of
+(* need to know that x is not zero in the second case *)
+?val rec add'' : N → N → N = fun x y → case x of
   | Z    → y
   | S x' → S(add'' (pred x) y)
-*)
+
+val rec 3 add3 : N → N → N = fun x y →
+  case x of
+  | Z    → y
+  | S x' → S(add3 y x')
+
+val rec 3 add3' : N → N → N = fun x y →
+  case x of
+  | Z    → y
+  | S x' → S(add3' y (idt x'))
+
+(* need to know that x is not zero in the second case *)
+?val rec 3 add3'' : N → N → N = fun x y → case x of
+  | Z    → y
+  | S x' → S(add3'' y (pred x))
 
 val rec add2 : N → N → N = fun x y →
   case x of
@@ -64,22 +82,19 @@ val rec add2' : N → N → N = fun x y →
   | Z    → y
   | S x' → add2' (idt x') (S y)
 
-(*
-val rec add2'' : N → N → N = fun x y → case x of
+(* need to know that x is not zero in the second case *)
+?val rec add2'' : N → N → N = fun x y → case x of
   | Z    → y
   | S x' → add2' (pred x) (S y)
-*)
 
 val rec mul : N → N → N = fun x y →
   case x of
   | Z    → Z
   | S x' → add (mul x' y) y
 
-(*
-val rec mul2 : N → N → N = fun x y → case x of
+val rec 3 mul2 : N → N → N = fun x y → case x of
   | Z → Z
   | S x' → add (mul2 y x') y
-*)
 
 type L(α,A) = μα X [Nil | Cons of { hd : A; tl : X}]
 
