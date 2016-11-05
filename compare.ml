@@ -120,14 +120,13 @@ let rec leq_ordinal pos c o1 o2 =
   | (o1         , OUVar(p)   ) -> set_ouvar p o1; true
   | (_          , OConv      ) -> true
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
+  | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (OSucc o1   , o2         ) when
       List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
                                -> leq_ordinal pos c !ptr o2
-  (* case loosing information, the first one looses less *)
   | (o1         , o2         ) when
       List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
                                -> leq_ordinal pos c !ptr o2
-  | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (_          , _          ) -> false
 
 and less_ordinal pos c o1 o2 =
