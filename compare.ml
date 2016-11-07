@@ -118,7 +118,6 @@ let rec leq_ordinal pos c o1 o2 =
   | (o1         , o2         ) when eq_ordinal c o1 o2 -> true
   | (OUVar(p)   , o2         ) -> set_ouvar p o2; true
   | (o1         , OUVar(p)   ) -> set_ouvar p o1; true
-  | (_          , OConv      ) -> true
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (OSucc o1   , o2         ) when
