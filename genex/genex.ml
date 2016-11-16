@@ -3,7 +3,7 @@ let parser incl = "include \"" f:''[a-zA-Z0-9/._-]+'' "\"\n"
 let parser sect =  "(*" name:''[A-Za-z0-9 -]*'' "*)\n" is:incl+ "\n" ->
   (String.trim name, is)
 
-let parse = Decap.parse_file (parser sect*) Decap.no_blank
+let parse = Earley.parse_file (parser sect*) Earley.no_blank
 
 let output_html ss =
   let output_sect (n, is) =
@@ -30,4 +30,4 @@ let _ =
       Printf.eprintf "Usage: %s <all.typ>\n%!" Sys.argv.(0);
       exit 1;
     end;
-  output_html (Decap.handle_exception parse Sys.argv.(1)) 
+  output_html (Earley.handle_exception parse Sys.argv.(1)) 

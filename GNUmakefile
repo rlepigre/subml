@@ -21,26 +21,22 @@ deploy: www
 	ssh $(LOGIN)@lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/*
 	scp -r www/* $(LOGIN)@lama.univ-savoie.fr:/home/rlepi/WWW/subml
 
-MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
-	bindlib/bindlib.ml earley/ahash.ml earley/input.ml earley/earley.ml \
-  config.ml system.ml io.ml timed.ml refinter.ml position.ml ast.ml compare.ml \
-  type.ml eval.ml print.ml latex.ml sct.ml raw.ml typing.ml parser.ml \
-  proof.ml graph.ml error.ml
+MLFILES=$(wildcard *.ml) config.ml
 
 doc:
-	ocamlbuild -I bindlib -I earley -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
+	ocamlbuild -use-ocamlfind -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
 
 subml.native: $(MLFILES) subml.ml
-	ocamlbuild -cflags -w,-3-30 $@
+	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
 
 subml.byte: $(MLFILES) subml.ml
-	ocamlbuild -cflags -w,-3-30 $@
+	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
 
 config.ml: config.tmpl
 	sed -e 's!_PATH_!\"$(LIBDIR)\"!' $< > $@
 
 submljs.byte: $(MLFILES) submljs.ml
-	ocamlbuild -pkgs lwt.syntax,js_of_ocaml,js_of_ocaml.syntax -cflags -syntax,camlp4o,-w,-3-30 -use-ocamlfind $@
+	ocamlbuild -cflags -w,-3-30 -use-ocamlfind $@
 
 subml.js: submljs.byte
 	js_of_ocaml --pretty --noinline +weak.js submljs.byte -o subml.js
@@ -87,8 +83,6 @@ install: all
 subml-latest.tar.gz: $(MLFILES)
 	rm -rf subml-latest
 	mkdir subml-latest
-	cp -r earley subml-latest
-	cp -r bindlib subml-latest
 	pa_ocaml --ascii parser.ml > subml-latest/parser.ml
 	cp io.ml timed.ml ast.ml eval.ml print.ml subml-latest
 	cp subml.ml latex.ml proof.ml sct.ml raw.ml typing.ml subml-latest

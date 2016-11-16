@@ -1,7 +1,7 @@
 all: genex
 
 genex: genex.ml
-	ocamlc -pp pa_ocaml -I +decap -o genex unix.cma str.cma decap.cma $<
+	ocamlfind ocamlc -pp pa_ocaml -package earley,earley.str -o genex earley.cma unix.cma str.cma earleyStr.cma $<
 
 clean:
 	rm -rf genex.cmi genex.cmo
