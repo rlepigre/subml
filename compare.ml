@@ -121,10 +121,10 @@ let rec leq_ordinal pos c o1 o2 =
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (OSucc o1   , o2         ) when
-      List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
+   List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
                                -> leq_ordinal pos c !ptr o2
   | (o1         , o2         ) when
-      List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
+   List.exists (fun (o1'',o1') -> ptr := o1''; eq_ordinal c o1 o1') pos
                                -> leq_ordinal pos c !ptr o2
   | (_          , _          ) -> false
 

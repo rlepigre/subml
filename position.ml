@@ -21,7 +21,7 @@ let none : pos =
 
 (* DeCaP location function. *)
 let locate buf1 pos1 buf2 pos2 =
-  { filename   = Input.fname buf1
+  { filename   = Input.filename buf1
   ; dummy      = false
   ; line_start = Input.line_num buf1
   ; col_start  = Input.utf8_col_num buf1 pos1

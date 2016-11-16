@@ -22,13 +22,13 @@ deploy: www
 	scp -r www/* $(LOGIN)@lama.univ-savoie.fr:/home/rlepi/WWW/subml
 
 MLFILES=bindlib/ptmap.ml bindlib/ptmap.mli bindlib/bindlib_util.ml \
-	bindlib/bindlib.ml decap/ahash.ml decap/input.ml decap/decap.ml \
+	bindlib/bindlib.ml earley/ahash.ml earley/input.ml earley/earley.ml \
   config.ml system.ml io.ml timed.ml refinter.ml position.ml ast.ml compare.ml \
   type.ml eval.ml print.ml latex.ml sct.ml raw.ml typing.ml parser.ml \
   proof.ml graph.ml error.ml
 
 doc:
-	ocamlbuild -I bindlib -I decap -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
+	ocamlbuild -I bindlib -I earley -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
 
 subml.native: $(MLFILES) subml.ml
 	ocamlbuild -cflags -w,-3-30 $@
@@ -87,7 +87,7 @@ install: all
 subml-latest.tar.gz: $(MLFILES)
 	rm -rf subml-latest
 	mkdir subml-latest
-	cp -r decap subml-latest
+	cp -r earley subml-latest
 	cp -r bindlib subml-latest
 	pa_ocaml --ascii parser.ml > subml-latest/parser.ml
 	cp io.ml timed.ml ast.ml eval.ml print.ml subml-latest

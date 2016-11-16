@@ -1,4 +1,4 @@
 true        : -traverse
 "parser.ml" : pp(pa_ocaml)
 "bindlib"   : include
-"decap"     : include
+"earley"    : include

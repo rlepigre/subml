@@ -1,4 +1,4 @@
-open Decap
+open Earley
 open Bindlib
 open Ast
 open Position
@@ -34,7 +34,7 @@ let string_of_chars s =
 exception Unclosed_comment of bool * (string * int * int)
 
 let unclosed_comment in_string (buf,pos) =
-  let position = (Input.fname buf, Input.line_num buf, pos) in
+  let position = (Input.filename buf, Input.line_num buf, pos) in
   raise (Unclosed_comment (in_string, position))
 
 (* Blank function for basic blank characters (' ', '\t', '\r' and '\n') and
@@ -89,26 +89,24 @@ let keywords = Hashtbl.create 20
 let is_keyword : string -> bool = Hashtbl.mem keywords
 
 let check_not_keyword : string -> unit = fun s ->
-  if is_keyword s then
-    give_up ("\""^s^"\" is a reserved identifier...")
+  if is_keyword s then give_up ()
 
 let new_keyword : string -> unit grammar = fun s ->
   let ls = String.length s in
   if ls < 1 then raise (Invalid_argument "invalid keyword");
   if is_keyword s then raise (Invalid_argument "keyword already defied");
   Hashtbl.add keywords s s;
-  let fail () = give_up ("The keyword "^s^" was expected...") in
   let f str pos =
     let str = ref str in
     let pos = ref pos in
     for i = 0 to ls - 1 do
       let (c,str',pos') = Input.read !str !pos in
-      if c <> s.[i] then fail ();
+      if c <> s.[i] then give_up ();
       str := str'; pos := pos'
     done;
     let (c,_,_) = Input.read !str !pos in
     match c with
-    | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> fail ()
+    | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> give_up ()
     | _                                           -> ((), !str, !pos)
   in
   black_box f (Charset.singleton s.[0]) false s
@@ -141,7 +139,7 @@ let lidentfirst = Charset.union lowercase (Charset.union digit underscore)
 
 let string_lit =
   let normal = in_charset
-    (List.fold_left Charset.del Charset.full_charset ['\\'; '"'; '\r'])
+    (List.fold_left Charset.del Charset.full ['\\'; '"'; '\r'])
   in
   let schar = parser
     | "\\\""   -> "\""
@@ -160,9 +158,9 @@ let ident first =
   let first = in_charset first and any = in_charset identany in
   let lident = parser c:first s:any* ps:'\''* -> string_of_chars (c::s@ps) in
   let lident = change_layout lident no_blank in
-  Decap.apply (fun id -> check_not_keyword id; id) lident
+  apply (fun id -> check_not_keyword id; id) lident
 
-let parser lident = s:(ident lidentfirst) -> if s = "_" then give_up ""; s
+let parser lident = s:(ident lidentfirst) -> if s = "_" then give_up (); s
 let uident = ident uppercase
 let parser loptident = lident | "_" -> ""
 
@@ -231,13 +229,13 @@ let parser enables =
  ****************************************************************************)
 
 (* Entry point for ordinals. *)
-let parser ordinal : pordinal Decap.grammar =
+let parser ordinal : pordinal grammar =
   | infty?                  -> in_pos _loc PConv
   | s:lgident               -> in_pos _loc (PVari s)
   | o:ordinal '+' n:int_lit -> padd _loc o n
 
 (* Entry point for kinds. *)
-let parser kind : pkind Decap.grammar = (pkind `Fun)
+let parser kind : pkind grammar = (pkind `Fun)
 
 and kind_atm = (pkind `Atm)
 and kind_prd = (pkind `Prd)
@@ -276,7 +274,7 @@ and with_eq   = _:with_kw s:uident "=" b:kind_atm
  ****************************************************************************)
 
 (* Entry point for terms. *)
-and term : pterm Decap.grammar = (pterm `Lam)
+and term : pterm grammar = (pterm `Lam)
 
 and tapp = (pterm `App)
 and tseq = (pterm `Seq)
@@ -329,7 +327,7 @@ and term_llet = let_kw r:is_rec n:int_lit? pat:rpat "=" t:term in_kw u:term ->
       | _ -> t
     else
       match pat with Simple (Some id) -> pfixY id _loc_t n t
-      | _ -> give_up ""
+      | _ -> give_up ()
   in
   in_pos _loc (PAppl(apply_rpat pat u, t))
 
@@ -372,13 +370,13 @@ and default = '|' x:let_var arrow t:term -> (Simple (Some x), t)
 (* Single '#' character (not followed by another one). *)
 let hash =
   let fn buf pos = let (c,_,_) = Input.read buf pos in ((), c <> '#') in
-  let no_hash = Decap.test ~name:"no_hash" Charset.full_charset fn in
+  let no_hash = test ~name:"no_hash" Charset.full fn in
   parser '#' no_hash
 
 (* Sequence of characters excluding '}', '{', '@' and '#'. *)
 let tex_simple =
-  let cs = Charset.(List.fold_left del full_charset ['}';'{';'@';'#']) in
-  parser cs:(Decap.change_layout (parser (in_charset cs)+) no_blank) ->
+  let cs = Charset.(List.fold_left del full ['}';'{';'@';'#']) in
+  parser cs:(change_layout (parser (in_charset cs)+) no_blank) ->
     string_of_chars cs
 
 (* Simple LaTeX text (without specific annotations. *)
@@ -612,7 +610,7 @@ let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   let pos1 = print_position in
   let pos2 ff (buf,pos) =
     let open Input in
-    fprintf ff "File %S, line %d, characters %d" (fname buf) (line_num buf)
+    fprintf ff "File %S, line %d, characters %d" (filename buf) (line_num buf)
       (utf8_col_num buf pos)
   in
   try fn v; not intop with
@@ -620,12 +618,12 @@ let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   | System.Stopped         -> Io.err "\n[Interrupted]\n%!"; false
   | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false
   | Positivity_error(p,m)  -> Io.err "%a:\n%s\n%!" pos1 p m; false
-  | Parse_error(buf,pos,_,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
+  | Parse_error(buf,pos,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
                               false
   | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
     false
   | Error.Error l          -> Io.err "%a" Error.display_errors l; false
-  | Loop_error p            -> Io.err "Oups, loops at %a\n%!" print_position p; false
+  | Loop_error p           -> Io.err "Oups, loops at %a\n%!" print_position p; false
   | e                      -> Io.err "Uncaught exception %s\n%!"
                                 (Printexc.to_string e);
                               false

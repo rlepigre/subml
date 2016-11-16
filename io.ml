@@ -42,7 +42,7 @@ let read_file : (string -> Input.buffer) ref = ref (fun name ->
     | path::l ->
        try
          let filename = Filename.concat path name in
-         Input.buffer_from_channel ~filename (open_in filename)
+         Input.from_channel ~filename (open_in filename)
        with _ -> fn l
   in
   fn !Config.path)
