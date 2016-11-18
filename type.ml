@@ -297,8 +297,12 @@ let rec lift_kind : kind -> kind bindbox = fun k ->
   | KKExi(f)   -> kkexi (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
   | KOAll(f)   -> koall (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
   | KOExi(f)   -> koexi (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
-  | KFixM(o,f) -> kfixm (binder_name f) (lift_ordinal o) (fun x -> lift_kind (subst f (KVari x)))
-  | KFixN(o,f) -> kfixn (binder_name f) (lift_ordinal o) (fun x -> lift_kind (subst f (KVari x)))
+  | KFixM(o,f) ->
+     kfixm (binder_name f) (lift_ordinal o)
+       (fun x -> lift_kind (subst f (KVari x)))
+  | KFixN(o,f) ->
+     kfixn (binder_name f) (lift_ordinal o)
+       (fun x -> lift_kind (subst f (KVari x)))
   | KVari(x)   -> box_of_var x
   | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
   | KDPrj(t,s) -> kdprj (map_term lift_kind t) s
@@ -381,7 +385,8 @@ and has_tboundvar t =
   | TCoer(t,k) -> has_tboundvar t; has_boundvar k
   | TVari _ -> raise Exit
   | TAbst(ko, b) ->
-     has_tboundvar (subst b (TTInt 0)); (match ko with None -> () | Some k -> has_boundvar k)
+     has_tboundvar (subst b (TTInt 0));
+     (match ko with None -> () | Some k -> has_boundvar k)
   | TAppl(t1,t2) -> has_tboundvar t1; has_tboundvar t2;
   | TReco(l) -> List.iter (fun (_,t) -> has_tboundvar t) l
   | TProj(t,s) -> has_tboundvar t
@@ -433,7 +438,7 @@ let decompose : (ordinal * ordinal) list -> kind -> kind ->
         with
           Not_found ->
             let n = !i in incr i; res := (o, n) :: !res;
-	    box (OTInt n))
+            box (OTInt n))
     | OSucc o -> osucc(search o)
     | OVari o -> box_of_var o
     | OUVar _

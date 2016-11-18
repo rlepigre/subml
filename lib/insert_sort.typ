@@ -14,7 +14,7 @@ val rec insert0 : ∀α ∀A (A → A → Bool) → A → List(A) →  List(A) =
     | []   → a :: []
     | x::l → if cmp a x then a::l else x :: insert0 cmp a l
 
-val insert1 : ∀α ∀A (A → A → Bool) →  A → List(A) →  List(A) = insert
+val insert1 : ∀A (A → A → Bool) →  A → List(A) →  List(A) = insert
 
 val rec sort : ∀α ∀A  (A → A → Bool) → (μα X F(A,X)) → (μα X F(A,X)) =
   fun cmp l →

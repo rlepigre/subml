@@ -45,7 +45,7 @@ let read_file : (string -> Input.buffer) ref = ref (fun name ->
          Input.from_channel ~filename (open_in filename)
        with _ -> fn l
   in
-  fn !Config.path)
+  fn (""::!Config.path))
 
 let file fn = !read_file fn
 

@@ -526,8 +526,8 @@ let eval_term : pterm -> unit = fun t ->
   let t = unbox (unsugar_term empty_env t) in
   let (k,_,_) = type_check t None in
   let t = eval t in
-  if !verbose then
-    Io.out "%a : %a\n%!" (print_term true) t (print_kind false) k
+  (* if !verbose then *)
+  Io.out "%a : %a\n%!" (print_term true) t (print_kind false) k
 
 (* Load a file. *)
 let read_file : (string -> unit) ref = ref (fun _ -> assert false)
@@ -601,7 +601,7 @@ let full_of_buffer : Input.buffer -> unit =
 let eval_file =
   let eval_file fn =
     let buf = Io.file fn in
-    Io.out "## loading file %S\n%!" fn;
+    if !verbose then Io.out "## loading file %S\n%!" fn;
     parse_buffer (parser _:(command false)*) subml_blank buf
   in
   read_file := eval_file; eval_file

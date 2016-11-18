@@ -286,7 +286,8 @@ let check_rec
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
-        if Timed.pure_test (fun () -> pos = pos0 && eq_kind a' a0 && eq_kind b0 b') () then (
+        if Timed.pure_test (fun () -> pos = pos0 &&
+                                      eq_kind a' a0 && eq_kind b0 b') () then (
           assert (List.length os = Sct.arity index ctxt.fun_table);
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index os true;
@@ -495,23 +496,26 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
-        begin (* FIXME: HEURISTIC THAT AVOID LOOPS *)
+        begin (* HEURISTIC THAT AVOID LOOPS, by comparing ordinals
+                 it forces some unification of ordinal variables.
+                 If we keep ordinal variables, it may loops on
+                 useful examples.x
+                 IMPROVE: can we do better ?*)
           match a with
-          | KFixN(o',g) (*when eq_kbinder f g*) ->
+          | KFixN(o',g) ->
              ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o')
           | _ -> ()
         end;
-        let g = bind mk_free_ovari (binder_name f) (fun o ->
-          bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
-        in
         let o', ctxt =
           match orepr o with
           | OSucc o' -> o', ctxt
-          | OConv -> opred OConv (NotIn(t,unbox g)), ctxt
           | o ->
-            let o' = opred o (NotIn(t,unbox g)) in
-            let ctxt = add_positive ctxt o o' in
-            o', ctxt
+             let g = bind mk_free_ovari (binder_name f) (fun o ->
+               bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
+             in
+             let o' = opred o (NotIn(t,unbox g)) in
+             let ctxt = add_positive ctxt o o' in
+             o', ctxt
         in
         Io.log_sub "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
         let cst = KFixN(o', f) in
@@ -519,20 +523,19 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_FixN_r prf
 
     | (KFixM(o,f)   , _           ) ->
-        begin (* FIXME: HEURISTIC THAT AVOID LOOPS *)
+        begin (* HEURISTIC THAT AVOID LOOPS, as above *)
           match b with
-          | KFixM(o',g) (*when eq_kbinder f g*) ->
+          | KFixM(o',g) ->
              ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o')
           | _ -> ()
           end;
-        let g = bind mk_free_ovari (binder_name f) (fun o ->
-          bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
-        in
         let o', ctxt =
           match orepr o with
           | OSucc o' -> o', ctxt
-          | OConv -> opred OConv (In(t,unbox g)), ctxt
           | o ->
+             let g = bind mk_free_ovari (binder_name f) (fun o ->
+               bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
+             in
             let o' = opred o (In(t,unbox g)) in
             let ctxt = add_positive ctxt o o' in
             o', ctxt
@@ -595,7 +598,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let ptr = Refinter.create ctxt.positive_ordinals in
         let c' = KNRec(ptr,KFunc(a,b)) in
         let p1 = subtype ctxt t c' c in
-        let ctxt =  add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Refinter.get ptr) in
         let wit = tcnst f a b in
         let p2 = type_check ctxt (subst f wit) b in
         Typ_Func_i(p1, p2)
@@ -621,9 +624,11 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Func_e(p1, p2)
     | TReco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_uvar ())) fs in
-        let ptr = Refinter.create ctxt.positive_ordinals in
         let c' = KProd(ts) in
-        let c' = if is_normal t then KNRec(ptr,c') else c' in
+        let ptr = Refinter.create ctxt.positive_ordinals in
+        let c' =
+          if is_normal t then KNRec(ptr,c') else c'
+        in
         let p1 = subtype ctxt t c' c in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let check (l,t) =
@@ -639,7 +644,11 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let a = new_uvar () in
         let c' = KDSum([(d,a)]) in
         let ptr = Refinter.create ctxt.positive_ordinals in
-        let c' = if is_normal t then KNRec(ptr,c') else c' in
+        let c' =
+          if is_normal t then
+            KNRec(ptr,c')
+          else c'
+        in
         let p1 = subtype ctxt t c' c in
         let ctxt = add_positives ctxt (Refinter.get ptr) in
         let p2 = type_check ctxt v a in
@@ -757,16 +766,18 @@ and check_fix ctxt t n f c =
          try
            let ov = List.map (fun (i,_) -> (i,OUVar(ref None))) os' in
            let (pos', a) = recompose pos' a ov in
-           Io.log_typ "searching induction hyp (2) with %d %a %a:\n%!" fnum (print_kind false) a print_positives { ctxt with positive_ordinals = pos'};
+           Io.log_typ "searching induction hyp (2) with %d %a %a:\n%!"
+             fnum (print_kind false) a print_positives
+             { ctxt with positive_ordinals = pos'};
            (* need full subtype to rollback unification of variables if it fails *)
            let time = Timed.Time.save () in
            let prf =
              try
                let prf = subtype ctxt t a c in
                check_sub_proof prf;
-	       if not (List.for_all (fun (o1,o2) ->
-		 less_ordinal ctxt.positive_ordinals o2 o1) pos')
-	       then raise Exit;
+               if not (List.for_all (fun (o1,o2) ->
+                 less_ordinal ctxt.positive_ordinals o2 o1) pos')
+               then raise Exit;
                prf
              with Exit | Subtype_error _ | Error.Error _ ->
                Timed.Time.rollback time;
