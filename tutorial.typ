@@ -94,7 +94,7 @@ include "list.typ"
 val l : List(Boolean) = cons True (cons False nil)
 
 eval hd l
-eval tl l
+(*eval tl l FIXME !!! *)
 
 (* Functions from SubML's standard library can be loaded  using  [include]. *)
 (* They are made available immediatly in the scope. Standard library  files *)

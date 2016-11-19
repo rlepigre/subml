@@ -34,18 +34,23 @@ include "munu/munu2.typ"
 include "munu/munu3.typ"
 
 (* Sorting *)
+(* FIXME !!!
 include "insert_sort.typ"
 include "quick_sort.typ"
 include "heap.typ"
+*)
 
 (* Miscellaneous *)
+(* FIXME !!!
 include "size.typ"
+*)
 include "hard.typ"
 include "lazy_nat.typ"
 
 (* Test files *)
 include "dotproj.typ"
 include "tree.typ"
+(* FIXME !!!
 include "polyrec.typ"
+*)
 include "tests.typ"
-
