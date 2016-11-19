@@ -101,10 +101,10 @@ let rec find_positive ctxt o =
   match o with
   | OConv -> OConv
   | OSucc o' -> o'
-(*  | OUVar(p,_) ->
-     let o' = OUVar(ref None, None) in (* FIXME *)
-    set_ouvar p (OSucc o'); o'*)
   | _ ->
+     (* NOTE: this may instanciate unification variables ... This is necessay for
+        some examples, but seems a bit arbitrary, many choices are possible to
+        unify a unification variable to a positive one. *)
      if List.exists (eq_ordinal ctxt.positive_ordinals o) ctxt.positive_ordinals then
        OUVar(ref None, Some o)
      else raise Not_found
@@ -243,7 +243,7 @@ let add_pos positives o =
   match o with
   | OConv | OSucc _ -> positives
   | _ ->
-    if List.exists (eq_ordinal positives o) positives then positives else o :: positives
+    if List.exists (strict_eq_ordinal o) positives then positives else o :: positives
 
 let add_positive ctxt o =
   { ctxt with positive_ordinals = add_pos ctxt.positive_ordinals o }
@@ -321,7 +321,9 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
     (print_term false) t (print_kind false) a (print_kind false) b
     print_positives ctxt;
-  if eq_kind ctxt.positive_ordinals a b then (t, a0, b0, None, Sub_Lower) else (
+  if eq_kind ctxt.positive_ordinals a b (*strict_eq_kind a b*) then
+    (t, a0, b0, None, Sub_Lower)
+  else (
     let (ind_res, ctxt) = check_rec t ctxt a b in
 
   match ind_res with
@@ -497,6 +499,16 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
+        begin (* HEURISTIC THAT AVOID LOOPS, by comparing ordinals
+                 it forces some unification of ordinal variables.
+                 If we keep ordinal variables, it may loops on
+                 useful examples.x
+                 IMPROVE: can we do better ?*)
+          match full_repr a with
+          | KFixN(o',g) ->
+             ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o')
+          | _ -> ()
+        end;
         let o', ctxt =
           match orepr o with
           | OSucc o' -> o', ctxt
@@ -514,6 +526,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_FixN_r prf
 
     | (KFixM(o,f)   , _           ) ->
+        begin (* HEURISTIC THAT AVOID LOOPS, as above *)
+          match full_repr b with
+          | KFixM(o',g) ->
+             ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o')
+          | _ -> ()
+        end;
         let o', ctxt =
           match orepr o with
           | OSucc o' -> o', ctxt

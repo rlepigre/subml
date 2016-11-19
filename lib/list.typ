@@ -31,8 +31,6 @@ val rec nth : ∀A (List(A) → Nat → Option(A)) = fun l n →
   | Z   → hd l
   | S x → (case l of [] → None | a::l → nth l x)
 
-
-(* FIXME !!!
 val rec map : ∀A ∀B ∀α ((A → B) → SList(α,A) → SList(α,B)) = fun f l →
   case l of
   | []   → []
@@ -40,7 +38,6 @@ val rec map : ∀A ∀B ∀α ((A → B) → SList(α,A) → SList(α,B)) = fun 
 
 (* Check that the above type is general enough *)
 val map' : ∀A ∀B ((A → B) → List(A) → List(B)) = map
-*)
 
 val rec append : ∀A (List(A) → List(A) → List(A)) = fun l1 l2 →
   case l1 of

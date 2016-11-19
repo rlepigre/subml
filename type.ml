@@ -15,9 +15,9 @@ let opred o w =
   let o = orepr o in
   match o with
   | OSucc o' -> o'
-(*  | OUVar(p,_) ->
-    let o' = OUVar(ref None) in
-    set_ouvar p (OSucc o'); o' FIXME*)
+  | OUVar(p,None) ->
+    let o' = OUVar(ref None, None) in
+    set_ouvar p (OSucc o'); o'
   | _ -> OLess(o,w)
 
 

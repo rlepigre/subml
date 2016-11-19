@@ -5,29 +5,29 @@ type NP(α,A) = (A × (μα X F(X))) → {}
 type NS'(α) = να X F(X)
 type NP'(α,A) = (A × (να X F(X))) → {}
 
-val rec idt : ∀α ((μα X F(X)) → (μα X F(X))) = fun n →
+val rec idt : ∀α NS(α) → NS(α) = fun n →
   case n of
   | Z    → Z
   | S(n) → S(idt n)
 
-val idt2 : ∀α ((μα X F(X)) → (μα X F(X))) = Λα fix 1 r → fun n →
-  case (n:μα X F(X)) of
+val idt2 : ∀α NS(α) → NS(α) = Λα fix 1 r → fun n →
+  case (n:NS(α)) of
   | Z    → Z
   | S(n) → S(r n)
 
-val rec idt3 : ∀α (F(μα X F(X)) → F(μα X F(X))) = idt
-val rec idt4 : ∀α (μα+1 X F(X)) → μα+1 X F(X) = idt
+val rec idt3 : ∀α F(NS(α)) → F(NS(α)) = idt
+val rec idt4 : ∀α NS(α+1) → NS(α+1) = idt
 
-val rec idt5 : ∀α (F(μα X F(X)) → F(μα X F(X))) = fun n →
+val rec idt5 : ∀α F(NS(α)) → F(NS(α)) = fun n →
   case n of
   | Z → Z
   | S n → S (idt5 n)
 
-val pred : ∀α [ S of μα X F(X) ] → μα X F(X) = fun n →
+val pred : ∀α [ S of NS(α) ] → NS(α) = fun n →
   case n of
   | S n → n
 
-val pred' : ∀α (μα+2 X F(X)) → μα+1 X F(X) = fun n →
+val pred' : ∀α NS(α+2) → NS(α+1) = fun n →
   case n of
   | Z   → Z
   | S n → n
