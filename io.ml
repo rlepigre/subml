@@ -20,28 +20,14 @@ let log ff = fprintf  fmts.log ff
 let tex ff = fprintf  fmts.tex ff
 let nul ff = ifprintf fmts.log ff
 
-let (open_out, close_out) =
-  let tbl = Hashtbl.create 31 in
-  let open_out fn =
-    match Hashtbl.find tbl fn with
-    | (ch, n)             -> Hashtbl.replace tbl fn (ch,n+1); ch
-    | exception Not_found -> let ch = open_out fn in
-                             Hashtbl.add tbl fn (ch,1); ch
-  in
-  let close_out fn =
-    match Hashtbl.find tbl fn with
-    | (ch,n)   when n = 1 -> close_out ch; Hashtbl.remove tbl fn
-    | (ch,n)              -> Hashtbl.replace tbl fn (ch,n-1)
-    | exception Not_found -> invalid_arg ("The file " ^ fn ^ " is not open.")
-  in
-  (open_out, close_out)
-
 let read_file : (string -> Input.buffer) ref = ref (fun name ->
   let rec fn = function
     | [] -> err "Can not open file %S\n%!" name; exit 1
     | path::l ->
        try
          let filename = Filename.concat path name in
+         let ch = open_in filename in
+         Gc.finalise close_in ch;
          Input.from_channel ~filename (open_in filename)
        with _ -> fn l
   in
