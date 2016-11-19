@@ -289,9 +289,8 @@ let check_rec
            way *)
         if Timed.pure_test (fun () -> pos = pos0 &&
             eq_kind ctxt.positive_ordinals a' a0 &&
-            eq_kind ctxt.positive_ordinals b0 b' &&
-            List.length os = Sct.arity index ctxt.fun_table) () then (
-          (*          assert (List.length os = Sct.arity index ctxt.fun_table); FIXME *)
+            eq_kind ctxt.positive_ordinals b0 b') () then (
+          assert (List.length os = Sct.arity index ctxt.fun_table);
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index os true;
           raise (Induction_hyp index)
@@ -388,7 +387,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
           match !(ua.kuvar_state), !(ub.kuvar_state) with
           | _, Sum _ -> set_kuvar false ua b
           | Prod _, _ -> set_kuvar false ub a
-          | _ -> set_kuvar false ub a (* arbitrary choice *)
+          | _ -> set_kuvar false ub a
+                 (* NOTE: arbitrary choice, could use Trajan tricks *)
         end;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
@@ -712,7 +712,8 @@ and check_fix ctxt t n f c =
      This helps for polymorphic program ... But is wrong if initial type
      has ordinal parameters
   *)
-  (* FIXME: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS *)
+  (* NOTE: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS,
+     can we do better ? *)
   (match a with Some a -> ignore (subtype ctxt t a c) | None -> ());
   let (pos, _, c0, os) = decompose ctxt.positive_ordinals (KProd []) c in
   match hyps with
