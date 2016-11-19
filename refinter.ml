@@ -1,29 +1,28 @@
 
-type ('a, 'b) refinter =
-  ('a * 'b) list option ref * 'a list * bool ref
+type 'a refinter = 'a list option ref * 'a list * bool ref
 
-let create l = (ref None, List.map fst l, ref false)
+let create l = (ref None, l, ref false)
 
-let subset : ('a -> 'a -> bool) -> ('a, 'b) refinter -> ('a * 'b) list -> bool =
+let subset : ('a -> 'a -> bool) -> 'a refinter -> 'a list -> bool =
   fun eq (set, forbidden, frozen) l ->
     if !frozen then
       match !set with
       | None -> true
-      | Some set -> List.for_all (fun (x,_) -> List.exists (fun (y, _) -> eq x y) l) set
+      | Some set -> List.for_all (fun x -> List.exists (fun y -> eq x y) l) set
     else
       match !set with
-      | None -> set := Some (List.filter (fun (x,_) ->
+      | None -> set := Some (List.filter (fun x ->
                             not (List.exists (fun y -> eq x y) forbidden)) l); true
       | Some l' ->
-         set := Some (List.filter (fun (x,_) -> List.exists (fun (y, _) -> eq x y) l) l');
+         set := Some (List.filter (fun x -> List.exists (fun y -> eq x y) l) l');
          true
 
-let is_empty :  ('a, 'b) refinter -> bool =
+let is_empty :  'a refinter -> bool =
   fun (set, forbidden, frozen) -> match !set with
   | Some [] -> true
   | _ -> false
 
-let get : ('a, 'b) refinter -> ('a * 'b) list =
+let get : 'a refinter -> 'a list =
   fun (set, forbidden, frozen) ->
     frozen := true;
     match !set with

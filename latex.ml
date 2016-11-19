@@ -30,15 +30,15 @@ let rec print_ordinal unfold ff o =
   | o       ->
      let n = search_ordinal_tbl o in
      match o with
-     | OLess(_,o,In(t,a)) as o0 when unfold ->
+     | OLess(o,In(t,a)) as o0 when unfold ->
         fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
-     | OLess(_,o,NotIn(t,a)) as o0 when unfold ->
+     | OLess(o,NotIn(t,a)) as o0 when unfold ->
         fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
-     | OLess(_,o,_) when unfold ->
+     | OLess(o,_) when unfold ->
        fprintf ff "{\\alpha_{%d<%a}}" n (print_ordinal false) o
      | OLess(_) -> fprintf ff "{\\kappa_{%d}}" n
      | OVari(x) -> fprintf ff "%s" (convert_ordinal (name_of x))
@@ -142,9 +142,9 @@ and print_kind unfold wrap ff t =
       fprintf ff "?%i" u.kuvar_key
   | KTInt(_) -> assert false
   | KMRec(p,a) -> fprintf ff "%a \\land %a" pkind a
-     (print_list (fun ff (o,_) -> pordi ff o) ", ") (Refinter.get p)
+     (print_list (fun ff o -> pordi ff o) ", ") (Refinter.get p)
   | KNRec(p,a) -> fprintf ff "%a \\lor %a" pkind a
-     (print_list (fun ff (o,_) -> pordi ff o) ", ") (Refinter.get p)
+     (print_list (fun ff o -> pordi ff o) ", ") (Refinter.get p)
 
 
 and pkind_def unfold ff kd =
@@ -414,7 +414,7 @@ let print_calls ff arities calls =
   List.iter (print_call arities) calls;
   fprintf ff "  }\n\\end{dot2tex}\n"
 
-let is_refl : sub_prf -> bool = fun (t,a,b,ir,r) -> eq_kind a b
+let is_refl : sub_prf -> bool = fun (t,a,b,ir,r) -> strict_eq_kind a b
 
 let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   let open Proof in
@@ -460,7 +460,7 @@ and sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   let k2s = kind_to_string false in
   let c = sprintf "$%s \\subset %s$" (k2s a) (k2s b) in
   match r with
-  | _ when eq_kind a b-> axiomN "$=$" c (* usefull because of unification *)
+  | _ when strict_eq_kind a b-> axiomN "$=$" c (* usefull because of unification *)
   | Sub_Delay(pr)     -> sub2proof !pr
   | Sub_Lower         -> axiomN "$=$" c
   | Sub_Func(p1,p2)   -> binaryN "$\\to$" c (sub2proof p1) (sub2proof p2)

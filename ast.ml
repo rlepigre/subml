@@ -8,6 +8,9 @@ open Position
 let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
   match o with None -> None | Some e -> Some (f e)
 
+let iter_opt : ('a -> unit) -> 'a option -> unit = fun f o ->
+  match o with None -> () | Some e -> f e
+
 let from_opt : 'a option -> 'a -> 'a = fun o d ->
   match o with None -> d | Some e -> e
 
@@ -67,8 +70,8 @@ type kind =
   (** Unification variables - used for typechecking. *)
   | KTInt of int
   (** Integer tag for comparing kinds. *)
-  | KMRec of (ordinal, ordinal) refinter * kind
-  | KNRec of (ordinal, ordinal) refinter * kind
+  | KMRec of ordinal refinter * kind
+  | KNRec of ordinal refinter * kind
   (** Ordinal conjunction and disjunction *)
 
 (** Type definition (user defined type). *)
@@ -102,9 +105,9 @@ and ordinal =
   (** Ordinal large enough to ensure convergence of all fixpoints. *)
   | OSucc of ordinal
   (** Succesor *)
-  | OLess of int * ordinal * ord_wit
-  (** Ordinal created by the μl and νr rules, with a unique id *)
-  | OUVar of ouvar
+  | OLess of ordinal * ord_wit
+  (** Ordinal created by the μl and νr rules *)
+  | OUVar of ouvar * ordinal option
   (** Unification variables for ordinals. *)
   | OVari of ordinal variable
   (** Ordinal variable. *)
@@ -237,7 +240,7 @@ let rec full_repr : kind -> kind = function
   | k                               -> k
 
 let rec orepr = function
-  | OUVar({contents = Some o}) -> orepr o
+  | OUVar({contents = Some o}, _) -> orepr o
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
@@ -301,11 +304,8 @@ let new_ovari : string -> ovar =
 let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
-let oless_uid =
-  let c = ref 0 in
-  (fun () -> incr c; !c)
-let oless_In    = box_apply3 (fun o t k -> OLess(oless_uid (), o,In(t,k)))
-let oless_NotIn = box_apply3 (fun o t k -> OLess(oless_uid (), o,NotIn(t,k)))
+let oless_In    = box_apply3 (fun o t k -> OLess(o,In(t,k)))
+let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *
@@ -356,10 +356,18 @@ let kdefi : type_def -> obox array -> kbox array -> kbox =
     let fn td os ks = KDefi(td,os,ks) in
     box_apply3 fn (box td) (box_array os) (box_array ks)
 
+let kfixn0 : obox -> (kind, kind) binder -> kbox =
+  fun o f ->
+    box_apply (fun o -> KFixN(o,f)) o
+
 let kfixn : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
     let b = vbind mk_free_kvari x f in
     box_apply2 (fun o b -> KFixN(o,b)) o b
+
+let kfixm0 : obox -> (kind, kind) binder -> kbox =
+  fun o f ->
+    box_apply (fun o -> KFixM(o,f)) o
 
 let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->

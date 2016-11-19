@@ -86,21 +86,21 @@ let rec print_ordinal unfold ff o =
   | _       ->
     let n = search_ordinal_tbl o in
     match orepr o with
-    | OLess(_,o,In(t,a)) as o0 when unfold ->
+    | OLess(o,In(t,a)) as o0 when unfold ->
        fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
          (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(_,o,NotIn(t,a)) as o0 when unfold ->
+    | OLess(o,NotIn(t,a)) as o0 when unfold ->
        fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
          (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(_,o,_) when unfold ->
+    | OLess(o,_) when unfold ->
        fprintf ff "α(%d<%a)" n (print_ordinal false) o
-    | OLess(_,o,_) -> fprintf ff "κ%d" n
+    | OLess(o,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
        fprintf ff "s(%a)" (print_ordinal false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
     | OTInt(n) -> fprintf ff "!%d!" n
-    | OUVar(n) -> fprintf ff "?"
+    | OUVar(n,_) -> fprintf ff "?" (* FIXME: print the constraint *)
 
 and print_index_ordinal ff = function
   | OConv -> ()
@@ -439,7 +439,7 @@ let find_tdef : kind -> type_def = fun t ->
     let fn _ d =
       if d.tdef_oarity = 0 && d.tdef_karity = 0 then
         let k = msubst (msubst d.tdef_value [||]) [||] in
-        if eq_kind k t then raise (Find_tdef d)
+        if strict_eq_kind k t then raise (Find_tdef d)
     in
     Hashtbl.iter fn typ_env;
     raise Not_found

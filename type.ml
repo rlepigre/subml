@@ -3,10 +3,11 @@ open Compare
 open Position
 open Bindlib
 open Format
+open Term
 
 let rec assoc_ordinal o = function
   | [] -> raise Not_found
-  | (o',v)::l -> if eq_ordinal o o' then v else assoc_ordinal o l
+  | (o',v)::l -> if strict_eq_ordinal o o' then v else assoc_ordinal o l
 
 (* construction of an ordinal < o such that w *)
 
@@ -14,83 +15,10 @@ let opred o w =
   let o = orepr o in
   match o with
   | OSucc o' -> o'
-  | OUVar(p) ->
+(*  | OUVar(p,_) ->
     let o' = OUVar(ref None) in
-    set_ouvar p (OSucc o'); o'
-  | _ -> OLess(oless_uid (), o,w)
-
- (***************************************************************************
- *                             mapping on terms                             *
- ****************************************************************************)
-
-let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
-  let rec fn t =
-    match t.elt with
-    | TCoer(t,k)  -> tcoer t.pos (fn t) (kn k)
-    | TVari(x)    -> tvari t.pos x
-    | TAbst(ko,f) -> let ko = map_opt kn ko in
-                     tabst t.pos ko (in_pos t.pos (binder_name f))
-                       (fun x -> fn (subst f (TVari x)))
-    | TFixY(n,f)  -> tfixy t.pos n (in_pos t.pos (binder_name f))
-                       (fun x -> fn (subst f (TVari x)))
-    | TKAbs(f)    -> tkabs t.pos (dummy_pos (binder_name f))
-                       (fun x -> fn (subst f (KVari x)))
-    | TOAbs(f)    -> toabs t.pos (dummy_pos (binder_name f))
-                       (fun x -> fn (subst f (OVari x)))
-    | TAppl(a,b)  -> tappl t.pos (fn a) (fn b)
-    | TReco(fs)   -> treco t.pos (List.map (fun (s,a) -> (s, fn a)) fs)
-    | TProj(a,s)  -> tproj t.pos (fn a) s
-    | TCons(s,a)  -> tcons t.pos s (fn a)
-    |TCase(a,fs,d)-> tcase t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
-                                        (map_opt fn d)
-    | u           -> box_apply (in_pos t.pos) (box u)
-  in fn t
-
-(*****************************************************************
- *              test if a term is normal in CBV                  *
- *****************************************************************)
-let is_normal : term -> bool = fun t ->
-  let rec fn t =
-    match t.elt with
-    | TCoer(t,k)  -> fn t
-    | TVari(x)    -> true
-    | TAbst(ko,f) -> true
-    | TFixY(ko,f) -> false
-    | TKAbs(f)    -> fn (subst f (KProd []))
-    | TOAbs(f)    -> fn (subst f (OConv))
-    | TAppl(a,b)  -> false
-    | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
-    | TProj(a,s)  -> false
-    | TCons(s,a)  -> fn a
-    | TCase(a,_,_)-> false
-    | TDefi(d)    -> fn d.value
-    | TCnst _     -> true
-    | TPrnt _     -> false
-    | TTInt _     -> assert false
-  in fn t
-
-(*****************************************************************
- *              test if a term is neutral in CBV                 *
- *****************************************************************)
-let is_neutral : term -> bool = fun t ->
-  let rec fn t =
-    match t.elt with
-    | TCoer(t,k)  -> fn t
-    | TVari(x)    -> true
-    | TAbst(ko,f) -> false
-    | TFixY(ko,f) -> false
-    | TKAbs(f)    -> fn (subst f (KProd []))
-    | TOAbs(f)    -> fn (subst f (OConv))
-    | TAppl(a,b)  -> fn a
-    | TReco(fs)   -> false
-    | TProj(a,s)  -> fn a
-    | TCons(s,a)  -> false
-    | TCase(a,_,_)-> fn a
-    | TDefi(d)    -> true
-    | TCnst _     -> true
-    | TPrnt _     -> false
-    | TTInt _     -> assert false
-  in fn t
+    set_ouvar p (OSucc o'); o' FIXME*)
+  | _ -> OLess(o,w)
 
 
 (****************************************************************************
@@ -198,7 +126,7 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TPrnt(_)
     | TTInt(_)       -> acc)
   and aux3 acc = function
-    | OLess(_,o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
+    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
     | OSucc o -> aux3 acc o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
@@ -280,7 +208,7 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
       match orepr o with
       | OVari(x) -> box_of_var x
       | OSucc(o) -> osucc (gn o)
-      | OUVar(u) -> if eq_ouvar v u then x else box (OUVar(u))
+      | OUVar(u,o') -> if eq_ouvar v u then x else box (OUVar(u,o')) (* FIXME *)
       | o        -> box o
     in fn k))
 
@@ -349,7 +277,7 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       match orepr o with
       | OSucc o -> osucc (gn o)
       | OVari x -> box_of_var x
-      | OUVar(ov) -> if ov == ov0 then x else box o
+      | OUVar(ov, _) -> if ov == ov0 then x else box o (* FIXME *)
       | o -> box o
     in
     fn k))
@@ -403,7 +331,7 @@ and has_oboundvar o =
     match o with
     | OVari _ -> raise Exit
     | OSucc o -> has_oboundvar o
-    | OLess(_,o,(In(t,b) | NotIn(t,b))) ->
+    | OLess(o,(In(t,b) | NotIn(t,b))) ->
        has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
     | OTInt _ | OUVar _ | OConv -> ()
 
@@ -424,14 +352,14 @@ let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
-let decompose : (ordinal * ordinal) list -> kind -> kind ->
-  (ordinal * ordinal) list * kind * kind * (int * ordinal) list = fun pos k1 k2 ->
+let decompose : ordinal list -> kind -> kind ->
+    ordinal list * kind * kind * (int * ordinal) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
   let rec search o =
     let o = orepr o in
     match o with
-    | OLess(_,bound,_) ->
+    | OLess(bound,_) ->
        assert (closed_ordinal o);
        (try
           box (OTInt(assoc_ordinal o !res))
@@ -487,19 +415,16 @@ let decompose : (ordinal * ordinal) list -> kind -> kind ->
   let k2 = unbox (fn k2) in
   (* for the context, we will only keep the ordinals that are usefull *)
   let rec usefull keep remain =
-    let new_keep, remain = List.partition (fun (o1,_) ->
-      List.exists (fun (o2,_) -> eq_ordinal o1 o2) !res) remain in
+    let new_keep, remain = List.partition (fun o1 ->
+      List.exists (fun (o2,_) -> strict_eq_ordinal o1 o2) !res) remain in
     if new_keep = [] then keep else
-      let keep = List.map (fun (o1,o2) -> (unbox (search o1),
-                                           unbox (search o2))) new_keep @ keep in
+      let keep = List.map (fun o1 -> unbox (search o1)) new_keep @ keep in
       usefull keep remain
   in
   let pos = List.sort compare (usefull [] pos) in
   (pos, k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res)
 
-let recompose : (ordinal * ordinal) list-> kind -> (int * ordinal) list ->
-      (ordinal * ordinal) list * kind
-  =
+let recompose : ordinal list-> kind -> (int * ordinal) list -> ordinal list * kind =
   let rec get os o = match orepr o with
       | OTInt i -> (try box (List.assoc i os) with Not_found -> assert false)
       | OSucc o -> osucc (get os o)
@@ -525,9 +450,7 @@ let recompose : (ordinal * ordinal) list-> kind -> (int * ordinal) list ->
     | KNRec _    -> assert false
     | t          -> box t
   in
-  fun pos k os ->
-    (List.map (fun (o1,o2) -> (unbox (get os o1), unbox (get os o2))) pos,
-     unbox (fn os k))
+  fun pos k os -> (List.map (fun o1 -> unbox (get os o1)) pos, unbox (fn os k))
 
 (* Matching kind, used for printing only *)
 
@@ -543,7 +466,7 @@ let rec match_kind : kind -> kind -> bool = fun p k ->
      List.for_all2 (fun (s1,p1) (s2,k1) ->
        s1 = s2 && match_kind p1 k1) ps1 ps2
   | KDPrj(t1,s1), KDPrj(t2,s2) ->
-     s1 = s2 && eq_term t1 t2
+     s1 = s2 && strict_eq_term t1 t2
   | KWith(p1,(s1,p2)), KWith(k1,(s2,k2)) ->
      s1 = s2 && match_kind p1 k1 && match_kind p2 k2
   | KKAll(f), KKAll(g)
@@ -560,10 +483,10 @@ let rec match_kind : kind -> kind -> bool = fun p k ->
      match_ordinal o1 o2 &&
        match_kind (subst f (free_of v)) (subst g (free_of v))
   | KVari(v1), KVari(v2) -> compare_variables v1 v2 = 0
-  | p, k -> eq_kind p k
+  | p, k -> strict_eq_kind p k
 
 and match_ordinal : ordinal -> ordinal -> bool = fun p o ->
   match orepr p, orepr o with
-  | OUVar(uo), o -> set_ouvar uo o; true
+  | OUVar(uo,_), o when not (occur_ouvar uo o) -> set_ouvar uo o; true (* FIXME, but printing only *)
   | OSucc(p), OSucc(o) -> match_ordinal p o
-  | p, k -> eq_ordinal p k
+  | p, k -> strict_eq_ordinal p k
