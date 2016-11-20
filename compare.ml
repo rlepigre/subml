@@ -36,7 +36,7 @@ let occur_ouvar : ouvar -> ordinal -> bool = fun v o ->
     match orepr o with
     | OSucc(o) -> gn o
     | OUVar(u,o') -> if eq_ouvar v u then raise Exit else iter_opt gn o'
-    | OLess(o,t)  -> gn o; kn t
+    | OLess(o,_,t)  -> gn o; kn t
     | OVari(_) | OConv | OTInt _-> ()
   and kn = function
     In(t,k) | NotIn(t,k) -> iter_term fn t; fn (subst k OConv)
@@ -142,8 +142,7 @@ and eq_ordinal : ordinal list -> int ref -> ordinal -> ordinal -> bool = fun pos
   | (o1         , OUVar(p,o) ) when not !eq_strict && not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o ->
      set_ouvar p o1; true
   | (OConv       , OConv       ) -> true
-  | (OLess(o1,w1), OLess(o2,w2)) ->
-     eq_ordinal pos c o1 o2 && eq_ord_wit pos c w1 w2
+  | (OLess(o1,n1,w1), OLess(o2,n2,w2)) -> n1 = n2
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal pos c o1 o2
   | (OTInt n1    , OTInt n2    ) -> n1 = n2
   | (_           , _           ) -> false
@@ -163,9 +162,9 @@ and leq_ordinal pos c o1 o2 =
      set_ouvar p o1; true
   | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
   | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
-  | (OSucc (OLess(o1,_)), o2 ) when List.exists (eq_ordinal pos c o1) pos ->
+  | (OSucc (OLess(o1,_,_)), o2 ) when List.exists (eq_ordinal pos c o1) pos ->
      leq_ordinal pos c o1 o2
-  | (OLess(o1,_) , o2        ) -> leq_ordinal pos c o1 o2
+  | (OLess(o1,_,_) , o2        ) -> leq_ordinal pos c o1 o2
   | (_          , _          ) -> false
 
 and less_ordinal pos c o1 o2 =

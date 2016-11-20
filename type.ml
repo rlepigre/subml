@@ -18,7 +18,7 @@ let opred o w =
   | OUVar(p,None) ->
     let o' = OUVar(ref None, None) in
     set_ouvar p (OSucc o'); o'
-  | _ -> OLess(o,w)
+  | _ -> oless o w
 
 
 (****************************************************************************
@@ -126,7 +126,7 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TPrnt(_)
     | TTInt(_)       -> acc)
   and aux3 acc = function
-    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
+    | OLess(o,_,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
     | OSucc o -> aux3 acc o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
@@ -331,7 +331,7 @@ and has_oboundvar o =
     match o with
     | OVari _ -> raise Exit
     | OSucc o -> has_oboundvar o
-    | OLess(o,(In(t,b) | NotIn(t,b))) ->
+    | OLess(o,_,(In(t,b) | NotIn(t,b))) ->
        has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
     | OTInt _ | OUVar _ | OConv -> ()
 
@@ -353,13 +353,13 @@ let is_nu f = !contract_mu &&
   | _ -> false
 
 let decompose : ordinal list -> kind -> kind ->
-    ordinal list * kind * kind * (int * ordinal) list = fun pos k1 k2 ->
+    ordinal list * kind * kind * (int * ordinal) list * (ordinal * ordinal) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
   let rec search o =
     let o = orepr o in
     match o with
-    | OLess(bound,_) ->
+    | OLess(_,bound,_) ->
        assert (closed_ordinal o);
        (try
           box (OTInt(assoc_ordinal o !res))
@@ -370,8 +370,7 @@ let decompose : ordinal list -> kind -> kind ->
     | OSucc o -> osucc(search o)
     | OVari o -> box_of_var o
     | OUVar _
-    | OConv   -> box o
-    | OTInt _ -> assert false
+    | OConv   | OTInt _ -> box o (* FIXME: mixing OTInt *)
   and fn k =
     match repr k with
     | KFunc(a,b) -> kfunc (fn a) (fn b)
@@ -413,16 +412,47 @@ let decompose : ordinal list -> kind -> kind ->
   in
   let k1 = unbox (fn k1) in
   let k2 = unbox (fn k2) in
-  (* for the context, we will only keep the ordinals that are usefull *)
-  let rec usefull keep remain =
-    let new_keep, remain = List.partition (fun o1 ->
-      List.exists (fun (o2,_) -> strict_eq_ordinal o1 o2) !res) remain in
-    if new_keep = [] then keep else
-      let keep = List.map (fun o1 -> unbox (search o1)) new_keep @ keep in
-      usefull keep remain
+  (* we build the relation graph *)
+  let relation = ref [] in
+  let rec fn acc o0 o =
+    if List.exists (fun (o1, _) -> strict_eq_ordinal o o1) !relation then ()
+    else match orepr o with
+    | OLess(o1,_,_)   | OUVar(_, Some o1) ->
+       (try
+         let _ = assoc_ordinal o1 !res in
+         relation := (o0,o1) :: acc @ !relation;
+         fn [] o1 o1
+        with Not_found ->
+         if List.exists (strict_eq_ordinal o1) pos then
+           fn ((o0,o1) :: acc) o1 o1
+         else
+           fn acc o0 o1)
+    | _ -> ()
+
   in
-  let pos = List.sort compare (usefull [] pos) in
-  (pos, k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res)
+  List.iter (fun (o2,_) -> fn [] o2 o2) !res;
+  let relation = List.map (fun (o1,o2) -> unbox (search o1), unbox (search o2)) !relation in
+  let pos = List.filter (fun o1 ->
+    List.exists (fun (o2,_) -> strict_eq_ordinal o1 o2) !res) pos in
+  let pos = List.map (fun o ->
+    try OTInt(assoc_ordinal o !res) with Not_found -> assert false) pos in
+  let pos = List.sort compare pos in
+  (pos, k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res, relation)
+
+let subrelation r1 r2 =
+  List.for_all (fun (o1,o2) ->
+    let rec fn o =
+      try
+        let o' = assoc_ordinal o r2 in
+        if strict_eq_ordinal o' o2 then true else
+          fn o'
+      with
+        Not_found -> false
+    in fn o1) r1
+
+let sub_posrel p1 r1 p2 r2 =
+  List.for_all (fun o1 -> List.exists (strict_eq_ordinal o1) p2) p1 &&
+    subrelation r1 r2
 
 let recompose : ordinal list-> kind -> (int * ordinal) list -> ordinal list * kind =
   let rec get os o = match orepr o with

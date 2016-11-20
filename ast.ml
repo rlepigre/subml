@@ -105,7 +105,7 @@ and ordinal =
   (** Ordinal large enough to ensure convergence of all fixpoints. *)
   | OSucc of ordinal
   (** Succesor *)
-  | OLess of ordinal * ord_wit
+  | OLess of ordinal * int * ord_wit
   (** Ordinal created by the μl and νr rules *)
   | OUVar of ouvar * ordinal option
   (** Unification variables for ordinals. *)
@@ -304,8 +304,14 @@ let new_ovari : string -> ovar =
 let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
-let oless_In    = box_apply3 (fun o t k -> OLess(o,In(t,k)))
-let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
+let oless =
+  let c = ref 0 in
+  fun o w ->
+    let n = !c in c := n + 1;
+    (OLess(o,n,w))
+
+let oless_In    = box_apply3 (fun o t k -> oless o (In(t,k)))
+let oless_NotIn = box_apply3 (fun o t k -> oless o (NotIn(t,k)))
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *

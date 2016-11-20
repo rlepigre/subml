@@ -30,15 +30,15 @@ let rec print_ordinal unfold ff o =
   | o       ->
      let n = search_ordinal_tbl o in
      match o with
-     | OLess(o,In(t,a)) as o0 when unfold ->
+     | OLess(o,_,In(t,a)) as o0 when unfold -> (* TODO: print the int *)
         fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
-     | OLess(o,NotIn(t,a)) as o0 when unfold ->
+     | OLess(o,_,NotIn(t,a)) as o0 when unfold -> (* TODO: print the int *)
         fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
-     | OLess(o,_) when unfold ->
+     | OLess(o,_,_) when unfold ->
        fprintf ff "{\\alpha_{%d<%a}}" n (print_ordinal false) o
      | OLess(_) -> fprintf ff "{\\kappa_{%d}}" n
      | OVari(x) -> fprintf ff "%s" (convert_ordinal (name_of x))

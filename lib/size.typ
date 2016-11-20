@@ -10,18 +10,22 @@ val rec idt : ∀α NS(α) → NS(α) = fun n →
   | Z    → Z
   | S(n) → S(idt n)
 
+(*
 val idt2 : ∀α NS(α) → NS(α) = Λα fix 1 r → fun n →
   case (n:NS(α)) of
   | Z    → Z
   | S(n) → S(r n)
+*)
 
 val rec idt3 : ∀α F(NS(α)) → F(NS(α)) = idt
 val rec idt4 : ∀α NS(α+1) → NS(α+1) = idt
 
+(*
 val rec idt5 : ∀α F(NS(α)) → F(NS(α)) = fun n →
   case n of
   | Z → Z
   | S n → S (idt5 n)
+*)
 
 val pred : ∀α [ S of NS(α) ] → NS(α) = fun n →
   case n of
@@ -37,11 +41,11 @@ type G(X) = {} -> [ S of X]
 val rec idt' : ∀α (να X G(X)) → (να X G(X)) = fun n u →
   case (n {}) of
   | S n → S(idt' n)
-
+(*
 val rec idt2' : ∀α (να+1 X G(X)) → (να+1 X G(X)) = fun n u →
   case (n {}) of
   | S n → S (idt2' n)
-
+*)
 val rec add : N → N → N = fun x y →
   case x of
   | Z    → y
@@ -103,11 +107,12 @@ val rec map : ∀A ∀B (A → B) → ∀α L(α,A) → L(α,B) =
     [] → []
   | x::l → f x :: map f l
 
+(*
 val rec filter : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) =
   fun f l → case l of
     [] → []
   | x::l → if f x then x :: filter f l else filter f l
-
+*)
 val rec partition : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) × L(α,A) =
   fun f l → case l of
     [] → ([], [])
@@ -117,7 +122,7 @@ val rec partition : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) × L(α
 type L(A) = μ X [Nil | Cons of { hd : A; tl : X}]
 
 val map' = map : ∀A ∀B (A → B) → L(A) → L(B)
-val filter' = filter : ∀A (A → Bool) → L(A) → L(A)
+(*val filter' = filter : ∀A (A → Bool) → L(A) → L(A)*)
 val partition' = partition : ∀A (A → Bool) → L(A) → L(A) × L(A)
 
 type S(α,A) = να X {} → { car : A ; cdr : X }

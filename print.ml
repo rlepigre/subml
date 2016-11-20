@@ -86,15 +86,15 @@ let rec print_ordinal unfold ff o =
   | _       ->
     let n = search_ordinal_tbl o in
     match orepr o with
-    | OLess(o,In(t,a)) as o0 when unfold ->
+    | OLess(o,_,In(t,a)) as o0 when unfold -> (* TODO: print the int *)
        fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
          (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(o,NotIn(t,a)) as o0 when unfold ->
+    | OLess(o,_,NotIn(t,a)) as o0 when unfold ->  (* TODO: print the int *)
        fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
          (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(o,_) when unfold ->
+    | OLess(o,_,_) when unfold ->
        fprintf ff "α(%d<%a)" n (print_ordinal false) o
-    | OLess(o,_) -> fprintf ff "κ%d" n
+    | OLess(o,_,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
        fprintf ff "s(%a)" (print_ordinal false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
