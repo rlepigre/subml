@@ -292,6 +292,10 @@ let check_rec
         if Timed.pure_test (fun () -> sub_posrel pos0 rel0 pos rel &&
             strict_eq_kind a' a0 &&
             strict_eq_kind b0 b') () then (
+          (* TODO: this assertion could be wrong if positive ordinals that
+             do not appear in the formula could arise. This seems not
+             possible if subtyping is involved with no for_all / exists.
+             Anyway, it is safe to move the assertion in the above test *)
           assert (List.length os = Sct.arity index ctxt.fun_table);
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index os true;
@@ -779,18 +783,18 @@ and check_fix ctxt t n f c =
            let time = Timed.Time.save () in
            let prf =
              try
-               let prf = subtype ctxt t a0 c0 in
+               let prf = subtype ctxt t a c in
                check_sub_proof prf;
+               let (pos, _, _, os, rel) = decompose ctxt.positive_ordinals (KProd []) a in
+               (* TODO: same pb as with check_rec with positive ordinals that do not appear
+                  in the formula *)
                if not (sub_posrel pos' rel' pos rel) then raise Exit;
-(*               if not (List.for_all (fun (o1,o2) ->
-                 less_ordinal ctxt.positive_ordinals o2 o1) pos')
-                 then raise Exit; FIXME *)
                prf
              with Exit | Subtype_error _ | Error.Error _ ->
                Timed.Time.rollback time;
                raise Exit
            in
-           add_call ctxt fnum os true;
+           add_call ctxt fnum ov true;
            Typ_YH(fnum,prf)
          with Exit -> fn hyps
     in
