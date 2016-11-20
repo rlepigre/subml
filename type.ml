@@ -352,6 +352,9 @@ let is_nu f = !contract_mu &&
   match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
+(* This function index all the ordinal in two kinds,
+   select the usefull par of the context and return
+   the usefull relations between two ordinals *)
 let decompose : ordinal list -> kind -> kind ->
     ordinal list * kind * kind * (int * ordinal) list * (ordinal * ordinal) list = fun pos k1 k2 ->
   let res = ref [] in
@@ -369,8 +372,8 @@ let decompose : ordinal list -> kind -> kind ->
             box (OTInt n))
     | OSucc o -> osucc(search o)
     | OVari o -> box_of_var o
-    | OUVar _
-    | OConv   | OTInt _ -> box o (* FIXME: mixing OTInt *)
+    | OUVar _ | OConv -> box o
+    | OTInt _ -> assert false
   and fn k =
     match repr k with
     | KFunc(a,b) -> kfunc (fn a) (fn b)
@@ -412,7 +415,8 @@ let decompose : ordinal list -> kind -> kind ->
   in
   let k1 = unbox (fn k1) in
   let k2 = unbox (fn k2) in
-  (* we build the relation graph *)
+  (* we build the relation graph, which includes positive ordinals not
+     in the judgement iff the are between to such ordinals *)
   let relation = ref [] in
   let rec fn acc o0 o =
     if List.exists (fun (o1, _) -> strict_eq_ordinal o o1) !relation then ()
@@ -432,6 +436,7 @@ let decompose : ordinal list -> kind -> kind ->
   in
   List.iter (fun (o2,_) -> fn [] o2 o2) !res;
   let relation = List.map (fun (o1,o2) -> unbox (search o1), unbox (search o2)) !relation in
+  (* select the usefull part of the context *)
   let pos = List.filter (fun o1 ->
     List.exists (fun (o2,_) -> strict_eq_ordinal o1 o2) !res) pos in
   let pos = List.map (fun o ->

@@ -794,6 +794,8 @@ and check_fix ctxt t n f c =
                Timed.Time.rollback time;
                raise Exit
            in
+           (* NOTE: must use ov and not os, because of eventual repetition lost in os *)
+
            add_call ctxt fnum ov true;
            Typ_YH(fnum,prf)
          with Exit -> fn hyps
