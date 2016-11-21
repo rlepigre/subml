@@ -107,6 +107,7 @@ let rec find_positive ctxt o =
      (* NOTE: this may instanciate unification variables ... This is necessay for
         some examples, but seems a bit arbitrary, many choices are possible to
         unify a unification variable to a positive one. *)
+     (* FIXME: if k in gamma and k < k' then k' is positive *)
      if List.exists (eq_ordinal ctxt.positive_ordinals o) ctxt.positive_ordinals then
        OUVar(ref None, Some o)
      else raise Not_found

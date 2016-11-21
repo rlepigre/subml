@@ -153,19 +153,22 @@ and eq_ord_wit pos c w1 w2 = match w1, w2 with
      eq_term pos c t1 t2 && eq_obinder pos c f1 f2
   | (_            , _            ) -> false
 
-and leq_ordinal pos c o1 o2 =
+and leqi_ordinal pos c o1 i o2 =
   match (orepr o1, orepr o2) with
-  | (o1         , o2         ) when eq_ordinal pos c o1 o2 -> true
-  | (OUVar(p,o) , o2         ) when not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o->
+  | (o1         , o2         ) when eq_ordinal pos c o1 o2 && i <= 0 -> true
+  | (OUVar(p,o) , o2         ) when not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o && i <= 0 ->
      set_ouvar p o2; true
-  | (o1         , OUVar(p,o) ) when not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o ->
+  | (o1         , OUVar(p,o) ) when not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o && i <= 0 ->
      set_ouvar p o1; true
-  | (OSucc o1   , OSucc o2   ) -> leq_ordinal pos c o1 o2
-  | (o1         , OSucc o2   ) -> leq_ordinal pos c o1 o2
-  | (OSucc (OLess(o1,_,_)), o2 ) when List.exists (eq_ordinal pos c o1) pos ->
-     leq_ordinal pos c o1 o2
-  | (OLess(o1,_,_) , o2        ) -> leq_ordinal pos c o1 o2
+  | (OSucc o1   ,       o2   ) -> leqi_ordinal pos c o1 (i+1) o2
+  | (o1         , OSucc o2   ) -> leqi_ordinal pos c o1 (i-1) o2
+  | (OLess(o1,_,_),     o2   ) ->
+     let i = if List.exists (eq_ordinal pos c o1) pos then i-1 else i in
+     leqi_ordinal pos c o1 i o2
   | (_          , _          ) -> false
+
+and leq_ordinal pos c o1 o2 =
+  leqi_ordinal pos c o1 0 o2
 
 and less_ordinal pos c o1 o2 =
   leq_ordinal pos c (OSucc o1) o2
