@@ -15,8 +15,8 @@ val idt2 : ∀α NS(α) → NS(α) = Λα fix 1 r → fun n →
   | Z    → Z
   | S(n) → S(r n)
 
-val rec idt3 : ∀α F(NS(α)) → F(NS(α)) = idt
-val rec idt4 : ∀α NS(α+1) → NS(α+1) = idt
+(*val idt3 : ∀α F(NS(α)) → F(NS(α)) = idt*)
+val idt4 : ∀α NS(α+1) → NS(α+1) = idt
 
 val rec idt5 : ∀α F(NS(α)) → F(NS(α)) = fun n →
   case n of

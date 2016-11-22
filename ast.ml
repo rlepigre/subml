@@ -105,7 +105,7 @@ and ordinal =
   (** Ordinal large enough to ensure convergence of all fixpoints. *)
   | OSucc of ordinal
   (** Succesor *)
-  | OLess of ordinal * int * ord_wit
+  | OLess of ordinal * ord_wit
   (** Ordinal created by the μl and νr rules *)
   | OUVar of ouvar * ordinal option
   (** Unification variables for ordinals. *)
@@ -118,8 +118,11 @@ and ordinal =
 and ord_wit =
   | In     of term * (ordinal, kind) binder
   | NotIn  of term * (ordinal, kind) binder
+  | WUVar of wuvar
 
 and ouvar = ordinal option ref
+
+and wuvar = ord_wit option ref
 
 (** Abstract syntax tree for terms. *)
 and term = term' position
@@ -244,6 +247,10 @@ let rec orepr = function
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
+let rec wrepr = function
+  | WUVar({contents = Some w}) -> wrepr w
+  | w -> w
+
 (** Printing function from "print.ml" *)
 let fprint_term : (bool -> formatter -> term -> unit) ref =
   ref (fun _ -> assert false)
@@ -304,14 +311,9 @@ let new_ovari : string -> ovar =
 let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
-let oless =
-  let c = ref 0 in
-  fun o w ->
-    let n = !c in c := n + 1;
-    (OLess(o,n,w))
 
-let oless_In    = box_apply3 (fun o t k -> oless o (In(t,k)))
-let oless_NotIn = box_apply3 (fun o t k -> oless o (NotIn(t,k)))
+let oless_In    = box_apply3 (fun o t k -> OLess(o, In(t,k)))
+let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *

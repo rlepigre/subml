@@ -18,7 +18,7 @@ let opred o w =
   | OUVar(p,None) ->
     let o' = OUVar(ref None, None) in
     set_ouvar p (OSucc o'); o'
-  | _ -> oless o w
+  | _ -> OLess(o, w)
 
 
 (****************************************************************************
@@ -126,7 +126,7 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TPrnt(_)
     | TTInt(_)       -> acc)
   and aux3 acc = function
-    | OLess(o,_,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
+    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
     | OSucc o -> aux3 acc o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
@@ -331,8 +331,11 @@ and has_oboundvar o =
     match o with
     | OVari _ -> raise Exit
     | OSucc o -> has_oboundvar o
-    | OLess(o,_,(In(t,b) | NotIn(t,b))) ->
-       has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
+    | OLess(o,w) ->
+       (match wrepr w with
+       | In(t,b) | NotIn(t,b) ->
+          has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
+       |  WUVar _ -> ())
     | OTInt _ | OUVar _ | OConv -> ()
 
 let closed_term t = try has_tboundvar t; true with Exit -> false
@@ -362,7 +365,7 @@ let decompose : ordinal list -> kind -> kind ->
   let rec search o =
     let o = orepr o in
     match o with
-    | OLess(_,bound,_) ->
+    | OLess(_,_) ->
        assert (closed_ordinal o);
        (try
           box (OTInt(assoc_ordinal o !res))
@@ -421,7 +424,7 @@ let decompose : ordinal list -> kind -> kind ->
   let rec fn acc o0 o =
     if List.exists (fun (o1, _) -> strict_eq_ordinal o o1) !relation then ()
     else match orepr o with
-    | OLess(o1,_,_)   | OUVar(_, Some o1) ->
+    | OLess(o1,_)   | OUVar(_, Some o1) ->
        (try
          let _ = assoc_ordinal o1 !res in
          relation := (o0,o1) :: acc @ !relation;
@@ -462,7 +465,10 @@ let sub_posrel p1 r1 p2 r2 =
   List.for_all (fun o1 -> List.exists (strict_eq_ordinal o1) p2) p1 &&
     subrelation r1 r2
 
-let recompose : ordinal list-> kind -> (int * ordinal) list -> ordinal list * kind =
+
+let recompose : ordinal list-> kind -> (int * ordinal) list -> (ordinal * ordinal) list ->
+    (int * ordinal) list * ordinal list * kind
+  =
   let rec get os o = match orepr o with
       | OTInt i -> (try box (List.assoc i os) with Not_found -> assert false)
       | OSucc o -> osucc (get os o)
@@ -488,7 +494,29 @@ let recompose : ordinal list-> kind -> (int * ordinal) list -> ordinal list * ki
     | KNRec _    -> assert false
     | t          -> box t
   in
-  fun pos k os -> (List.map (fun o1 -> unbox (get os o1)) pos, unbox (fn os k))
+  fun pos k os rel ->
+    let res = ref [] in
+    let rec search o =
+      match o with
+      | OTInt i ->
+         (try
+           List.assoc i !res
+         with Not_found ->
+           let o =
+             try
+               let o' = assoc_ordinal (OTInt i) rel in
+               OLess(search o', WUVar(ref None))
+             with
+               Not_found -> OUVar(ref None, None)
+           in
+           res := (i, o) :: !res;
+           o)
+      | o -> Io.err "==> %a\n%!" (!fprint_ordinal false) o; assert false
+    in
+    List.iter (fun (i,_) -> ignore (search (OTInt i))) os;
+    assert (List.length !res = List.length os);
+    let os = !res in
+    os, List.map (fun o1 -> unbox (get os o1)) pos, unbox (fn os k)
 
 (* Matching kind, used for printing only *)
 

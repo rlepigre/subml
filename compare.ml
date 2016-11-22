@@ -36,10 +36,11 @@ let occur_ouvar : ouvar -> ordinal -> bool = fun v o ->
     match orepr o with
     | OSucc(o) -> gn o
     | OUVar(u,o') -> if eq_ouvar v u then raise Exit else iter_opt gn o'
-    | OLess(o,_,t)  -> gn o; kn t
+    | OLess(o,t)  -> gn o; kn t
     | OVari(_) | OConv | OTInt _-> ()
-  and kn = function
-    In(t,k) | NotIn(t,k) -> iter_term fn t; fn (subst k OConv)
+  and kn w = match wrepr w with
+    | In(t,k) | NotIn(t,k) -> iter_term fn t; fn (subst k OConv)
+    | WUVar _ -> () (* FIXME: occur check here too *)
   in
   try gn o; false with Exit -> true
 
@@ -142,30 +143,32 @@ and eq_ordinal : ordinal list -> int ref -> ordinal -> ordinal -> bool = fun pos
   | (o1         , OUVar(p,o) ) when not !eq_strict && not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o ->
      set_ouvar p o1; true
   | (OConv       , OConv       ) -> true
-  | (OLess(o1,n1,w1), OLess(o2,n2,w2)) -> n1 = n2
+  | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal pos c o1 o2 && eq_ord_wit pos c w1 w2
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal pos c o1 o2
   | (OTInt n1    , OTInt n2    ) -> n1 = n2
   | (_           , _           ) -> false
 
-and eq_ord_wit pos c w1 w2 = match w1, w2 with
+and eq_ord_wit pos c w1 w2 = match wrepr w1, wrepr w2 with
   | (In(t1,f1)    , In(t2,f2)    )
   | (NotIn(t1,f1) , NotIn(t2,f2) ) ->
      eq_term pos c t1 t2 && eq_obinder pos c f1 f2
+  | (WUVar w1     , w2           ) -> w1 := Some w2; true (* FIXME: occurcheck *)
+  | (w1           , WUVar w2     ) -> w2 := Some w1; true (* FIXME: occurcheck *)
   | (_            , _            ) -> false
 
 and leqi_ordinal pos c o1 i o2 =
   match (orepr o1, orepr o2) with
-  | (o1         , o2         ) when eq_ordinal pos c o1 o2 && i <= 0 -> true
-  | (OUVar(p,o) , o2         ) when not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o && i <= 0 ->
+  | (o1         , o2        ) when eq_ordinal pos c o1 o2 && i <= 0 -> true
+  | (OUVar(p,o) , o2        ) when not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o && i <= 0 ->
      set_ouvar p o2; true
-  | (o1         , OUVar(p,o) ) when not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o && i <= 0 ->
+  | (o1         , OUVar(p,o)) when not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o && i <= 0 ->
      set_ouvar p o1; true
-  | (OSucc o1   ,       o2   ) -> leqi_ordinal pos c o1 (i+1) o2
-  | (o1         , OSucc o2   ) -> leqi_ordinal pos c o1 (i-1) o2
-  | (OLess(o1,_,_),     o2   ) ->
+  | (OSucc o1   ,       o2  ) -> leqi_ordinal pos c o1 (i+1) o2
+  | (o1         , OSucc o2  ) -> leqi_ordinal pos c o1 (i-1) o2
+  | (OLess(o1,_),       o2  ) ->
      let i = if List.exists (eq_ordinal pos c o1) pos then i-1 else i in
      leqi_ordinal pos c o1 i o2
-  | (_          , _          ) -> false
+  | (_          , _         ) -> false
 
 and leq_ordinal pos c o1 o2 =
   leqi_ordinal pos c o1 0 o2

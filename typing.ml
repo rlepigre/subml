@@ -143,7 +143,7 @@ let lambda_kind t k s = match full_repr k with
 let lambda_ordinal t k s =
   match full_repr k with
   | KOAll(f) when binder_name f = s ->
-     let c = oless OConv (NotIn(t,f)) in
+     let c = OLess(OConv, NotIn(t,f)) in
      c, (subst f c)
   | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
 
@@ -180,7 +180,7 @@ let has_uvar : kind -> bool = fun k ->
     | t          -> ()
   and gn o =
     match orepr o with
-    | OUVar _ -> raise Exit
+    | OUVar _ -> () (*FIXME raise Exit*)
     | OSucc(o) -> gn o
     | _       -> ()
   in
@@ -412,6 +412,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let f x = tappl dummy_position (box t) (box_apply dummy_pos x) in
         let bnd = unbox (bind mk_free_tvari "x" f) in
         let wit = dummy_pos (tcnst bnd a2 b2) in
+        (* NOTE: the heuristic below works well for Church like encoding *)
         if has_uvar b1 then
           let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
           let p1 = subtype ctxt wit a2 a1 in
@@ -488,7 +489,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Universal quantification over ordinals. *)
     | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (oless OConv (NotIn(t,f)))) in
+        let p = subtype ctxt t a0 (subst f (OLess(OConv, NotIn(t,f)))) in
         Sub_OAll_r(p)
 
     | (KOAll(f)    , _           ) ->
@@ -497,7 +498,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Existantial quantification over ordinals. *)
     | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (oless OConv (In(t,f)))) b0 in
+        let p = subtype ctxt t (subst f (OLess(OConv, In(t,f)))) b0 in
         Sub_OExi_l(p)
 
     | (_           , KOExi(f)    ) ->
@@ -775,10 +776,9 @@ and check_fix ctxt t n f c =
       | [] -> raise Not_found
       | (fnum, pos', rel', a0, os') :: hyps ->
          try
-           let ov = List.map (fun (i,_) -> (i,OUVar(ref None, None))) os' in
-           let (_, a) = recompose pos' a0 ov in
-           Io.log_typ "searching induction hyp (2) with %d %a ~ %a %a:\n%!"
-             fnum (print_kind false) a0 (print_kind false) c0 print_positives
+           let (ov, _, a) = recompose pos' a0 os' rel' in
+           Io.log_typ "searching induction hyp (2) with %d %a -> %a ~ %a <- %a %a:\n%!"
+             fnum (print_kind false) a0 (print_kind false) a (print_kind false) c (print_kind false) c0 print_positives
              { ctxt with positive_ordinals = pos'};
            (* need full subtype to rollback unification of variables if it fails *)
            let time = Timed.Time.save () in
@@ -808,7 +808,7 @@ and check_fix ctxt t n f c =
       Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
         (print_kind false) c (print_kind false) c0;
       add_call ctxt fnum os false;
-      if os <> [] then hyps_ptr := (fnum, pos, rel, c0, os) :: !hyps_ptr;
+      if os <> [] then hyps_ptr := !hyps_ptr @ [fnum, pos, rel, c0, os];
       let ctxt = { ctxt with top_induction = (fnum, os) } in
       let ptr = ref dummy_proof in
       remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;

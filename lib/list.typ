@@ -70,10 +70,11 @@ val rec flatten : ∀A List(List(A)) → List(A) = fun l →
   case l of
   | [] → []
   | x::l → rev_append (rev x) (flatten l)
-
+(*
 val rec flatten2 : ∀A List(List(A)) → List(A) = fun ll →
   case ll of
   | [] → []
   | l::ll → (case l of
     | [] → flatten2 ll
     | x::l → x :: flatten2 (l :: ll))
+*)
