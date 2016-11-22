@@ -446,14 +446,17 @@ let decompose : ordinal list -> kind -> kind ->
 
 let subrelation r1 r2 =
   List.for_all (fun (o1,o2) ->
-    let rec fn o =
+    let rec fn depth o =
       try
         let o' = assoc_ordinal o r2 in
-        if strict_eq_ordinal o' o2 then true else
-          fn o'
+        if strict_eq_ordinal o' o2 then (
+          if depth > 0 then Io.log "DECALAGE: %d\n%!" depth;
+          true)
+        else
+          fn (depth+1) o'
       with
         Not_found -> false
-    in fn o1) r1
+    in fn 0 o1) r1
 
 let sub_posrel p1 r1 p2 r2 =
   List.for_all (fun o1 -> List.exists (strict_eq_ordinal o1) p2) p1 &&
