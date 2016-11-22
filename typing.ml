@@ -47,7 +47,7 @@ and sub_induction =
 (** induction hypothesis for typing recursive programs *)
 and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
-    * kind option             (* the initial type, if no initial ordinal params *)
+    * kind                    (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
     * (int                    (* reference of the inductive hyp *)
        * ordinal list         (** the positivity context *)
@@ -55,7 +55,7 @@ and fix_induction =
        * kind                 (* the type for this hypothesis *)
        * (int * ordinal) list (* the ordinal parameters *))
       list ref
-    * (subtype_ctxt * term * kind * typ_prf ref) list ref (* proofs yet to be done *)
+    * (subtype_ctxt * kind * typ_prf ref) list ref (* proofs yet to be done *)
       (* The use of references here is to do a breadth-first search for
          inductive proof. Depth first here is bad, using too large depth *)
 
@@ -290,7 +290,8 @@ let check_rec
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
-        if Timed.pure_test (fun () -> sub_posrel pos0 rel0 pos rel &&
+        if Timed.pure_test (fun () ->
+          List.for_all (fun o1 -> List.exists (strict_eq_ordinal o1) pos) pos0 &&
             strict_eq_kind a' a0 &&
             strict_eq_kind b0 b') () then (
           (* TODO: this assertion could be wrong if positive ordinals that
@@ -706,13 +707,13 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   in (t, c, r)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
-and check_fix ctxt t n f c =
+and check_fix ctxt t n f c0 =
   (* filter the relevant hypothesis *)
   let hyps = List.filter (function (f',_,_,_) -> f' == f) ctxt.fix_induction_hyp in
   let a, remains, hyps =
     match hyps with
     | [(_,a,l,r)] -> a, r, Some (l) (* see comment on Rec above *)
-    | [] -> None, ref [], None
+    | [] -> c0, ref [], None
     | _ -> assert false
   in
   (* This is the subtyping that means that the program is typed, as in ML
@@ -720,10 +721,6 @@ and check_fix ctxt t n f c =
      This helps for polymorphic program ... But is wrong if initial type
      has ordinal parameters
   *)
-  (* NOTE: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS,
-     can we do better ? *)
-  (match a with Some a -> ignore (subtype ctxt t a c) | None -> ());
-  let (pos, _, c0, os, rel) = decompose ctxt.positive_ordinals (KProd []) c in
   match hyps with
   | None ->
     (* No induction hypothesis was found, we create a new one, unroll
@@ -735,20 +732,15 @@ and check_fix ctxt t n f c =
        Fixpoint may be unrolled more that twice. This is important for some
        function. However, this is expensive ...
     *)
-    let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os) in
-    Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
-      (print_kind false) c (print_kind false) c0;
-    add_call ctxt fnum os false;
-    (* do not register any hypothesis if the are no ordinal parameters *)
-    let a, hyps = if os <> [] then None, [fnum,pos,rel,c0,os] else Some c, [] in
+    let hyps_ptr = ref [] in
     let ctxt =
       { ctxt with
-        fix_induction_hyp = (f,a,ref hyps, remains)::ctxt.fix_induction_hyp;
-        top_induction = fnum, os
+        fix_induction_hyp = (f,a,hyps_ptr, remains)::ctxt.fix_induction_hyp;
       }
     in
     let ptr = ref dummy_proof in
-    remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;
+    assert (!remains = []);
+    remains := (ctxt, c0, ptr) :: !remains;
     (* The main function doing the breadth-first search for the proof *)
     (* n : the current depth *)
     let rec breadth_first n =
@@ -758,38 +750,52 @@ and check_fix ctxt t n f c =
         type_error "can not relate termination depth"
       else
         (* otherwise we unroll once more, and type-check *)
-        let l = !remains in
+        let l = List.map (fun (ctxt,c,ptr) ->
+          let (pos, _, c0, os, rel) = decompose ctxt.positive_ordinals (KProd []) c in
+          let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os) in
+          Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+            (print_kind false) c (print_kind false) c0;
+          add_call ctxt fnum os false;
+          if os <> [] then hyps_ptr := (fnum, pos, rel, c0, os) :: !hyps_ptr;
+          let ctxt = { ctxt with top_induction = (fnum, os) } in
+          let t =  subst f (TFixY(n-1,f)) in
+          (ctxt,t,c,ptr)) !remains
+        in
         remains := [];
-        List.iter (fun (c,t,k,ptr) -> ptr := type_check c t k) l;
-        if !remains = [] then Typ_TFix(fnum,ptr) else breadth_first (n-1)
+        List.iter (fun (ctxt,t,c,ptr) -> ptr := type_check ctxt t c) l;
+        if !remains = [] then Typ_TFix(-1,ptr) else breadth_first (n-1)
     in
     breadth_first n
 
   (* we reach this point when we are call from type_check inside
      breadth_fitst above *)
-  | Some ({contents = hyps } as hyps_ptr) ->
+  | Some ({contents = hyps }) ->
      (* fn search for an applicable inductive hypothesis *)
      Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
-       (print_kind false) c print_positives ctxt;
+       (print_kind false) c0 print_positives ctxt;
+     (* NOTE: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS,
+         can we do better ? *)
+     ignore (subtype ctxt t a c0);
+
     let rec fn = function
       | _ when n > 0 -> raise Not_found
       | [] -> raise Not_found
       | (fnum, pos', rel', a0, os') :: hyps ->
          try
-           let (ov, _, a) = recompose pos' a0 os' rel' in
-           Io.log_typ "searching induction hyp (2) with %d %a -> %a ~ %a <- %a %a:\n%!"
-             fnum (print_kind false) a0 (print_kind false) a (print_kind false) c (print_kind false) c0 print_positives
-             { ctxt with positive_ordinals = pos'};
+           let (ov, pos, a) = recompose pos' a0 os' rel' in
+           Io.log_typ "searching induction hyp (2) with %d %a -> %a ~ %a <- %a:\n%!"
+             fnum (print_kind false) a0 (print_kind false) a (print_kind false) c0
+             print_positives { ctxt with positive_ordinals = pos'};
            (* need full subtype to rollback unification of variables if it fails *)
            let time = Timed.Time.save () in
            let prf =
              try
-               let prf = subtype ctxt t a c in
+               let prf = subtype ctxt t a c0 in
                check_sub_proof prf;
-               let (pos, _, _, os, rel) = decompose ctxt.positive_ordinals (KProd []) a in
                (* TODO: same pb as with check_rec with positive ordinals that do not appear
                   in the formula *)
-               if not (sub_posrel pos' rel' pos rel) then raise Exit;
+               if not (List.for_all (fun o1 -> List.exists (strict_eq_ordinal o1) ctxt.positive_ordinals) pos)
+               then raise Exit;
                prf
              with Exit | Subtype_error _ | Error.Error _ ->
                Timed.Time.rollback time;
@@ -804,15 +810,9 @@ and check_fix ctxt t n f c =
     try fn hyps with Not_found ->
       (* No inductive hypothesis applies, we add a new induction hyp and
          record the unproved judgment with the other *)
-      let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os) in
-      Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
-        (print_kind false) c (print_kind false) c0;
-      add_call ctxt fnum os false;
-      if os <> [] then hyps_ptr := !hyps_ptr @ [fnum, pos, rel, c0, os];
-      let ctxt = { ctxt with top_induction = (fnum, os) } in
       let ptr = ref dummy_proof in
-      remains := (ctxt, subst f (TFixY(n-1,f)), c, ptr) :: !remains;
-      Typ_TFix(fnum,ptr)
+      remains := (ctxt, c0, ptr) :: !remains;
+      Typ_TFix(-1,ptr)
 
 let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
   fun ?ctxt ?term a b ->

@@ -430,10 +430,7 @@ let decompose : ordinal list -> kind -> kind ->
          relation := (o0,o1) :: acc @ !relation;
          fn [] o1 o1
         with Not_found ->
-         if List.exists (strict_eq_ordinal o1) pos then
-           fn ((o0,o1) :: acc) o1 o1
-         else
-           fn acc o0 o1)
+          fn ((o0,o1) :: acc) o1 o1)
     | _ -> ()
 
   in
@@ -446,24 +443,6 @@ let decompose : ordinal list -> kind -> kind ->
     try OTInt(assoc_ordinal o !res) with Not_found -> assert false) pos in
   let pos = List.sort compare pos in
   (pos, k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res, relation)
-
-let subrelation r1 r2 =
-  List.for_all (fun (o1,o2) ->
-    let rec fn depth o =
-      try
-        let o' = assoc_ordinal o r2 in
-        if strict_eq_ordinal o' o2 then (
-          if depth > 0 then Io.log "DECALAGE: %d\n%!" depth;
-          true)
-        else
-          fn (depth+1) o'
-      with
-        Not_found -> false
-    in fn 0 o1) r1
-
-let sub_posrel p1 r1 p2 r2 =
-  List.for_all (fun o1 -> List.exists (strict_eq_ordinal o1) p2) p1 &&
-    subrelation r1 r2
 
 
 let recompose : ordinal list-> kind -> (int * ordinal) list -> (ordinal * ordinal) list ->
