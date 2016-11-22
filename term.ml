@@ -15,7 +15,7 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
     | TAbst(ko,f) -> let ko = map_opt kn ko in
                      tabst t.pos ko (in_pos t.pos (binder_name f))
                        (fun x -> fn (subst f (TVari x)))
-    | TFixY(n,f)  -> tfixy t.pos n (in_pos t.pos (binder_name f))
+    | TFixY(b,n,f)-> tfixy t.pos b n (in_pos t.pos (binder_name f))
                        (fun x -> fn (subst f (TVari x)))
     | TKAbs(f)    -> tkabs t.pos (dummy_pos (binder_name f))
                        (fun x -> fn (subst f (KVari x)))
@@ -40,7 +40,7 @@ let iter_term : (kind -> unit) -> term -> unit = fun kn t ->
     | TCoer(t,k)  -> fn t; kn k
     | TVari(x)    -> ()
     | TAbst(ko,f) -> fn (subst f (TTInt 0))
-    | TFixY(n,f)  -> fn (subst f (TTInt 0))
+    | TFixY(b,n,f)-> fn (subst f (TTInt 0))
     | TKAbs(f)    -> fn (subst f (KProd []))
     | TOAbs(f)    -> fn (subst f OConv)
     | TAppl(a,b)  -> fn a; fn b
@@ -59,8 +59,8 @@ let is_normal : term -> bool = fun t ->
     match t.elt with
     | TCoer(t,k)  -> fn t
     | TVari(x)    -> true
-    | TAbst(ko,f) -> true
-    | TFixY(ko,f) -> false
+    | TAbst(_)    -> true
+    | TFixY(_)    -> false
     | TKAbs(f)    -> fn (subst f (KProd []))
     | TOAbs(f)    -> fn (subst f (OConv))
     | TAppl(a,b)  -> false
@@ -82,8 +82,8 @@ let is_neutral : term -> bool = fun t ->
     match t.elt with
     | TCoer(t,k)  -> fn t
     | TVari(x)    -> true
-    | TAbst(ko,f) -> false
-    | TFixY(ko,f) -> false
+    | TAbst(_)    -> false
+    | TFixY(_)    -> false
     | TKAbs(f)    -> fn (subst f (KProd []))
     | TOAbs(f)    -> fn (subst f (OConv))
     | TAppl(a,b)  -> fn a

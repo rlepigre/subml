@@ -151,7 +151,7 @@ let string_lit =
   change_layout (parser "\"" cs:schar* "\"" -> String.concat "" cs) no_blank
 
 let int_lit = change_layout (
-    parser s:(in_charset digit)+ -> int_of_chars s
+    parser sign:{'-'->-1}?[1] - s:(in_charset digit)+ -> sign * int_of_chars s
   ) no_blank
 
 let ident first =

@@ -27,10 +27,11 @@ exception Loop_error of pos
 let loop_error : pos -> 'a =
   fun p -> raise (Loop_error p)
 
+type induction_node = int * (int * ordinal) list
 type subtype_ctxt =
   { sub_induction_hyp : sub_induction list
   ; fix_induction_hyp : fix_induction list
-  ; top_induction     : int * (int * ordinal) list
+  ; top_induction     : induction_node
   ; fun_table         : fun_table
   ; calls             : pre_calls ref
   ; delayed           : (unit -> unit) list ref
@@ -103,6 +104,9 @@ let rec find_positive ctxt o =
   match o with
   | OConv -> OConv
   | OSucc o' -> o'
+  | OUVar(p,None) ->
+    let o' = OUVar(ref None, None) in
+    set_ouvar p (OSucc o'); o'
   | _ ->
      (* NOTE: this may instanciate unification variables ... This is necessay for
         some examples, but seems a bit arbitrary, many choices are possible to
@@ -160,6 +164,7 @@ let has_leading_exists : kind -> bool = fun k ->
   in
   fn k
 
+(* This function is only used for heuristics *)
 let has_uvar : kind -> bool = fun k ->
   let rec fn k =
     match repr k with
@@ -169,20 +174,15 @@ let has_uvar : kind -> bool = fun k ->
     | KKAll(f)
     | KKExi(f)   -> fn (subst f (KProd []))
     | KFixM(o,f)
-    | KFixN(o,f) -> gn o; fn (subst f (KProd []))
+    | KFixN(o,f) -> fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f (OTInt(-42)))
     | KUVar(u)   -> raise Exit
-    | KDefi(d,o,a) -> Array.iter gn o; Array.iter fn a
+    | KDefi(d,o,a) -> Array.iter fn a
     | KWith(k,c) -> let (_,b) = c in fn k; fn b
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
     | t          -> ()
-  and gn o =
-    match orepr o with
-    | OUVar _ -> () (*FIXME raise Exit*)
-    | OSucc(o) -> gn o
-    | _       -> ()
   in
   try
     fn k; false
@@ -292,13 +292,10 @@ let check_rec
            way *)
         if Timed.pure_test (fun () ->
           List.for_all (fun o1 -> List.exists (strict_eq_ordinal o1) pos) pos0 &&
+            rel = rel0 &&
             strict_eq_kind a' a0 &&
+            List.length os = Sct.arity index ctxt.fun_table &&
             strict_eq_kind b0 b') () then (
-          (* TODO: this assertion could be wrong if positive ordinals that
-             do not appear in the formula could arise. This seems not
-             possible if subtyping is involved with no for_all / exists.
-             Anyway, it is safe to move the assertion in the above test *)
-          assert (List.length os = Sct.arity index ctxt.fun_table);
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index os true;
           raise (Induction_hyp index)
@@ -695,8 +692,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TPrnt(_) ->
         let p = subtype ctxt t (KProd []) c in
         Typ_Prnt(p)
-    | TFixY(n,f) ->
-        check_fix ctxt t n f c
+    | TFixY(s,n,f) ->
+        check_fix ctxt t s n f c
     | TCnst(_,a,b) ->
         let p = subtype ctxt t a c in
         Typ_Cnst(p)
@@ -707,7 +704,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   in (t, c, r)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
-and check_fix ctxt t n f c0 =
+and check_fix ctxt t s n f c0 =
   (* filter the relevant hypothesis *)
   let hyps = List.filter (function (f',_,_,_) -> f' == f) ctxt.fix_induction_hyp in
   let a, remains, hyps =
@@ -751,17 +748,54 @@ and check_fix ctxt t n f c0 =
       else
         (* otherwise we unroll once more, and type-check *)
         let l = List.map (fun (ctxt,c,ptr) ->
+          let t =  subst f (TFixY(s,n-1,f)) in
+          ctxt,t,c,ptr,ref []) !remains
+        in
+        let rec subsumption acc = function
+          | [] -> List.rev acc
+          | (ctxt,t,c,ptr,subsumed as head)::tail ->
+             let forward = ref false in
+             let rec gn acc' = function
+               | [] -> subsumption (head::List.rev acc') tail
+               | (ctxt',t',c',ptr',subsumed' as head')::tail' ->
+                  try
+                    if not (List.for_all (fun o1 ->
+                      List.exists (strict_eq_ordinal o1) ctxt.positive_ordinals)
+                              ctxt'.positive_ordinals)
+                    then raise Exit;
+                    let prf = subtype ctxt t c' c in
+                    check_sub_proof prf;
+                    assert (not !forward);
+                    subsumed' := ctxt :: !subsumed @ !subsumed';
+                    subsumption acc tail
+                  with Exit | Subtype_error _ | Error.Error _ ->
+                  try
+                    if not (List.for_all (fun o1 ->
+                      List.exists (strict_eq_ordinal o1) ctxt'.positive_ordinals)
+                              ctxt.positive_ordinals)
+                    then raise Exit;
+                    let prf = subtype ctxt' t' c c' in
+                    check_sub_proof prf;
+                    forward := true;
+                    subsumed := ctxt' :: !subsumed' @ !subsumed;
+                    gn acc' tail'
+                  with Exit | Subtype_error _ | Error.Error _ ->
+                     gn (head'::acc') tail'
+             in gn [] acc
+        in
+        let l = if s then subsumption [] l else l in
+        let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
           let (pos, _, c0, os, rel) = decompose ctxt.positive_ordinals (KProd []) c in
           let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os) in
           Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
             (print_kind false) c (print_kind false) c0;
-          add_call ctxt fnum os false;
+          List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
           if os <> [] then hyps_ptr := (fnum, pos, rel, c0, os) :: !hyps_ptr;
           let ctxt = { ctxt with top_induction = (fnum, os) } in
-          let t =  subst f (TFixY(n-1,f)) in
-          (ctxt,t,c,ptr)) !remains
+          (ctxt,t,c,ptr)) l
         in
         remains := [];
+
         List.iter (fun (ctxt,t,c,ptr) -> ptr := type_check ctxt t c) l;
         if !remains = [] then Typ_TFix(-1,ptr) else breadth_first (n-1)
     in
@@ -775,7 +809,7 @@ and check_fix ctxt t n f c0 =
        (print_kind false) c0 print_positives ctxt;
      (* NOTE: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS,
          can we do better ? *)
-     ignore (subtype ctxt t a c0);
+     ignore (subtype { ctxt with calls = ref []} t a c0);
 
     let rec fn = function
       | _ when n > 0 -> raise Not_found
@@ -807,6 +841,10 @@ and check_fix ctxt t n f c0 =
            Typ_YH(fnum,prf)
          with Exit -> fn hyps
     in
+    (* HEURISTIC: try induction hypothesis with more parameters first.
+       useful for flatten2 in lib/list.typ *)
+    let hyps = List.sort (fun (_,_,_,_,os) (_,_,_,_,os') ->
+      List.length os' - List.length os) hyps in
     try fn hyps with Not_found ->
       (* No inductive hypothesis applies, we add a new induction hyp and
          record the unproved judgment with the other *)

@@ -31,9 +31,9 @@ let rec eval : term -> term = fun t0 ->
         let rec fn t =
           let t = eval t in
           match t.elt with
-          | TAbst(_,b) -> eval (subst b u.elt)
-          | TFixY(_,f) -> fn (subst f t.elt)
-          | _          -> assert false
+          | TAbst(_,b)   -> eval (subst b u.elt)
+          | TFixY(_,_,f) -> fn (subst f t.elt)
+          | _            -> assert false
         in fn t
       end
   (* Record projection. *)

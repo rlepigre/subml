@@ -41,7 +41,7 @@ and pterm' =
   | PKAbs of strpos * pterm
   | POAbs of strpos * pterm
   | PPrnt of string
-  | PFixY of strpos * int * pterm
+  | PFixY of strpos * bool * int * pterm
 and ppat =
   | Simple of (strpos * pkind option) option
   | Record of (string * (strpos * pkind option)) list
@@ -67,8 +67,8 @@ let pfixY (id, ko) _loc n t =
     | Some n -> n
   in
   match ko with
-  | None   -> in_pos _loc (PFixY(id, n, t))
-  | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, n, t)), k))
+  | None   -> in_pos _loc (PFixY(id, n >= 0, abs n, t))
+  | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, n >= 0, abs n, t)), k))
 
 let rec padd _loc o n =
   if n <= 0 then o else in_pos _loc (PSucc(padd _loc o (n-1)))
@@ -263,5 +263,5 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    tcase pt.pos (unsugar_term env t) (List.map f cs) (map_opt g d)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
-  | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in
-                   tfixy pt.pos n x f
+  | PFixY(x,b,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in
+                   tfixy pt.pos b n x f

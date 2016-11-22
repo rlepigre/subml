@@ -112,7 +112,7 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
-    | TFixY(_,f)
+    | TFixY(_,_,f)
     | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
     | TKAbs(f)       -> aux2 acc (subst f (KProd []))
     | TOAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
@@ -321,7 +321,7 @@ and has_tboundvar t =
   | TCons(s,t) -> has_tboundvar t
   | TCase(t,l,ao) -> has_tboundvar t; List.iter (fun (_,t) ->  has_tboundvar t) l;
     (match ao with None -> () | Some t -> has_tboundvar t)
-  | TFixY(_,b) -> has_tboundvar (subst b (TTInt 0))
+  | TFixY(_,_,b) -> has_tboundvar (subst b (TTInt 0))
   | TKAbs(b) -> has_tboundvar (subst b (KTInt 0))
   | TOAbs(b) -> has_tboundvar (subst b (OTInt 0))
   | TDefi _ | TPrnt _ | TTInt _ | TCnst _ -> ()

@@ -310,7 +310,7 @@ and print_term ?(in_proj=false) unfold ff t =
        pp_print_string ff v.name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
-  | TFixY(_,f) ->
+  | TFixY(_,_,f) ->
       let x = binder_name f in
       let t = subst f (free_of (new_tvari x)) in
       fprintf ff "fix %s → %a" x print_term t

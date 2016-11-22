@@ -116,7 +116,7 @@ and eq_term : ordinal list -> int ref -> term -> term -> bool = fun pos c t1 t2 
     | (_              , TOAbs(f)       ) -> eq_term t1 (subst f (OTInt(-1)))
     | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
     | (TAbst(_,f1)    , TAbst(_,f2)    )
-    | (TFixY(_,f1)    , TFixY(_,f2)    ) -> eq_tbinder pos c f1 f2
+    | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos c f1 f2
     | (TAppl(t1,u1)   , TAppl(t2,u2)   ) -> eq_term t1 t2 && eq_term u1 u2
     | (TReco(fs1)     , TReco(fs2)     ) -> eq_assoc eq_term fs1 fs2
     | (TProj(t1,l1)   , TProj(t2,l2)   ) -> l1 = l2 && eq_term t1 t2
@@ -159,10 +159,12 @@ and eq_ord_wit pos c w1 w2 = match wrepr w1, wrepr w2 with
 and leqi_ordinal pos c o1 i o2 =
   match (orepr o1, orepr o2) with
   | (o1         , o2        ) when eq_ordinal pos c o1 o2 && i <= 0 -> true
-  | (OUVar(p,o) , o2        ) when not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o && i <= 0 ->
-     set_ouvar p o2; true
-  | (o1         , OUVar(p,o)) when not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o && i <= 0 ->
+  | (o1         , OUVar(p,o)) when not (occur_ouvar p o1) && less_opt_ordinal pos c (oadd o1 i) o ->
+     let o1 = oadd o1 i in
      set_ouvar p o1; true
+  | (OUVar(p,o) , o2        ) when not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o && i <= 0 ->
+     (* NOTE: may take the maximum n between 0 and -i s.t. oadd o2 n < o *)
+     set_ouvar p o2; true
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos c o1 (i+1) o2
   | (o1         , OSucc o2  ) -> leqi_ordinal pos c o1 (i-1) o2
   | (OLess(o1,_),       o2  ) ->
@@ -174,7 +176,7 @@ and leq_ordinal pos c o1 o2 =
   leqi_ordinal pos c o1 0 o2
 
 and less_ordinal pos c o1 o2 =
-  leq_ordinal pos c (OSucc o1) o2
+  leqi_ordinal pos c o1 1 o2
 
 and less_opt_ordinal pos c o1 = function
   | None -> true

@@ -149,7 +149,7 @@ and term' =
   (* Print a string (side effect) and behave like the term. *)
   | TPrnt of string
   (* Fixpoint combinator. *)
-  | TFixY of int * (term', term) binder
+  | TFixY of bool * int * (term', term) binder
   (* Lambda on a type, semantics via epsilon *)
   | TKAbs of (kind, term) binder
   (* Lambda on an ordinal, semantics via epsilon *)
@@ -311,6 +311,7 @@ let new_ovari : string -> ovar =
 let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
+let rec oadd o n = if n <= 0 then o else oadd (OSucc o) (n-1)
 
 let oless_In    = box_apply3 (fun o t k -> OLess(o, In(t,k)))
 let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
@@ -448,8 +449,8 @@ let tdefi_p : pos -> value_def -> term =
 let tprnt_p : pos -> string -> term =
   fun p s -> in_pos p (TPrnt(s))
 
-let tfixy_p : pos -> int -> (term', term) binder -> term =
-  fun p n t -> in_pos p (TFixY(n,t))
+let tfixy_p : pos -> bool -> int -> (term', term) binder -> term =
+  fun p b n t -> in_pos p (TFixY(b,n,t))
 
 (****************************************************************************)
 (** {0                   Smart constructors for terms                     } *)
@@ -502,8 +503,8 @@ let tdefi : pos -> value_def -> tbox =
 let tprnt : pos -> string -> tbox =
   fun p s -> box (tprnt_p p s)
 
-let tfixy : pos -> int -> strpos -> (tvar -> tbox) -> tbox =
-  fun p n x f -> box_apply (tfixy_p p n)
+let tfixy : pos -> bool -> int -> strpos -> (tvar -> tbox) -> tbox =
+  fun p b n x f -> box_apply (tfixy_p p b n)
                     (vbind mk_free_tvari x.elt f)
 
 (* Build a constant. Useful during typing. *)

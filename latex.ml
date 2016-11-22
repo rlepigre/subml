@@ -297,7 +297,7 @@ and print_term unfold lvl ff t =
       pp_print_string ff v.tex_name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
-  | TFixY(ko,f) ->
+  | TFixY(_,ko,f) ->
      if lvl > 0 then pp_print_string ff "(";
       let x = binder_name f in
       let t = subst f (free_of (new_tvari x)) in
