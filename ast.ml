@@ -219,7 +219,7 @@ and typ_rule =
   | Typ_Prod_e of typ_prf
   | Typ_DSum_i of sub_prf * typ_prf
   | Typ_DSum_e of typ_prf * typ_prf list * typ_prf option
-  | Typ_TFix   of int * typ_prf ref
+  | Typ_TFix   of (int * typ_prf) ref
   | Typ_YH     of int * sub_prf
   | Typ_Hole   (* used by dummy_proof below *)
   | Typ_Error  of string

@@ -36,6 +36,8 @@ type fun_table =
   { mutable current : int;
     mutable table : arities }
 
+let copy_table t = { current = t.current; table = t.table }
+
 let mat_prod l1 c1 c2 m1 m2 =
   Array.init l1 (fun i ->
     Array.init c2 (fun j ->

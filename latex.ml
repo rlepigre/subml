@@ -437,7 +437,9 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_DSum_e(p,ps,_)-> n_aryN "$+_e$" c
                            (typ2proof p :: List.map typ2proof ps) (* FIXME*)
   | Typ_YH(n,p)       -> let name = sprintf "$H_%d$" n in unaryC name c p
-  | Typ_TFix(n,p)     -> let name = sprintf "$I_%d$" n in unaryN name c (typ2proof !p)
+  | Typ_TFix{contents=(n,p)} ->
+     (* TODO: proof may be duplicated, print with sharing*)
+     let name = sprintf "$I_%d$" n in unaryN name c (typ2proof p)
   | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 

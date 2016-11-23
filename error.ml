@@ -63,7 +63,7 @@ and check_typ_proof (t, k, r) =
 
     | Typ_KAbs   p
     | Typ_OAbs   p
-    | Typ_TFix (_, { contents = p })
+    | Typ_TFix { contents = (_,p) }
     | Typ_Prod_e p        -> check_typ_proof p
 
     | Typ_YH (_, p)

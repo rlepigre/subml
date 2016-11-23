@@ -352,9 +352,10 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_YH(n,p)       ->
      let name = sprintf "$H_%d$" n in
      unaryN name c (sub2proof p)
-  | Typ_TFix(n,p)     ->
+  | Typ_TFix{contents=(n,p)}     ->
+     (* TODO: proof may be duplicated, print with sharing*)
      let name = sprintf "$I_%d$" n in
-     unaryN name c (typ2proof !p)
+     unaryN name c (typ2proof p)
   | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 
