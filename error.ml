@@ -43,7 +43,7 @@ let rec check_sub_proof (t, k1, k2, _, r) =
     | Sub_Or_r   p        -> check_sub_proof p
     | Sub_Func   (p1, p2) -> check_sub_proof p1 &&& check_sub_proof p2
     | Sub_Prod   ps
-    | Sub_DSum   ps       -> for_all check_sub_proof ps
+    | Sub_DSum   ps       -> for_all (fun (l,p) -> check_sub_proof p) ps
     | Sub_DPrj_r (p1, p2)
     | Sub_DPrj_l (p1, p2) -> check_typ_proof p1 &&& check_sub_proof p2
     | Sub_Lower

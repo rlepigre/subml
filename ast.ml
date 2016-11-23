@@ -178,8 +178,8 @@ and sub_rule =
   | Sub_Delay  of sub_prf ref
   | Sub_Lower
   | Sub_Func   of sub_prf * sub_prf
-  | Sub_Prod   of sub_prf list
-  | Sub_DSum   of sub_prf list
+  | Sub_Prod   of (string * sub_prf) list
+  | Sub_DSum   of (string * sub_prf) list
   | Sub_DPrj_l of typ_prf * sub_prf
   | Sub_DPrj_r of typ_prf * sub_prf
   | Sub_With_l of sub_prf

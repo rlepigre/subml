@@ -464,8 +464,8 @@ and sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_Delay(pr)     -> sub2proof !pr
   | Sub_Lower         -> axiomN "$=$" c
   | Sub_Func(p1,p2)   -> binaryN "$\\to$" c (sub2proof p1) (sub2proof p2)
-  | Sub_Prod(ps)      -> n_aryN "$\\times$" c (List.map sub2proof ps)
-  | Sub_DSum(ps)      -> n_aryN "$+$" c (List.map sub2proof ps)
+  | Sub_Prod(ps)      -> n_aryN "$\\times$" c (List.map (fun (l,p) -> sub2proof p) ps)
+  | Sub_DSum(ps)      -> n_aryN "$+$" c (List.map (fun (l,p) -> sub2proof p) ps)
   | Sub_DPrj_l(p1,p2) -> binaryN "$\\pi_l$" c (typ2proof p1) (sub2proof p2)
   | Sub_DPrj_r(p1,p2) -> binaryN "$\\pi_r$" c (typ2proof p1) (sub2proof p2)
   | Sub_With_l(p)     -> unaryN "$w_l$" c (sub2proof p)

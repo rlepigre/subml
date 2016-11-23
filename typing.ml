@@ -358,15 +358,18 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
          | Sum _ -> assert false
        in
        let l1 = ref l0 in
+       let res = ref [] in
        List.iter (fun (s,k) ->
+         let t' = dummy_pos (TProj(t,s)) in
          try
-           let _ = subtype ctxt t (List.assoc s l0) k  in
-         (* FIXME: témoin et preuve *)
-           ()
+           let prf = subtype ctxt t' (List.assoc s l0) k  in
+           res := (s,prf) :: !res
          with
-           Not_found -> l1 := (s,k)::!l1) l;
+           Not_found ->
+             res := (s, (t', k, k, None, Sub_Lower)) :: !res;
+             l1 := (s,k)::!l1) l;
        Timed.(ua.kuvar_state := Prod !l1);
-       Sub_Lower
+       Sub_Prod(!res)
 
     | (KDSum(l)   , KUVar(ub)   )
        when (match !(ub.kuvar_state) with Prod _ -> false | _ -> true) ->
@@ -376,15 +379,18 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
          | Prod _ -> assert false
        in
        let l1 = ref l0 in
+       let res = ref [] in
        List.iter (fun (s,k) ->
+         let t' = unbox (tcase dummy_position (box t) [(s, idt)] None) in
          try
-           let _ = subtype ctxt t k (List.assoc s l0)  in
-         (* FIXME: témoin et preuve *)
-           ()
+           let prf = subtype ctxt t' k (List.assoc s l0)  in
+           res := (s,prf) :: !res
          with
-           Not_found -> l1 := (s,k)::!l1) l;
+           Not_found ->
+             res := (s, (t', k, k, None, Sub_Lower)) :: !res;
+             l1 := (s,k)::!l1) l;
        Timed.(ub.kuvar_state := Sum !l1);
-       Sub_Lower
+       Sub_DSum(!res)
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar ua as a),(KUVar ub as b)) ->
@@ -427,7 +433,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             try List.assoc l fsa
             with Not_found -> subtype_error ("Product fields clash: " ^ l)
           in
-          subtype ctxt (dummy_pos (TProj(t,l))) a b
+          (l, subtype ctxt (dummy_pos (TProj(t,l))) a b)
         in
         let ps = List.map check_field fsb in
         Sub_Prod(ps)
@@ -440,7 +446,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             try List.assoc c csb
             with Not_found -> subtype_error ("Constructor clash: " ^ c)
           in
-          subtype ctxt t a b
+          (c, subtype ctxt t a b)
         in
         let ps = List.map check_variant csa in
         Sub_DSum(ps)
