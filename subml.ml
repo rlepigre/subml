@@ -31,7 +31,7 @@ let spec = Arg.align
     , Arg.Clear Sct.do_inline
     , "  Do not optimize the SCP call graph by inlining" )
   ; ( "--no-contr"
-    , Arg.Clear Type.contract_mu
+    , Arg.Clear Ast.contract_mu
     , "  Do not contract the fixpoints" )
   ; ( "--fix-depth"
     , Arg.Set_int Typing.fixpoint_depth

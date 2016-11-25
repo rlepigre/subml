@@ -229,18 +229,48 @@ and typ_prf =
 (** used by Typ_Link as initial value *)
 let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
 
-(** Unfolding unification variable indirections. *)
-let rec repr : kind -> kind = function
-  | KUVar({kuvar_val = {contents = Some k}}) -> repr k
-  | k                                        -> k
-
 (** Unfolding unification variable indirections and definitions *)
-let rec full_repr : kind -> kind = function
-  | KUVar({kuvar_val = {contents = Some k}}) -> full_repr k
-  | KDefi({tdef_value = v}, os, ks) -> full_repr (msubst (msubst v os) ks)
-  | KMRec(p,k) when Refinter.is_empty p -> full_repr k
-  | KNRec(p,k) when Refinter.is_empty p -> full_repr k
-  | k                               -> k
+let contract_mu = ref true
+
+(** Unfolding unification variable indirections. *)
+let rec repr : bool -> kind -> kind = fun unfold -> function
+  | KUVar({kuvar_val = {contents = Some k}}) -> repr unfold k
+  | KFixM(OConv,f) when !contract_mu && is_mu unfold f ->
+     let aux x =
+       match repr unfold (subst f x) with
+       | KFixM(OConv,g) -> subst g x
+       | _              -> assert false (* Unreachable. *)
+     in
+     let f = binder_from_fun (binder_name f) aux in
+     let a' = KFixM(OConv, f) in
+     repr unfold a'
+  | KFixN(OConv,f) when !contract_mu && is_nu unfold f ->
+     let aux x =
+       match repr unfold (subst f x) with
+       | KFixN(OConv,g) -> subst g x
+       | _              -> assert false (* Unreachable. *)
+     in
+     let f = binder_from_fun (binder_name f) aux in
+     let a' = KFixN(OConv, f) in
+     repr unfold a'
+  | KDefi({tdef_value = v}, os, ks) when unfold -> repr unfold (msubst (msubst v os) ks)
+  | KMRec(p,k) when Refinter.is_empty p -> repr unfold k
+  | KNRec(p,k) when Refinter.is_empty p -> repr unfold k
+  | k -> k
+
+and is_mu unfold f = !contract_mu &&
+  match repr unfold (subst f (KProd [])) with KFixM(OConv,_) -> true
+  | _ -> false
+
+and is_nu unfold f = !contract_mu &&
+  match repr unfold (subst f (KProd [])) with KFixN(OConv,_) -> true
+  | _ -> false
+
+
+let full_repr : kind -> kind = fun k -> repr true  k
+let      repr : kind -> kind = fun k -> repr false k
+
+
 
 let rec orepr = function
   | OUVar({contents = Some o}, _) -> orepr o

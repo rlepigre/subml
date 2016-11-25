@@ -17,8 +17,10 @@ val rec insert0 : ∀α ∀A (A → A → Bool) → A → List(A) →  List(A) =
 
 val insert1 : ∀A (A → A → Bool) →  A → List(A) →  List(A) = insert
 
-val rec sort : ∀α ∀A  (A → A → Bool) → (μα X F(A,X)) → (μα X F(A,X)) =
+val rec sort : ∀α ∀A  (A → A → Bool) → SList(α,A) → SList(α,A) =
   fun cmp l →
     case l of
     | []   → []
     | x::l → insert cmp x (sort cmp l)
+
+val sort1 : ∀A (A → A → Bool) →  List(A) →  List(A) = sort

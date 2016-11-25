@@ -347,35 +347,40 @@ let closed_ordinal o = try has_oboundvar o; true with Exit -> false
  *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
 
-let contract_mu = ref true
-let is_mu f = !contract_mu &&
-  match full_repr (subst f (KProd [])) with KFixM(OConv,_) -> true
-  | _ -> false
-let is_nu f = !contract_mu &&
-  match full_repr (subst f (KProd [])) with KFixN(OConv,_) -> true
-  | _ -> false
-
 (* This function index all the ordinal in two kinds,
    select the usefull par of the context and return
    the usefull relations between two ordinals *)
 let decompose : ordinal list -> kind -> kind ->
-    ordinal list * kind * kind * (int * ordinal) list * (ordinal * ordinal) list = fun pos k1 k2 ->
+    int list * kind * kind * (int * ordinal) list * (int * int) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
-  let rec search o =
-    let o = orepr o in
+  let relation = ref [] in
+  let rec eps_search o =
+    assert (closed_ordinal o);
     match o with
-    | OLess(_,_) ->
+    | OLess(o',_) ->
        assert (closed_ordinal o);
        (try
-          box (OTInt(assoc_ordinal o !res))
+          assoc_ordinal o !res
         with
           Not_found ->
             let n = !i in incr i; res := (o, n) :: !res;
-            box (OTInt n))
+            if o' <> OConv then (
+              let p = eps_search o' in
+              relation := (n,p)::!relation);
+            n)
+    | o -> -73
+  in
+  let rec search o =
+    let o = orepr o in
+    match o with
+    | OLess(_) ->
+       box (OTInt(eps_search o))
     | OSucc o -> osucc(search o)
     | OVari o -> box_of_var o
-    | OUVar _ | OConv -> box o
+    (* FIXME: treatment of ordinal variables ??? *)
+    | OUVar (v, Some o) -> box (OUVar (v, Some (unbox (search o))))
+    | OUVar (_, None) | OConv -> box o
     | OTInt _ -> assert false
   and fn k =
     match repr k with
@@ -386,24 +391,6 @@ let decompose : ordinal list -> kind -> kind ->
     | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
     | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
     | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | KFixM(OConv,f) when !contract_mu && is_mu f ->
-       let aux x =
-         match full_repr (subst f x) with
-         | KFixM(OConv,g) -> subst g x
-         | _              -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) aux in
-       let a' = KFixM(OConv, f) in
-       fn a'
-    | KFixN(OConv,f) when !contract_mu && is_nu f ->
-       let aux x =
-         match full_repr (subst f x) with
-         | KFixN(OConv,g) -> subst g x
-         | _              -> assert false (* Unreachable. *)
-       in
-       let f = binder_from_fun (binder_name f) aux in
-       let a' = KFixN(OConv, f) in
-       fn a'
     | KFixM(o,f) ->
        kfixm (binder_name f) (search o) (fun x -> fn (subst f (KVari x)))
     | KFixN(o,f) ->
@@ -418,84 +405,66 @@ let decompose : ordinal list -> kind -> kind ->
   in
   let k1 = unbox (fn k1) in
   let k2 = unbox (fn k2) in
-  (* we build the relation graph, which includes positive ordinals not
-     in the judgement iff the are between to such ordinals *)
-  let relation = ref [] in
-  let rec fn acc o0 o =
-    if List.exists (fun (o1, _) -> strict_eq_ordinal o o1) !relation then ()
-    else match orepr o with
-    | OLess(o1,_)   | OUVar(_, Some o1) ->
-       (try
-         let _ = assoc_ordinal o1 !res in
-         relation := (o0,o1) :: acc @ !relation;
-         fn [] o1 o1
-        with Not_found ->
-          fn ((o0,o1) :: acc) o1 o1)
-    | _ -> ()
+  let pos = List.map eps_search pos in
+  let os = List.filter (fun (_,n) ->
+    not (List.exists (fun (_,n') -> n = n') !relation)) !res in
+  let os = List.rev_map (fun (o,n) -> (n,o)) os in
+  (pos, k1, k2, os, !relation)
 
-  in
-  List.iter (fun (o2,_) -> fn [] o2 o2) !res;
-  let relation = List.map (fun (o1,o2) -> unbox (search o1), unbox (search o2)) !relation in
-  (* select the usefull part of the context *)
-  let pos = List.filter (fun o1 ->
-    List.exists (fun (o2,_) -> strict_eq_ordinal o1 o2) !res) pos in
-  let pos = List.map (fun o ->
-    try OTInt(assoc_ordinal o !res) with Not_found -> assert false) pos in
-  let pos = List.sort compare pos in
-  (pos, k1, k2, List.rev_map (fun (o,n) -> (n,o)) !res, relation)
+exception BadRecompose
 
-
-let recompose : ordinal list-> kind -> (int * ordinal) list -> (ordinal * ordinal) list ->
-    (int * ordinal) list * ordinal list * kind
+let recompose : int list -> kind -> kind -> (int * ordinal) list -> (int * int) list ->
+    (int * ordinal) list * ordinal list * kind * kind
   =
-  let rec get os o = match orepr o with
-      | OTInt i -> (try box (List.assoc i os) with Not_found -> assert false)
+  fun pos k1 k2 os rel ->
+    let res = ref [] in
+    let rec search i =
+      try
+        List.assoc i !res
+      with Not_found ->
+        let o =
+          try
+            let j = List.assoc i rel in
+            OLess(search j, WUVar(ref None))
+          with
+            Not_found -> OUVar(ref None, None)
+        in
+        res := (i, o) :: !res;
+        o
+    in
+    let rec get os o = match orepr o with
+      | OTInt (-73) -> raise BadRecompose
+      | OTInt i -> box (search i)
       | OSucc o -> osucc (get os o)
       | OVari v -> box_of_var v
+      | OLess _ -> Io.log "%a\n" (!fprint_ordinal true) o; assert false
       | o -> box o
-  in
-  let rec fn os k =
-    match repr k with
-    | KFunc(a,b) -> kfunc (fn os a) (fn os b)
-    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn os a)) fs)
-    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn os a)) cs)
-    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn os (subst f (KVari x)))
-    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn os (subst f (KVari x)))
-    | KOAll(f)   -> koall (binder_name f) (fun x -> fn os (subst f (OVari x)))
-    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn os (subst f (OVari x)))
-    | KFixM(o, f) -> kfixm (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
-    | KFixN(o, f) -> kfixn (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
-    | KVari(x)   -> box_of_var x
-    | KDefi(d,o,a) -> kdefi d (Array.map (get os) o) (Array.map (fn os) a)
-    | KDPrj(t,s) -> kdprj (map_term (fn os) t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn os t) s (fn os a)
-    | KMRec _
-    | KNRec _    -> assert false
-    | t          -> box t
-  in
-  fun pos k os rel ->
-    let res = ref [] in
-    let rec search o =
-      match o with
-      | OTInt i ->
-         (try
-           List.assoc i !res
-         with Not_found ->
-           let o =
-             try
-               let o' = assoc_ordinal (OTInt i) rel in
-               OLess(search o', WUVar(ref None))
-             with
-               Not_found -> OUVar(ref None, None)
-           in
-           res := (i, o) :: !res;
-           o)
-      | o -> Io.err "==> %a\n%!" (!fprint_ordinal false) o; assert false
     in
-    List.iter (fun (i,_) -> ignore (search (OTInt i))) os;
-    assert (List.length !res = List.length os);
-    let os = !res in
-    os, List.map (fun o1 -> unbox (get os o1)) pos, unbox (fn os k)
+    let rec fn os k =
+      match repr k with
+      | KFunc(a,b) -> kfunc (fn os a) (fn os b)
+      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn os a)) fs)
+      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn os a)) cs)
+      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn os (subst f (KVari x)))
+      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn os (subst f (KVari x)))
+      | KOAll(f)   -> koall (binder_name f) (fun x -> fn os (subst f (OVari x)))
+      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn os (subst f (OVari x)))
+      | KFixM(o, f) -> kfixm (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
+      | KFixN(o, f) -> kfixn (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
+      | KVari(x)   -> box_of_var x
+      | KDefi(d,o,a) -> kdefi d (Array.map (get os) o) (Array.map (fn os) a)
+      | KDPrj(t,s) -> kdprj (map_term (fn os) t) s
+      | KWith(t,c) -> let (s,a) = c in kwith (fn os t) s (fn os a)
+      | KMRec _
+      | KNRec _    -> assert false
+      | t          -> box t
+    in
+    List.iter (fun (i,_) -> ignore (search i)) os;
+    let os0 = os in
+    let os = List.rev (List.filter (fun (i,_) -> List.exists (fun (j,_) -> i = j) os) !res) in
+    assert (List.length os = List.length os0);
+    let k1 = unbox (fn os k1) and k2 = unbox (fn os k2) in
+    os, List.map (fun o1 -> unbox (get os (OTInt o1))) pos, k1, k2
 
 (* Matching kind, used for printing only *)
 

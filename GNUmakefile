@@ -29,6 +29,9 @@ doc:
 subml.native: $(MLFILES) subml.ml
 	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
 
+subml.p.native: $(MLFILES) subml.ml
+	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
+
 subml.byte: $(MLFILES) subml.ml
 	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
 

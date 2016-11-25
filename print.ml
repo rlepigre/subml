@@ -74,6 +74,16 @@ let search_ordinal_tbl o =
       ordinal_tbl := (o,n)::!ordinal_tbl;
       n
 
+let rec full_iter fn ptr =
+  let rec gn old nouv = function
+    | l when l == old ->
+       if !ptr != nouv then gn nouv !ptr !ptr else ()
+    | x::l -> fn x; gn old nouv l
+    | [] -> assert false
+  in
+  gn [] !ptr !ptr
+
+
 (****************************************************************************
  *                           Printing of a type                             *
  ****************************************************************************)
@@ -86,14 +96,18 @@ let rec print_ordinal unfold ff o =
   | _       ->
     let n = search_ordinal_tbl o in
     match orepr o with
-    | OLess(o,In(t,a)) as o0 when unfold -> (* TODO: print the int *)
-       fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
-         (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(o,NotIn(t,a)) as o0 when unfold ->  (* TODO: print the int *)
-       fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
-         (print_term false) t (print_kind false false) (subst a o0)
-    | OLess(o,_) when unfold ->
-       fprintf ff "α(%d<%a)" n (print_ordinal false) o
+    | OLess(o,w) as o0 when unfold ->
+       begin
+         match wrepr w with
+         | In(t,a) -> (* TODO: print the int *)
+            fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
+              (print_term false) t (print_kind false false) (subst a o0)
+         | NotIn(t,a) ->  (* TODO: print the int *)
+            fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
+              (print_term false) t (print_kind false false) (subst a o0)
+         | _ ->
+            fprintf ff "ϵ(<%a,?)" (print_ordinal false) o
+       end
     | OLess(o,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
        fprintf ff "s(%a)" (print_ordinal false) o
@@ -418,20 +432,20 @@ let print_position ff o =
   position ff o; pp_print_flush ff ()
 
 let print_epsilon_tbls ff =
-  List.iter (fun (f,(name,index,a,b)) ->
+  full_iter (fun (f,(name,index,a,b)) ->
     let x = new_tvari (binder_name f) in
     let t = subst f (free_of x) in
     fprintf ff "%s_%d = ϵ(%s ∈ %a, %a ∉ %a)\n" name index (name_of x)
       (print_kind false) a (print_term false) t (print_kind false) b)
-      !epsilon_term_tbl;
-  List.iter (fun (f,(name,index,u,is_exists)) ->
+      epsilon_term_tbl;
+  full_iter (fun (f,(name,index,u,is_exists)) ->
     let x = new_kvari (binder_name f) in
     let k = subst f (free_of x) in
     let symbol = if is_exists then "∈" else "∉" in
       fprintf ff "%s_%d = ϵ(%s, %a %s %a)\n" name index
-      (name_of x) (print_term false) u symbol (print_kind false) k) !epsilon_type_tbl;
-    List.iter (fun (o,n) ->
-      fprintf ff "%a = %a\n" (print_ordinal false) o (print_ordinal true) o) !ordinal_tbl
+      (name_of x) (print_term false) u symbol (print_kind false) k) epsilon_type_tbl;
+  full_iter (fun (o,n) ->
+    fprintf ff "%a = %a\n" (print_ordinal false) o (print_ordinal true) o) ordinal_tbl
 
 exception Find_tdef of type_def
 
