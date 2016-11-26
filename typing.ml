@@ -41,7 +41,7 @@ type subtype_ctxt =
 and sub_induction =
       int                  (** the index of the induction hyp *)
     * int list             (** the positivity context *)
-    * (int * int) list     (** the relation between ordinals *)
+    * (int * (int * ord_wit)) list     (** the relation between ordinals *)
     * kind * kind          (** the two kinds *)
     * (int * ordinal) list (** the ordinal parameters *)
 
@@ -52,7 +52,7 @@ and fix_induction =
               (* the induction hypothesis collected so far for this fixpoint *)
     * (int                    (* reference of the inductive hyp *)
        * int list             (** the positivity context *)
-       * (int * int) list     (** the relation between ordinals *)
+       * (int * (int * ord_wit)) list     (** the relation between ordinals *)
        * kind                 (* the type for this hypothesis *)
        * (int * ordinal) list (* the ordinal parameters *))
       list ref
@@ -150,7 +150,7 @@ let lambda_kind t k s = match full_repr k with
 let lambda_ordinal t k s =
   match full_repr k with
   | KOAll(f) when binder_name f = s ->
-     let c = OLess(OConv, NotIn(t,f)) in
+     let c = OLess(OConv, NotIn(KnownTerm t,f)) in
      c, (subst f c)
   | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
 
@@ -297,7 +297,8 @@ let check_rec
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index ov true;
           raise (Induction_hyp index)
-        )) ctxt.sub_induction_hyp;
+        )) (List.sort (fun (_,_,_,_,_,os0) (_,_,_,_,_,os1) -> List.length os1 - List.length os0)
+              ctxt.sub_induction_hyp);
       let (pos, a', b', os, rel) = decompose ctxt.positive_ordinals a b in
       let fnum = new_function ctxt.fun_table "S" (List.map Latex.ordinal_to_printer os) in
       add_call ctxt fnum os false;
@@ -492,7 +493,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Universal quantification over ordinals. *)
     | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (OLess(OConv, NotIn(t,f)))) in
+        let p = subtype ctxt t a0 (subst f (OLess(OConv, NotIn(KnownTerm t,f)))) in
         Sub_OAll_r(p)
 
     | (KOAll(f)    , _           ) ->
@@ -501,7 +502,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Existantial quantification over ordinals. *)
     | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (OLess(OConv, In(t,f)))) b0 in
+        let p = subtype ctxt t (subst f (OLess(OConv, In(KnownTerm t,f)))) b0 in
         Sub_OExi_l(p)
 
     | (_           , KOExi(f)    ) ->
@@ -517,7 +518,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
              let g = bind mk_free_ovari (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
              in
-             let o' = opred o (NotIn(t,unbox g)) in
+             let o' = opred o (NotIn(KnownTerm t,unbox g)) in
              let ctxt = add_positive ctxt o in
              o', ctxt
         in
@@ -534,7 +535,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
              let g = bind mk_free_ovari (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
              in
-            let o' = opred o (In(t,unbox g)) in
+            let o' = opred o (In(KnownTerm t,unbox g)) in
             let ctxt = add_positive ctxt o in
             o', ctxt
         in

@@ -98,15 +98,13 @@ let rec print_ordinal unfold ff o =
     match orepr o with
     | OLess(o,w) as o0 when unfold ->
        begin
-         match wrepr w with
+         match w with
          | In(t,a) -> (* TODO: print the int *)
             fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
-              (print_term false) t (print_kind false false) (subst a o0)
+              print_termvar t (print_kind false false) (subst a o0)
          | NotIn(t,a) ->  (* TODO: print the int *)
             fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
-              (print_term false) t (print_kind false false) (subst a o0)
-         | _ ->
-            fprintf ff "ϵ(<%a,?)" (print_ordinal false) o
+              print_termvar t (print_kind false false) (subst a o0)
        end
     | OLess(o,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
@@ -115,6 +113,11 @@ let rec print_ordinal unfold ff o =
     | OConv -> fprintf ff "∞"
     | OTInt(n) -> fprintf ff "!%d!" n
     | OUVar(n,_) -> fprintf ff "?" (* FIXME: print the constraint *)
+
+and print_termvar ff t = match trepr t with
+  | LinkTerm{contents = None} -> fprintf ff "?"
+  | KnownTerm t -> print_term false ff t
+  | _ -> assert false
 
 and print_index_ordinal ff = function
   | OConv -> ()

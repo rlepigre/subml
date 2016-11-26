@@ -32,17 +32,21 @@ let rec print_ordinal unfold ff o =
      match o with
      | OLess(o,In(t,a)) as o0 when unfold -> (* TODO: print the int *)
         fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
-        fprintf ff "(%a \\in %a)" (print_term false 0) t
+        fprintf ff "(%a \\in %a)" print_termvar t
           (print_kind false false) (subst a o0)
      | OLess(o,NotIn(t,a)) as o0 when unfold -> (* TODO: print the int *)
         fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
-        fprintf ff "(%a \\in %a)" (print_term false 0) t
+        fprintf ff "(%a \\in %a)" print_termvar t
           (print_kind false false) (subst a o0)
      | OLess(o,_) when unfold ->
        fprintf ff "{\\alpha_{%d<%a}}" n (print_ordinal false) o
      | OLess(_) -> fprintf ff "{\\kappa_{%d}}" n
      | OVari(x) -> fprintf ff "%s" (convert_ordinal (name_of x))
      | OConv | OTInt _ | OSucc _ | OUVar _ -> assert false
+
+and print_termvar ff t = match trepr t with
+  | KnownTerm t -> print_term false 0 ff t
+  | LinkTerm _ -> fprintf ff "?"
 
 and print_index_ordinal ff o = match orepr o with
   | OConv -> ()

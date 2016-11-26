@@ -38,9 +38,8 @@ let occur_ouvar : ouvar -> ordinal -> bool = fun v o ->
     | OUVar(u,o') -> if eq_ouvar v u then raise Exit else iter_opt gn o'
     | OLess(o,t)  -> gn o; kn t
     | OVari(_) | OConv | OTInt _-> ()
-  and kn w = match wrepr w with
-    | In(t,k) | NotIn(t,k) -> iter_term fn t; fn (subst k OConv)
-    | WUVar _ -> () (* FIXME: occur check here too *)
+  and kn w = match w with
+    | In(t,k) | NotIn(t,k) -> fn (subst k OConv)
   in
   try gn o; false with Exit -> true
 
@@ -150,13 +149,19 @@ and eq_ordinal : ordinal list -> int ref -> ordinal -> ordinal -> bool = fun pos
   | (OTInt n1    , OTInt n2    ) -> n1 = n2
   | (_           , _           ) -> false
 
-and eq_ord_wit pos c w1 w2 = match wrepr w1, wrepr w2 with
+and eq_ord_wit pos c w1 w2 = match w1, w2 with
   | (In(t1,f1)    , In(t2,f2)    )
   | (NotIn(t1,f1) , NotIn(t2,f2) ) ->
-     eq_term pos c t1 t2 && eq_obinder pos c f1 f2
-  | (WUVar w1     , w2           ) -> w1 := Some w2; true (* FIXME: occurcheck *)
-  | (w1           , WUVar w2     ) -> w2 := Some w1; true (* FIXME: occurcheck *)
+     eq_termvar pos c t1 t2 && eq_obinder pos c f1 f2
   | (_            , _            ) -> false
+
+and eq_termvar pos c t1 t2 = match trepr t1, trepr t2 with
+  | t1, t2 when t1 == t2 -> true
+  | KnownTerm t1, KnownTerm t2 -> eq_term pos c t1 t2
+  | LinkTerm({contents = None } as ptr), t2 -> ptr := Some t2; true
+  | t1, LinkTerm({contents = None } as ptr) -> ptr := Some t1; true
+  | (_            , _            ) -> assert false
+
 
 and leqi_ordinal pos c o1 i o2 =
   match (orepr o1, orepr o2) with

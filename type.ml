@@ -126,11 +126,14 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TPrnt(_)
     | TTInt(_)       -> acc)
   and aux3 acc = function
-    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux2 (aux3 acc o) t) (subst f odummy)
+    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux4 (aux3 acc o) t) (subst f odummy)
     | OSucc o -> aux3 acc o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc
+  and aux4 acc t = match trepr t with
+    | KnownTerm t -> aux2 acc t
+    | LinkTerm _ -> acc
   in aux Pos Non k
 
 (****************************************************************************
@@ -332,11 +335,14 @@ and has_oboundvar o =
     | OVari _ -> raise Exit
     | OSucc o -> has_oboundvar o
     | OLess(o,w) ->
-       (match wrepr w with
+       (match w with
        | In(t,b) | NotIn(t,b) ->
-          has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
-       |  WUVar _ -> ())
+          has_oboundvar o; has_tvarboundvar t; has_boundvar (subst b OConv))
     | OTInt _ | OUVar _ | OConv -> ()
+
+and has_tvarboundvar t = match trepr t with
+  | KnownTerm t -> has_tboundvar t
+  | LinkTerm _ -> ()
 
 let closed_term t = try has_tboundvar t; true with Exit -> false
 let closed_kind k = try has_boundvar k; true with Exit -> false
@@ -353,14 +359,14 @@ exception BadDecompose
    select the usefull par of the context and return
    the usefull relations between two ordinals *)
 let decompose : ordinal list -> kind -> kind ->
-    int list * kind * kind * (int * ordinal) list * (int * int) list = fun pos k1 k2 ->
+    int list * kind * kind * (int * ordinal) list * (int * (int * ord_wit)) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
   let relation = ref [] in
   let rec eps_search o =
     assert (closed_ordinal o);
     match o with
-    | OLess(o',_) ->
+    | OLess(o',w) ->
        assert (closed_ordinal o);
        (try
           assoc_ordinal o !res
@@ -369,11 +375,17 @@ let decompose : ordinal list -> kind -> kind ->
             let n = !i in incr i; res := (o, n) :: !res;
             if o' <> OConv then (
               let p = eps_search o' in
-              relation := (n,p)::!relation);
+              relation := (n,(p,copy w))::!relation);
             n)
     | o -> -73
-  in
-  let rec search o =
+  and copy = function
+    | In(t,k) ->
+       In(LinkTerm(ref None),
+          unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn (subst k (OVari x)))))
+    | NotIn(t,k) ->
+       NotIn(LinkTerm(ref None),
+             unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn (subst k (OVari x)))))
+  and search o =
     let o = orepr o in
     match o with
     | OLess(_) -> box (OTInt(eps_search o))
@@ -407,38 +419,45 @@ let decompose : ordinal list -> kind -> kind ->
   let k2 = unbox (fn k2) in
   let pos = List.map eps_search pos in
   let os = List.filter (fun (_,n) ->
-    not (List.exists (fun (_,n') -> n = n') !relation)) !res in
+    not (List.exists (fun (n',(_,_)) -> n = n') !relation)) !res in
   let os = List.rev_map (fun (o,n) -> (n,o)) os in
   (pos, k1, k2, os, !relation)
 
 exception BadRecompose
 
-let recompose : int list -> kind -> kind -> (int * ordinal) list -> (int * int) list ->
+let recompose : int list -> kind -> kind -> (int * ordinal) list -> (int * (int * ord_wit)) list ->
     (int * ordinal) list * ordinal list * kind * kind
   =
   fun pos k1 k2 os rel ->
     let res = ref [] in
-    let rec search i =
+    let rec search os i =
       try
         List.assoc i !res
       with Not_found ->
         let o =
           try
-            let j = List.assoc i rel in
-            OLess(search j, WUVar(ref None))
+            let (j, w) = List.assoc i rel in
+            let w = match w with
+              | In(t,k) ->
+                 In(LinkTerm(ref None),
+                    unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn os (subst k (OVari x)))))
+              | NotIn(t,k) ->
+                 NotIn(LinkTerm(ref None),
+                       unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn os (subst k (OVari x)))))
+            in
+            OLess(search os j, w)
           with
             Not_found -> OUVar(ref None, None)
         in
         res := (i, o) :: !res;
         o
     and get os o = match orepr o with
-      | OTInt i -> box (search i)
+      | OTInt i -> box (search os i)
       | OSucc o -> osucc (get os o)
       | OVari v -> box_of_var v
       | OLess _ -> Io.log "%a\n" (!fprint_ordinal true) o; assert false
       | o -> box o
-    in
-    let rec fn os k =
+    and fn os k =
       match repr k with
       | KFunc(a,b) -> kfunc (fn os a) (fn os b)
       | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn os a)) fs)
@@ -457,7 +476,7 @@ let recompose : int list -> kind -> kind -> (int * ordinal) list -> (int * int) 
       | KNRec _    -> assert false (* FIXME: see decompose *)
       | t          -> box t
     in
-    List.iter (fun (i,_) -> ignore (search i)) os;
+    List.iter (fun (i,_) -> ignore (search os i)) os;
     let os0 = os in
     let os = List.rev (List.filter (fun (i,_) -> List.exists (fun (j,_) -> i = j) os) !res) in
     assert (List.length os = List.length os0);

@@ -40,6 +40,7 @@ val zero = end
 val rec s : Bin → Bin = λn.n (λnp.so np) (λnp.sz (s np)) (so end)
 
 (* Predecessor *)
+(*
 val rec pred : Bin → Err(Bin) = λn.n
   (λnp.eso (pred np)) (λnp.unit (nsz np)) error
 
@@ -162,3 +163,4 @@ val rec fact = λn.is_zero n 1 (mul n (catch (pred n) fact 0))
 *)
 
 eval printb 100
+*)

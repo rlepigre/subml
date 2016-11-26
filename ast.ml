@@ -116,13 +116,14 @@ and ordinal =
 
 (** ordinal constraints to build above [OLess] witness *)
 and ord_wit =
-  | In     of term * (ordinal, kind) binder
-  | NotIn  of term * (ordinal, kind) binder
-  | WUVar of wuvar
+  | In     of termvar * (ordinal, kind) binder
+  | NotIn  of termvar * (ordinal, kind) binder
 
 and ouvar = ordinal option ref
 
-and wuvar = ord_wit option ref
+and termvar =
+  | KnownTerm of term
+  | LinkTerm of termvar option ref
 
 (** Abstract syntax tree for terms. *)
 and term = term' position
@@ -277,9 +278,9 @@ let rec orepr = function
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
-let rec wrepr = function
-  | WUVar({contents = Some w}) -> wrepr w
-  | w -> w
+let rec trepr = function
+  | LinkTerm{contents = Some t} -> trepr t
+  | t -> t
 
 (** Printing function from "print.ml" *)
 let fprint_term : (bool -> formatter -> term -> unit) ref =
