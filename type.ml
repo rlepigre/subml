@@ -347,6 +347,8 @@ let closed_ordinal o = try has_oboundvar o; true with Exit -> false
  *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
 
+exception BadDecompose
+
 (* This function index all the ordinal in two kinds,
    select the usefull par of the context and return
    the usefull relations between two ordinals *)
@@ -374,13 +376,11 @@ let decompose : ordinal list -> kind -> kind ->
   let rec search o =
     let o = orepr o in
     match o with
-    | OLess(_) ->
-       box (OTInt(eps_search o))
+    | OLess(_) -> box (OTInt(eps_search o))
     | OSucc o -> osucc(search o)
     | OVari o -> box_of_var o
-    (* FIXME: treatment of ordinal variables ??? *)
-    | OUVar (v, Some o) -> box (OUVar (v, Some (unbox (search o))))
-    | OUVar (_, None) | OConv -> box o
+    | OUVar (_) -> raise BadDecompose
+    | OConv -> box OConv
     | OTInt _ -> assert false
   and fn k =
     match repr k with
@@ -431,9 +431,7 @@ let recompose : int list -> kind -> kind -> (int * ordinal) list -> (int * int) 
         in
         res := (i, o) :: !res;
         o
-    in
-    let rec get os o = match orepr o with
-      | OTInt (-73) -> raise BadRecompose
+    and get os o = match orepr o with
       | OTInt i -> box (search i)
       | OSucc o -> osucc (get os o)
       | OVari v -> box_of_var v
@@ -456,7 +454,7 @@ let recompose : int list -> kind -> kind -> (int * ordinal) list -> (int * int) 
       | KDPrj(t,s) -> kdprj (map_term (fn os) t) s
       | KWith(t,c) -> let (s,a) = c in kwith (fn os t) s (fn os a)
       | KMRec _
-      | KNRec _    -> assert false
+      | KNRec _    -> assert false (* FIXME: see decompose *)
       | t          -> box t
     in
     List.iter (fun (i,_) -> ignore (search i)) os;

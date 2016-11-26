@@ -138,10 +138,12 @@ and eq_ordinal : ordinal list -> int ref -> ordinal -> ordinal -> bool = fun pos
   match (orepr o1, orepr o2) with
   | (o1          , o2          ) when o1 == o2 -> true
   | (OUVar(v1,_) , OUVar(v2,_) ) when eq_ouvar v1 v2 -> true
-  | (OUVar(p,o) , o2         ) when not !eq_strict && not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o->
+  | (OUVar(p,o) , o2         ) when not !eq_strict && not (occur_ouvar p o2) &&
+                                    Timed.pure_test (less_opt_ordinal pos c o2) o ->
      set_ouvar p o2; true
-  | (o1         , OUVar(p,o) ) when not !eq_strict && not (occur_ouvar p o1) && less_opt_ordinal pos c o1 o ->
-     set_ouvar p o1; true
+  | (o1         , OUVar(p,o) ) when not !eq_strict && not (occur_ouvar p o1) &&
+                                    Timed.pure_test (less_opt_ordinal pos c o1) o ->
+    set_ouvar p o1; true
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal pos c o1 o2 && eq_ord_wit pos c w1 w2
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal pos c o1 o2
@@ -159,16 +161,18 @@ and eq_ord_wit pos c w1 w2 = match wrepr w1, wrepr w2 with
 and leqi_ordinal pos c o1 i o2 =
   match (orepr o1, orepr o2) with
   | (o1         , o2        ) when eq_ordinal pos c o1 o2 && i <= 0 -> true
-  | (o1         , OUVar(p,o)) when not (occur_ouvar p o1) && less_opt_ordinal pos c (oadd o1 i) o ->
+  | (o1         , OUVar(p,o)) when not (occur_ouvar p o1) &&
+                                   Timed.pure_test (less_opt_ordinal pos c (oadd o1 i)) o ->
      let o1 = oadd o1 i in
      set_ouvar p o1; true
-  | (OUVar(p,o) , o2        ) when not (occur_ouvar p o2) && less_opt_ordinal pos c o2 o && i <= 0 ->
+  | (OUVar(p,o) , o2        ) when i <= 0 && not (occur_ouvar p o2) &&
+                                   Timed.pure_test (less_opt_ordinal pos c o2) o ->
      (* NOTE: may take the maximum n between 0 and -i s.t. oadd o2 n < o *)
      set_ouvar p o2; true
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos c o1 (i+1) o2
   | (o1         , OSucc o2  ) -> leqi_ordinal pos c o1 (i-1) o2
   | (OLess(o1,_),       o2  ) ->
-     let i = if List.exists (eq_ordinal pos c o1) pos then i-1 else i in
+     let i = if List.exists (Timed.pure_test (eq_ordinal pos c o1)) pos then i-1 else i in
      leqi_ordinal pos c o1 i o2
   | (_          , _         ) -> false
 
