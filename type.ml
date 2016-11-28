@@ -413,7 +413,7 @@ let decompose : ordinal list -> kind -> kind ->
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
-    | t          -> box t
+    | t          -> box t (* FIXME: Témoin de type à traverser *)
   in
   let k1 = unbox (fn k1) in
   let k2 = unbox (fn k2) in

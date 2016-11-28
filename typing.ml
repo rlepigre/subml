@@ -297,16 +297,14 @@ let check_rec
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index ov true;
           raise (Induction_hyp index)
-        )) (List.sort (fun (_,_,_,_,_,os0) (_,_,_,_,_,os1) -> List.length os1 - List.length os0)
-              ctxt.sub_induction_hyp);
+        )) ctxt.sub_induction_hyp;
       let (pos, a', b', os, rel) = decompose ctxt.positive_ordinals a b in
       let fnum = new_function ctxt.fun_table "S" (List.map Latex.ordinal_to_printer os) in
       add_call ctxt fnum os false;
       let ctxt = { ctxt with
         sub_induction_hyp = (fnum, pos, rel, a', b', os)::ctxt.sub_induction_hyp;
         top_induction = (fnum, os)
-      }
-      in
+      } in
       (NewInduction (Some fnum), ctxt)
     with Exit | BadDecompose -> (NewInduction None, ctxt)
        | Induction_hyp n -> (UseInduction n, ctxt)
