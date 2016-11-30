@@ -3,7 +3,7 @@ type F(A,X) = [ Nil | Cons of { hd : A; tl : X } ]
 type List(A) = μX F(A,X)
 type SList(α,A) = μα X F(A,X)
 
-val rec insert : ∀α ∀A (A → A → Bool) → A → SList(α,A) → SList(α+1,A) =
+val rec 3 insert : ∀α ∀A (A → A → Bool) → A → SList(α,A) → SList(α+1,A) =
   fun cmp a l →
     case l of
     | []   → a :: []

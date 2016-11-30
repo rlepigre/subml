@@ -10,7 +10,7 @@ open Term
 let eq_ouvar : ouvar -> ouvar -> bool = (==)
 
 let set_ouvar v o =
-  assert(!v = None);
+  assert (!v = None);
   Timed.(v := Some o)
 
 let occur_ouvar : ouvar -> ordinal -> bool = fun v o ->
@@ -37,9 +37,14 @@ let occur_ouvar : ouvar -> ordinal -> bool = fun v o ->
     | OSucc(o) -> gn o
     | OUVar(u,o') -> if eq_ouvar v u then raise Exit else iter_opt gn o'
     | OLess(o,t)  -> gn o; kn t
-    | OVari(_) | OConv | OTInt _-> ()
-  and kn w = match w with
+    | OVari(_) | OConv -> ()
+  and kn w = match wrepr w with
     | In(t,k) | NotIn(t,k) -> fn (subst k OConv)
+    | Gen(_,_,f) ->
+       let os = Array.make (mbinder_arity f) OConv in
+       let (k1,k2) = msubst f os in
+       fn k1; fn k2
+    | Link _ -> ()
   in
   try gn o; false with Exit -> true
 
@@ -94,7 +99,7 @@ and eq_kbinder pos c f1 f2 = f1 == f2 ||
   eq_kind pos c (subst f1 i) (subst f2 i)
 
 and eq_obinder pos c f1 f2 = f1 == f2 ||
-  let i = incr c; OTInt(!c) in
+  let i = free_of (new_ovari "o") in
   eq_kind pos c (subst f1 i) (subst f2 i)
 
 and eq_tbinder pos c f1 f2 = f1 == f2 ||
@@ -111,8 +116,8 @@ and eq_term : ordinal list -> int ref -> term -> term -> bool = fun pos c t1 t2 
     | (_              , TDefi(d2)      ) -> eq_term t1 d2.value
     | (TKAbs(f)       , _              ) -> eq_term (subst f (KProd[])) t2
     | (_              , TKAbs(f)       ) -> eq_term t1 (subst f (KProd[]))
-    | (TOAbs(f)       , _              ) -> eq_term (subst f (OTInt(-1))) t2
-    | (_              , TOAbs(f)       ) -> eq_term t1 (subst f (OTInt(-1)))
+    | (TOAbs(f)       , _              ) -> eq_term (subst f OConv) t2
+    | (_              , TOAbs(f)       ) -> eq_term t1 (subst f OConv)
     | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
     | (TAbst(_,f1)    , TAbst(_,f2)    )
     | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos c f1 f2
@@ -133,45 +138,50 @@ and eq_tcnst pos c (f1,a1,b1) (f2,a2,b2) =
 
 and eq_strict : bool ref = ref false
 
+and optpr ff = function
+  | None -> ()
+  | Some o -> !fprint_ordinal false ff o
+
 and eq_ordinal : ordinal list -> int ref -> ordinal -> ordinal -> bool = fun pos c o1 o2 ->
   match (orepr o1, orepr o2) with
   | (o1          , o2          ) when o1 == o2 -> true
   | (OUVar(v1,_) , OUVar(v2,_) ) when eq_ouvar v1 v2 -> true
   | (OUVar(p,o) , o2         ) when not !eq_strict && not (occur_ouvar p o2) &&
-                                    Timed.pure_test (less_opt_ordinal pos c o2) o ->
+                                    Timed.pure_test (fun () -> less_opt_ordinal pos c o2 o && !p = None) () ->
      set_ouvar p o2; true
   | (o1         , OUVar(p,o) ) when not !eq_strict && not (occur_ouvar p o1) &&
-                                    Timed.pure_test (less_opt_ordinal pos c o1) o ->
+                                    Timed.pure_test (fun () -> less_opt_ordinal pos c o1 o && !p = None) () ->
     set_ouvar p o1; true
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal pos c o1 o2 && eq_ord_wit pos c w1 w2
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal pos c o1 o2
-  | (OTInt n1    , OTInt n2    ) -> n1 = n2
   | (_           , _           ) -> false
 
-and eq_ord_wit pos c w1 w2 = match w1, w2 with
+and eq_ord_wit pos c w1 w2 = match wrepr w1, wrepr w2 with
+  | (w1           , w2           ) when w1 == w2 -> true
   | (In(t1,f1)    , In(t2,f2)    )
   | (NotIn(t1,f1) , NotIn(t2,f2) ) ->
-     eq_termvar pos c t1 t2 && eq_obinder pos c f1 f2
-  | (_            , _            ) -> false
-
-and eq_termvar pos c t1 t2 = match trepr t1, trepr t2 with
-  | t1, t2 when t1 == t2 -> true
-  | KnownTerm t1, KnownTerm t2 -> eq_term pos c t1 t2
-  | LinkTerm({contents = None } as ptr), t2 -> ptr := Some t2; true
-  | t1, LinkTerm({contents = None } as ptr) -> ptr := Some t1; true
-  | (_            , _            ) -> assert false
-
+     eq_term pos c t1 t2 && eq_obinder pos c f1 f2
+  | (Gen(n1,r1,f1), Gen(n2,r2,f2)) -> n1 = n2 && r1 = r2 (* FIXME: sort r1 ? *)
+     && (f1 == f2 ||
+           mbinder_arity f1 == mbinder_arity f2 &&
+           let os = Array.init (mbinder_arity f1) (fun _ -> free_of (new_ovari "o")) in
+           let (k1,k1') = msubst f1 os in
+           let (k2,k2') = msubst f2 os in
+           eq_kind pos c k1 k2 && eq_kind pos c k1' k2')
+  | (Link p      , w           )
+  | (w           , Link p      ) -> p := Some w; true (* FIXME occur check *)
+  | (_           , _           ) -> false
 
 and leqi_ordinal pos c o1 i o2 =
   match (orepr o1, orepr o2) with
   | (o1         , o2        ) when eq_ordinal pos c o1 o2 && i <= 0 -> true
-  | (o1         , OUVar(p,o)) when not (occur_ouvar p o1) &&
-                                   Timed.pure_test (less_opt_ordinal pos c (oadd o1 i)) o ->
+  | (o1         , OUVar(p,o)) when not !eq_strict && not (occur_ouvar p o1) &&
+                                   Timed.pure_test (fun () -> less_opt_ordinal pos c (oadd o1 i) o && !p = None) () ->
      let o1 = oadd o1 i in
      set_ouvar p o1; true
-  | (OUVar(p,o) , o2        ) when i <= 0 && not (occur_ouvar p o2) &&
-                                   Timed.pure_test (less_opt_ordinal pos c o2) o ->
+  | (OUVar(p,o) , o2        ) when not !eq_strict && i <= 0 && not (occur_ouvar p o2) &&
+                                   Timed.pure_test (fun () -> less_opt_ordinal pos c o2 o && !p = None) () ->
      (* NOTE: may take the maximum n between 0 and -i s.t. oadd o2 n < o *)
      set_ouvar p o2; true
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos c o1 (i+1) o2
@@ -197,7 +207,9 @@ let strict f a =
     let res = Timed.pure_test f a in
     eq_strict := false;
     res
-  with _ -> assert false
+  with e ->
+    Io.log "%s\n%!" (Printexc.to_string e);
+    assert false
 
 let strict_eq_kind : kind -> kind -> bool =
   fun k1 k2 -> strict (eq_kind [] (ref 0) k1) k2

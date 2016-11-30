@@ -111,19 +111,15 @@ and ordinal =
   (** Unification variables for ordinals. *)
   | OVari of ordinal variable
   (** Ordinal variable. *)
-  | OTInt of int
-  (** Integer tag used in decompose / recompose. *)
 
 (** ordinal constraints to build above [OLess] witness *)
 and ord_wit =
-  | In     of termvar * (ordinal, kind) binder
-  | NotIn  of termvar * (ordinal, kind) binder
+  | In     of term * (ordinal, kind) binder
+  | NotIn  of term * (ordinal, kind) binder
+  | Gen    of int * (int * int) list * (ordinal, kind * kind) mbinder
+  | Link   of ord_wit option ref
 
 and ouvar = ordinal option ref
-
-and termvar =
-  | KnownTerm of term
-  | LinkTerm of termvar option ref
 
 (** Abstract syntax tree for terms. *)
 and term = term' position
@@ -278,9 +274,9 @@ let rec orepr = function
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
-let rec trepr = function
-  | LinkTerm{contents = Some t} -> trepr t
-  | t -> t
+let rec wrepr = function
+  | Link { contents = Some o } -> wrepr o
+  | o -> o
 
 (** Printing function from "print.ml" *)
 let fprint_term : (bool -> formatter -> term -> unit) ref =

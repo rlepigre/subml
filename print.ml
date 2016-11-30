@@ -92,32 +92,31 @@ let rec print_ordinal unfold ff o =
   let o = orepr o in
   match o with
   | OConv   -> pp_print_string ff "∞"
-  | OTInt i -> fprintf ff "?%i" i
   | _       ->
     let n = search_ordinal_tbl o in
     match orepr o with
     | OLess(o,w) as o0 when unfold ->
        begin
-         match w with
+         match wrepr w with
          | In(t,a) -> (* TODO: print the int *)
             fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
-              print_termvar t (print_kind false false) (subst a o0)
+              (print_term false) t (print_kind false false) (subst a o0)
          | NotIn(t,a) ->  (* TODO: print the int *)
             fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
-              print_termvar t (print_kind false false) (subst a o0)
+              (print_term false) t (print_kind false false) (subst a o0)
+         | Gen(t,r,f) -> (* FIXME *)
+            let os = Array.init (mbinder_arity f)
+              (fun i -> free_of (new_ovari ("o_"^string_of_int i))) in
+            let (k1,k2) = msubst f os in
+            fprintf ff "ϵ(%a,%a)" (print_kind false false) k1 (print_kind false false) k2
+         | Link _ -> fprintf ff "?"
        end
     | OLess(o,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
        fprintf ff "s(%a)" (print_ordinal false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
-    | OTInt(n) -> fprintf ff "!%d!" n
     | OUVar(n,_) -> fprintf ff "?" (* FIXME: print the constraint *)
-
-and print_termvar ff t = match trepr t with
-  | LinkTerm{contents = None} -> fprintf ff "?"
-  | KnownTerm t -> print_term false ff t
-  | _ -> assert false
 
 and print_index_ordinal ff = function
   | OConv -> ()

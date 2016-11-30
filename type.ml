@@ -71,7 +71,7 @@ let neg = function
    variance of definitions to avoid substitution *)
 let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
   let kdummy = KProd [] in
-  let odummy = OTInt(-42) in
+  let odummy = OConv in
   let adone_k = ref [] in
   let adone_t = ref [] in
   let rec aux occ acc k =
@@ -115,7 +115,7 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TFixY(_,_,f)
     | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
     | TKAbs(f)       -> aux2 acc (subst f (KProd []))
-    | TOAbs(f)       -> aux2 acc (subst f (OTInt(-1)))
+    | TOAbs(f)       -> aux2 acc (subst f OConv)
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
     | TCase(t,l,d)   ->
@@ -125,16 +125,23 @@ let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
     | TDefi(_)
     | TPrnt(_)
     | TTInt(_)       -> acc)
-  and aux3 acc = function
-    | OLess(o,(In(t,f)|NotIn(t,f))) -> aux Eps (aux4 (aux3 acc o) t) (subst f odummy)
+  and aux3 acc o = match orepr o with
+    | OLess(o,w) ->
+       let acc = aux3 acc o in
+       (match wrepr w with
+       | In(t,f)|NotIn(t,f) -> aux Eps (aux2 acc t) (subst f odummy)
+       | Gen(_,_,f) ->
+          let os = Array.make (mbinder_arity f) OConv in
+          let (k1,k2) = msubst f os in
+          aux Eps (aux Eps acc k2) k1
+       | Link _ -> acc)
     | OSucc o -> aux3 acc o
+    | OUVar(_,Some o) -> aux3 acc o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc
-  and aux4 acc t = match trepr t with
-    | KnownTerm t -> aux2 acc t
-    | LinkTerm _ -> acc
-  in aux Pos Non k
+  in
+  aux Pos Non k
 
 (****************************************************************************
  *                 Binding a unification variable in a type                 *
@@ -247,7 +254,7 @@ and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
   | OSucc o -> osucc (lift_ordinal o)
   | OLess _  -> assert false (* do not support binding trhough witness even if this
                                 is possible in principle *)
-  | OConv | OUVar _ | OTInt _ -> box o
+  | OConv | OUVar _ -> box o
 
 let lift_term = map_term lift_kind
 
@@ -300,7 +307,7 @@ let rec has_boundvar k =
   | KFixM(o,f)
   | KFixN(o,f) -> has_oboundvar o; has_boundvar (subst f (KProd []))
   | KOAll(f)
-  | KOExi(f)   -> has_boundvar (subst f (OTInt 0))
+  | KOExi(f)   -> has_boundvar (subst f OConv)
   | KDefi(d,o,a) -> Array.iter has_oboundvar o; Array.iter has_boundvar a
   | KWith(k,c) -> let (_,b) = c in has_boundvar k; has_boundvar b
   | KDPrj(t,s) -> has_tboundvar t
@@ -326,7 +333,7 @@ and has_tboundvar t =
     (match ao with None -> () | Some t -> has_tboundvar t)
   | TFixY(_,_,b) -> has_tboundvar (subst b (TTInt 0))
   | TKAbs(b) -> has_tboundvar (subst b (KTInt 0))
-  | TOAbs(b) -> has_tboundvar (subst b (OTInt 0))
+  | TOAbs(b) -> has_tboundvar (subst b OConv)
   | TDefi _ | TPrnt _ | TTInt _ | TCnst _ -> ()
 
 and has_oboundvar o =
@@ -335,14 +342,15 @@ and has_oboundvar o =
     | OVari _ -> raise Exit
     | OSucc o -> has_oboundvar o
     | OLess(o,w) ->
-       (match w with
+       (match wrepr w with
        | In(t,b) | NotIn(t,b) ->
-          has_oboundvar o; has_tvarboundvar t; has_boundvar (subst b OConv))
-    | OTInt _ | OUVar _ | OConv -> ()
-
-and has_tvarboundvar t = match trepr t with
-  | KnownTerm t -> has_tboundvar t
-  | LinkTerm _ -> ()
+          has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
+       | Gen(t,r,f) ->
+          let os = Array.make (mbinder_arity f) OConv in
+          let (k1,k2) = msubst f os in
+          has_boundvar k1; has_boundvar k2
+       | Link _ -> ())
+    | OUVar _ | OConv -> ()
 
 let closed_term t = try has_tboundvar t; true with Exit -> false
 let closed_kind k = try has_boundvar k; true with Exit -> false
@@ -359,129 +367,142 @@ exception BadDecompose
    select the usefull par of the context and return
    the usefull relations between two ordinals *)
 let decompose : ordinal list -> kind -> kind ->
-    int list * kind * kind * (int * ordinal) list * (int * (int * ord_wit)) list = fun pos k1 k2 ->
+  int list * (int * int) list * (ordinal, kind * kind) mbinder * (int * ordinal) list = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
   let relation = ref [] in
-  let rec eps_search o =
+  let delayed = ref [] in
+  (* FIXME: with delayed, keep could be removed,
+     because ordinal in the formula are always firsts *)
+  let rec eps_search keep o =
     assert (closed_ordinal o);
     match o with
     | OLess(o',w) ->
        assert (closed_ordinal o);
        (try
-          assoc_ordinal o !res
+          let (n,v,k) = assoc_ordinal o !res in
+          k := !k || keep;
+          (n,v)
         with
           Not_found ->
-            let n = !i in incr i; res := (o, n) :: !res;
+            let n = !i in incr i;
+            let v = new_ovari ("o_" ^ string_of_int n) in
+            res := (o, (n, v, ref keep)) :: !res;
             if o' <> OConv then (
-              let p = eps_search o' in
-              relation := (n,(p,copy w))::!relation);
-            n)
-    | o -> -73
-  and copy = function
-    | In(t,k) ->
-       In(LinkTerm(ref None),
-          unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn (subst k (OVari x)))))
-    | NotIn(t,k) ->
-       NotIn(LinkTerm(ref None),
-             unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn (subst k (OVari x)))))
-  and search o =
+              delayed := (fun () ->
+                (* delayed to have order depending upon the formula only *)
+                let (p, _) = eps_search false o' in
+                relation := (n,p)::!relation) :: !delayed);
+            (n, v))
+    | o -> raise BadDecompose
+  and search pos o =
     let o = orepr o in
     match o with
-    | OLess(_) -> box (OTInt(eps_search o))
-    | OSucc o -> osucc(search o)
+    | OLess(_) -> let (_, v) = eps_search true o in box_of_var v
+    | OSucc o -> osucc(search pos o)
     | OVari o -> box_of_var o
     | OUVar (_) -> raise BadDecompose
-    | OConv -> box OConv
-    | OTInt _ -> assert false
-  and fn k =
-    match repr k with
-    | KFunc(a,b) -> kfunc (fn a) (fn b)
-    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
-    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
-    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
-    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-    | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+    | OConv when pos = Pos ->
+       let n = !i in incr i;
+       let v = new_ovari ("o_" ^ string_of_int n) in
+       res := (OConv, (n, v, ref true)) :: !res; box_of_var v
+    | OConv ->
+      box OConv
+  and fn pos k =
+    match full_repr k with
+    | KFunc(a,b) -> kfunc (fn (neg pos) a) (fn pos b)
+    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn pos a)) fs)
+    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
+    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn pos (subst f (KVari x)))
+    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn pos (subst f (KVari x)))
+    | KOAll(f)   -> koall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
+    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
     | KFixM(o,f) ->
-       kfixm (binder_name f) (search o) (fun x -> fn (subst f (KVari x)))
+       kfixm (binder_name f) (search (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
-       kfixn (binder_name f) (search o) (fun x -> fn (subst f (KVari x)))
-    | KDefi(d,o,a) -> kdefi d (Array.map search o) (Array.map fn a)
-    | KDPrj(t,s) -> kdprj (map_term fn t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+       kfixn (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
+    | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn Eps t) s (fn pos a)
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
-    | KNRec(_,k) -> fn k
+    | KNRec(_,k) -> fn pos k
+    (*    | KUVar _    -> raise BadDecompose*)
     | t          -> box t (* FIXME: Témoin de type à traverser *)
   in
-  let k1 = unbox (fn k1) in
-  let k2 = unbox (fn k2) in
-  let pos = List.map eps_search pos in
-  let os = List.filter (fun (_,n) ->
-    not (List.exists (fun (n',(_,_)) -> n = n') !relation)) !res in
-  let os = List.rev_map (fun (o,n) -> (n,o)) os in
-  (pos, k1, k2, os, !relation)
+  let k1 = fn Neg k1 in
+  let k2 = fn Pos k2 in
+  List.iter (fun f -> f()) !delayed;
+  let pos = List.map (fun o -> fst (eps_search false o)) pos in
+
+  let both = box_pair k1 k2 in
+
+  let res = List.filter (fun (o,(n,v,k)) -> !k) !res in
+  let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
+  let both = unbox (bind_mvar ovars both) in
+
+  let tbl = List.mapi (fun i (o,(n,v,k)) -> (n,i)) res in
+  let os = List.map (fun (o,(n,v,_)) -> (List.assoc n tbl, o)) res in
+
+  let rec next start n =
+    if List.exists (fun (q,_) -> n = q) tbl then ((*if not start then Io.log "SKIP\n%!";*) n) else
+      try
+        assert (List.length (List.find_all (fun (n',_) -> n = n') !relation) <= 1);
+        let n = List.assoc n !relation in
+        next false n
+      with Not_found -> n
+  in
+
+  let pos = List.map (next true) pos in
+  let pos = List.sort_uniq (-) pos in
+  let pos = List.filter (fun n -> List.exists (fun (q,_) -> n = q) tbl) pos in
+  let pos = List.map (fun n -> List.assoc n tbl) pos in
+
+  let rel = List.map (fun (n,p) -> (n, next true p)) !relation in
+  let rel = List.filter (fun (n,p) ->
+    List.exists (fun (q,_) -> n = q) tbl && List.exists (fun (q,_) -> p = q) tbl) rel in
+  let rel = List.map (fun (n,p) -> List.assoc n tbl, List.assoc p tbl) rel in
+
+  Io.log_sub "decompose pos: %a\n%!" (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
+  Io.log_sub "decompose rel: %a\n%!" (fun ff l -> List.iter (fun (a,b) -> Format.fprintf ff "(%d,%d) "a b) l) rel;
+  Io.log_sub "decompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal true) o) l) os;
+
+  (pos, rel, both, os)
 
 exception BadRecompose
 
-let recompose : int list -> kind -> kind -> (int * ordinal) list -> (int * (int * ord_wit)) list ->
+let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -> bool ->
     (int * ordinal) list * ordinal list * kind * kind
   =
-  fun pos k1 k2 os rel ->
+  fun pos rel both general ->
     let res = ref [] in
-    let rec search os i =
+    let forbidden = ref [] in
+    let arity = mbinder_arity both in
+    let rec search i =
+      assert (i < arity && not (List.mem i !forbidden));
       try
         List.assoc i !res
       with Not_found ->
+        forbidden := i::!forbidden;
         let o =
-          try
-            let (j, w) = List.assoc i rel in
-            let w = match w with
-              | In(t,k) ->
-                 In(LinkTerm(ref None),
-                    unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn os (subst k (OVari x)))))
-              | NotIn(t,k) ->
-                 NotIn(LinkTerm(ref None),
-                       unbox (vbind mk_free_ovari (binder_name k) (fun x -> fn os (subst k (OVari x)))))
-            in
-            OLess(search os j, w)
-          with
-            Not_found -> OUVar(ref None, None)
+          if general then
+            try
+              OLess(search (List.assoc i rel), Link (ref None))
+            with Not_found ->
+              OUVar(ref None, None)
+          else
+             let o' = try search (List.assoc i rel) with Not_found -> OConv in
+             OLess(o',Gen(i,rel,both))
         in
         res := (i, o) :: !res;
+        forbidden := List.tl !forbidden;
         o
-    and get os o = match orepr o with
-      | OTInt i -> box (search os i)
-      | OSucc o -> osucc (get os o)
-      | OVari v -> box_of_var v
-      | OLess _ -> Io.log "%a\n" (!fprint_ordinal true) o; assert false
-      | o -> box o
-    and fn os k =
-      match repr k with
-      | KFunc(a,b) -> kfunc (fn os a) (fn os b)
-      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn os a)) fs)
-      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn os a)) cs)
-      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn os (subst f (KVari x)))
-      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn os (subst f (KVari x)))
-      | KOAll(f)   -> koall (binder_name f) (fun x -> fn os (subst f (OVari x)))
-      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn os (subst f (OVari x)))
-      | KFixM(o, f) -> kfixm (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
-      | KFixN(o, f) -> kfixn (binder_name f) (get os o) (fun x -> fn os (subst f (KVari x)))
-      | KVari(x)   -> box_of_var x
-      | KDefi(d,o,a) -> kdefi d (Array.map (get os) o) (Array.map (fn os) a)
-      | KDPrj(t,s) -> kdprj (map_term (fn os) t) s
-      | KWith(t,c) -> let (s,a) = c in kwith (fn os t) s (fn os a)
-      | KMRec _
-      | KNRec _    -> assert false (* FIXME: see decompose *)
-      | t          -> box t
     in
-    List.iter (fun (i,_) -> ignore (search os i)) os;
-    let os0 = os in
-    let os = List.rev (List.filter (fun (i,_) -> List.exists (fun (j,_) -> i = j) os) !res) in
-    assert (List.length os = List.length os0);
-    let k1 = unbox (fn os k1) and k2 = unbox (fn os k2) in
-    os, List.map (fun o1 -> unbox (get os (OTInt o1))) pos, k1, k2
+    let ovars = Array.init arity search in
+    let (k1, k2) = msubst both ovars in
+    let pos = List.map (fun i -> assert (i < arity); ovars.(i)) pos in
+    let os = Array.to_list (Array.mapi (fun i x -> (i,x)) ovars) in
+    Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal true) o) l) os;
+    os, pos, k1, k2
 
 (* Matching kind, used for printing only *)
 

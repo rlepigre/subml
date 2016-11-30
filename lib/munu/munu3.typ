@@ -71,6 +71,7 @@ check Tabc ⊂ TACB
 check Tabc ⊂ Tbac
 check Tabc ⊂ TbaC
 check Tabc ⊂ TbAc
+(*
 check Tabc ⊂ TbAC
 check Tabc ⊂ TBac
 check Tabc ⊂ TBaC
@@ -436,3 +437,4 @@ check TABC ⊂ TCAB
 !check TABC ⊂ TCbA
 !check TABC ⊂ TCBa
 check TABC ⊂ TCBA
+*)

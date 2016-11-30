@@ -21,13 +21,13 @@ type S1 = μX νY [ A of X | B of Y]
 type S2 = νY μX [ A of X | B of Y]
 
 check S1 ⊂ S2
-
+(*
 set texfile "test.tex"
 latex { we have $#!S1# \subset #!S2#$
 \begin{prooftree}
 #? S1 ⊂ S2 #
 \end{prooftree}
 }
-
-check μX [ A of X] ⊂ μX []
-check μX [] ⊂ ∀X X
+*)
+!check μX [ A of X] ⊂ μX []
+!check μX [] ⊂ ∀X X

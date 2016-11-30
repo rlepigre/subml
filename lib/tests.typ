@@ -16,7 +16,6 @@ check N ⊂ I → I'
 !check N ⊂ I' → I
 
 type F(K) = ∀X (X → (K → X) → X)
-type G(X,K) = (X → (K → X) → X)
 type S = μK F(K)
 type G = νK F(K)
 

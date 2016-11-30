@@ -9,7 +9,7 @@ let rec eval : term -> term = fun t0 ->
   (* Type annotations are ignored. *)
   | TCoer(t,_)   -> eval t
   | TKAbs(f)     -> eval (subst f (KProd []))
-  | TOAbs(f)     -> eval (subst f (OTInt(-1)))
+  | TOAbs(f)     -> eval (subst f OConv)
   (* Unfold definition. *)
   | TDefi(v)     -> eval v.value
   (* A value has been reached. *)
