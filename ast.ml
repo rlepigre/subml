@@ -66,7 +66,7 @@ type kind =
   | KUCst of term * (kind, kind) binder
   | KECst of term * (kind, kind) binder
   (** Constants (a.k.a. epsilon) - used for subtyping. *)
-  | KUVar of kuvar
+  | KUVar of kuvar * ordinal array
   (** Unification variables - used for typechecking. *)
   | KTInt of int
   (** Integer tag for comparing kinds. *)
@@ -92,12 +92,14 @@ and kuvar =
   (* Unique key identifying the variable. *)
   { kuvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
-  ; kuvar_val : kind option ref
-  ; kuvar_state : kuvar_state ref }
+  ; kuvar_val : (ordinal, kind) mbinder option ref
+  ; kuvar_state : kuvar_state ref
+  ; kuvar_arity : int
+  }
 
 and kuvar_state = Free
-  | Sum  of (string * kind) list
-  | Prod of (string * kind) list
+  | Sum  of (string * (ordinal, kind) mbinder) list
+  | Prod of (string * (ordinal, kind) mbinder) list
 
 (** Abstract syntax tree for ordinals. *)
 and ordinal =
@@ -107,7 +109,7 @@ and ordinal =
   (** Succesor *)
   | OLess of ordinal * ord_wit
   (** Ordinal created by the μl and νr rules *)
-  | OUVar of ouvar * ordinal option
+  | OUVar of ouvar
   (** Unification variables for ordinals. *)
   | OVari of ordinal variable
   (** Ordinal variable. *)
@@ -119,7 +121,11 @@ and ord_wit =
   | Gen    of int * (int * int) list * (ordinal, kind * kind) mbinder
   | Link   of ord_wit option ref
 
-and ouvar = ordinal option ref
+and ouvar = {
+  ouvar_key : int;
+  ouvar_val : ordinal option ref;
+  ouvar_bnd : ordinal option;
+}
 
 (** Abstract syntax tree for terms. *)
 and term = term' position
@@ -231,7 +237,10 @@ let contract_mu = ref true
 
 (** Unfolding unification variable indirections. *)
 let rec repr : bool -> kind -> kind = fun unfold -> function
-  | KUVar({kuvar_val = {contents = Some k}}) -> repr unfold k
+  | KUVar({kuvar_val = {contents = Some k}; kuvar_arity=arity}, os) ->
+     assert (mbinder_arity k = arity);
+     assert (Array.length os = arity);
+     repr unfold (msubst k os)
   | KFixM(OConv,f) when !contract_mu && is_mu unfold f ->
      let aux x =
        match repr unfold (subst f x) with
@@ -268,9 +277,9 @@ let full_repr : kind -> kind = fun k -> repr true  k
 let      repr : kind -> kind = fun k -> repr false k
 
 
-
-let rec orepr = function
-  | OUVar({contents = Some o}, _) -> orepr o
+let rec orepr o =
+  match o with
+  | OUVar({ouvar_val = {contents = Some o}}) ->  orepr o
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
@@ -411,15 +420,24 @@ let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
     box_apply2 (fun o b -> KFixM(o,b)) o b
 
 (* Unification variable management. Useful for typing. *)
-let (new_uvar, reset_uvar) =
+let (new_kuvar, new_kuvara, reset_uvar, new_ouvar) =
   let c = ref 0 in
-  let new_uvar ?(state=Free) () = KUVar {
+  let new_uvara ?(state=Free) n = {
     kuvar_key = (incr c; !c);
     kuvar_val = ref None;
     kuvar_state = ref state;
+    kuvar_arity = n
   } in
+  let new_uvar ?(state=Free) () =
+    KUVar(new_uvara ~state 0, [||])
+  in
   let reset_uvar () = c := 0 in
-  (new_uvar, reset_uvar)
+  let new_ouvar ?bound () = OUVar {
+    ouvar_key = (incr c; !c);
+    ouvar_val = ref None;
+    ouvar_bnd = bound;
+  } in
+  (new_uvar, new_uvara, reset_uvar, new_ouvar)
 
 (* Resset all counters. *)
 let reset_all () =
@@ -542,3 +560,48 @@ let generic_tcnst : kind -> kind -> term =
   fun a b ->
     let f = bind mk_free_tvari "x" (fun x -> box_apply dummy_pos x) in
     dummy_pos (TCnst(unbox f,a,b))
+
+(****************************************************************************)
+(** {0                         variance function                          } *)
+(****************************************************************************)
+
+let combine oa ob =
+  match (oa, ob) with
+  | (Reg(_), _     )
+  | (_     , Reg(_)) -> assert false
+  | (Non   , _     ) -> ob
+  | (_     , Non   ) -> oa
+  | (Eps   , _     ) -> Eps
+  | (_     , Eps   ) -> Eps
+  | (All   , _     ) -> All
+  | (_     , All   ) -> All
+  | (Neg   , Pos   ) -> All
+  | (Pos   , Neg   ) -> All
+  | (Neg   , Neg   ) -> Neg
+  | (Pos   , Pos   ) -> Pos
+
+let compose oa ob =
+  match (oa, ob) with
+  | (Reg(_), _     )
+  | (_     , Reg(_)) -> assert false
+  | (Non   , _     ) -> Non
+  | (_     , Non   ) -> Non
+  | (Eps   , _     ) -> Eps
+  | (_     , Eps   ) -> Eps
+  | (All   , _     ) -> All
+  | (_     , All   ) -> All
+  | (Neg   , Pos   ) -> Neg
+  | (Pos   , Neg   ) -> Neg
+  | (Neg   , Neg   ) -> Pos
+  | (Pos   , Pos   ) -> Pos
+
+let compose2 oa ob =
+  match oa with
+  | Reg(i,a) -> a.(i) <- combine a.(i) ob; Non
+  | _        -> compose oa ob
+
+let neg = function
+  | Reg(_) -> assert false
+  | Neg    -> Pos
+  | Pos    -> Neg
+  | o      -> o

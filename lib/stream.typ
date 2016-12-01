@@ -3,6 +3,7 @@ include "nat.typ"
 
 type Stream(A) = ν K ∃S { car : S → A; cdr : S → K; state : S}
 type Stream0(A,S) = ν K { car : S → A; cdr : S → K; state : S}
+type StreamS(α,A,S) = να K { car : S → A; cdr : S → K; state : S}
 
 val car : ∀A (Stream(A) → A) =  fun s → s.car s.state
 val cdr : ∀A (Stream(A) → Stream(A)) = fun s → s.cdr s.state
@@ -22,4 +23,5 @@ val coiter_stream : ∀A∀P (P → (P → A) → (P → P) → Stream(A)) =
      let delta : T(A,P) = fun s → { car = fcar; cdr = s.2; state = (fnext s.1, s.2) } in
      { car = fcar; cdr = delta; state = (s0, delta) } : Stream'(A,P) : Stream0(A, P × T(A,P))
 
-val int_stream = coiter_stream Z (fun x → x) (fun x → S x)
+(* FIXME: see type.ml, decompose *)
+val int_stream = coiter_stream Z:Nat (fun x → x) (fun x → S x)

@@ -116,11 +116,11 @@ let rec print_ordinal unfold ff o =
        fprintf ff "s(%a)" (print_ordinal false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
-    | OUVar(n,_) -> fprintf ff "?" (* FIXME: print the constraint *)
+    | OUVar(o) -> fprintf ff "?%d" o.ouvar_key (* FIXME: print the constraint *)
 
 and print_index_ordinal ff = function
-  | OConv -> ()
-  | o -> fprintf ff "[%a]" (print_ordinal false) o
+  | OConv -> fprintf ff "∞"
+  | o -> fprintf ff "%a" (print_ordinal false) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
@@ -193,14 +193,19 @@ and print_kind unfold wrap ff t =
      let is_exists = match t with KECst(_) -> true | _ -> false in
      let name, index =search_type_tbl u f is_exists in
      fprintf ff "%s_%d" name index
-  | KUVar(u) ->
-     fprintf ff "?%i" u.kuvar_key (*print_state u.kuvar_state*)
+  | KUVar(u,os) ->
+     if os = [||] then
+       fprintf ff "?%i" u.kuvar_key (*print_state u.kuvar_state*)
+     else
+       fprintf ff "?%i(%a)" u.kuvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
+       (*print_state u.kuvar_state*)
+
   | KTInt(n) ->
      fprintf ff "!%i" n
   | KMRec(_,a) -> pkind ff a
   | KNRec(_,a) -> pkind ff a
-
-and print_state ff s = match !s with
+(*
+and print_state ff s os = match !s with
   | Free -> ()
   | Prod(fs) ->
      if is_tuple fs && List.length fs > 0 then begin
@@ -220,7 +225,7 @@ and print_state ff s = match !s with
         else fprintf ff "%s of %a" c (print_kind false true) a
       in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
-
+*)
 and print_occur ff = function
   | Eps    -> pp_print_string ff "ε"
   | All    -> pp_print_string ff "?"

@@ -5,7 +5,7 @@ type Tree23(A,B) = μT [
 | Node2 of T × A × B × T
 | Node3 of T × A × B × T × A × B × T ]
 
-val rec search : ∀A∀B (A → A → Cmp) → A → Tree23(A,B) → Option(B) = fun compare x t →
+val rec 1 search : ∀A∀B (A → A → Cmp) → A → Tree23(A,B) → Option(B) = fun compare x t →
   case t of
   | Nil → None
   | Node2(t1,y,d,t2) →
@@ -37,7 +37,7 @@ val node4 : ∀A∀B (Tree23(A,B) × A × B ×
   = fun t →
     let (t1,y1,d1,t2,y2,d2,t3,y3,d3,t4) = t in
       INode2(Node2(t1,y1,d1,t2),y2,d2,Node2(t3,y3,d3,t4))
-
+(*
 val rec insert_aux : ∀A∀B (A → A → Cmp) → A → B → Tree23(A,B) → ITree23(A,B) =
   fun compare x d t →
   case t of
@@ -106,3 +106,4 @@ val balanced = fun t →
 
 eval t10
 eval (balanced t10)
+*)

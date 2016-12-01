@@ -15,133 +15,10 @@ let opred o w =
   let o = orepr o in
   match o with
   | OSucc o' -> o'
-  | OUVar(p,None) ->
-    let o' = OUVar(ref None, None) in
+  | OUVar({ouvar_bnd = None} as p) ->
+    let o' = new_ouvar () in
     set_ouvar p (OSucc o'); o'
   | _ -> OLess(o, w)
-
-
-(****************************************************************************
- *                 Occurence test for unification variables                 *
- ****************************************************************************)
-
-let combine oa ob =
-  match (oa, ob) with
-  | (Reg(_), _     )
-  | (_     , Reg(_)) -> assert false
-  | (Non   , _     ) -> ob
-  | (_     , Non   ) -> oa
-  | (Eps   , _     ) -> Eps
-  | (_     , Eps   ) -> Eps
-  | (All   , _     ) -> All
-  | (_     , All   ) -> All
-  | (Neg   , Pos   ) -> All
-  | (Pos   , Neg   ) -> All
-  | (Neg   , Neg   ) -> Neg
-  | (Pos   , Pos   ) -> Pos
-
-let compose oa ob =
-  match (oa, ob) with
-  | (Reg(_), _     )
-  | (_     , Reg(_)) -> assert false
-  | (Non   , _     ) -> Non
-  | (_     , Non   ) -> Non
-  | (Eps   , _     ) -> Eps
-  | (_     , Eps   ) -> Eps
-  | (All   , _     ) -> All
-  | (_     , All   ) -> All
-  | (Neg   , Pos   ) -> Neg
-  | (Pos   , Neg   ) -> Neg
-  | (Neg   , Neg   ) -> Pos
-  | (Pos   , Pos   ) -> Pos
-
-let compose2 oa ob =
-  match oa with
-  | Reg(i,a) -> a.(i) <- combine a.(i) ob; Non
-  | _        -> compose oa ob
-
-let neg = function
-  | Reg(_) -> assert false
-  | Neg    -> Pos
-  | Pos    -> Neg
-  | o      -> o
-
-(* FIXME: should memoize this function, because a lot of sub-term are shared
-   and we traverse all constants ... One could also precompute the
-   variance of definitions to avoid substitution *)
-let kuvar_occur : kuvar -> kind -> occur = fun {kuvar_key = i} k ->
-  let kdummy = KProd [] in
-  let odummy = OConv in
-  let adone_k = ref [] in
-  let adone_t = ref [] in
-  let rec aux occ acc k =
-    let k = repr k in
-    if List.memq k !adone_k then acc else (
-    adone_k := k :: !adone_k;
-    match k with
-    | KVari(x)   -> acc
-    | KFunc(a,b) -> aux (neg occ) (aux occ acc b) a
-    | KProd(ks)
-    | KDSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
-    | KKAll(f)
-    | KKExi(f)   -> aux occ acc (subst f kdummy)
-    | KOAll(f)
-    | KOExi(f)   -> aux occ acc (subst f odummy)
-    | KFixM(o,f)
-    | KFixN(o,f) -> aux occ (aux3 acc o) (subst f kdummy)
-    | KDPrj(t,_) -> aux2 acc t
-    | KWith(a,_) -> aux occ acc a (* FIXME *)
-    | KDefi(d,o,a) ->
-       let acc = ref acc in
-       Array.iteri (fun i o ->
-         acc := aux3 !acc o) o;
-       Array.iteri (fun i k ->
-         acc := aux (compose occ d.tdef_kvariance.(i)) !acc k) a;
-       !acc
-    | KUCst(t,f)
-    | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
-    | KUVar(u)   -> if u.kuvar_key = i then combine acc occ else acc
-    | KTInt(_)   -> assert false
-    | KMRec(_,k)
-    | KNRec(_,k) -> aux occ acc k)
-  and aux2 acc t =
-    if List.memq t.elt !adone_t then acc else (
-    adone_t := t.elt :: !adone_t;
-    match t.elt with
-    | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (TReco []))
-    | TCoer(t,_)
-    | TProj(t,_)
-    | TCons(_,t)     -> aux2 acc t
-    | TFixY(_,_,f)
-    | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
-    | TKAbs(f)       -> aux2 acc (subst f (KProd []))
-    | TOAbs(f)       -> aux2 acc (subst f OConv)
-    | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
-    | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
-    | TCase(t,l,d)   ->
-       let acc = match d with None -> acc | Some t -> aux2 acc t in
-       List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
-    | TVari(_)
-    | TDefi(_)
-    | TPrnt(_)
-    | TTInt(_)       -> acc)
-  and aux3 acc o = match orepr o with
-    | OLess(o,w) ->
-       let acc = aux3 acc o in
-       (match wrepr w with
-       | In(t,f)|NotIn(t,f) -> aux Eps (aux2 acc t) (subst f odummy)
-       | Gen(_,_,f) ->
-          let os = Array.make (mbinder_arity f) OConv in
-          let (k1,k2) = msubst f os in
-          aux Eps (aux Eps acc k2) k1
-       | Link _ -> acc)
-    | OSucc o -> aux3 acc o
-    | OUVar(_,Some o) -> aux3 acc o
-    (* we keep this to ensure valid proof when simplifying useless induction
-       needed because has_uvar below does no check ordinals *)
-    | _             -> acc
-  in
-  aux Pos Non k
 
 (****************************************************************************
  *                 Binding a unification variable in a type                 *
@@ -160,7 +37,8 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
       | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u)   -> assert(!(u.kuvar_val) = None); if eq_kuvar v u then x else box k
+      | KUVar(u,_) -> assert(!(u.kuvar_val) = None); if eq_kuvar v u then x else box k
+                      (* TODO: is it ok to ignore ordinal parameters *)
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
@@ -176,23 +54,38 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
     in
     fn k))
 
-let set_kuvar side v k =
+let mbind_assoc cst size l =
+  unbox (mbind mk_free_ovari (Array.make size "_")
+           (fun v -> cst (List.map (fun (s,k) -> (s, mbind_apply (box k) (box_array v))) l)))
+
+let set_kuvar left_side v k os =
   assert (!(v.kuvar_val) = None);
   let k =
     match !(v.kuvar_state) with
     | Free -> k
-    | Sum l -> KDSum(l)
-    | Prod l -> KProd(l)
+    | Sum l -> mbind_assoc kdsum v.kuvar_arity l
+    (* TODO: on jette K ... normal mais bof*)
+    | Prod l -> mbind_assoc kprod v.kuvar_arity l
   in
+  assert (mbinder_arity k = v.kuvar_arity);
+  let osl = Array.to_list os in
   let k =
-    match kuvar_occur v k with
+    match kuvar_occur ~safe_ordinals:osl v (msubst k (Array.make v.kuvar_arity OConv)) with
     | Non -> k
-    | Pos -> KFixM(OConv,bind_kuvar v k)
-    | _   -> if side then bot else top
+    | Pos -> unbox (mbind mk_free_ovari (Array.make v.kuvar_arity "_") (fun x ->
+      box (KFixM(OConv,bind_kuvar v (msubst k (Array.make v.kuvar_arity OConv))))))
+    | _   ->
+       if left_side then
+         unbox (mbind mk_free_ovari (Array.make v.kuvar_arity "_") (fun x -> box bot))
+       else
+         unbox (mbind mk_free_ovari (Array.make v.kuvar_arity "_") (fun x -> box top))
   in
   Io.log_uni "set %a <- %a\n\n%!"
-    (!fprint_kind false) (KUVar v) (!fprint_kind false) k;
+    (!fprint_kind false) (KUVar(v,os)) (!fprint_kind false)
+    (msubst k (Array.init v.kuvar_arity (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
   Timed.(v.kuvar_val := Some k)
+
+let _ = fset_kuvar := set_kuvar
 
 let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
   unbox (bind mk_free_ovari "α" (fun x ->
@@ -218,9 +111,56 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
       match orepr o with
       | OVari(x) -> box_of_var x
       | OSucc(o) -> osucc (gn o)
-      | OUVar(u,o') -> if eq_ouvar v u then x else box (OUVar(u,o')) (* FIXME *)
+      | OUVar(u) -> if eq_ouvar v u then x else box o (* FIXME *)
       | o        -> box o
     in fn k))
+
+let bind_ordinals : ordinal array -> kind -> (ordinal, kind) mbinder = fun os k ->
+  let len = Array.length os in
+  Io.log_sub "bind ordinals %d\n%!" len;
+  let res = unbox (mbind mk_free_ovari (Array.make len "α") (fun x ->
+    let index u =
+      let rec fn i =
+        if i >= len then raise Not_found else (
+          if strict_eq_ordinal os.(i) u then x.(i) else
+            fn (i+1))
+      in
+      fn 0
+    in
+    let rec fn k =
+      match repr k with
+      | KFunc(a,b)   -> kfunc (fn a) (fn b)
+      | KProd(fs)    -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | KDSum(cs)    -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | KKAll(f)     -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KKExi(f)     -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KOAll(f)     -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KOExi(f)     -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KFixM(o,f)   -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KFixN(o,f)   -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KVari(x)     -> box_of_var x
+      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
+      | KDPrj(t,s)   -> kdprj (map_term fn t) s
+      | KWith(t,c)   -> let (s,a) = c in kwith (fn t) s (fn a)
+      | KMRec(_,k)
+      | KNRec(_,k)   -> fn k
+      | k            -> box k
+    and gn o =
+      let o = orepr o in
+      try
+        index o
+      with
+        Not_found ->
+          match orepr o with
+          | OVari(x) -> box_of_var x
+          | OSucc(o) -> osucc (gn o)
+          | o        -> box o
+    in fn k))
+  in
+  Io.log_sub "bind ordinals fin %d\n%!" (mbinder_arity res);
+  res
+
+let _ = fbind_ordinals := bind_ordinals
 
 (****************************************************************************
  *                            lifting of kind                               *
@@ -262,7 +202,7 @@ let lift_term = map_term lift_kind
  *                 Binding a unification variable in a type                 *
  ****************************************************************************)
 
-let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k ->
+let bind_ovar : ouvar-> kind -> (ordinal, kind) binder = fun ov0 k ->
   unbox (bind mk_free_ovari "o" (fun x ->
     let rec fn k =
       match repr k with
@@ -275,7 +215,7 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
       | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u)   -> assert(!(u.kuvar_val) = None); box k
+      | KUVar(u,os)-> assert(!(u.kuvar_val) = None); box k
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
@@ -285,9 +225,9 @@ let bind_ovar : ordinal option ref -> kind -> (ordinal, kind) binder = fun ov0 k
       | t          -> box t
     and gn o =
       match orepr o with
-      | OSucc o -> osucc (gn o)
-      | OVari x -> box_of_var x
-      | OUVar(ov, _) -> if ov == ov0 then x else box o (* FIXME *)
+      | OSucc o  -> osucc (gn o)
+      | OVari x  -> box_of_var x
+      | OUVar(v) -> if eq_ouvar v ov0 then x else box o (* FIXME *)
       | o -> box o
     in
     fn k))
@@ -372,6 +312,14 @@ let decompose : ordinal list -> kind -> kind ->
   let i = ref 0 in
   let relation = ref [] in
   let delayed = ref [] in
+  let initial = ref true in
+  let new_uvar = ref [] in
+  let register f =
+    if !initial then
+      delayed := f :: !delayed
+    else
+      f ()
+  in
   (* FIXME: with delayed, keep could be removed,
      because ordinal in the formula are always firsts *)
   let rec eps_search keep o =
@@ -389,25 +337,24 @@ let decompose : ordinal list -> kind -> kind ->
             let v = new_ovari ("o_" ^ string_of_int n) in
             res := (o, (n, v, ref keep)) :: !res;
             if o' <> OConv then (
-              delayed := (fun () ->
+              register (fun () ->
                 (* delayed to have order depending upon the formula only *)
                 let (p, _) = eps_search false o' in
-                relation := (n,p)::!relation) :: !delayed);
+                relation := (n,p)::!relation));
             (n, v))
     | o -> raise BadDecompose
   and search pos o =
     let o = orepr o in
     match o with
-    | OLess(_) -> let (_, v) = eps_search true o in box_of_var v
+    | OLess _ -> let (_, v) = eps_search true o in box_of_var v
     | OSucc o -> osucc(search pos o)
     | OVari o -> box_of_var o
-    | OUVar (_) -> raise BadDecompose
+    | OUVar _ -> raise BadDecompose
     | OConv when pos = Pos ->
        let n = !i in incr i;
        let v = new_ovari ("o_" ^ string_of_int n) in
        res := (OConv, (n, v, ref true)) :: !res; box_of_var v
-    | OConv ->
-      box OConv
+    | OConv   -> box OConv
   and fn pos k =
     match full_repr k with
     | KFunc(a,b) -> kfunc (fn (neg pos) a) (fn pos b)
@@ -426,13 +373,45 @@ let decompose : ordinal list -> kind -> kind ->
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
     | KNRec(_,k) -> fn pos k
-    (*    | KUVar _    -> raise BadDecompose*)
+    | KUVar(v,os) when not !initial && not (List.memq v !new_uvar) ->
+       let os',os'' = List.fold_left (fun (acc1, acc2 as acc) (o,(n,w,k)) ->
+         if not (kuvar_ord_occur v o) &&
+           not (List.exists (strict_eq_ordinal o) acc1)
+         then (o::acc1, (box_of_var w)::acc2) else acc) ([], []) !res in
+       let os' = Array.of_list os' in
+       let os'' = Array.of_list os'' in
+       let old_len = Array.length os in
+       let new_len = Array.length os' + old_len in
+       if new_len <= old_len then
+         box_apply (fun os -> KUVar(v, os)) (box_array (Array.map (search Eps) os))
+       else
+         (* FIXME: manage the state, break lib/stream.typ *)
+         let u = new_kuvara new_len in
+         new_uvar := u :: !new_uvar;
+         let k = unbox (mbind mk_free_ovari (Array.make old_len "_") (fun x ->
+           box_apply (fun os -> KUVar(u,os))
+             (box_array (Array.init new_len (fun i ->
+               if i < old_len then x.(i) else box os'.(i - old_len))))))
+         in
+         assert(!(v.kuvar_val) = None);
+         set_kuvar (pos = Neg) v k os;
+         box_apply (fun os -> KUVar(u, os))
+           (box_array (Array.append (Array.map (search Eps) os) os''))
+    | KUVar(v,os) ->
+       box_apply (fun os -> KUVar(v, os))
+           (box_array (Array.map (search Eps) os))
     | t          -> box t (* FIXME: Témoin de type à traverser *)
   in
-  let k1 = fn Neg k1 in
-  let k2 = fn Pos k2 in
+  let _ = fn Neg k1 in
+  let _ = fn Pos k2 in
+
+  initial := false;
+
   List.iter (fun f -> f()) !delayed;
   let pos = List.map (fun o -> fst (eps_search false o)) pos in
+
+  let k1 = fn Neg k1 in
+  let k2 = fn Pos k2 in
 
   let both = box_pair k1 k2 in
 
@@ -461,11 +440,12 @@ let decompose : ordinal list -> kind -> kind ->
   let rel = List.filter (fun (n,p) ->
     List.exists (fun (q,_) -> n = q) tbl && List.exists (fun (q,_) -> p = q) tbl) rel in
   let rel = List.map (fun (n,p) -> List.assoc n tbl, List.assoc p tbl) rel in
-
+(*
   Io.log_sub "decompose pos: %a\n%!" (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
   Io.log_sub "decompose rel: %a\n%!" (fun ff l -> List.iter (fun (a,b) -> Format.fprintf ff "(%d,%d) "a b) l) rel;
-  Io.log_sub "decompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal true) o) l) os;
+  Io.log_sub "decompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;*)
 
+  assert(mbinder_arity both = List.length os);
   (pos, rel, both, os)
 
 exception BadRecompose
@@ -486,9 +466,10 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
         let o =
           if general then
             try
-              OLess(search (List.assoc i rel), Link (ref None))
+            (*OLess(search (List.assoc i rel), Link (ref None))*)
+              new_ouvar ~bound:(search (List.assoc i rel)) ()
             with Not_found ->
-              OUVar(ref None, None)
+              new_ouvar ()
           else
              let o' = try search (List.assoc i rel) with Not_found -> OConv in
              OLess(o',Gen(i,rel,both))
@@ -501,44 +482,49 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
     let (k1, k2) = msubst both ovars in
     let pos = List.map (fun i -> assert (i < arity); ovars.(i)) pos in
     let os = Array.to_list (Array.mapi (fun i x -> (i,x)) ovars) in
-    Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal true) o) l) os;
+    (*    Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;*)
     os, pos, k1, k2
 
 (* Matching kind, used for printing only *)
 
-let rec match_kind : kind -> kind -> bool = fun p k ->
-  match full_repr p, full_repr k with
-  | KUVar(ua), k -> set_kuvar true ua k; true
-  | KFunc(p1,p2), KFunc(k1,k2) -> match_kind p1 k1 && match_kind p2 k2
+let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuvars ouvars p k ->
+  let res = match full_repr p, full_repr k with
+  | KUVar(ua,[||]), k when List.memq ua kuvars ->
+     set_kuvar true ua (unbox (mbind mk_free_ovari [||] (fun _ -> box k))) [||];
+     true
+  | KFunc(p1,p2), KFunc(k1,k2) -> match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
   | KDSum(ps1), KDSum(ps2)
   | KProd(ps1), KProd(ps2) ->
      List.length ps1 = List.length ps2 &&
      let ps1 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps1 in
      let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
      List.for_all2 (fun (s1,p1) (s2,k1) ->
-       s1 = s2 && match_kind p1 k1) ps1 ps2
+       s1 = s2 && match_kind kuvars ouvars p1 k1) ps1 ps2
   | KDPrj(t1,s1), KDPrj(t2,s2) ->
      s1 = s2 && strict_eq_term t1 t2
   | KWith(p1,(s1,p2)), KWith(k1,(s2,k2)) ->
-     s1 = s2 && match_kind p1 k1 && match_kind p2 k2
+     s1 = s2 && match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
   | KKAll(f), KKAll(g)
   | KKExi(f), KKExi(g) ->
      let v = new_kvari (binder_name f) in
-     match_kind (subst f (free_of v)) (subst g (free_of v))
+     match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
   | KOAll(f), KOAll(g)
   | KOExi(f), KOExi(g) ->
      let v = new_ovari (binder_name f) in
-     match_kind (subst f (free_of v)) (subst g (free_of v))
+     match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
   | KFixM(o1,f), KFixM(o2,g)
   | KFixN(o1,f), KFixN(o2,g) ->
      let v = new_kvari (binder_name f) in
-     match_ordinal o1 o2 &&
-       match_kind (subst f (free_of v)) (subst g (free_of v))
+     match_ordinal ouvars o1 o2 &&
+       match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
   | KVari(v1), KVari(v2) -> compare_variables v1 v2 = 0
   | p, k -> strict_eq_kind p k
+  in
+  res
 
-and match_ordinal : ordinal -> ordinal -> bool = fun p o ->
-  match orepr p, orepr o with
-  | OUVar(uo,_), o when not (occur_ouvar uo o) -> set_ouvar uo o; true (* FIXME, but printing only *)
-  | OSucc(p), OSucc(o) -> match_ordinal p o
-  | p, k -> strict_eq_ordinal p k
+and match_ordinal : ouvar list -> ordinal -> ordinal -> bool = fun ouvars p o ->
+  let res = match orepr p, orepr o with
+  | OUVar(uo), o when List.memq uo ouvars -> set_ouvar uo o; true
+  | OSucc(p), OSucc(o) -> match_ordinal ouvars p o
+  | p, k -> strict_eq_ordinal p k in
+  res

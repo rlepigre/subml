@@ -141,8 +141,11 @@ and print_kind unfold wrap ff t =
      let is_exists = match t with KECst(_) -> true | _ -> false in
      let name, index = search_type_tbl u f is_exists in
      fprintf ff "%s_{%d}" name index
-  | KUVar(u) ->
-      fprintf ff "?%i" u.kuvar_key
+  | KUVar(u,os) ->
+     if os = [||] then
+       fprintf ff "?%i" u.kuvar_key
+     else
+       fprintf ff "?%i(%a)" u.kuvar_key (print_list print_index_ordinal ", ") (Array.to_list os)
   | KTInt(_) -> assert false
   | KMRec(p,a) -> fprintf ff "%a \\land %a" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Refinter.get p)

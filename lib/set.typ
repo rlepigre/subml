@@ -52,6 +52,7 @@ val makeSet : ∀X Ord(X) → Set(X) = ΛX fun o →
 (* Example use. *)
 include "nat.typ"
 val ordNat : Ord(Nat) = {compare = compare}
+
 val setNat : Set(Nat) = makeSet ordNat
 
 val set012 : setNat.S =
