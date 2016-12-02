@@ -29,9 +29,10 @@ let eq_strict : bool ref = ref false
 
 let strict f a =
   try
+    let save = !eq_strict in
     eq_strict := true;
     let res = Timed.pure_test f a in
-    eq_strict := false;
+    eq_strict := save;
     res
   with e ->
     Io.log "%s\n%!" (Printexc.to_string e);
@@ -133,17 +134,16 @@ and optpr ff = function
   | Some o -> !fprint_ordinal false ff o
 
 and eq_ordinal : ordinal list -> int ref -> ordinal -> ordinal -> bool = fun pos c o1 o2 ->
+  Io.log_ord "%a = %a %b\n%!" (!fprint_ordinal false) o1 (!fprint_ordinal false) o2 !eq_strict;
   match (orepr o1, orepr o2) with
   | (o1         , o2         ) when o1 == o2 -> true
   | (OUVar(v1)  , OUVar(v2)  ) when eq_ouvar v1 v2 -> true
   | (OUVar(p)   , o2         ) when not !eq_strict && not (occur_ouvar p o2) &&
-      Timed.pure_test (fun () -> less_opt_ordinal pos c o2 (p.ouvar_bnd) &&
-        !(p.ouvar_val) = None) () ->
-     set_ouvar p o2; true
+      Timed.pure_test (fun () -> set_ouvar p o2; less_opt_ordinal pos c o2 (p.ouvar_bnd)) () ->
+     true
   | (o1         , OUVar(p)   ) when not !eq_strict && not (occur_ouvar p o1) &&
-      Timed.pure_test (fun () -> less_opt_ordinal pos c o1 p.ouvar_bnd &&
-        !(p.ouvar_val) = None) () ->
-    set_ouvar p o1; true
+      Timed.pure_test (fun () -> set_ouvar p o1; less_opt_ordinal pos c o1 p.ouvar_bnd) () ->
+     true
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal pos c o1 o2 && eq_ord_wit pos c w1 w2
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal pos c o1 o2
@@ -166,18 +166,19 @@ and eq_ord_wit pos c w1 w2 = match wrepr w1, wrepr w2 with
   | (_           , _           ) -> false
 
 and leqi_ordinal pos c o1 i o2 =
+  Io.log_ord "%a <_%d %a %b\n%!" (!fprint_ordinal false) o1 i (!fprint_ordinal false) o2 !eq_strict;
   match (orepr o1, orepr o2) with
-  | (o1         , o2      ) when eq_ordinal pos c o1 o2 && i <= 0 -> true
+  | (o1         , o2      ) when i <= 0 && Timed.pure_test (eq_ordinal pos c o1) o2 -> true
+  | (OLess(o1,_),       o2  ) when i > 0 && List.exists (strict_eq_ordinal o1) pos ->
+     leqi_ordinal pos c o1 (i-1) o2
   | (o1         , OUVar(p)) when not !eq_strict && not (occur_ouvar p o1) &&
-      Timed.pure_test (fun () -> less_opt_ordinal pos c (oadd o1 i) p.ouvar_bnd &&
-        !(p.ouvar_val) = None) () ->
-     let o1 = oadd o1 i in
-     set_ouvar p o1; true
+      Timed.pure_test (fun () -> let o1 = oadd o1 i in
+                                 set_ouvar p o1; less_opt_ordinal pos c o1 p.ouvar_bnd) () ->
+     true
   | (OUVar(p)   , o2      ) when not !eq_strict && i <= 0 && not (occur_ouvar p o2) &&
-      Timed.pure_test (fun () -> less_opt_ordinal pos c o2 p.ouvar_bnd &&
-        !(p.ouvar_val) = None) () ->
+      Timed.pure_test (fun () -> set_ouvar p o2; less_opt_ordinal pos c o2 p.ouvar_bnd) () ->
      (* NOTE: may take the maximum n between 0 and -i s.t. oadd o2 n < o *)
-     set_ouvar p o2; true
+     true
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos c o1 (i+1) o2
   | (o1         , OSucc o2  ) -> leqi_ordinal pos c o1 (i-1) o2
   | (OLess(o1,_),       o2  ) ->
@@ -302,9 +303,9 @@ and gen_occur :
   (fun k -> aux Pos Non k), (fun o -> aux3 Non o)
 
 and set_ouvar v o =
+  Io.log_uni "?%d <- %a\n%!" v.ouvar_key (!fprint_ordinal false) o;
   assert (!(v.ouvar_val) = None);
   assert (not (occur_ouvar v o));
-  Io.log_uni "?%d <- %a\n%!" v.ouvar_key (!fprint_ordinal false) o;
   Timed.(v.ouvar_val := Some o)
 
 and occur_ouvar : ouvar -> ordinal -> bool = fun v o ->

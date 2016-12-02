@@ -43,13 +43,15 @@ let debug_uni = 'u'
 let debug_sub = 's'
 let debug_typ = 't'
 let debug_mat = 'm'
-let debug_all = "musyt"
+let debug_ord = 'o'
+let debug_all = "yustmo"
 
 let log_sct ff = if String.contains !debug debug_sct then log ff else nul ff
 let log_uni ff = if String.contains !debug debug_uni then log ff else nul ff
 let log_sub ff = if String.contains !debug debug_sub then log ff else nul ff
 let log_typ ff = if String.contains !debug debug_typ then log ff else nul ff
 let log_mat ff = if String.contains !debug debug_mat then log ff else nul ff
+let log_ord ff = if String.contains !debug debug_ord then log ff else nul ff
 
 let set_debug s =
   debug := if s = "all" then debug_all else s
