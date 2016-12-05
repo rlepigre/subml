@@ -15,9 +15,9 @@ let opred o w =
   let o = orepr o in
   match o with
   | OSucc o' -> o'
-  | OUVar({ouvar_bnd = None; ouvar_arity = a} as p, os) ->
+  | OUVar({uvar_state = None; uvar_arity = a} as p, os) ->
      let o' = OUVar(new_ouvara a,os) in
-    set_ouvar p (!fobind_ordinals os (OSucc o')); o'
+     set_ouvar p (!fobind_ordinals os (OSucc o')); o'
   | _ -> OLess(o, w)
 
 (****************************************************************************
@@ -37,7 +37,7 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
       | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u,_) -> assert(!(u.kuvar_val) = None); if eq_kuvar v u then x else box k
+      | KUVar(u,_) -> assert(!(u.uvar_val) = None); if eq_uvar v u then x else box k
                       (* TODO: is it ok to ignore ordinal parameters ? *)
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
@@ -60,23 +60,23 @@ let mbind_assoc cst size l =
 
 let safe_set_kuvar left_side v k os =
   let k =
-    match !(v.kuvar_state) with
+    match !(v.uvar_state) with
     | Free -> k
-    | Sum l -> mbind_assoc kdsum v.kuvar_arity l
+    | Sum l -> mbind_assoc kdsum v.uvar_arity l
     (* TODO: on jette K ... normal mais bof*)
-    | Prod l -> mbind_assoc kprod v.kuvar_arity l
+    | Prod l -> mbind_assoc kprod v.uvar_arity l
   in
-  assert (mbinder_arity k = v.kuvar_arity);
+  assert (mbinder_arity k = v.uvar_arity);
   let k =
-    match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.kuvar_arity OConv)) with
+    match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
     | Non -> k
-    | Pos -> unbox (mbind mk_free_ovari (Array.make v.kuvar_arity "_") (fun x ->
-      box (KFixM(OConv,bind_kuvar v (msubst k (Array.make v.kuvar_arity OConv))))))
+    | Pos -> unbox (mbind mk_free_ovari (Array.make v.uvar_arity "_") (fun x ->
+      box (KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))))
     | _   ->
        if left_side then
-         unbox (mbind mk_free_ovari (Array.make v.kuvar_arity "_") (fun x -> box bot))
+         unbox (mbind mk_free_ovari (Array.make v.uvar_arity "_") (fun x -> box bot))
        else
-         unbox (mbind mk_free_ovari (Array.make v.kuvar_arity "_") (fun x -> box top))
+         unbox (mbind mk_free_ovari (Array.make v.uvar_arity "_") (fun x -> box top))
   in
   set_kuvar v k
 
@@ -114,10 +114,10 @@ let rec bind_fn len os x k =
          kuvar u (Array.map gn os')
        else
          let os'' = Array.of_list os'' in
-         let v = new_kuvara (u.kuvar_arity + Array.length os'') in
-         let k = unbox (mbind mk_free_ovari (Array.make u.kuvar_arity "_") (fun x ->
-           kuvar v (Array.init (u.kuvar_arity + Array.length os'')
-                    (fun i -> if i < u.kuvar_arity then x.(i) else box os''.(i - u.kuvar_arity)))))
+         let v = new_kuvara (u.uvar_arity + Array.length os'') in
+         let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
+           kuvar v (Array.init (u.uvar_arity + Array.length os'')
+                    (fun i -> if i < u.uvar_arity then x.(i) else box os''.(i - u.uvar_arity)))))
          in
          set_kuvar u k;
          kuvar v (Array.map gn (Array.append os' os''))
@@ -152,10 +152,10 @@ and bind_gn len os x o = (
              ouvar u (Array.map gn os')
            else
              let os'' = Array.of_list os'' in
-             let v = new_ouvara (u.ouvar_arity + Array.length os'') in
-             let k = unbox (mbind mk_free_ovari (Array.make u.ouvar_arity "_") (fun x ->
-               ouvar v (Array.init (u.ouvar_arity + Array.length os'')
-                          (fun i -> if i < u.ouvar_arity then x.(i) else box os''.(i - u.ouvar_arity)))))
+             let v = new_ouvara (u.uvar_arity + Array.length os'') in
+             let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
+               ouvar v (Array.init (u.uvar_arity + Array.length os'')
+                          (fun i -> if i < u.uvar_arity then x.(i) else box os''.(i - u.uvar_arity)))))
              in
              set_ouvar u k;
              ouvar v (Array.map gn (Array.append os' os''))
@@ -233,7 +233,7 @@ let bind_ovar : ouvar-> kind -> (ordinal, kind) binder = fun ov0 k ->
       | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
       | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u,os)-> assert(!(u.kuvar_val) = None); box k
+      | KUVar(u,os)-> assert(!(u.uvar_val) = None); box k
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
@@ -245,7 +245,7 @@ let bind_ovar : ouvar-> kind -> (ordinal, kind) binder = fun ov0 k ->
       match orepr o with
       | OSucc o  -> osucc (gn o)
       | OVari x  -> box_of_var x
-      | OUVar(v,_) -> if eq_ouvar v ov0 then x else box o (* FIXME *)
+      | OUVar(v,_) -> if eq_uvar v ov0 then x else box o (* FIXME *)
       | o -> box o
     in
     fn k))
@@ -274,14 +274,14 @@ let rec has_boundvar k =
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
   | KVari _ -> raise Exit
-  | KUCst _ | KECst _ | KUVar _ | KTInt _ -> ()
+  | KUCst _ | KECst _ | KUVar _ -> ()
 
 and has_tboundvar t =
   match t.elt with
   | TCoer(t,k) -> has_tboundvar t; has_boundvar k
   | TVari _ -> raise Exit
   | TAbst(ko, b) ->
-     has_tboundvar (subst b (TTInt 0));
+     has_tboundvar (subst b (TReco []));
      (match ko with None -> () | Some k -> has_boundvar k)
   | TAppl(t1,t2) -> has_tboundvar t1; has_tboundvar t2;
   | TReco(l) -> List.iter (fun (_,t) -> has_tboundvar t) l
@@ -289,10 +289,10 @@ and has_tboundvar t =
   | TCons(s,t) -> has_tboundvar t
   | TCase(t,l,ao) -> has_tboundvar t; List.iter (fun (_,t) ->  has_tboundvar t) l;
     (match ao with None -> () | Some t -> has_tboundvar t)
-  | TFixY(_,_,b) -> has_tboundvar (subst b (TTInt 0))
-  | TKAbs(b) -> has_tboundvar (subst b (KTInt 0))
+  | TFixY(_,_,b) -> has_tboundvar (subst b (TReco []))
+  | TKAbs(b) -> has_tboundvar (subst b (KProd []))
   | TOAbs(b) -> has_tboundvar (subst b OConv)
-  | TDefi _ | TPrnt _ | TTInt _ | TCnst _ -> ()
+  | TDefi _ | TPrnt _ | TCnst _ -> ()
 
 and has_oboundvar o =
   let o = orepr o in

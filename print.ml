@@ -117,10 +117,10 @@ let rec print_ordinal unfold ff o =
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
     | OUVar(u,os) -> (* FIXME: print the bound *)
-     if os = [||] then
-       fprintf ff "?%i" u.ouvar_key
-     else
-       fprintf ff "?%i(%a)" u.ouvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
+       if os = [||] then
+         fprintf ff "?%i" u.uvar_key
+       else
+         fprintf ff "?%i(%a)" u.uvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
 
 
 and print_index_ordinal ff = function
@@ -200,13 +200,10 @@ and print_kind unfold wrap ff t =
      fprintf ff "%s_%d" name index
   | KUVar(u,os) ->
      if os = [||] then
-       fprintf ff "?%i" u.kuvar_key (*print_state u.kuvar_state*)
+       fprintf ff "?%i" u.uvar_key (*print_state u.kuvar_state*)
      else
-       fprintf ff "?%i(%a)" u.kuvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
+       fprintf ff "?%i(%a)" u.uvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
        (*print_state u.kuvar_state*)
-
-  | KTInt(n) ->
-     fprintf ff "!%i" n
   | KMRec(_,a) -> pkind ff a
   | KNRec(_,a) -> pkind ff a
 (*
@@ -343,8 +340,6 @@ and print_term ?(in_proj=false) unfold ff t =
   | TCnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_%d" name index
-  | TTInt(i) ->
-      fprintf ff "TAG(%i)" i
 
 (****************************************************************************
  *                             Proof generation                             *

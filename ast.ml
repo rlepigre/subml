@@ -68,8 +68,6 @@ type kind =
   (** Constants (a.k.a. epsilon) - used for subtyping. *)
   | KUVar of kuvar * ordinal array
   (** Unification variables - used for typechecking. *)
-  | KTInt of int
-  (** Integer tag for comparing kinds. *)
   | KMRec of ordinal refinter * kind
   | KNRec of ordinal refinter * kind
   (** Ordinal conjunction and disjunction *)
@@ -88,14 +86,16 @@ and type_def =
   ; tdef_value    : (ordinal, (kind, kind) mbinder) mbinder }
 
 (** Unification variable identified by a key and possibly a value. *)
-and kuvar =
+and ('a,'b) uvar =
   (* Unique key identifying the variable. *)
-  { kuvar_key : int
+  { uvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
-  ; kuvar_val : (ordinal, kind) mbinder option ref
-  ; kuvar_state : kuvar_state ref
-  ; kuvar_arity : int
+  ; uvar_val : (ordinal, 'a) mbinder option ref
+  ; uvar_state : 'b
+  ; uvar_arity : int
   }
+
+and kuvar = (kind, kuvar_state ref) uvar
 
 and kuvar_state = Free
   | Sum  of (string * (ordinal, kind) mbinder) list
@@ -121,12 +121,7 @@ and ord_wit =
   | Gen    of int * (int * int) list * (ordinal, kind * kind) mbinder
   | Link   of ord_wit option ref
 
-and ouvar = {
-  ouvar_key : int;
-  ouvar_arity : int;
-  ouvar_val : (ordinal, ordinal) mbinder option ref;
-  ouvar_bnd : ordinal option;
-}
+and ouvar = (ordinal, ordinal option) uvar
 
 (** Abstract syntax tree for terms. *)
 and term = term' position
@@ -162,8 +157,6 @@ and term' =
   (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
      that has type A but not type B such that t[u] is in B. *)
   | TCnst of ((term', term) binder * kind * kind)
-  (* Integer tag. *)
-  | TTInt of int
 
 (** Term definition (user defined term) *)
 and value_def =
@@ -238,7 +231,7 @@ let contract_mu = ref true
 
 (** Unfolding unification variable indirections. *)
 let rec repr : bool -> kind -> kind = fun unfold -> function
-  | KUVar({kuvar_val = {contents = Some k}; kuvar_arity=arity}, os) ->
+  | KUVar({uvar_val = {contents = Some k}; uvar_arity=arity}, os) ->
      assert (mbinder_arity k = arity);
      assert (Array.length os = arity);
      repr unfold (msubst k os)
@@ -280,7 +273,7 @@ let      repr : kind -> kind = fun k -> repr false k
 
 let rec orepr o =
   match o with
-  | OUVar({ouvar_val = {contents = Some o}}, os) ->  orepr (msubst o os)
+  | OUVar({uvar_val = {contents = Some o}}, os) ->  orepr (msubst o os)
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
@@ -431,26 +424,26 @@ let kuvar : kuvar -> obox array -> kbox =
 (* Unification variable management. Useful for typing. *)
 let (new_kuvar, new_kuvara, reset_uvar, new_ouvara, new_ouvar) =
   let c = ref 0 in
-  let new_uvara ?(state=Free) n = {
-    kuvar_key = (incr c; !c);
-    kuvar_val = ref None;
-    kuvar_state = ref state;
-    kuvar_arity = n
+  let new_kuvara ?(state=Free) n : kuvar = {
+    uvar_key = (incr c; !c);
+    uvar_val = ref None;
+    uvar_state = ref state;
+    uvar_arity = n
   } in
-  let new_uvar ?(state=Free) () =
-    KUVar(new_uvara ~state 0, [||])
+  let new_kuvar ?(state=Free) () =
+    KUVar(new_kuvara ~state 0, [||])
   in
   let reset_uvar () = c := 0 in
-  let new_ouvara ?bound n = {
-    ouvar_key = (incr c; !c);
-    ouvar_val = ref None;
-    ouvar_bnd = bound;
-    ouvar_arity = n;
+  let new_ouvara ?bound n : ouvar = {
+    uvar_key = (incr c; !c);
+    uvar_val = ref None;
+    uvar_state = bound;
+    uvar_arity = n;
   } in
   let new_ouvar ?bound () =
     OUVar(new_ouvara ?bound 0, [||])
   in
-  (new_uvar, new_uvara, reset_uvar, new_ouvara, new_ouvar)
+  (new_kuvar, new_kuvara, reset_uvar, new_ouvara, new_ouvar)
 
 (* Resset all counters. *)
 let reset_all () =

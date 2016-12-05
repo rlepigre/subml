@@ -23,7 +23,6 @@ let rec eval : term -> term = fun t0 ->
   | TPrnt(s)     -> Io.out "%s%!" s; treco_p t0.pos []
   (* Constructors that should never appear in evaluation. *)
   | TCnst(_)     -> assert false
-  | TTInt(_)     -> assert false
   (* Call-by-value application (λ-abstraction and fixpoint). *)
   | TAppl(t,u)   ->
       begin

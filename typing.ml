@@ -203,12 +203,12 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
     | KOExi(f)     -> fn (subst f OConv)
     | KUVar(u,os)   ->
        begin
-         match !(u.kuvar_state) with
+         match !(u.uvar_state) with
          | Free -> ()
          | Sum l | Prod l ->
             List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) OConv))) l
        end;
-       if not (List.exists (fun (u',_) -> eq_kuvar u u') !r) then
+       if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
          r := (u,os) :: !r
     | KDefi(d,_,a) -> Array.iter fn a
     | KWith(k,c)   -> fn k; fn (snd c)
@@ -239,7 +239,7 @@ let ouvar_list : kind -> ouvar list = fun k ->
   and gn o =
     match orepr o with
     | OSucc(o) -> gn o
-    | OUVar(v,_) -> if not (List.exists (eq_ouvar v) !r) then r := v :: !r
+    | OUVar(v,_) -> if not (List.exists (eq_uvar v) !r) then r := v :: !r
     | _        -> ()
   in
   fn k; !r
@@ -288,7 +288,7 @@ let check_rec
           If we keep ordinal variables, it may loops on
           useful examples.
           IMPROVE: can we do better ?*)
-       ignore (Timed.pure_test (leq_ordinal ctxt.positive_ordinals o) o')
+       ignore (leq_ordinal ctxt.positive_ordinals o o')
     | _ -> ()
     end;
 
@@ -325,12 +325,9 @@ let check_rec
         Io.log_sub "%a = %a\n%a = %a\n\n%!"
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
-        if Timed.pure_test (fun () ->
-          eq_kind tpos k1 a' && eq_kind tpos k2 b') () &&
-           (Io.log_sub "eq ok\n%!"; true) &&
+        if eq_kind tpos k1 a' && eq_kind tpos k2 b' &&
            List.for_all (fun o1 ->
-               List.exists (Timed.pure_test (eq_ordinal tpos o1))
-                 tpos) pos'
+               List.exists (eq_ordinal tpos o1) tpos) pos'
         then (
           Io.log_sub "By induction\n\n%!";
           add_call ctxt index ov true;
@@ -369,8 +366,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* unification. (sum and product special) *)
     | (KUVar(ua,os), KProd(l))
-       when (match !(ua.kuvar_state) with Sum _ -> false | _ -> true) ->
-       let l0 = match !(ua.kuvar_state) with
+       when (match !(ua.uvar_state) with Sum _ -> false | _ -> true) ->
+       let l0 = match !(ua.uvar_state) with
            Free -> []
          | Prod l -> l
          | Sum _ -> assert false
@@ -386,12 +383,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
            Not_found ->
              res := (s, (t', k, k, None, Sub_Lower)) :: !res;
              l1 := (s,bind_ordinals os k)::!l1) l;
-       Timed.(ua.kuvar_state := Prod !l1);
+       Timed.(ua.uvar_state := Prod !l1);
        None, Sub_Prod(!res)
 
     | (KDSum(l)   , KUVar(ub,os))
-       when (match !(ub.kuvar_state) with Prod _ -> false | _ -> true) ->
-       let l0 = match !(ub.kuvar_state) with
+       when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
+       let l0 = match !(ub.uvar_state) with
            Free -> []
          | Sum l -> l
          | Prod _ -> assert false
@@ -407,24 +404,24 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
            Not_found ->
              res := (s, (t', k, k, None, Sub_Lower)) :: !res;
              l1 := (s,bind_ordinals os k)::!l1) l;
-       Timed.(ub.kuvar_state := Sum !l1);
+       Timed.(ub.uvar_state := Sum !l1);
        None, Sub_DSum(!res)
 
     (* Handling of unification variables (immitation). *)
-    | (KUVar(ua,osa),KUVar(ub,osb)) when eq_kuvar ua ub ->
+    | (KUVar(ua,osa),KUVar(ub,osb)) when eq_uvar ua ub ->
        let osal = Array.to_list osa in
        let osbl = Array.to_list osb in
        let (_,os) = List.fold_left2 (fun (i,acc) o1 o2 ->
-         if Timed.pure_test (eq_ordinal ctxt.positive_ordinals o1) o2 then
+         if eq_ordinal ctxt.positive_ordinals o1 o2 then
            (i+1,i::acc)
          else
            (i+1,acc)) (0,[]) osal osbl
        in
        let os = Array.of_list os in
        let new_len = Array.length os in
-       if new_len <> ua.kuvar_arity then (
+       if new_len <> ua.uvar_arity then (
          let u = new_kuvara new_len in
-         let f = unbox (mbind mk_free_ovari (Array.make ua.kuvar_arity "_") (fun x ->
+         let f = unbox (mbind mk_free_ovari (Array.make ua.uvar_arity "_") (fun x ->
            box_apply (fun os -> KUVar(u,os)) (box_array (Array.init new_len (fun i ->
              x.(os.(i)))))))
          in
@@ -434,7 +431,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
         begin (* make the correct choice, depending if Sum or Prod *)
-          match !(ua.kuvar_state), !(ub.kuvar_state) with
+          match !(ua.uvar_state), !(ub.uvar_state) with
           | _, Sum _ -> safe_set_kuvar false ua (bind_ordinals osa b) osa
           | Prod _, _ -> safe_set_kuvar false ub (bind_ordinals osb a) osb
           | _ ->
@@ -458,7 +455,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                let u = new_kuvara (Array.length os) in
                let k = KUVar(u,os) in
                safe_set_kuvar false ub (bind_ordinals osb k) osb;
-               if not (eq_kuvar ua ub) then safe_set_kuvar false ua (bind_ordinals osa k) osa;
+               if not (eq_uvar ua ub) then safe_set_kuvar false ua (bind_ordinals osa k) osa;
         end;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
 
@@ -757,7 +754,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let p3 =
           match d, k with
           | None, _ -> None
-          | Some f, KUVar({ kuvar_state = { contents = Sum ts }}, os)  ->
+          | Some f, KUVar({ uvar_state = { contents = Sum ts }}, os)  ->
              let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
              let ts = List.map (fun (c,k) -> (c, msubst k os)) ts in
              Some (type_check ctxt f (KFunc(KDSum ts,c)))
@@ -775,8 +772,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TCnst(_,a,b) ->
         let p = subtype ctxt t a c in
         Typ_Cnst(p)
-    | TTInt(_) -> assert false (* Cannot happen. *)
-    | TVari(_) -> assert false (* Cannot happen. *)
+    | TVari(_) -> assert false
     with Subtype_error msg
     | Type_error msg -> Typ_Error msg
     | System.Stopped -> Typ_Error "Killed"
@@ -887,7 +883,7 @@ and search_induction depth ctxt t a c0 hyps =
              check_sub_proof prf;
              Io.log_sub "eq ok\n%!";
              if not (List.for_all (fun o1 ->
-               List.exists (Timed.pure_test (eq_ordinal ctxt.positive_ordinals o1))
+               List.exists (eq_ordinal ctxt.positive_ordinals o1)
                  ctxt.positive_ordinals) pos)
              then raise Exit;
              Io.log_typ "induction hyp applies with %d %a ~ %a <- %a:\n%!"
@@ -992,13 +988,13 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
       with e -> reset_all (); raise e
     in
     let fn (v, os) =
-      match !(v.kuvar_state) with
+      match !(v.uvar_state) with
       | Free   -> true
       | Sum  l ->
-         let k = mbind_assoc kdsum v.kuvar_arity l in
+         let k = mbind_assoc kdsum v.uvar_arity l in
          safe_set_kuvar false v k os; false
       | Prod l ->
-         let k = mbind_assoc kprod v.kuvar_arity l in
+         let k = mbind_assoc kprod v.uvar_arity l in
          safe_set_kuvar true  v k os
          ; false
     in

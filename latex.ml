@@ -143,10 +143,9 @@ and print_kind unfold wrap ff t =
      fprintf ff "%s_{%d}" name index
   | KUVar(u,os) ->
      if os = [||] then
-       fprintf ff "?%i" u.kuvar_key
+       fprintf ff "?%i" u.uvar_key
      else
-       fprintf ff "?%i(%a)" u.kuvar_key (print_list print_index_ordinal ", ") (Array.to_list os)
-  | KTInt(_) -> assert false
+       fprintf ff "?%i(%a)" u.uvar_key (print_list print_index_ordinal ", ") (Array.to_list os)
   | KMRec(p,a) -> fprintf ff "%a \\land %a" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Refinter.get p)
   | KNRec(p,a) -> fprintf ff "%a \\lor %a" pkind a
@@ -312,8 +311,7 @@ and print_term unfold lvl ff t =
   | TCnst(f,a,b) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_{%d}" name index
-  | TTInt(i) ->
-      fprintf ff "TAG(%i)" i
+
 
 (****************************************************************************
  *                          Interface functions                             *

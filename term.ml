@@ -39,8 +39,8 @@ let iter_term : (kind -> unit) -> term -> unit = fun kn t ->
     match t.elt with
     | TCoer(t,k)  -> fn t; kn k
     | TVari(x)    -> ()
-    | TAbst(ko,f) -> fn (subst f (TTInt 0))
-    | TFixY(b,n,f)-> fn (subst f (TTInt 0))
+    | TAbst(ko,f) -> fn (subst f (TReco []))
+    | TFixY(b,n,f)-> fn (subst f (TReco []))
     | TKAbs(f)    -> fn (subst f (KProd []))
     | TOAbs(f)    -> fn (subst f OConv)
     | TAppl(a,b)  -> fn a; fn b
@@ -71,7 +71,6 @@ let is_normal : term -> bool = fun t ->
     | TDefi(d)    -> fn d.value
     | TCnst _     -> true
     | TPrnt _     -> false
-    | TTInt _     -> assert false
   in fn t
 
 (*****************************************************************
@@ -94,5 +93,4 @@ let is_neutral : term -> bool = fun t ->
     | TDefi(d)    -> true
     | TCnst _     -> true
     | TPrnt _     -> false
-    | TTInt _     -> assert false
   in fn t
