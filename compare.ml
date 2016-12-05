@@ -69,9 +69,11 @@ let rec eq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KMRec(p,a1) , KMRec(q,a2) )
     | (KNRec(p,a1) , KNRec(q,a2) ) -> p == q && eq_kind a1 a2
     | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordinals pos o1 o2
-    | (KUVar(u1,o1), b           ) when not !eq_strict && kuvar_occur ~safe_ordinals:o1 u1 b = Non && !(u1.uvar_state) = Free ->
+    | (KUVar(u1,o1), b           ) when not !eq_strict && kuvar_occur ~safe_ordinals:o1 u1 b = Non
+                                   && !(u1.uvar_state) = Free ->
        set_kuvar u1 (!fbind_ordinals o1 b); true
-    | (a           , KUVar(u2,o2)) when not !eq_strict && kuvar_occur ~safe_ordinals:o2 u2 a = Non && !(u2.uvar_state) = Free ->
+    | (a           , KUVar(u2,o2)) when not !eq_strict && kuvar_occur ~safe_ordinals:o2 u2 a = Non
+                                   && !(u2.uvar_state) = Free ->
        set_kuvar u2 (!fbind_ordinals o2 a); true
     | (_           , _           ) -> false
   in
@@ -140,10 +142,12 @@ and eq_ordinal : ordinal list -> ordinal -> ordinal -> bool = fun pos o1 o2 ->
   | (o1         , o2         ) when o1 == o2 -> true
   | (OUVar(v1,o1), OUVar(v2,o2)) when eq_uvar v1 v2 -> eq_ordinals pos o1 o2
   | (OUVar(p,o1), o2         ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o1 p o2) &&
-      Timed.pure_test (fun () -> set_ouvar p  (!fobind_ordinals o1 o2); less_opt_ordinal pos o2 p.uvar_state) () ->
+      Timed.pure_test (fun () -> set_ouvar p
+        (!fobind_ordinals o1 o2); less_opt_ordinal pos o2 p.uvar_state) () ->
      true
   | (o1         , OUVar(p,o2)   ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o2 p o1) &&
-      Timed.pure_test (fun () -> set_ouvar p (!fobind_ordinals o2 o1); less_opt_ordinal pos o1 p.uvar_state) () ->
+      Timed.pure_test (fun () -> set_ouvar p
+        (!fobind_ordinals o2 o1); less_opt_ordinal pos o1 p.uvar_state) () ->
      true
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal pos o1 o2 && eq_ord_wit pos w1 w2
@@ -173,11 +177,14 @@ and leqi_ordinal pos o1 i o2 =
   | (OLess(o1,_),       o2  ) when i > 0 && List.exists (strict_eq_ordinal o1) pos ->
      leqi_ordinal pos o1 (i-1) o2
   | (o1         , OUVar(p,o2)) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o2 p o1) &&
-      Timed.pure_test (fun () -> let o1 = oadd o1 i in
-                                 set_ouvar p (!fobind_ordinals o2 o1); less_opt_ordinal pos o1 p.uvar_state) () ->
+      Timed.pure_test (fun () ->
+        let o1 = oadd o1 i in
+        set_ouvar p (!fobind_ordinals o2 o1); less_opt_ordinal pos o1 p.uvar_state) () ->
      true
-  | (OUVar(p,o1)   , o2      ) when not !eq_strict && i <= 0 && not (ouvar_occur ~safe_ordinals:o1 p o2) &&
-      Timed.pure_test (fun () -> set_ouvar p (!fobind_ordinals o1 o2); less_opt_ordinal pos o2 p.uvar_state) () ->
+  | (OUVar(p,o1)   , o2      ) when not !eq_strict && i <= 0 &&
+      not (ouvar_occur ~safe_ordinals:o1 p o2) &&
+      Timed.pure_test (fun () -> set_ouvar p (!fobind_ordinals o1 o2);
+        less_opt_ordinal pos o2 p.uvar_state) () ->
      (* NOTE: may take the maximum n between 0 and -i s.t. oadd o2 n < o *)
      true
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos o1 (i+1) o2

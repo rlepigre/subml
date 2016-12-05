@@ -109,7 +109,9 @@ let rec bind_fn len os x k =
     | KNRec(_,k)   -> fn k
     | KUVar(u,os') ->
        let os'' = List.filter (fun o ->
-         not (Array.exists (strict_eq_ordinal o) os') && not (kuvar_ord_occur u o)) (Array.to_list os) in
+         not (Array.exists (strict_eq_ordinal o) os') && not (kuvar_ord_occur u o))
+         (Array.to_list os)
+       in
        if os'' = [] then
          kuvar u (Array.map gn os')
        else
@@ -147,7 +149,9 @@ and bind_gn len os x o = (
                 (fun x -> fn (subst f (OVari x))))
         | OUVar(u,os') ->
            let os'' = List.filter (fun o ->
-             not (Array.exists (strict_eq_ordinal o) os') && not (ouvar_occur u o)) (Array.to_list os) in
+             not (Array.exists (strict_eq_ordinal o) os') && not (ouvar_occur u o))
+             (Array.to_list os)
+           in
            if os'' = [] then
              ouvar u (Array.map gn os')
            else
@@ -155,7 +159,9 @@ and bind_gn len os x o = (
              let v = new_ouvara (u.uvar_arity + Array.length os'') in
              let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
                ouvar v (Array.init (u.uvar_arity + Array.length os'')
-                          (fun i -> if i < u.uvar_arity then x.(i) else box os''.(i - u.uvar_arity)))))
+                          (fun i ->
+                            if i < u.uvar_arity then x.(i) else
+                              box os''.(i - u.uvar_arity)))))
              in
              set_ouvar u k;
              ouvar v (Array.map gn (Array.append os' os''))
@@ -325,7 +331,8 @@ exception BadDecompose
    select the usefull par of the context and return
    the usefull relations between two ordinals *)
 let decompose : ordinal list -> kind -> kind ->
-  int list * (int * int) list * (ordinal, kind * kind) mbinder * (int * ordinal) list = fun pos k1 k2 ->
+  int list * (int * int) list * (ordinal, kind * kind) mbinder * (int * ordinal) list
+ = fun pos k1 k2 ->
   let res = ref [] in
   let i = ref 0 in
   let relation = ref [] in
@@ -420,8 +427,10 @@ let decompose : ordinal list -> kind -> kind ->
   let rel = List.map (fun (n,p) -> List.assoc n tbl, List.assoc p tbl) rel in
 
   Io.log_sub "decompose pos: %a\n%!" (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
-  Io.log_sub "decompose rel: %a\n%!" (fun ff l -> List.iter (fun (a,b) -> Format.fprintf ff "(%d,%d) "a b) l) rel;
-  Io.log_sub "decompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;
+  Io.log_sub "decompose rel: %a\n%!" (fun ff l -> List.iter (fun (a,b) ->
+    Format.fprintf ff "(%d,%d) "a b) l) rel;
+  Io.log_sub "decompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
+    Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;
 
   assert(mbinder_arity both = List.length os);
   (pos, rel, both, os)
@@ -460,7 +469,8 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
     let (k1, k2) = msubst both ovars in
     let pos = List.map (fun i -> assert (i < arity); ovars.(i)) pos in
     let os = Array.to_list (Array.mapi (fun i x -> (i,x)) ovars) in
-    (*    Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) -> Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;*)
+    (*    Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
+        Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;*)
     os, pos, k1, k2
 
 (* Matching kind, used for printing only *)

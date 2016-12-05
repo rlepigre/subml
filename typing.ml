@@ -445,7 +445,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                let os = List.fold_left (fun acc o ->
                  if List.exists (strict_eq_ordinal o) acc then acc
                  else
-                   if   (List.exists (strict_eq_ordinal o) osal && List.exists (strict_eq_ordinal o) osbl)
+                   if   (List.exists (strict_eq_ordinal o) osal &&
+                         List.exists (strict_eq_ordinal o) osbl)
                      || (List.exists (strict_eq_ordinal o) osal && not (kuvar_ord_occur ub o))
                      || (List.exists (strict_eq_ordinal o) osbl && not (kuvar_ord_occur ua o))
                    then o::acc
