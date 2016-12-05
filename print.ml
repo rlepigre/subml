@@ -116,7 +116,12 @@ let rec print_ordinal unfold ff o =
        fprintf ff "s(%a)" (print_ordinal false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
-    | OUVar(o) -> fprintf ff "?%d" o.ouvar_key (* FIXME: print the constraint *)
+    | OUVar(u,os) -> (* FIXME: print the bound *)
+     if os = [||] then
+       fprintf ff "?%i" u.ouvar_key
+     else
+       fprintf ff "?%i(%a)" u.ouvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
+
 
 and print_index_ordinal ff = function
   | OConv -> fprintf ff "∞"

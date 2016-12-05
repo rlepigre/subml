@@ -109,7 +109,7 @@ and ordinal =
   (** Succesor *)
   | OLess of ordinal * ord_wit
   (** Ordinal created by the μl and νr rules *)
-  | OUVar of ouvar
+  | OUVar of ouvar * ordinal array
   (** Unification variables for ordinals. *)
   | OVari of ordinal variable
   (** Ordinal variable. *)
@@ -123,7 +123,8 @@ and ord_wit =
 
 and ouvar = {
   ouvar_key : int;
-  ouvar_val : ordinal option ref;
+  ouvar_arity : int;
+  ouvar_val : (ordinal, ordinal) mbinder option ref;
   ouvar_bnd : ordinal option;
 }
 
@@ -279,7 +280,7 @@ let      repr : kind -> kind = fun k -> repr false k
 
 let rec orepr o =
   match o with
-  | OUVar({ouvar_val = {contents = Some o}}) ->  orepr o
+  | OUVar({ouvar_val = {contents = Some o}}, os) ->  orepr (msubst o os)
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
@@ -348,6 +349,10 @@ let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
 let rec oadd o n = if n <= 0 then o else oadd (OSucc o) (n-1)
+
+let ouvar : ouvar -> obox array -> obox =
+  fun u os ->
+    box_apply (fun os -> OUVar(u,os)) (box_array os)
 
 let oless_In    = box_apply3 (fun o t k -> OLess(o, In(t,k)))
 let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
@@ -419,8 +424,12 @@ let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
     let b = vbind mk_free_kvari x f in
     box_apply2 (fun o b -> KFixM(o,b)) o b
 
+let kuvar : kuvar -> obox array -> kbox =
+  fun u os ->
+    box_apply (fun os -> KUVar(u,os)) (box_array os)
+
 (* Unification variable management. Useful for typing. *)
-let (new_kuvar, new_kuvara, reset_uvar, new_ouvar) =
+let (new_kuvar, new_kuvara, reset_uvar, new_ouvara, new_ouvar) =
   let c = ref 0 in
   let new_uvara ?(state=Free) n = {
     kuvar_key = (incr c; !c);
@@ -432,12 +441,16 @@ let (new_kuvar, new_kuvara, reset_uvar, new_ouvar) =
     KUVar(new_uvara ~state 0, [||])
   in
   let reset_uvar () = c := 0 in
-  let new_ouvar ?bound () = OUVar {
+  let new_ouvara ?bound n = {
     ouvar_key = (incr c; !c);
     ouvar_val = ref None;
     ouvar_bnd = bound;
+    ouvar_arity = n;
   } in
-  (new_uvar, new_uvara, reset_uvar, new_ouvar)
+  let new_ouvar ?bound () =
+    OUVar(new_ouvara ?bound 0, [||])
+  in
+  (new_uvar, new_uvara, reset_uvar, new_ouvara, new_ouvar)
 
 (* Resset all counters. *)
 let reset_all () =

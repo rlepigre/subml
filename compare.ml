@@ -28,23 +28,29 @@ let eq_option : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
 let eq_strict : bool ref = ref false
 
 let strict f a =
-  try
-    let save = !eq_strict in
-    eq_strict := true;
-    let res = Timed.pure_test f a in
-    eq_strict := save;
-    res
-  with e ->
-    Io.log "%s\n%!" (Printexc.to_string e);
-    assert false
+  let save = !eq_strict in
+  eq_strict := true;
+  let res = Timed.pure_test f a in
+  eq_strict := save;
+  res
 
-let fset_kuvar : (bool -> Ast.kuvar -> (ordinal, kind) mbinder -> Ast.ordinal array -> unit) ref =
-  ref (fun _ -> assert false)
-let fbind_ordinals = ref (fun _ -> assert false)
+let set_kuvar v k =
+  assert (!(v.kuvar_val) = None && !(v.kuvar_state) = Free);
+  assert (mbinder_arity k = v.kuvar_arity);
+  Io.log_uni "set ?%d <- %a\n\n%!"
+    v.kuvar_key (!fprint_kind false)
+    (msubst k (Array.init v.kuvar_arity (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
+  Timed.(v.kuvar_val := Some k)
+
+let fbind_ordinals  : (ordinal array -> kind -> (ordinal, kind) mbinder) ref
+    = ref (fun _ -> assert false)
+let fobind_ordinals : (ordinal array -> ordinal -> (ordinal, ordinal) mbinder) ref
+    = ref (fun _ -> assert false)
 
 let rec eq_kind : ordinal list -> int ref -> kind -> kind -> bool = fun pos c k1 k2 ->
-  let rec eq_kind k1 k2 = k1 == k2 ||
-    match (full_repr k1, full_repr k2) with
+  let rec eq_kind k1 k2 =
+    Io.log_ord "%a = %a %b\n%!" (!fprint_kind false) k1 (!fprint_kind false) k2 !eq_strict;
+    k1 == k2 || match (full_repr k1, full_repr k2) with
     | (KVari(x1)   , KVari(x2)   ) -> eq_variables x1 x2
     | (KFunc(a1,b1), KFunc(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
     | (KProd(fs1)  , KProd(fs2)  ) -> eq_assoc eq_kind fs1 fs2
@@ -65,10 +71,10 @@ let rec eq_kind : ordinal list -> int ref -> kind -> kind -> bool = fun pos c k1
     | (KMRec(p,a1) , KMRec(q,a2) )
     | (KNRec(p,a1) , KNRec(q,a2) ) -> p == q && eq_kind a1 a2
     | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_kuvar u1 u2 && eq_ordinals pos c o1 o2
-    | (KUVar(u1,o1), b           ) when not !eq_strict && kuvar_occur ~safe_ordinals:(Array.to_list o1) u1 b = Non && !(u1.kuvar_state) = Free ->
-       !fset_kuvar false u1 (!fbind_ordinals o1 b) o1; true
-    | (a           , KUVar(u2,o2)) when not !eq_strict && kuvar_occur ~safe_ordinals:(Array.to_list o2) u2 a = Non && !(u2.kuvar_state) = Free ->
-       !fset_kuvar false u2 (!fbind_ordinals o2 a) o2; true
+    | (KUVar(u1,o1), b           ) when not !eq_strict && kuvar_occur ~safe_ordinals:o1 u1 b = Non && !(u1.kuvar_state) = Free ->
+       set_kuvar u1 (!fbind_ordinals o1 b); true
+    | (a           , KUVar(u2,o2)) when not !eq_strict && kuvar_occur ~safe_ordinals:o2 u2 a = Non && !(u2.kuvar_state) = Free ->
+       set_kuvar u2 (!fbind_ordinals o2 a); true
     | (_           , _           ) -> false
   in
   eq_kind k1 k2
@@ -137,12 +143,12 @@ and eq_ordinal : ordinal list -> int ref -> ordinal -> ordinal -> bool = fun pos
   Io.log_ord "%a = %a %b\n%!" (!fprint_ordinal false) o1 (!fprint_ordinal false) o2 !eq_strict;
   match (orepr o1, orepr o2) with
   | (o1         , o2         ) when o1 == o2 -> true
-  | (OUVar(v1)  , OUVar(v2)  ) when eq_ouvar v1 v2 -> true
-  | (OUVar(p)   , o2         ) when not !eq_strict && not (occur_ouvar p o2) &&
-      Timed.pure_test (fun () -> set_ouvar p o2; less_opt_ordinal pos c o2 (p.ouvar_bnd)) () ->
+  | (OUVar(v1,o1), OUVar(v2,o2)) when eq_ouvar v1 v2 ->  eq_ordinals pos c o1 o2
+  | (OUVar(p,o1), o2         ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o1 p o2) &&
+      Timed.pure_test (fun () -> set_ouvar p  (!fobind_ordinals o1 o2); less_opt_ordinal pos c o2 (p.ouvar_bnd)) () ->
      true
-  | (o1         , OUVar(p)   ) when not !eq_strict && not (occur_ouvar p o1) &&
-      Timed.pure_test (fun () -> set_ouvar p o1; less_opt_ordinal pos c o1 p.ouvar_bnd) () ->
+  | (o1         , OUVar(p,o2)   ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o2 p o1) &&
+      Timed.pure_test (fun () -> set_ouvar p (!fobind_ordinals o2 o1); less_opt_ordinal pos c o1 p.ouvar_bnd) () ->
      true
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal pos c o1 o2 && eq_ord_wit pos c w1 w2
@@ -171,12 +177,12 @@ and leqi_ordinal pos c o1 i o2 =
   | (o1         , o2      ) when i <= 0 && Timed.pure_test (eq_ordinal pos c o1) o2 -> true
   | (OLess(o1,_),       o2  ) when i > 0 && List.exists (strict_eq_ordinal o1) pos ->
      leqi_ordinal pos c o1 (i-1) o2
-  | (o1         , OUVar(p)) when not !eq_strict && not (occur_ouvar p o1) &&
+  | (o1         , OUVar(p,o2)) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o2 p o1) &&
       Timed.pure_test (fun () -> let o1 = oadd o1 i in
-                                 set_ouvar p o1; less_opt_ordinal pos c o1 p.ouvar_bnd) () ->
+                                 set_ouvar p (!fobind_ordinals o2 o1); less_opt_ordinal pos c o1 p.ouvar_bnd) () ->
      true
-  | (OUVar(p)   , o2      ) when not !eq_strict && i <= 0 && not (occur_ouvar p o2) &&
-      Timed.pure_test (fun () -> set_ouvar p o2; less_opt_ordinal pos c o2 p.ouvar_bnd) () ->
+  | (OUVar(p,o1)   , o2      ) when not !eq_strict && i <= 0 && not (ouvar_occur ~safe_ordinals:o1 p o2) &&
+      Timed.pure_test (fun () -> set_ouvar p (!fobind_ordinals o1 o2); less_opt_ordinal pos c o2 p.ouvar_bnd) () ->
      (* NOTE: may take the maximum n between 0 and -i s.t. oadd o2 n < o *)
      true
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos c o1 (i+1) o2
@@ -219,9 +225,10 @@ and strict_eq_ord_wit : ord_wit -> ord_wit -> bool =
    and we traverse all constants ... One could also precompute the
    variance of definitions to avoid substitution *)
 and gen_occur :
-    ?safe_ordinals:ordinal list -> ?kuvar:(kuvar -> bool) -> ?ouvar:(ouvar -> bool) ->
+    ?safe_ordinals:ordinal array -> ?kuvar:(kuvar -> bool) -> ?ouvar:(ouvar -> bool) ->
                                          unit -> (kind -> occur) * (ordinal -> occur) =
- fun ?(safe_ordinals=[]) ?(kuvar=fun _ -> false) ?(ouvar=fun _ -> false) () ->
+  fun ?(safe_ordinals=[||]) ?(kuvar=fun _ -> false) ?(ouvar=fun _ -> false) () ->
+   let safe_ordinals = Array.to_list safe_ordinals in
   let kdummy = KProd [] in
   let odummy = OConv in
   let adone_k = ref [] in
@@ -254,7 +261,7 @@ and gen_occur :
     | KUCst(t,f)
     | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
     | KUVar(u,os) -> if kuvar u then combine acc occ else Array.fold_left aux3 acc os
-    | KTInt(_)   -> assert false
+    | KTInt(_)   -> acc
     | KMRec(_,k)
     | KNRec(_,k) -> aux occ acc k)
   and aux2 acc t =
@@ -294,8 +301,8 @@ and gen_occur :
           aux Eps (aux Eps acc k2) k1
        | Link _ -> acc)
     | OSucc o -> aux3 acc o
-    | OUVar({ouvar_bnd = Some o} as v) ->
-       if ouvar v then combine Eps (aux3 acc o) else  aux3 acc o
+    | OUVar(({ouvar_bnd = Some o} as v), os) ->
+       if ouvar v then combine Eps (aux3 acc o) else  aux3 (Array.fold_left aux3 acc os) o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc)
@@ -303,20 +310,26 @@ and gen_occur :
   (fun k -> aux Pos Non k), (fun o -> aux3 Non o)
 
 and set_ouvar v o =
-  Io.log_uni "?%d <- %a\n%!" v.ouvar_key (!fprint_ordinal false) o;
+  Io.log_uni "set %d <- %a\n\n%!"
+    v.ouvar_key (!fprint_ordinal false)
+    (msubst o (Array.init v.ouvar_arity (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
   assert (!(v.ouvar_val) = None);
-  assert (not (occur_ouvar v o));
   Timed.(v.ouvar_val := Some o)
 
-and occur_ouvar : ouvar -> ordinal -> bool = fun v o ->
-  (snd (gen_occur ~ouvar:(fun w -> v.ouvar_key = w.ouvar_key) ()) o <> Non)
+and ouvar_occur : ?safe_ordinals:ordinal array -> ouvar -> ordinal -> bool =
+  fun ?(safe_ordinals=[||]) v o ->
+    (snd (gen_occur ~safe_ordinals ~ouvar:(fun w -> v.ouvar_key = w.ouvar_key) ()) o <> Non)
 
-and kuvar_occur : ?safe_ordinals:ordinal list -> kuvar -> kind -> occur =
-  fun ?(safe_ordinals=[]) v k ->
+and ouvar_kind_occur : ?safe_ordinals:ordinal array -> ouvar -> kind -> bool =
+  fun ?(safe_ordinals=[||]) v o ->
+    (fst (gen_occur ~safe_ordinals ~ouvar:(fun w -> v.ouvar_key = w.ouvar_key) ()) o <> Non)
+
+and kuvar_occur : ?safe_ordinals:ordinal array -> kuvar -> kind -> occur =
+  fun ?(safe_ordinals=[||]) v k ->
     (fst (gen_occur ~safe_ordinals ~kuvar:(fun w -> v.kuvar_key = w.kuvar_key) ()) k)
 
-and kuvar_ord_occur : ?safe_ordinals:ordinal list -> kuvar -> ordinal -> bool =
-  fun ?(safe_ordinals=[]) v o ->
+and kuvar_ord_occur : ?safe_ordinals:ordinal array -> kuvar -> ordinal -> bool =
+  fun ?(safe_ordinals=[||]) v o ->
     (snd (gen_occur ~safe_ordinals ~kuvar:(fun w -> v.kuvar_key = w.kuvar_key) ()) o <> Non)
 
 let eq_kind : ordinal list -> kind -> kind -> bool =

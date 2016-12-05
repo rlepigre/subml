@@ -76,12 +76,13 @@ val tree2 = leaf 2
 val tree3 = leaf 3
 val tree4 = leaf 4
 val tree5 = leaf 5
-
+(*
 val tree375 = node tree3 7 tree5
 val tree154 = node tree1 5 tree4
 val tree1549375 = node tree154 9 tree375
 
 val sum_all = iter (fun (a:SNat) → a) (fun (l:SNat) (b:SNat) (r:SNat) → add (add l r) b)
+*)
 (*
 val sum_leaf = iter (fun (a:SNat) → a) (fun (l:SNat) (b:SNat) (r:SNat) → add l r)
 val sum_node = iter (fun (a:SNat) → 0) (fun (l:SNat) (b:SNat) (r:SNat) → add (add l r) b)

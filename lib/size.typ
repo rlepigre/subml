@@ -17,7 +17,7 @@ val idt2 : ∀α NS(α) → NS(α) = Λα fix 1 r → fun n →
   | S(n) → S(r n)
 *)
 
-(*val idt3 : ∀α F(NS(α)) → F(NS(α)) = idt*)
+val idt3 : ∀α F(NS(α)) → F(NS(α)) = idt
 val idt4 : ∀α NS(α+1) → NS(α+1) = idt
 
 val rec idt5 : ∀α F(NS(α)) → F(NS(α)) = fun n →
@@ -105,7 +105,6 @@ val rec map : ∀A ∀B (A → B) → ∀α L(α,A) → L(α,B) =
   fun f l → case l of
     [] → []
   | x::l → f x :: map f l
-
 
 val rec filter : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) =
   fun f l → case l of
