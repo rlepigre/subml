@@ -114,11 +114,31 @@ let add_call ctxt fnum os is_induction_hyp =
     calls := call :: !calls) :: !(ctxt.delayed))
 
 let find_positive ctxt o =
+  let rec gn i o =
+    if i <= 0 then
+      List.exists (strict_eq_ordinal o) ctxt.positive_ordinals
+    else
+      List.exists (function
+        | OLess(o',_) as o0 when strict_eq_ordinal o o' -> gn (i-1) o0
+        | _ -> raise Not_found) ctxt.positive_ordinals
+  in
+  let rec fn i o = match orepr o with
+    | OUVar({ uvar_state = Some f},os) ->
+       let b = msubst f os in
+       fn (i+1) b
+    | OConv -> true
+    | OSucc o -> if i >= 0 then true else fn (i-1) o
+    | OLess(_) as o -> gn i o
+    | OUVar _ -> true
+    | OVari _ -> assert false
+  in
   (*  Io.log "find positive %a\n%!" (print_ordinal false) o;*)
   match orepr o with
   | OConv -> OConv
   | OSucc o' -> o'
-  | o -> new_ouvar ~bound:o ()
+  | o ->
+     if not (fn 0 o) then raise Not_found;
+     new_ouvar ~bound:(unbox (mbind mk_free_ovari [||] (fun x -> box o))) ()
 
 let is_positive ctxt o =
   match orepr o with
@@ -161,7 +181,13 @@ let lambda_ordinal t k s =
   | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
 
 (* This function is only used for heuristics *)
+let rec ord_has_uvar o =
+    match orepr o with
+    | OUVar _ -> true
+    | _       -> false
+
 let has_uvar : kind -> bool = fun k ->
+  let gn o = if ord_has_uvar o then raise Exit in
   let rec fn k =
     match repr k with
     | KFunc(a,b) -> fn a; fn b
@@ -169,13 +195,13 @@ let has_uvar : kind -> bool = fun k ->
     | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)   -> fn (subst f (KProd []))
-    | KFixM(o,f)
+    | KFixM(o,f) -> gn o; fn (subst f (KProd []))
     | KFixN(o,f) -> fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f OConv)
     | KUVar(u,_)   -> raise Exit
-    | KDefi(d,o,a) -> Array.iter fn a
-    | KWith(k,(_,b)) -> fn k; fn b
+    | KDefi(d,o,a) -> Array.iter gn o; Array.iter fn a
+    | KWith(k,c) -> let (_,b) = c in fn k; fn b
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     (* we ommit Dprj above because the kind in term are only
@@ -256,6 +282,7 @@ let add_pos positives o =
   let o = orepr o in
   match o with
   | OConv | OSucc _ -> positives
+  | OUVar _ -> assert false
   | _ ->
     if List.exists (strict_eq_ordinal o) positives then positives else o :: positives
 
@@ -322,10 +349,10 @@ let check_rec
 (*        Io.log_sub "PRE %d %d\n%a = %a\n\n%!" (mbinder_arity both0) (mbinder_arity both)
           (print_kind false) k1  (print_kind false) k2;*)
         let (ov,pos',a',b') = recompose pos0 rel0 both0 true in
-        Io.log_sub "%a = %a\n%a = %a\n\n%!"
+        Io.log_sub "TESTING %a = %a\n%a = %a\n\n%!"
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
-        if eq_kind tpos k1 a' && eq_kind tpos k2 b' &&
+        if eq_kind tpos k1 a' && eq_kind tpos k2 b' && (Io.log_sub "EQ OK\n%!"; true) &&
            List.for_all (fun o1 ->
                List.exists (eq_ordinal tpos o1) tpos) pos'
         then (
@@ -603,7 +630,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let prf = subtype ctxt t a0 (subst f cst) in
         Sub_FixN_r prf
 
-    | (KFixM(o,f)   , _           ) ->
+    | (KFixM(o,f)   , _          ) ->
         let o', ctxt =
           match orepr o with
           | OSucc o' -> o', ctxt

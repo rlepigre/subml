@@ -141,13 +141,13 @@ and eq_ordinal : ordinal list -> ordinal -> ordinal -> bool = fun pos o1 o2 ->
   match (orepr o1, orepr o2) with
   | (o1         , o2         ) when o1 == o2 -> true
   | (OUVar(v1,o1), OUVar(v2,o2)) when eq_uvar v1 v2 -> eq_ordinals pos o1 o2
-  | (OUVar(p,o1), o2         ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o1 p o2) &&
+  | (OUVar(p,os), o2         ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:os p o2) &&
       Timed.pure_test (fun () -> set_ouvar p
-        (!fobind_ordinals o1 o2); less_opt_ordinal pos o2 p.uvar_state) () ->
+        (!fobind_ordinals os o2); less_opt_ordinal pos o2 p.uvar_state os) () ->
      true
-  | (o1         , OUVar(p,o2)   ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o2 p o1) &&
+  | (o1         , OUVar(p,os)   ) when not !eq_strict && not (ouvar_occur ~safe_ordinals:os p o1) &&
       Timed.pure_test (fun () -> set_ouvar p
-        (!fobind_ordinals o2 o1); less_opt_ordinal pos o1 p.uvar_state) () ->
+        (!fobind_ordinals os o1); less_opt_ordinal pos o1 p.uvar_state os) () ->
      true
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordinal pos o1 o2 && eq_ord_wit pos w1 w2
@@ -176,15 +176,15 @@ and leqi_ordinal pos o1 i o2 =
   | (o1         , o2      ) when i <= 0 && Timed.pure_test (eq_ordinal pos o1) o2 -> true
   | (OLess(o1,_),       o2  ) when i > 0 && List.exists (strict_eq_ordinal o1) pos ->
      leqi_ordinal pos o1 (i-1) o2
-  | (o1         , OUVar(p,o2)) when not !eq_strict && not (ouvar_occur ~safe_ordinals:o2 p o1) &&
+  | (o1         , OUVar(p,os)) when not !eq_strict && not (ouvar_occur ~safe_ordinals:os p o1) &&
       Timed.pure_test (fun () ->
         let o1 = oadd o1 i in
-        set_ouvar p (!fobind_ordinals o2 o1); less_opt_ordinal pos o1 p.uvar_state) () ->
+        set_ouvar p (!fobind_ordinals os o1); less_opt_ordinal pos o1 p.uvar_state os) () ->
      true
-  | (OUVar(p,o1)   , o2      ) when not !eq_strict && i <= 0 &&
-      not (ouvar_occur ~safe_ordinals:o1 p o2) &&
-      Timed.pure_test (fun () -> set_ouvar p (!fobind_ordinals o1 o2);
-        less_opt_ordinal pos o2 p.uvar_state) () ->
+  | (OUVar(p,os)   , o2      ) when not !eq_strict && i <= 0 &&
+      not (ouvar_occur ~safe_ordinals:os p o2) &&
+      Timed.pure_test (fun () -> set_ouvar p (!fobind_ordinals os o2);
+        less_opt_ordinal pos o2 p.uvar_state os) () ->
      (* NOTE: may take the maximum n between 0 and -i s.t. oadd o2 n < o *)
      true
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos o1 (i+1) o2
@@ -200,9 +200,12 @@ and leq_ordinal pos o1 o2 =
 and less_ordinal pos o1 o2 =
   leqi_ordinal pos o1 1 o2
 
-and less_opt_ordinal pos o1 = function
+and less_opt_ordinal pos o1 f os = match f with
   | None -> true
-  | Some o2 -> less_ordinal pos o1 o2
+  | Some f ->
+    assert (mbinder_arity f = Array.length os);
+    let o2 = msubst f os in
+    less_ordinal (o2::pos) o1 o2
 
 and strict_eq_kind : kind -> kind -> bool =
   fun k1 k2 -> strict (eq_kind [] k1) k2
@@ -301,11 +304,16 @@ and gen_occur :
           aux Eps (aux Eps acc k2) k1
        | Link _ -> acc)
     | OSucc o -> aux3 acc o
-    | OUVar(({uvar_state = Some o} as v), os) ->
-       if ouvar v then combine Eps (aux3 acc o) else  aux3 (Array.fold_left aux3 acc os) o
+    | OUVar(({uvar_state = o} as v), os) ->
+       if ouvar v then combine Eps (aux4 acc os o) else  aux4 (Array.fold_left aux3 acc os) os o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc)
+  and aux4 acc os = function
+    | None -> acc
+    | Some f -> assert (mbinder_arity f = Array.length os ||
+                        (Io.log "==> %d %d\n%!" (mbinder_arity f) (Array.length os); false)
+       ); aux3 acc (msubst f os)
   in
   (fun k -> aux Pos Non k), (fun o -> aux3 Non o)
 

@@ -121,7 +121,7 @@ and ord_wit =
   | Gen    of int * (int * int) list * (ordinal, kind * kind) mbinder
   | Link   of ord_wit option ref
 
-and ouvar = (ordinal, ordinal option) uvar
+and ouvar = (ordinal, (ordinal, ordinal) mbinder option) uvar
 
 (** Abstract syntax tree for terms. *)
 and term = term' position

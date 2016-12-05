@@ -9,11 +9,9 @@ type Stream(A) = νK F_Stream(A,K)
 type GStream(A) = ∃S νK Triple(S,S→A,S→K)
 
 check GStream([A]) ⊂ Stream([A])
-
-(* FIXME
+(*
 val cons : ∀A A → Stream(A) → Stream(A) = ΛA fun a s → (triple (pair a s) pi1 pi2) : (Stream(A) with S=Pair(A,Stream(A)))
 *)
-
 val head : ∀A Stream(A) → A = fun s → s (λs1 a f.a s1)
 
 val tail : ∀A Stream(A) → Stream(A) = fun s → s (λs1 a f.f s1)

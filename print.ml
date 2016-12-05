@@ -116,12 +116,17 @@ let rec print_ordinal unfold ff o =
        fprintf ff "s(%a)" (print_ordinal false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
-    | OUVar(u,os) -> (* FIXME: print the bound *)
+    | OUVar(u,os) ->
+       let print_bound ff = function
+         | None -> ()
+         | Some o -> fprintf ff "<%a" (print_ordinal false) (msubst o os)
+       in
        if os = [||] then
-         fprintf ff "?%i" u.uvar_key
+         fprintf ff "?%i%a" u.uvar_key print_bound u.uvar_state
        else
-         fprintf ff "?%i(%a)" u.uvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
-
+         fprintf ff "?%i(%a)%a" u.uvar_key
+           (print_list print_index_ordinal ", ") (Array.to_list os)
+           print_bound u.uvar_state
 
 and print_index_ordinal ff = function
   | OConv -> fprintf ff "∞"
@@ -200,10 +205,10 @@ and print_kind unfold wrap ff t =
      fprintf ff "%s_%d" name index
   | KUVar(u,os) ->
      if os = [||] then
-       fprintf ff "?%i" u.uvar_key (*print_state u.kuvar_state*)
+       fprintf ff "?%i" u.uvar_key
      else
-       fprintf ff "?%i(%a)" u.uvar_key  (print_list print_index_ordinal ", ") (Array.to_list os)
-       (*print_state u.kuvar_state*)
+       fprintf ff "?%i(%a)" u.uvar_key
+         (print_list print_index_ordinal ", ") (Array.to_list os)
   | KMRec(_,a) -> pkind ff a
   | KNRec(_,a) -> pkind ff a
 (*

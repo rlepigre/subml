@@ -121,6 +121,7 @@ let rec bind_fn len os x k =
            kuvar v (Array.init (u.uvar_arity + Array.length os'')
                     (fun i -> if i < u.uvar_arity then x.(i) else box os''.(i - u.uvar_arity)))))
          in
+         Io.log_uni "set in bind fn\n%!";
          set_kuvar u k;
          kuvar v (Array.map gn (Array.append os' os''))
     | k            -> box k
@@ -149,26 +150,46 @@ and bind_gn len os x o = (
                 (fun x -> fn (subst f (OVari x))))
         | OUVar(u,os') ->
            let os'' = List.filter (fun o ->
-             not (Array.exists (strict_eq_ordinal o) os') && not (ouvar_occur u o))
+             not (Array.exists (strict_eq_ordinal o) os') &&
+               (not (ouvar_occur u o)))
              (Array.to_list os)
            in
+           Io.log_uni "os': %a\n%!" (fun ff l ->
+             Array.iter (Format.fprintf ff "%a " (!fprint_ordinal false)) l) os';
+           Io.log_uni "os'': %a\n%!" (fun ff l ->
+             List.iter (Format.fprintf ff "%a " (!fprint_ordinal false)) l) os'';
            if os'' = [] then
              ouvar u (Array.map gn os')
            else
              let os'' = Array.of_list os'' in
-             let v = new_ouvara (u.uvar_arity + Array.length os'') in
-             let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
-               ouvar v (Array.init (u.uvar_arity + Array.length os'')
-                          (fun i ->
-                            if i < u.uvar_arity then x.(i) else
-                              box os''.(i - u.uvar_arity)))))
+             let new_os = Array.append os' os'' in
+             let new_len = Array.length new_os in
+             let bound = match u.uvar_state with
+               | None -> None
+               | Some o ->
+                  let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                    bind_gn new_len new_os x (msubst o os'))
+                  in
+                  assert (is_closed f);
+                  Some (unbox f)
              in
+             let v = new_ouvara ?bound new_len in
+             let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
+               ouvar v (Array.init new_len (fun i ->
+                 if i < u.uvar_arity then x.(i) else
+                   box os''.(i - u.uvar_arity)))))
+             in
+             Io.log_uni "set in bind gn\n%!";
              set_ouvar u k;
-             ouvar v (Array.map gn (Array.append os' os''))
+             ouvar v (Array.map gn new_os)
         | o        -> box o
       in
       if Bindlib.is_closed res then box o else res)
 
+let obind_ordinals : ordinal array -> ordinal -> (ordinal, ordinal) mbinder = fun os o ->
+  let len = Array.length os in
+  unbox (mbind mk_free_ovari (Array.make len "α") (fun x ->
+    bind_gn len os x o))
 
 let bind_ordinals : ordinal array -> kind -> (ordinal, kind) mbinder = fun os k ->
   let len = Array.length os in
@@ -177,11 +198,6 @@ let bind_ordinals : ordinal array -> kind -> (ordinal, kind) mbinder = fun os k 
 let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
   unbox (bind mk_free_ovari "α" (fun x ->
     bind_fn 1 [|OUVar(v,[||])|] [|x|] k))
-
-let obind_ordinals : ordinal array -> ordinal -> (ordinal, ordinal) mbinder = fun os o ->
-  let len = Array.length os in
-  unbox (mbind mk_free_ovari (Array.make len "α") (fun x ->
-    bind_gn len os x o))
 
 let _ = fbind_ordinals := bind_ordinals
 let _ = fobind_ordinals := obind_ordinals
@@ -345,7 +361,7 @@ let decompose : ordinal list -> kind -> kind ->
        (try
           let (n,v,k) = assoc_ordinal o !res in
           k := !k || keep;
-          (n,v)
+          (n,o)
         with
           Not_found ->
             let n = !i in incr i;
@@ -354,16 +370,20 @@ let decompose : ordinal list -> kind -> kind ->
             if o' <> OConv then (
                 let (p, _) = eps_search false o' in
                 relation := (n,p)::!relation);
-            (n, v))
-    | o -> raise BadDecompose
+            (n, o))
+    | o -> Io.log_sub "bad decompose\n%!"; raise BadDecompose
   and search pos o =
     let o = orepr o in
     let res =
       match o with
-      | OLess _ -> let (_, v) = eps_search true o in box_of_var v
+      | OLess _ -> let (_, o) = eps_search true o in box o
       | OSucc o -> osucc(search pos o)
       | OVari o -> box_of_var o
-      | OUVar(u,os) -> ouvar u (Array.map (search pos) os)
+      | OUVar(u,os) ->
+         (match u.uvar_state with
+         | None -> ()
+         | Some f -> ignore (search pos (msubst f os)));
+         ouvar u (Array.map (search pos) os)
       | OConv when pos = Pos ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
@@ -399,6 +419,7 @@ let decompose : ordinal list -> kind -> kind ->
   let res = List.filter (fun (o,(n,v,k)) -> !k) !res in
   let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
   let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
+  Io.log_uni "bind in decompose\n%!";
   let k1 = bind_fn (Array.length ovars) ords (Array.map box_of_var ovars) k1 in
   let k2 = bind_fn (Array.length ovars) ords (Array.map box_of_var ovars) k2 in
   let both = box_pair k1 k2 in
@@ -453,8 +474,9 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
         let o =
           if general then
             try
-            (*OLess(search (List.assoc i rel), Link (ref None))*)
-              new_ouvar ~bound:(search (List.assoc i rel)) ()
+              (*OLess(search (List.assoc i rel), Link (ref None))*)
+              let v = search (List.assoc i rel) in
+              new_ouvar ~bound:(unbox (mbind mk_free_ovari [||] (fun x -> box v))) ()
             with Not_found ->
               new_ouvar ()
           else
