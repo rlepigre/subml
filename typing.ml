@@ -457,11 +457,6 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
           | _, Sum _ -> safe_set_kuvar false ua (bind_ordinals osa b) osa
           | Prod _, _ -> safe_set_kuvar false ub (bind_ordinals osb a) osb
           | _ ->
-             if osb = [||] then
-              safe_set_kuvar false ua (bind_ordinals osa b) osa
-             else if osa = [||] then
-               safe_set_kuvar false ub (bind_ordinals osb a) osb
-             else
                let osal = Array.to_list osa in
                let osbl = Array.to_list osb in
                let os = List.fold_left (fun acc o ->
@@ -482,17 +477,19 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                  | Sum l, _ ->
                     Sum (List.map (fun (s,f) ->
                       (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
-                        bind_fn false new_len os x (msubst f osa))))) l)
+                        bind_fn new_len os x (msubst f osa))))) l)
                  | _, Prod l ->
                     Prod (List.map (fun (s,f) ->
                       (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
-                        bind_fn false new_len os x (msubst f osb))))) l)
+                        bind_fn new_len os x (msubst f osb))))) l)
                  | _ -> assert false
                in
                let u = new_kuvara ~state new_len in
                let k = KUVar(u,os) in
+               Timed.(ub.uvar_state := Free);
+               Timed.(ua.uvar_state := Free);
                safe_set_kuvar false ub (bind_ordinals osb k) osb;
-               if not (eq_uvar ua ub) then safe_set_kuvar false ua (bind_ordinals osa k) osa;
+               safe_set_kuvar false ua (bind_ordinals osa k) osa;
         end;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
 

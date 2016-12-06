@@ -88,9 +88,9 @@ let index len os x u =
   in
   fn 0
 
-let rec bind_fn in_decompose len os x k =
-  let fn = bind_fn in_decompose len os x in
-  let gn = bind_gn in_decompose len os x in
+let rec bind_fn len os x k =
+  let fn = bind_fn len os x in
+  let gn = bind_gn len os x in
   let res = match repr k with
     | KFunc(a,b)   -> kfunc (fn a) (fn b)
     | KProd(fs)    -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
@@ -124,18 +124,18 @@ let rec bind_fn in_decompose len os x k =
            | Sum l ->
               Sum (List.map (fun (s,f) ->
                 (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
-                  bind_fn false new_len new_ords x (msubst f os'))))) l)
+                  bind_fn new_len new_ords x (msubst f os'))))) l)
            | Prod l ->
               Prod (List.map (fun (s,f) ->
                 (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
-                  bind_fn false new_len new_ords x (msubst f os'))))) l)
+                  bind_fn new_len new_ords x (msubst f os'))))) l)
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
          let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
            kuvar v (Array.init new_len
                       (fun i -> if i < u.uvar_arity then x.(i) else box
                           (match os''.(i - u.uvar_arity) with
-                          | OVari _ when in_decompose -> OConv
+                          | OVari _ -> OConv
                           (* TODO: not clean: OVari represents OConv in decompose *)
                           | o -> o)))))
          in
@@ -146,9 +146,9 @@ let rec bind_fn in_decompose len os x k =
   in
   if Bindlib.is_closed res then box k else res
 
-and bind_gn in_decompose len os x o = (
-  let fn = bind_fn in_decompose len os x in
-  let gn = bind_gn in_decompose len os x in
+and bind_gn len os x o = (
+  let fn = bind_fn len os x in
+  let gn = bind_gn len os x in
   let o = orepr o in
   try
     index len os x o
@@ -186,7 +186,7 @@ and bind_gn in_decompose len os x o = (
                | None -> None
                | Some o ->
                   let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                    bind_gn false new_len new_os x (msubst o os'))
+                    bind_gn new_len new_os x (msubst o os'))
                   in
                   assert (is_closed f);
                   Some (unbox f)
@@ -196,7 +196,7 @@ and bind_gn in_decompose len os x o = (
                ouvar v (Array.init new_len (fun i ->
                  if i < u.uvar_arity then x.(i) else
                    box (match os''.(i - u.uvar_arity) with
-                   | OVari _ when in_decompose -> OConv
+                   | OVari _ -> OConv
                           (* TODO: not clean: OVari represents OConv in decompose *)
                    | o -> o)))))
              in
@@ -210,15 +210,15 @@ and bind_gn in_decompose len os x o = (
 let obind_ordinals : ordinal array -> ordinal -> (ordinal, ordinal) mbinder = fun os o ->
   let len = Array.length os in
   unbox (mbind mk_free_ovari (Array.make len "α") (fun x ->
-    bind_gn false len os x o))
+    bind_gn len os x o))
 
 let bind_ordinals : ordinal array -> kind -> (ordinal, kind) mbinder = fun os k ->
   let len = Array.length os in
-  unbox (mbind mk_free_ovari (Array.make len "α") (fun x -> bind_fn false len os x k))
+  unbox (mbind mk_free_ovari (Array.make len "α") (fun x -> bind_fn len os x k))
 
 let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
   unbox (bind mk_free_ovari "α" (fun x ->
-    bind_fn false 1 [|OUVar(v,[||])|] [|x|] k))
+    bind_fn 1 [|OUVar(v,[||])|] [|x|] k))
 
 let _ = fbind_ordinals := bind_ordinals
 let _ = fobind_ordinals := obind_ordinals
@@ -442,8 +442,8 @@ let decompose : ordinal list -> kind -> kind ->
   let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
   let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
   Io.log_uni "bind in decompose\n%!";
-  let k1 = bind_fn true (Array.length ovars) ords (Array.map box_of_var ovars) k1 in
-  let k2 = bind_fn true (Array.length ovars) ords (Array.map box_of_var ovars) k2 in
+  let k1 = bind_fn (Array.length ovars) ords (Array.map box_of_var ovars) k1 in
+  let k2 = bind_fn (Array.length ovars) ords (Array.map box_of_var ovars) k2 in
   let both = box_pair k1 k2 in
   let both = unbox (bind_mvar ovars both) in
 
