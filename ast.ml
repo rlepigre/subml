@@ -20,7 +20,7 @@ let from_opt' : 'a option -> (unit -> 'a) -> 'a = fun o f ->
 let map_snd : ('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list = fun f l ->
   List.map (fun (k, v) -> (k, f v)) l
 
-(** {2         AST for kinds (or types), ordinals and terms              }  *)
+(** {2         AST for kinds (or types), ordinals and terms              }*)
 (** Occurence markers for variables. *)
 type occur =
   (** The variable does not occur. *)
@@ -324,7 +324,7 @@ let ftry_fold_def : (kind -> kind) ref =
   ref (fun _ -> assert false)
 
 (****************************************************************************)
-(** {2               Frequently used types and functions                  }**)
+(** {2               Frequently used types and functions                   }*)
 (****************************************************************************)
 
 (** Value and type environments. *)
@@ -381,7 +381,7 @@ let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
 let oless_Gen o i rel p = box_apply2 (fun o p -> OLess(o,Gen(i,rel,p))) o p
 
 (****************************************************************************)
-(**{2                     Smart constructors for kinds                    }**)
+(**{2                     Smart constructors for kinds                     }*)
 (****************************************************************************)
 
 let kvari : string -> kbox =
@@ -481,7 +481,7 @@ let reset_all () =
   reset_uvar ()
 
 (****************************************************************************)
-(**{2                     Definition of widely used types                 }**)
+(**{2                     Definition of widely used types                  }*)
 (****************************************************************************)
 
 let bot : kind =
@@ -491,7 +491,7 @@ let top : kind =
   unbox (kkexi "X" (fun x -> box_of_var x))
 
 (****************************************************************************)
-(**{2              Functional constructors with position for terms        }**)
+(**{2              Functional constructors with position for terms         }*)
 (****************************************************************************)
 
 let tcoer_p : pos -> term -> kind -> term =
@@ -534,7 +534,7 @@ let tfixy_p : pos -> bool -> int -> (term', term) binder -> term =
   fun p b n t -> in_pos p (TFixY(b,n,t))
 
 (****************************************************************************)
-(** {2                   Smart constructors for terms                     } *)
+(** {2                   Smart constructors for terms                      }*)
 (****************************************************************************)
 
 let tcoer : pos -> tbox -> kbox -> tbox =
@@ -598,7 +598,7 @@ let generic_tcnst : kind -> kind -> term =
     dummy_pos (TCnst(unbox f,a,b))
 
 (****************************************************************************)
-(**{2                          variance function                          }**)
+(**{2                          variance function                           }*)
 (****************************************************************************)
 
 let combine oa ob =
