@@ -356,7 +356,7 @@ let check_rec
       ) (List.tl ctxt.sub_induction_hyp);
       Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
       (NewInduction (Some (fnum, k1, k2)), ctxt)
-    with Exit | BadDecompose -> (NewInduction None, ctxt)
+    with Exit            -> (NewInduction None, ctxt)
        | Induction_hyp n -> (UseInduction n, ctxt)
 
 let fixpoint_depth = ref 2
@@ -857,18 +857,15 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         in
         let l = if do_subsume then subsumption [] l else l in
         let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
-          try
-            let (pos, rel, both, os) = decompose ctxt.positive_ordinals (KProd []) c in
-            let (os0, tpos, _, c0) = recompose pos rel both false in
-            let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os0) in
-            Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
-              (print_kind false) c (print_kind false) c0;
-            List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
-            if os <> [] then hyps_ptr := (fnum, pos, rel, both) :: !hyps_ptr;
-            let ctxt = { ctxt with top_induction = (fnum, os0); positive_ordinals = tpos} in
-            Some (ctxt,t,c0,fnum,ptr)
-          with
-            BadDecompose -> None) l
+          let (pos, rel, both, os) = decompose ctxt.positive_ordinals (KProd []) c in
+          let (os0, tpos, _, c0) = recompose pos rel both false in
+          let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os0) in
+          Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+            (print_kind false) c (print_kind false) c0;
+          List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
+          if os <> [] then hyps_ptr := (fnum, pos, rel, both) :: !hyps_ptr;
+          let ctxt = { ctxt with top_induction = (fnum, os0); positive_ordinals = tpos} in
+          Some (ctxt,t,c0,fnum,ptr)) l
         in
         let l = List.fold_left (fun acc -> function
           | None -> acc

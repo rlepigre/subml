@@ -31,11 +31,10 @@ let string_of_chars s =
 
 (* Exception raised when EOF is reached while parsing a comment. The boolean
    is set to true when EOF is reached while parsing a string. *)
-exception Unclosed_comment of bool * (string * int * int)
+exception Unclosed_comment of bool * Input.buffer * int
 
 let unclosed_comment in_string (buf,pos) =
-  let position = (Input.filename buf, Input.line_num buf, pos) in
-  raise (Unclosed_comment (in_string, position))
+  raise (Unclosed_comment (in_string, buf, pos))
 
 (* Blank function for basic blank characters (' ', '\t', '\r' and '\n') and
    comments delimited with "(*" and "*)". Nested comments (i.e. comments in
@@ -619,6 +618,8 @@ let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false
   | Positivity_error(p,m)  -> Io.err "%a:\n%s\n%!" pos1 p m; false
   | Parse_error(buf,pos,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
+                              false
+  | Unclosed_comment(_,buf,pos) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
                               false
   | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
     false

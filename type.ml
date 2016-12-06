@@ -361,8 +361,6 @@ let closed_ordinal o = try has_oboundvar o; true with Exit -> false
  *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
 
-exception BadDecompose
-
 (* This function index all the ordinal in two kinds,
    select the usefull par of the context and return
    the usefull relations between two ordinals *)
@@ -391,7 +389,7 @@ let decompose : ordinal list -> kind -> kind ->
                 let (p, _) = eps_search false o' in
                 relation := (n,p)::!relation);
             (n, o))
-    | o -> Io.log_sub "bad decompose\n%!"; raise BadDecompose
+    | o -> assert false
   and search pos o =
     let o = orepr o in
     let res =
