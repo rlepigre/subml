@@ -60,18 +60,18 @@ val rec add' : N → N → N = fun x y →
   | Z    → y
   | S x' → S(add'' (pred x) y)
 
-val rec 3 add3 : N → N → N = fun x y →
+val rec add3 : N → N → N = fun x y →
   case x of
   | Z    → y
   | S x' → S(add3 y x')
 
-val rec 3 add3' : N → N → N = fun x y →
+val rec add3' : N → N → N = fun x y →
   case x of
   | Z    → y
   | S x' → S(add3' y (idt x'))
 
 (* need to know that x is not zero in the second case *)
-?val rec 3 add3'' : N → N → N = fun x y → case x of
+?val rec add3'' : N → N → N = fun x y → case x of
   | Z    → y
   | S x' → S(add3'' y (pred x))
 
@@ -95,7 +95,7 @@ val rec mul : N → N → N = fun x y →
   | Z    → Z
   | S x' → add (mul x' y) y
 
-val rec 3 mul2 : N → N → N = fun x y → case x of
+val rec mul2 : N → N → N = fun x y → case x of
   | Z → Z
   | S x' → add (mul2 y x') y
 

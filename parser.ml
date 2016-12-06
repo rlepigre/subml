@@ -492,7 +492,7 @@ let check pos flag f a =
         Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
         raise e
   in
-  if flag = CanFail then Io.out "A NEW TEST PASSED.\n%!";
+  if flag = CanFail then Io.out "A NEW TEST PASSED at %a.\n%!" print_position pos;
   if flag = MustFail then (
     Io.err "A WRONG TEST PASSED at %a\n%!" print_position pos;
     exit 1;

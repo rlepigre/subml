@@ -130,7 +130,7 @@ val sub = sub_aux Zero
 
 val 20 = add 10 10
 
-val rec 3 mul : Bin → Bin → Bin = fun x y →
+val rec mul : Bin → Bin → Bin = fun x y →
   case x of
   | End     → 0
   | Zero x' → times2 (mul y x')

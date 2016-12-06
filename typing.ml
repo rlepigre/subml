@@ -181,6 +181,24 @@ let lambda_ordinal t k s =
   | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
 
 (* These three functions are only used for heuristics *)
+let has_leading_ord_quantifier : kind -> bool = fun k ->
+  let rec fn k =
+    match full_repr k with
+    | KFunc(a,b) -> fn b
+    | KProd(ls)
+    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
+    | KOAll(f)
+    | KOExi(f)   -> true
+    | KKAll(f)
+    | KKExi(f)
+    | KFixM(_,f)
+    | KFixN(_,f) -> fn (subst f (KProd []))
+    | KWith(k,s) -> true
+    | _ -> false
+  in
+  fn k
+
+(* These three functions are only used for heuristics *)
 let has_leading_exists : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
@@ -188,7 +206,9 @@ let has_leading_exists : kind -> bool = fun k ->
     | KProd(ls)
     | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KKExi(f)   -> true
-    | KOExi(f)   -> fn (subst f OConv)
+    | KOExi(f)   -> true
+    | KOAll(f)   -> fn (subst f OConv)
+    | KKAll(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
     | KWith(k,s) -> true
@@ -203,7 +223,9 @@ let has_leading_forall : kind -> bool = fun k ->
     | KProd(ls)
     | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KKAll(f)   -> true
+    | KOAll(f)   -> true
     | KOExi(f)   -> fn (subst f OConv)
+    | KKExi(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
     | KWith(k,s) -> true
@@ -389,7 +411,7 @@ let check_rec
     with Exit            -> (NewInduction None, ctxt)
        | Induction_hyp n -> (UseInduction n, ctxt)
 
-let fixpoint_depth = ref 2
+let fixpoint_depth = ref 1
 
 let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a0 b0 ->
   Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
@@ -1003,6 +1025,7 @@ and check_fix ctxt t do_subsume depth f c0 =
     remains := (ctxt, c0, proof_ptr) :: !remains;
     (* The main function doing the breadth-first search for the proof *)
     (* n : the current depth *)
+    let depth = if has_leading_ord_quantifier c0 then depth + 1 else depth in
     breadth_first proof_ptr hyps_ptr f remains do_subsume depth
 
   (* we reach this point when we are call from type_check inside
