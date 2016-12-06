@@ -25,3 +25,4 @@ val coiter_stream : ∀A∀P (P → (P → A) → (P → P) → Stream(A)) =
 
 (* FIXME: see type.ml, decompose *)
 val int_stream = coiter_stream Z:Nat (fun x → x) (fun x → S x)
+?val int_stream2 = coiter_stream Z (fun x → x) (fun x → S x)
