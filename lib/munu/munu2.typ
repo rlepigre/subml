@@ -14,7 +14,6 @@ type TBA = νB νA [C0 | C1 of A | C2 of B]
 (* The tests. *)
 check Tab ⊂ Tab
 check Tab ⊂ TaB
-(*
 check Tab ⊂ TAb
 check Tab ⊂ TAB
 check Tab ⊂ Tba
@@ -45,4 +44,3 @@ check TAB ⊂ TAB
 !check TAB ⊂ TbA
 !check TAB ⊂ TBa
 check TAB ⊂ TBA
-*)

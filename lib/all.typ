@@ -28,7 +28,7 @@ include "scott/list.typ"
 include "scott/tree.typ"
 include "scott/stream.typ"
 include "scott/nat_as_prod.typ"
-
+(*
 (* Mixed induction and coinduction *)
 include "munu/munu2.typ"
 include "munu/munu3.typ"
@@ -42,6 +42,7 @@ include "heap.typ"
 include "size.typ"
 include "hard.typ"
 include "lazy_nat.typ"
+include "flot.typ"
 
 (* Test files *)
 include "dotproj.typ"
@@ -49,3 +50,4 @@ include "tree.typ"
 include "polyrec.typ"
 include "tests.typ"
 include "permutte.typ"
+*)

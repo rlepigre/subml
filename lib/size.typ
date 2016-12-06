@@ -10,11 +10,11 @@ val rec idt : ∀α NS(α) → NS(α) = fun n →
   | Z    → Z
   | S(n) → S(idt n)
 
-(*
-val idt2 : ∀α NS(α) → NS(α) = Λα fix 1 r → fun n →
-  case (n:NS(α)) of
+(* FIXME: ordinal indication fails for recursive function
+val rec idt2 : ∀α NS(α) → NS(α) = Λα fun n →
+  case n:N(α) of
   | Z    → Z
-  | S(n) → S(r n)
+  | S(n) → S(idt2 n)
 *)
 
 val idt3 : ∀α F(NS(α)) → F(NS(α)) = idt

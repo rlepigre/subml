@@ -354,6 +354,7 @@ let check_rec
           add_call ctxt index ov true;
           raise (Induction_hyp index))
       ) (List.tl ctxt.sub_induction_hyp);
+      Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
       (NewInduction (Some (fnum, k1, k2)), ctxt)
     with Exit | BadDecompose -> (NewInduction None, ctxt)
        | Induction_hyp n -> (UseInduction n, ctxt)
@@ -474,7 +475,21 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                    else acc) [] (osal @ osbl)
                in
                let os = Array.of_list os in
-               let u = new_kuvara (Array.length os) in
+               let new_len = Array.length os in
+               let state =
+                 match !(ua.uvar_state), !(ub.uvar_state) with
+                 | Free, Free -> Free
+                 | Sum l, _ ->
+                    Sum (List.map (fun (s,f) ->
+                      (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
+                        bind_fn false new_len os x (msubst f osa))))) l)
+                 | _, Prod l ->
+                    Prod (List.map (fun (s,f) ->
+                      (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
+                        bind_fn false new_len os x (msubst f osb))))) l)
+                 | _ -> assert false
+               in
+               let u = new_kuvara ~state new_len in
                let k = KUVar(u,os) in
                safe_set_kuvar false ub (bind_ordinals osb k) osb;
                if not (eq_uvar ua ub) then safe_set_kuvar false ua (bind_ordinals osa k) osa;
@@ -890,7 +905,7 @@ and search_induction depth ctxt t a c0 hyps =
        (* If the depth is not zero, only apply the above heuristic, but
           do not search really the induction hypothesis *)
        raise Not_found
-    | [] -> raise Not_found
+    | [] -> Io.log_typ "no induction hyp found\n%!"; raise Not_found
     | (fnum, pos', rel', both) :: hyps ->
        try
          let (ov, pos, _, a) = recompose pos' rel' both true in

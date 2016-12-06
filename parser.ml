@@ -349,7 +349,7 @@ and pats = _:"|"? ps:(list_sep case "|")
 and rpat =
   | EMPTY                              -> Simple None
   | x:let_var                          -> Simple (Some x)
-  | "(" x:let_var ")"                      -> Simple (Some x)
+  | "(" x:let_var ")"                  -> Simple (Some x)
   | "{" ls:(list_sep (parser l:lident "=" x:var) ";") "}"
                                        -> Record ls
   | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)

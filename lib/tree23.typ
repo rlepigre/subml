@@ -37,7 +37,7 @@ val node4 : ∀A∀B (Tree23(A,B) × A × B ×
   = fun t →
     let (t1,y1,d1,t2,y2,d2,t3,y3,d3,t4) = t in
       INode2(Node2(t1,y1,d1,t2),y2,d2,Node2(t3,y3,d3,t4))
-(*
+
 val rec insert_aux : ∀A∀B (A → A → Cmp) → A → B → Tree23(A,B) → ITree23(A,B) =
   fun compare x d t →
   case t of
@@ -95,15 +95,14 @@ val rec height : ∀A∀B (Tree23(A,B) → Nat) = fun t →
 
 val balanced = fun t →
   let h = height t in
-  let rec bal_aux = fun n t →
+  let rec bal_aux : ∀A∀B Nat → Tree23(A,B) → Bool = fun n t →
     case t of
     | Nil → eq n 0
-    | Node2(t1,_,_,t2) →
+    | Node2(t1,y1,d1,t2) →
       (case n of Z → Fls | S p → and (bal_aux p t1) (bal_aux p t2))
-    | Node3(t1,_,_,t2,_,_,t3) →
+    | Node3(t1,y1,d1,t2,y2,d2,t3) →
       (case n of Z → Fls | S p → and (bal_aux p t1) (and (bal_aux p t2) (bal_aux p t3)))
   in bal_aux h t
 
 eval t10
 eval (balanced t10)
-*)

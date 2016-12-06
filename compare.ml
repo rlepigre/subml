@@ -34,7 +34,7 @@ let strict f a =
   res
 
 let set_kuvar v k =
-  assert (!(v.uvar_val) = None && !(v.uvar_state) = Free);
+  assert (!(v.uvar_val) = None);
   assert (mbinder_arity k = v.uvar_arity);
   Io.log_uni "set ?%d <- %a\n\n%!"
     v.uvar_key (!fprint_kind false)
@@ -59,7 +59,7 @@ let rec eq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KOAll(b1)   , KOAll(b2)   )
     | (KOExi(b1)   , KOExi(b2)   ) -> eq_obinder pos b1 b2
     | (KFixM(o1,f1), KFixM(o2,f2))
-    | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_ordinal pos o1 o2 && eq_kbinder pos f1 f2
+    | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_kbinder pos f1 f2 && eq_ordinal pos o1 o2
     | (KDPrj(t1,s1), KDPrj(t2,s2)) -> s1 = s2 && eq_term pos t1 t2
     | (KWith(a1,e1), KWith(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
                                       eq_kind a1 a2 && s1 = s2 &&

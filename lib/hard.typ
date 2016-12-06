@@ -11,9 +11,9 @@ val rec f : ((Nat → Nat) → Nat) → Nat =
     | Z   → (Z:Nat)
     | S p → (f (fun g → x (fun q → add q (g p)))))
 
-(*
-val rec f' : ∀α (((μα X [ Z | S of X ]) → Nat) → Nat) → Nat =
-  Λα fun x → x (fun n →
+(* FIXME: ordinal indication fails for recursive function
+val f' : ∀α (((μα X [ Z | S of X ]) → Nat) → Nat) → Nat =
+  Λα fix f' → fun x → x (fun n →
     case (n:μα X [ Z | S of X ]) of
     | Z   → (Z:Nat)
     | S p → (f' (fun g → x (fun q → add q (g p)))))
