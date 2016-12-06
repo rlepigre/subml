@@ -34,6 +34,31 @@ val pred' : ∀α NS(α+2) → NS(α+1) = fun n →
   | Z   → Z
   | S n → n
 
+val rec 2 suc1 : ∀α NS(α) → NS(α+1) = fun n →
+  case n of
+  | Z  → S Z
+  | S n → S (suc1 n)
+
+?val rec suc1' : ∀α NS(α) → NS(α+1) = fun n →
+  case n of
+  | Z  → S Z
+  | S n → S (suc1' n)
+
+val rec suc2 : ∀α NS(α) → NS(α+2) = fun n →
+  case n of
+  | Z  → S (S Z)
+  | S n → S (suc2 n)
+
+val rec suc3 : ∀α NS(α) → NS(α+3) = fun n →
+  case n of
+  | Z  → S (S (S Z))
+  | S n → S (suc2 n)
+
+val rec suc4 : ∀α NS(α) → NS(α+4) = fun n →
+  case n of
+  | Z  → S (S (S (S Z)))
+  | S n → S (suc4 n)
+
 type G(X) = {} -> [ S of X]
 
 val rec idt' : ∀α (να X G(X)) → (να X G(X)) = fun n u →
