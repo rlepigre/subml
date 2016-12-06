@@ -74,33 +74,44 @@ type kind =
 
 (** Type definition (user defined type). *)
 and type_def =
-  (* Name of the type constructor. *)
   { tdef_name     : string
+  (** Name of the type constructor. *)
   ; tdef_tex_name : string
-  (* Arity of the constructor. *)
+  (** LateX Name of the type constructor. *)
   ; tdef_oarity   : int
+  (** Number of ordinal parameters. *)
   ; tdef_karity   : int
+  (** Number of type parameters. *)
   ; tdef_ovariance : occur array
+  (** Variance of the ordinal parameters *)
   ; tdef_kvariance : occur array
-  (* Definition of the constructor. *)
-  ; tdef_value    : kind from_kinds from_ords }
+  (** Variance of the type parameters *)
+  ; tdef_value    : kind from_kinds from_ords
+  (** Definition of the constructor. *) }
 
 and 'a from_ords  = (ordinal, 'a) mbinder
+(** general bindlib types for 'a parametrised by ordinals *)
 and 'a from_kinds = (kind  , 'a) mbinder
+(** general bindlib types for 'a parametrised by types *)
 
 (** Unification variable identified by a key and possibly a value. *)
 and ('a,'b) uvar =
-  (* Unique key identifying the variable. *)
   { uvar_key : int
-  (* Value of the variable managed as in a union-find algorithm. *)
+  (* Unique key identifying the variable. *)
   ; uvar_val : 'a from_ords option ref
+  (** Value of the variable managed as in a union-find algorithm. *)
   ; uvar_state : 'b
+  (** user extra field *)
   ; uvar_arity : int
+  (** arity of the unification variables *)
   }
 
 and kuvar = (kind, kuvar_state ref) uvar
+(** univifation variables for types *)
 
-and kuvar_state = Free
+and kuvar_state =
+  (** state of a type variables, use to infer sum and product types *)
+  | Free
   | Sum  of (string * kind from_ords) list
   | Prod of (string * kind from_ords) list
 
@@ -111,19 +122,27 @@ and ordinal =
   | OSucc of ordinal
   (** Succesor *)
   | OLess of ordinal * ord_wit
-  (** Ordinal created by the μl and νr rules *)
+  (** Ordinal created by the μl and νr rules. OLess(o,w) means
+      an ordinal less that o such that w holds. zero is
+      this does not exists *)
   | OUVar of ouvar * ordinal array
   (** Unification variables for ordinals. *)
   | OVari of ordinal variable
   (** Ordinal variable. *)
 
+and ouvar = (ordinal, ordinal from_ords option) uvar
+
 (** ordinal constraints to build above [OLess] witness *)
 and ord_wit =
   | In     of term * (ordinal, kind) binder
+  (** OLess(o',In(t,f)) means o < o' s.t. t in f(o) *)
   | NotIn  of term * (ordinal, kind) binder
+  (** OLess(o',In(t,f)) means o < o' s.t. t not in f(o) *)
   | Gen    of int * (int * int) list * (kind * kind) from_ords
-
-and ouvar = (ordinal, ordinal from_ords option) uvar
+  (** If o_i = OLess(o'_i,Gen(i,rel,(o |-> k1,k2)))
+      means o_1 < o'_1, ..., o_n < o'_n s.t.
+      - (o_i < o_j) if (i,j) in rel
+      - and k1(o_1,\dots,o_n) < k2(o_1,\dots,o_n) is false *)
 
 (** Abstract syntax tree for terms. *)
 and term = term' position
