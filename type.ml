@@ -53,6 +53,42 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       | o -> box o
     in
     fn k))
+(****************************************************************************
+ *                 setting of unification variable, taking care             *
+ *                      of occur-check and sum/prod state                   *
+ ****************************************************************************)
+
+let constant_mbind size k =
+  unbox (mbind mk_free_ovari (Array.make size "_") (fun x -> box k))
+
+let mbind_assoc cst size l =
+  unbox (mbind mk_free_ovari (Array.make size "α")
+           (fun v -> cst (List.map (fun (s,k) -> (s, mbind_apply (box k) (box_array v))) l)))
+
+exception Occur_check
+
+let safe_set_kuvar side v k os =
+  let k =
+    match !(v.uvar_state) with
+    | Free -> k
+    | Sum l -> mbind_assoc kdsum v.uvar_arity l
+    (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
+    | Prod l -> mbind_assoc kprod v.uvar_arity l
+  in
+  assert (mbinder_arity k = v.uvar_arity);
+  let k =
+    match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
+    | Non -> k
+    | Pos -> constant_mbind v.uvar_arity (
+      KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))
+    | _   ->
+       match side with
+       | Neg -> constant_mbind v.uvar_arity bot
+       | Pos -> constant_mbind v.uvar_arity top
+       | _ -> raise Occur_check
+  in
+  set_kuvar v k
+
 
 (****************************************************************************
  *                 bindings of ordinals in type and ordinals                *
@@ -64,9 +100,6 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
     ?1(x1,...,xn) to ?2(x1,...,xn,o). This appends in general for more
    than one variable. See the comment in the KUVar and OUVar cases *)
 
-let constant_mbind size k =
-  unbox (mbind mk_free_ovari (Array.make size "_") (fun x -> box k))
-
 let index len os x u =
   let rec fn i =
     if i >= len then raise Not_found else (
@@ -75,9 +108,10 @@ let index len os x u =
   in
   fn 0
 
+
 let rec bind_fn len os x k =
-  let fn = bind_fn len os x in
   let gn = bind_gn len os x in
+  let fn = bind_fn len os x in
   let res = match repr k with
     | KFunc(a,b)   -> kfunc (fn a) (fn b)
     | KProd(fs)    -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
@@ -99,9 +133,23 @@ let rec bind_fn len os x k =
          not (Array.exists (strict_eq_ordinal o) os') && not (kuvar_ord_occur u o))
          (Array.to_list os)
        in
+       (* nothing to do *)
        if os'' = [] then
          kuvar u (Array.map gn os')
        else
+         (* if the variable value is recursive, we fix its value
+            or produce occur_check now, otherwise it loops *)
+         let is_recursive =
+           match !(u.uvar_state) with
+           | Free -> Non
+           | Sum l | Prod l -> List.fold_left (fun acc (_,k) ->
+             combine acc (kuvar_occur u (msubst k os'))) Non l
+         in
+         if is_recursive <> Non then
+           (safe_set_kuvar Non u (constant_mbind 0 (KProd [] (*ignored anyway*))) os';
+            fn k)
+       else
+         (* general case *)
          let os'' = Array.of_list os'' in
          let new_ords = Array.append os' os'' in
          let new_len = u.uvar_arity + Array.length os'' in
@@ -132,6 +180,7 @@ let rec bind_fn len os x k =
     | k            -> box k
   in
   if Bindlib.is_closed res then box k else res
+
 
 and bind_gn len os x o = (
   let fn = bind_fn len os x in
@@ -440,7 +489,6 @@ let decompose : ordinal list -> kind -> kind ->
   let k2 = bind_fn (Array.length ovars) ords (Array.map box_of_var ovars) k2 in
   let both = box_pair k1 k2 in
   let both = unbox (bind_mvar ovars both) in
-
   let tbl = List.mapi (fun i (o,(n,v,k)) -> (n,i)) res in
   let os = List.map (fun (o,(n,v,_)) -> (List.assoc n tbl, o)) res in
 

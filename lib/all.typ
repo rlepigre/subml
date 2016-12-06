@@ -43,6 +43,7 @@ include "size.typ"
 include "hard.typ"
 include "lazy_nat.typ"
 include "flot.typ"
+include "infer.typ"
 
 (* Test files *)
 include "dotproj.typ"

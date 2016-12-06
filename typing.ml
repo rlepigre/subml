@@ -71,36 +71,6 @@ let empty_ctxt () =
   ; positive_ordinals = [] }
 
 
-(****************************************************************************
- *                 setting of unification variable, taking care             *
- *                      of occur-check and sum/prod state                   *
- ****************************************************************************)
-
-let mbind_assoc cst size l =
-  unbox (mbind mk_free_ovari (Array.make size "α")
-           (fun v -> cst (List.map (fun (s,k) -> (s, mbind_apply (box k) (box_array v))) l)))
-
-let safe_set_kuvar side v k os =
-  let k =
-    match !(v.uvar_state) with
-    | Free -> k
-    | Sum l -> mbind_assoc kdsum v.uvar_arity l
-    (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
-    | Prod l -> mbind_assoc kprod v.uvar_arity l
-  in
-  assert (mbinder_arity k = v.uvar_arity);
-  let k =
-    match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
-    | Non -> k
-    | Pos -> constant_mbind v.uvar_arity (
-      KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))
-    | _   ->
-       match side with
-       | Neg -> constant_mbind v.uvar_arity bot
-       | Pos -> constant_mbind v.uvar_arity top
-       | _ -> subtype_error "occur check"
-  in
-  set_kuvar v k
 
 (****************************************************************************
  *                               SCT functions                              *
@@ -300,9 +270,10 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
   let r = ref [] in
   let adone = ref [] in
   let rec fn k =
+    let k = repr k in
     if List.memq k !adone then () else (
     adone := k::!adone;
-    match repr k with
+    match k with
     | KFunc(a,b)   -> fn a; fn b
     | KProd(ls)
     | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
@@ -333,9 +304,10 @@ let ouvar_list : kind -> ouvar list = fun k ->
   let r = ref [] in
   let adone = ref [] in
   let rec fn k =
+    let k = repr k in
     if List.memq k !adone then () else (
     adone := k::!adone;
-    match repr k with
+    match k with
     | KFunc(a,b)   -> fn a; fn b
     | KProd(ls)
     | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
@@ -784,7 +756,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        subtype_error "Subtyping clash (no rule apply)."
   in (ind_ref, r)
   in (t, a0, b0, ind_ref, r)
-  with Subtype_error e -> (t, a0, b0, None, Sub_Error e))
+  with Subtype_error e -> (t, a0, b0, None, Sub_Error e)
+       | Occur_check -> (t, a0, b0, None, Sub_Error "Occur_check"))
 
 
 
@@ -902,7 +875,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TVari(_) -> assert false
     with Subtype_error msg
     | Type_error msg -> Typ_Error msg
-    | System.Stopped -> Typ_Error "Killed"
+    | Occur_check    -> Typ_Error "occur_check"
   in (t, c, r)
 
 and subsumption acc = function
