@@ -67,7 +67,109 @@ let mbind_assoc cst size l =
 
 exception Occur_check
 
-let safe_set_kuvar side v k os =
+(****************************************************************************
+ *                            lifting of kind                               *
+****************************************************************************)
+
+let rec lift_kind : kind -> kind bindbox = fun k ->
+  match repr k with
+  | KFunc(a,b) -> kfunc (lift_kind a) (lift_kind b)
+  | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, lift_kind a)) fs)
+  | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, lift_kind a)) cs)
+  | KKAll(f)   -> kkall (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
+  | KKExi(f)   -> kkexi (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
+  | KOAll(f)   -> koall (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
+  | KOExi(f)   -> koexi (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
+  | KFixM(o,f) ->
+     kfixm (binder_name f) (lift_ordinal o)
+       (fun x -> lift_kind (subst f (KVari x)))
+  | KFixN(o,f) ->
+     kfixn (binder_name f) (lift_ordinal o)
+       (fun x -> lift_kind (subst f (KVari x)))
+  | KVari(x)   -> box_of_var x
+  | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
+  | KDPrj(t,s) -> kdprj (map_term lift_kind t) s
+  | KWith(t,c) -> let (s,a) = c in kwith (lift_kind t) s (lift_kind a)
+  | KMRec _
+  | KNRec _    -> assert false
+  | KUVar(u,os)-> kuvar u (Array.map lift_ordinal os)
+  | t          -> box t
+and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
+  match orepr o with
+  | OVari x -> box_of_var x
+  | OSucc o -> osucc (lift_ordinal o)
+  | OLess(o,In(t,w))  -> oless_In (lift_ordinal o) (lift_term t)
+     (vbind mk_free_ovari (binder_name w) (fun x -> lift_kind (subst w (OVari x))))
+  | OLess(o,NotIn(t,w))  -> oless_NotIn (lift_ordinal o) (lift_term t)
+     (vbind mk_free_ovari (binder_name w) (fun x -> lift_kind (subst w (OVari x))))
+  | OLess(o,Gen(i,r,p))  ->
+     oless_Gen (lift_ordinal o) i r
+       (mvbind mk_free_ovari (mbinder_names p) (fun xs ->
+         let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in box_pair (lift_kind k1) (lift_kind k2)))
+  | OUVar(u,os) -> ouvar u (Array.map lift_ordinal os)
+  | OConv -> box o
+
+and lift_term t = map_term lift_kind t
+
+(****************************************************************************
+ *                    Increase ordinals in covariant position               *
+ *                       to allow setting the value of an uvar              *
+ ****************************************************************************)
+
+let make_safe pos u k =
+  let rec gn o = match orepr o with
+    | o when not (kuvar_ord_occur u o) -> lift_ordinal o
+    | OLess(o',_) -> gn o'
+    | o -> lift_ordinal o
+  in
+  let kn pos o =
+    if pos = Pos then gn o else lift_ordinal o
+  in
+  let rec fn pos k =
+    match repr k with
+    | KFunc(a,b) -> kfunc (fn (neg pos) a) (fn pos b)
+    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn pos a)) fs)
+    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
+    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn pos (subst f (KVari x)))
+    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn pos (subst f (KVari x)))
+    | KOAll(f)   -> koall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
+    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
+    | KFixM(o,f) ->
+       kfixm (binder_name f) (kn pos o) (fun x -> fn pos (subst f (KVari x)))
+    | KFixN(o,f) ->
+       kfixn (binder_name f) (kn (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
+    | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn Eps t) s (fn pos a)
+    | KVari(x)   -> box_of_var x
+    | KMRec(_,k)
+    | KNRec(_,k) -> fn pos k
+    | KDefi(d,os,ks) ->
+       kdefi d
+         (Array.mapi (fun i o -> kn (compose d.tdef_ovariance.(i) pos) o) os)
+         (Array.mapi (fun i k -> fn (compose d.tdef_kvariance.(i) pos) k) ks)
+
+    | t          -> lift_kind t
+  in
+  if pos = Pos || pos = Neg then (
+    unbox (mvbind mk_free_ovari (mbinder_names k)
+             (fun xs -> fn pos (msubst k (Array.map (fun x -> OVari x) xs)))))
+  else k
+
+(****************************************************************************
+ *                Set kuvar with kind.                                      *
+ *                     - use the previous function 'make_safe'              *
+ *                     - does the occur check                               *
+ *                     - if the kuvar_state is not Free, is uses the state  *
+ *                       and ignore the arguemt. Therefore it is not safe   *
+ *                       to assume that the unification variable is         *
+ *                       related to k after seting                          *
+ ****************************************************************************)
+
+let safe_set_kuvar : occur -> kuvar -> kind from_ords -> ordinal array -> unit =
+  fun side v k os ->
+  (* side = Pos means we are checking k < KUVar(u,os)
+     side = Neg means we are chacking KUVar(u,os) < k
+     side <> Pos and Neg means we not in the previous cases *)
   let k =
     match !(v.uvar_state) with
     | Free -> k
@@ -76,6 +178,7 @@ let safe_set_kuvar side v k os =
     | Prod l -> mbind_assoc kprod v.uvar_arity l
   in
   assert (mbinder_arity k = v.uvar_arity);
+  let k = make_safe side v k in
   let k =
     match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
     | Non -> k
@@ -258,42 +361,6 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
 
 let _ = fbind_ordinals := bind_ordinals
 let _ = fobind_ordinals := obind_ordinals
-
-(****************************************************************************
- *                            lifting of kind                               *
-****************************************************************************)
-
-let rec lift_kind : kind -> kind bindbox = fun k ->
-  match repr k with
-  | KFunc(a,b) -> kfunc (lift_kind a) (lift_kind b)
-  | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, lift_kind a)) fs)
-  | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, lift_kind a)) cs)
-  | KKAll(f)   -> kkall (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
-  | KKExi(f)   -> kkexi (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
-  | KOAll(f)   -> koall (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
-  | KOExi(f)   -> koexi (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
-  | KFixM(o,f) ->
-     kfixm (binder_name f) (lift_ordinal o)
-       (fun x -> lift_kind (subst f (KVari x)))
-  | KFixN(o,f) ->
-     kfixn (binder_name f) (lift_ordinal o)
-       (fun x -> lift_kind (subst f (KVari x)))
-  | KVari(x)   -> box_of_var x
-  | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
-  | KDPrj(t,s) -> kdprj (map_term lift_kind t) s
-  | KWith(t,c) -> let (s,a) = c in kwith (lift_kind t) s (lift_kind a)
-  | KMRec _
-  | KNRec _    -> assert false
-  | t          -> box t
-and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
-  match orepr o with
-  | OVari x -> box_of_var x
-  | OSucc o -> osucc (lift_ordinal o)
-  | OLess _  -> assert false (* do not support binding trhough witness even if this
-                                is possible in principle *)
-  | OConv | OUVar _ -> box o
-
-let lift_term = map_term lift_kind
 
 (****************************************************************************
  *                 Binding a unification variable in a type                 *

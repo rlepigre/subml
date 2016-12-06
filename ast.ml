@@ -83,14 +83,17 @@ and type_def =
   ; tdef_ovariance : occur array
   ; tdef_kvariance : occur array
   (* Definition of the constructor. *)
-  ; tdef_value    : (ordinal, (kind, kind) mbinder) mbinder }
+  ; tdef_value    : kind from_kinds from_ords }
+
+and 'a from_ords  = (ordinal, 'a) mbinder
+and 'a from_kinds = (kind  , 'a) mbinder
 
 (** Unification variable identified by a key and possibly a value. *)
 and ('a,'b) uvar =
   (* Unique key identifying the variable. *)
   { uvar_key : int
   (* Value of the variable managed as in a union-find algorithm. *)
-  ; uvar_val : (ordinal, 'a) mbinder option ref
+  ; uvar_val : 'a from_ords option ref
   ; uvar_state : 'b
   ; uvar_arity : int
   }
@@ -98,8 +101,8 @@ and ('a,'b) uvar =
 and kuvar = (kind, kuvar_state ref) uvar
 
 and kuvar_state = Free
-  | Sum  of (string * (ordinal, kind) mbinder) list
-  | Prod of (string * (ordinal, kind) mbinder) list
+  | Sum  of (string * kind from_ords) list
+  | Prod of (string * kind from_ords) list
 
 (** Abstract syntax tree for ordinals. *)
 and ordinal =
@@ -118,9 +121,9 @@ and ordinal =
 and ord_wit =
   | In     of term * (ordinal, kind) binder
   | NotIn  of term * (ordinal, kind) binder
-  | Gen    of int * (int * int) list * (ordinal, kind * kind) mbinder
+  | Gen    of int * (int * int) list * (kind * kind) from_ords
 
-and ouvar = (ordinal, (ordinal, ordinal) mbinder option) uvar
+and ouvar = (ordinal, ordinal from_ords option) uvar
 
 (** Abstract syntax tree for terms. *)
 and term = term' position
@@ -344,6 +347,7 @@ let ouvar : ouvar -> obox array -> obox =
 
 let oless_In    = box_apply3 (fun o t k -> OLess(o, In(t,k)))
 let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
+let oless_Gen o i rel p = box_apply2 (fun o p -> OLess(o,Gen(i,rel,p))) o p
 
 (****************************************************************************
  *                     Smart constructors for kinds                         *

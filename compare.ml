@@ -41,9 +41,9 @@ let set_kuvar v k =
     (msubst k (Array.init v.uvar_arity (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
   Timed.(v.uvar_val := Some k)
 
-let fbind_ordinals  : (ordinal array -> kind -> (ordinal, kind) mbinder) ref
+let fbind_ordinals  : (ordinal array -> kind -> kind from_ords) ref
     = ref (fun _ -> assert false)
-let fobind_ordinals : (ordinal array -> ordinal -> (ordinal, ordinal) mbinder) ref
+let fobind_ordinals : (ordinal array -> ordinal -> ordinal from_ords) ref
     = ref (fun _ -> assert false)
 
 let rec eq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
