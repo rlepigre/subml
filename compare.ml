@@ -203,7 +203,7 @@ and less_opt_ordinal pos o1 f os = match f with
   | Some f ->
     assert (mbinder_arity f = Array.length os);
     let o2 = msubst f os in
-    less_ordinal (o2::pos) o1 o2
+    less_ordinal pos o1 o2
 
 and strict_eq_kind : kind -> kind -> bool =
   fun k1 k2 -> strict (eq_kind [] k1) k2
