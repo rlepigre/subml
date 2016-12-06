@@ -54,31 +54,18 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
     in
     fn k))
 
-let mbind_assoc cst size l =
-  unbox (mbind mk_free_ovari (Array.make size "_")
-           (fun v -> cst (List.map (fun (s,k) -> (s, mbind_apply (box k) (box_array v))) l)))
+(****************************************************************************
+ *                 bindings of ordinals in type and ordinals                *
+ ****************************************************************************)
 
-let safe_set_kuvar left_side v k os =
-  let k =
-    match !(v.uvar_state) with
-    | Free -> k
-    | Sum l -> mbind_assoc kdsum v.uvar_arity l
-    (* TODO: on jette K ... normal mais bof*)
-    | Prod l -> mbind_assoc kprod v.uvar_arity l
-  in
-  assert (mbinder_arity k = v.uvar_arity);
-  let k =
-    match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
-    | Non -> k
-    | Pos -> unbox (mbind mk_free_ovari (Array.make v.uvar_arity "_") (fun x ->
-      box (KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))))
-    | _   ->
-       if left_side then
-         unbox (mbind mk_free_ovari (Array.make v.uvar_arity "_") (fun x -> box bot))
-       else
-         unbox (mbind mk_free_ovari (Array.make v.uvar_arity "_") (fun x -> box top))
-  in
-  set_kuvar v k
+(* The main difficulty here is for unification variable for kind or ordinals
+    If we bind o in a variable ?1(o1,...,on) that may use o while o is not
+    among its parameter, we must create a new variable ?2 and set
+    ?1(x1,...,xn) to ?2(x1,...,xn,o). This appends in general for more
+   than one variable. See the comment in the KUVar and OUVar cases *)
+
+let constant_mbind size k =
+  unbox (mbind mk_free_ovari (Array.make size "_") (fun x -> box k))
 
 let index len os x u =
   let rec fn i =
@@ -123,15 +110,15 @@ let rec bind_fn len os x k =
            | Free -> Free
            | Sum l ->
               Sum (List.map (fun (s,f) ->
-                (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
+                (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
                   bind_fn new_len new_ords x (msubst f os'))))) l)
            | Prod l ->
               Prod (List.map (fun (s,f) ->
-                (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
+                (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
                   bind_fn new_len new_ords x (msubst f os'))))) l)
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
-         let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
+         let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
            kuvar v (Array.init new_len
                       (fun i -> if i < u.uvar_arity then x.(i) else box
                           (match os''.(i - u.uvar_arity) with
@@ -192,7 +179,7 @@ and bind_gn len os x o = (
                   Some (unbox f)
              in
              let v = new_ouvara ?bound new_len in
-             let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "_") (fun x ->
+             let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
                ouvar v (Array.init new_len (fun i ->
                  if i < u.uvar_arity then x.(i) else
                    box (match os''.(i - u.uvar_arity) with
@@ -366,13 +353,22 @@ let closed_ordinal o = try has_oboundvar o; true with Exit -> false
    the usefull relations between two ordinals *)
 let decompose : ordinal list -> kind -> kind ->
   int list * (int * int) list * (ordinal, kind * kind) mbinder * (int * ordinal) list
- = fun pos k1 k2 ->
-  let res = ref [] in
-  let i = ref 0 in
-  let relation = ref [] in
+  = fun pos k1 k2 ->
 
-  (* FIXME: with delayed, keep could be removed,
-     because ordinal in the formula are always firsts *)
+  (* will of the table of all ordinals in the type to generalize them.
+     the ordinal will be ovari when it replaces an infinite ordinals (see TODO
+     in bind_fn and bind_gn.
+
+     The integer, is a temporary index,
+     The variable is the future variable to be bound using bind_fn
+     The boolean ref is to know if the variable occurs in the formula *)
+
+  let res : (ordinal * (int * ovar * bool ref)) list ref = ref [] in
+  (* ocunter for the index above *)
+  let i = ref 0 in
+  (* This table will keep the relation (o, o') when o = OLess(o',_) *)
+  let relation : (int * int) list ref = ref [] in
+
   let rec eps_search keep o =
     match o with
     | OLess(o',w) ->
@@ -495,7 +491,7 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
           if general then
             try
               let v = search (List.assoc i rel) in
-              new_ouvar ~bound:(unbox (mbind mk_free_ovari [||] (fun x -> box v))) ()
+              new_ouvar ~bound:(constant_mbind 0 v) ()
             with Not_found ->
               new_ouvar ()
           else
@@ -519,8 +515,7 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
 let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuvars ouvars p k ->
   let res = match full_repr p, full_repr k with
   | KUVar(ua,[||]), k when List.memq ua kuvars ->
-     set_kuvar ua (unbox (mbind mk_free_ovari [||] (fun _ -> box k)));
-     true
+     set_kuvar ua (constant_mbind 0 k); true
   | KFunc(p1,p2), KFunc(k1,k2) -> match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
   | KDSum(ps1), KDSum(ps2)
   | KProd(ps1), KProd(ps2) ->
@@ -553,8 +548,8 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuva
 
 and match_ordinal : ouvar list -> ordinal -> ordinal -> bool = fun ouvars p o ->
   let res = match orepr p, orepr o with
-    | OUVar(uo,_), o when List.memq uo ouvars -> set_ouvar uo
-       (unbox (mbind mk_free_ovari [||] (fun _ -> box o))); true
-  | OSucc(p), OSucc(o) -> match_ordinal ouvars p o
-  | p, k -> strict_eq_ordinal p k in
+    | OUVar(uo,_), o when List.memq uo ouvars ->
+       set_ouvar uo (constant_mbind 0 o); true
+    | OSucc(p), OSucc(o) -> match_ordinal ouvars p o
+    | p, k -> strict_eq_ordinal p k in
   res

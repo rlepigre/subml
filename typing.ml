@@ -70,6 +70,42 @@ let empty_ctxt () =
   ; delayed = ref []
   ; positive_ordinals = [] }
 
+
+(****************************************************************************
+ *                 setting of unification variable, taking care             *
+ *                      of occur-check and sum/prod state                   *
+ ****************************************************************************)
+
+let mbind_assoc cst size l =
+  unbox (mbind mk_free_ovari (Array.make size "α")
+           (fun v -> cst (List.map (fun (s,k) -> (s, mbind_apply (box k) (box_array v))) l)))
+
+let safe_set_kuvar side v k os =
+  let k =
+    match !(v.uvar_state) with
+    | Free -> k
+    | Sum l -> mbind_assoc kdsum v.uvar_arity l
+    (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
+    | Prod l -> mbind_assoc kprod v.uvar_arity l
+  in
+  assert (mbinder_arity k = v.uvar_arity);
+  let k =
+    match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
+    | Non -> k
+    | Pos -> constant_mbind v.uvar_arity (
+      KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))
+    | _   ->
+       match side with
+       | Neg -> constant_mbind v.uvar_arity bot
+       | Pos -> constant_mbind v.uvar_arity top
+       | _ -> subtype_error "occur check"
+  in
+  set_kuvar v k
+
+(****************************************************************************
+ *                               SCT functions                              *
+ ****************************************************************************)
+
 let consecutive =
   let rec fn n = function
     | [] -> true
@@ -138,7 +174,7 @@ let find_positive ctxt o =
   | OSucc o' -> o'
   | o ->
      if not (fn 0 o) then raise Not_found;
-     new_ouvar ~bound:(unbox (mbind mk_free_ovari [||] (fun x -> box o))) ()
+     new_ouvar ~bound:(constant_mbind 0 o) ()
 
 let is_positive ctxt o =
   match orepr o with
@@ -481,7 +517,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        Timed.(ub.uvar_state := Sum !l1);
        None, Sub_DSum(!res)
 
-    (* Handling of unification variables (immitation). *)
+    (* Handling of unification variables, same variable different
+       parameters: keep the common one only. *)
     | (KUVar(ua,osa),KUVar(ub,osb)) when eq_uvar ua ub ->
        let osal = Array.to_list osa in
        let osbl = Array.to_list osb in
@@ -495,19 +532,21 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        let new_len = Array.length os in
        if new_len <> ua.uvar_arity then (
          let u = new_kuvara new_len in
-         let f = unbox (mbind mk_free_ovari (Array.make ua.uvar_arity "_") (fun x ->
+         let f = unbox (mbind mk_free_ovari (Array.make ua.uvar_arity "α") (fun x ->
            box_apply (fun os -> KUVar(u,os)) (box_array (Array.init new_len (fun i ->
              x.(os.(i)))))))
          in
-         safe_set_kuvar false ua f osa);
+         (* this will use the uvar_state if it is not Free, we could try
+            to delay this *)
+         safe_set_kuvar Neg ua f osa);
        let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
         begin (* make the correct choice, depending if Sum or Prod *)
           match !(ua.uvar_state), !(ub.uvar_state) with
-          | _, Sum _ -> safe_set_kuvar false ua (bind_ordinals osa b) osa
-          | Prod _, _ -> safe_set_kuvar false ub (bind_ordinals osb a) osb
+          | _, Sum _ -> safe_set_kuvar Neg ua (bind_ordinals osa b) osa
+          | Prod _, _ -> safe_set_kuvar Pos ub (bind_ordinals osb a) osb
           | _ ->
                let osal = Array.to_list osa in
                let osbl = Array.to_list osb in
@@ -528,11 +567,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                  | Free, Free -> Free
                  | Sum l, _ ->
                     Sum (List.map (fun (s,f) ->
-                      (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
+                      (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
                         bind_fn new_len os x (msubst f osa))))) l)
                  | _, Prod l ->
                     Prod (List.map (fun (s,f) ->
-                      (s, unbox (mbind mk_free_ovari (Array.make new_len "_") (fun x ->
+                      (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
                         bind_fn new_len os x (msubst f osb))))) l)
                  | _ -> assert false
                in
@@ -540,21 +579,17 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                let k = KUVar(u,os) in
                Timed.(ub.uvar_state := Free);
                Timed.(ua.uvar_state := Free);
-               safe_set_kuvar false ub (bind_ordinals osb k) osb;
-               safe_set_kuvar false ua (bind_ordinals osa k) osa;
+               safe_set_kuvar Neg ua (bind_ordinals osa k) osa;
+               safe_set_kuvar Pos ub (bind_ordinals osb k) osb;
         end;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
 
     | (KUVar(ua,os), b            ) ->
-        Io.log_sub "titi 1\n%!";
-        safe_set_kuvar true ua (bind_ordinals os b0) os;
-        Io.log_sub "titi 1b\n%!";
+        safe_set_kuvar Neg ua (bind_ordinals os b0) os;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
 
     | (a           ,(KUVar(ub,os)))  ->
-        Io.log_sub "titi 2\n%!";
-        safe_set_kuvar false ub (bind_ordinals os a0) os;
-        Io.log_sub "titi 2b\n%!";
+        safe_set_kuvar Pos ub (bind_ordinals os a0) os;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
 
     | _ ->
@@ -826,8 +861,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
             None ->
               KDSum ts
           | _    ->
-             let ts = List.map (fun (c,_) ->
-               (c, unbox (mbind mk_free_ovari [||] (fun _ -> box (List.assoc c ts))))) l in
+             let ts = List.map (fun (c,_) -> (c, constant_mbind 0 (List.assoc c ts))) l in
              new_kuvar ~state:(Sum ts) ()
         in
         let ptr = Refinter.create ctxt.positive_ordinals in
@@ -1077,11 +1111,10 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
       | Free   -> true
       | Sum  l ->
          let k = mbind_assoc kdsum v.uvar_arity l in
-         safe_set_kuvar false v k os; false
+         safe_set_kuvar Eps v k os; false
       | Prod l ->
          let k = mbind_assoc kprod v.uvar_arity l in
-         safe_set_kuvar true  v k os
-         ; false
+         safe_set_kuvar Eps  v k os ; false
     in
     let ul = List.filter fn (kuvar_list k) in
     let ol = ouvar_list k in
