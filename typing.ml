@@ -180,7 +180,37 @@ let lambda_ordinal t k s =
      c, (subst f c)
   | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
 
-(* This function is only used for heuristics *)
+(* These three functions are only used for heuristics *)
+let has_leading_exists : kind -> bool = fun k ->
+  let rec fn k =
+    match full_repr k with
+    | KFunc(a,b) -> false
+    | KProd(ls)
+    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
+    | KKExi(f)   -> true
+    | KOExi(f)   -> fn (subst f OConv)
+    | KFixM(_,f)
+    | KFixN(_,f) -> fn (subst f (KProd []))
+    | KWith(k,s) -> true
+    | _ -> false
+  in
+  fn k
+
+let has_leading_forall : kind -> bool = fun k ->
+  let rec fn k =
+    match full_repr k with
+    | KFunc(a,b) -> false
+    | KProd(ls)
+    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
+    | KKAll(f)   -> true
+    | KOExi(f)   -> fn (subst f OConv)
+    | KFixM(_,f)
+    | KFixN(_,f) -> fn (subst f (KProd []))
+    | KWith(k,s) -> true
+    | _ -> false
+  in
+  fn k
+
 let has_uvar : kind -> bool = fun k ->
   let rec fn k =
     match repr k with
@@ -318,8 +348,8 @@ let check_rec
        - to preserve, when possible, the invariant that no ordinal <> OConv occur in
        positive mus and negative nus *)
     try
-      if (match a with KFixM _ | KFixN _ -> false | _ -> true) &&
-         (match b with KFixM _ | KFixN _ -> false | _ -> true)
+      if (match a with KFixM _ -> false | KFixN _ -> has_leading_exists a | _ -> true) &&
+         (match b with KFixN _ -> false | KFixM _ -> has_leading_forall b | _ -> true)
       then raise Exit;
       (match full_repr a with KMRec _ | KNRec _ -> raise Exit | _ -> ());
       (match full_repr b with KMRec _ | KNRec _ -> raise Exit | _ -> ());
@@ -511,11 +541,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   match ind_res with
   | UseInduction n -> (None, Sub_Ind n)
   | NewInduction ind_ref ->
-  let (ind_ref,a,b,a0,b0) = match ind_ref with
-    | None -> (None,a,b,a0,b0)
+  let (ind_ref,t,a,b,a0,b0) = match ind_ref with
+    | None -> (None,t,a,b,a0,b0)
     | Some(n,a,b) ->
        let a = full_repr a and b = full_repr b in
-       Some n, a, b, a, b
+       let t = generic_tcnst a b in
+       Some n, t, a, b, a, b
   in
   let r =
     match (a,b) with
@@ -581,42 +612,6 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let p = subtype ctxt t a0 (with_clause b e) in
         Sub_With_r(p)
 
-    (* Universal quantification over kinds. *)
-    | (_           , KKAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (KUCst(t,f))) in
-        Sub_KAll_r(p)
-
-    | (KKAll(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (new_kuvar ())) b0 in
-        Sub_KAll_l(p)
-
-    (* Existantial quantification over kinds. *)
-    | (KKExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (KECst(t,f))) b0 in
-        Sub_KExi_l(p)
-
-    | (_           , KKExi(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (new_kuvar ())) in
-        Sub_KExi_r(p)
-
-    (* Universal quantification over ordinals. *)
-    | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (OLess(OConv, NotIn(t,f)))) in
-        Sub_OAll_r(p)
-
-    | (KOAll(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (new_ouvar ())) b0 in
-        Sub_OAll_l(p)
-
-    (* Existantial quantification over ordinals. *)
-    | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (OLess(OConv, In(t,f)))) b0 in
-        Sub_OExi_l(p)
-
-    | (_           , KOExi(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (new_ouvar ())) in
-        Sub_OExi_r(p)
-
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
         let o', ctxt =
@@ -676,6 +671,42 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             Sub_FixN_l(p)
           with Not_found -> subtype_error "Subtyping clash (no rule apply)."
         end
+
+    (* Universal quantification over kinds. *)
+    | (_           , KKAll(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (KUCst(t,f))) in
+        Sub_KAll_r(p)
+
+    | (KKAll(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (new_kuvar ())) b0 in
+        Sub_KAll_l(p)
+
+    (* Existantial quantification over kinds. *)
+    | (KKExi(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (KECst(t,f))) b0 in
+        Sub_KExi_l(p)
+
+    | (_           , KKExi(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (new_kuvar ())) in
+        Sub_KExi_r(p)
+
+    (* Universal quantification over ordinals. *)
+    | (_           , KOAll(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (OLess(OConv, NotIn(t,f)))) in
+        Sub_OAll_r(p)
+
+    | (KOAll(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (new_ouvar ())) b0 in
+        Sub_OAll_l(p)
+
+    (* Existantial quantification over ordinals. *)
+    | (KOExi(f)    , _           ) ->
+        let p = subtype ctxt t (subst f (OLess(OConv, In(t,f)))) b0 in
+        Sub_OExi_l(p)
+
+    | (_           , KOExi(f)    ) ->
+        let p = subtype ctxt t a0 (subst f (new_ouvar ())) in
+        Sub_OExi_r(p)
 
     | (KNRec(ptr, a), _          )
         when Refinter.subset (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
