@@ -1,4 +1,4 @@
-(** Basic definition of the Ast of types and programs *)
+(** {3 Basic definition of the Ast of types and programs } *)
 
 open Bindlib
 open Refinter
@@ -195,9 +195,9 @@ and value_def =
   ; proof      : typ_prf     (** Typing proof. *)
   ; calls_graph: Sct.calls_graph  (** SCT instance. *) }
 
-and typ_jdg = term * kind
-and sub_jdg = term * kind * kind
+(** {2 Definition of the ast for proof trees. } *)
 
+(** Subtyping proof *)
 and sub_rule =
   | Sub_Delay  of sub_prf ref
   | Sub_Lower
@@ -227,9 +227,10 @@ and sub_rule =
   | Sub_Ind    of int
   | Sub_Error  of string
 and sub_prf =
-  (* the integer is referenced by induction hyp *)
   term * kind * kind * int option * sub_rule
+  (** the integer is referenced by induction hyp ([Sub_Ind]) *)
 
+(** Typing proof *)
 and typ_rule =
   | Typ_Coer   of sub_prf * typ_prf
   | Typ_KAbs   of typ_prf
@@ -250,13 +251,15 @@ and typ_rule =
 and typ_prf =
   term * kind * typ_rule
 
-(** used by Typ_Link as initial value *)
+(** Used as initial value *)
 let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
 
-(** Unfolding unification variable indirections and definitions *)
+(** This flags controls the merging of consecutive mu and nu
+    (true by default disables by --no-contr) *)
 let contract_mu = ref true
 
-(** Unfolding unification variable indirections. *)
+(** Unfolding unification variables indirections and definitions.
+    Also perform mu/nu contractions *)
 let rec repr : bool -> kind -> kind = fun unfold -> function
   | KUVar({uvar_val = {contents = Some k}; uvar_arity=arity}, os) ->
      assert (mbinder_arity k = arity);
@@ -293,18 +296,21 @@ and is_nu unfold f = !contract_mu &&
   match repr unfold (subst f (KProd [])) with KFixN(OConv,_) -> true
   | _ -> false
 
-
+(** The main function: unfold type variables indirections and definitions *)
 let full_repr : kind -> kind = fun k -> repr true  k
+
+(** The main function: unfold type variables indirections only *)
 let      repr : kind -> kind = fun k -> repr false k
 
-
+(** Unfold ordinal variables indirections *)
 let rec orepr o =
   match o with
   | OUVar({uvar_val = {contents = Some o}}, os) ->  orepr (msubst o os)
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
-(** Printing function from "print.ml" *)
+(** {2 Pointer to printing function from "print.ml", to use in debugging } *)
+
 let fprint_term : (bool -> formatter -> term -> unit) ref =
   ref (fun _ -> assert false)
 
@@ -317,9 +323,9 @@ let fprint_ordinal : (bool -> formatter -> ordinal -> unit) ref =
 let ftry_fold_def : (kind -> kind) ref =
   ref (fun _ -> assert false)
 
-(****************************************************************************
- *                   Frequently used types and functions                    *
- ****************************************************************************)
+(****************************************************************************)
+(** {2               Frequently used types and functions                  }**)
+(****************************************************************************)
 
 (** Value and type environments. *)
 type val_env = (string, value_def) Hashtbl.t
@@ -374,9 +380,9 @@ let oless_In    = box_apply3 (fun o t k -> OLess(o, In(t,k)))
 let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
 let oless_Gen o i rel p = box_apply2 (fun o p -> OLess(o,Gen(i,rel,p))) o p
 
-(****************************************************************************
- *                     Smart constructors for kinds                         *
- ****************************************************************************)
+(****************************************************************************)
+(**{2                     Smart constructors for kinds                    }**)
+(****************************************************************************)
 
 let kvari : string -> kbox =
   fun x -> box_of_var (new_kvari x)
@@ -474,9 +480,9 @@ let reset_all () =
   (* FIXME: should have everything in the ctxt *)
   reset_uvar ()
 
-(****************************************************************************
- *                     Definition of widely used types                      *
- ****************************************************************************)
+(****************************************************************************)
+(**{2                     Definition of widely used types                 }**)
+(****************************************************************************)
 
 let bot : kind =
   unbox (kkall "X" (fun x -> box_of_var x))
@@ -484,9 +490,9 @@ let bot : kind =
 let top : kind =
   unbox (kkexi "X" (fun x -> box_of_var x))
 
-(****************************************************************************
- *              Functional constructors with position for terms             *
- ****************************************************************************)
+(****************************************************************************)
+(**{2              Functional constructors with position for terms        }**)
+(****************************************************************************)
 
 let tcoer_p : pos -> term -> kind -> term =
   fun p t k -> in_pos p (TCoer(t,k))
@@ -528,7 +534,7 @@ let tfixy_p : pos -> bool -> int -> (term', term) binder -> term =
   fun p b n t -> in_pos p (TFixY(b,n,t))
 
 (****************************************************************************)
-(** {0                   Smart constructors for terms                     } *)
+(** {2                   Smart constructors for terms                     } *)
 (****************************************************************************)
 
 let tcoer : pos -> tbox -> kbox -> tbox =
@@ -592,7 +598,7 @@ let generic_tcnst : kind -> kind -> term =
     dummy_pos (TCnst(unbox f,a,b))
 
 (****************************************************************************)
-(** {0                         variance function                          } *)
+(**{2                          variance function                          }**)
 (****************************************************************************)
 
 let combine oa ob =
