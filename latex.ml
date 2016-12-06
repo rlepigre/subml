@@ -39,8 +39,6 @@ let rec print_ordinal unfold ff o =
           (print_kind false false) (subst a o0)
      | OLess(o,Gen(_,_,_)) when unfold -> (* TODO: print the int *)
         fprintf ff "{\\kappa_{GEN}}"
-     | OLess(o,Link _) when unfold -> (* TODO: print the int *)
-        fprintf ff "{\\kappa_?}"
      | OLess(o,_) when unfold ->
        fprintf ff "{\\alpha_{%d<%a}}" n (print_ordinal false) o
      | OLess(_) -> fprintf ff "{\\kappa_{%d}}" n

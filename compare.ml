@@ -154,7 +154,7 @@ and eq_ordinal : ordinal list -> ordinal -> ordinal -> bool = fun pos o1 o2 ->
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordinal pos o1 o2
   | (_           , _           ) -> false
 
-and eq_ord_wit pos w1 w2 = match wrepr w1, wrepr w2 with
+and eq_ord_wit pos w1 w2 = match w1, w2 with
   | (w1           , w2           ) when w1 == w2 -> true
   | (In(t1,f1)    , In(t2,f2)    )
   | (NotIn(t1,f1) , NotIn(t2,f2) ) ->
@@ -166,8 +166,6 @@ and eq_ord_wit pos w1 w2 = match wrepr w1, wrepr w2 with
            let (k1,k1') = msubst f1 os in
            let (k2,k2') = msubst f2 os in
            eq_kind pos k1 k2 && eq_kind pos k1' k2')
-  | (Link p      , w           )
-  | (w           , Link p      ) -> p := Some w; true (* FIXME occur check *)
   | (_           , _           ) -> false
 
 and leqi_ordinal pos o1 i o2 =
@@ -296,13 +294,12 @@ and gen_occur :
     match orepr o with
     | OLess(o,w) ->
        let acc = aux3 acc o in
-       (match wrepr w with
+       (match w with
        | In(t,f)|NotIn(t,f) -> aux Eps (aux2 acc t) (subst f odummy)
        | Gen(_,_,f) ->
           let os = Array.make (mbinder_arity f) OConv in
           let (k1,k2) = msubst f os in
-          aux Eps (aux Eps acc k2) k1
-       | Link _ -> acc)
+          aux Eps (aux Eps acc k2) k1)
     | OSucc o -> aux3 acc o
     | OUVar(({uvar_state = o} as v), os) ->
        if ouvar v then combine Eps (aux4 acc os o) else  aux4 (Array.fold_left aux3 acc os) os o

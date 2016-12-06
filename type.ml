@@ -322,14 +322,13 @@ and has_oboundvar o =
     | OVari _ -> raise Exit
     | OSucc o -> has_oboundvar o
     | OLess(o,w) ->
-       (match wrepr w with
+       (match w with
        | In(t,b) | NotIn(t,b) ->
           has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
        | Gen(t,r,f) ->
           let os = Array.make (mbinder_arity f) OConv in
           let (k1,k2) = msubst f os in
-          has_boundvar k1; has_boundvar k2
-       | Link _ -> ())
+          has_boundvar k1; has_boundvar k2)
     | OUVar _ | OConv -> ()
 
 let closed_term t = try has_tboundvar t; true with Exit -> false
@@ -474,7 +473,6 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
         let o =
           if general then
             try
-              (*OLess(search (List.assoc i rel), Link (ref None))*)
               let v = search (List.assoc i rel) in
               new_ouvar ~bound:(unbox (mbind mk_free_ovari [||] (fun x -> box v))) ()
             with Not_found ->

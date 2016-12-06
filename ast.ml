@@ -119,7 +119,6 @@ and ord_wit =
   | In     of term * (ordinal, kind) binder
   | NotIn  of term * (ordinal, kind) binder
   | Gen    of int * (int * int) list * (ordinal, kind * kind) mbinder
-  | Link   of ord_wit option ref
 
 and ouvar = (ordinal, (ordinal, ordinal) mbinder option) uvar
 
@@ -275,10 +274,6 @@ let rec orepr o =
   match o with
   | OUVar({uvar_val = {contents = Some o}}, os) ->  orepr (msubst o os)
   | OSucc o -> OSucc (orepr o)
-  | o -> o
-
-let rec wrepr = function
-  | Link { contents = Some o } -> wrepr o
   | o -> o
 
 (** Printing function from "print.ml" *)

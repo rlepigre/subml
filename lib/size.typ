@@ -105,12 +105,12 @@ val rec map : ∀A ∀B (A → B) → ∀α L(α,A) → L(α,B) =
   fun f l → case l of
     [] → []
   | x::l → f x :: map f l
-(*
+
 val rec filter : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) =
   fun f l → case l of
     [] → []
   | x::l → if f x then x :: filter f l else filter f l
-*)
+
 val rec partition : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) × L(α,A) =
   fun f l → case l of
     [] → ([], [])
@@ -121,7 +121,7 @@ type L(A) = μ X [Nil | Cons of { hd : A; tl : X}]
 
 val map' = map : ∀A ∀B (A → B) → L(A) → L(B)
 
-(*val filter' = filter : ∀A (A → Bool) → L(A) → L(A)*)
+val filter' = filter : ∀A (A → Bool) → L(A) → L(A)
 val partition' = partition : ∀A (A → Bool) → L(A) → L(A) × L(A)
 
 type S(α,A) = να X {} → { car : A ; cdr : X }

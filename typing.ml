@@ -119,8 +119,8 @@ let find_positive ctxt o =
       List.exists (strict_eq_ordinal o) ctxt.positive_ordinals
     else
       List.exists (function
-        | OLess(o',_) as o0 when strict_eq_ordinal o o' -> gn (i-1) o0
-        | _ -> raise Not_found) ctxt.positive_ordinals
+      | OLess(o',_) as o0 when strict_eq_ordinal o o' -> gn (i-1) o0
+      | _ -> raise Not_found) ctxt.positive_ordinals
   in
   let rec fn i o = match orepr o with
     | OUVar({ uvar_state = Some f},os) ->
@@ -143,7 +143,7 @@ let find_positive ctxt o =
 let is_positive ctxt o =
   match orepr o with
   | OConv | OSucc _ -> true
-  | o -> List.exists (eq_ordinal ctxt.positive_ordinals o) ctxt.positive_ordinals
+  | o -> List.exists (fun o' -> leq_ordinal ctxt.positive_ordinals o' o) ctxt.positive_ordinals
 
 (* FIXME: the function below are certainly missing cases *)
 let rec with_clause a (s,b) = match full_repr a with
@@ -181,13 +181,7 @@ let lambda_ordinal t k s =
   | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
 
 (* This function is only used for heuristics *)
-let rec ord_has_uvar o =
-    match orepr o with
-    | OUVar _ -> true
-    | _       -> false
-
 let has_uvar : kind -> bool = fun k ->
-  let gn o = if ord_has_uvar o then raise Exit in
   let rec fn k =
     match repr k with
     | KFunc(a,b) -> fn a; fn b
@@ -195,12 +189,12 @@ let has_uvar : kind -> bool = fun k ->
     | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)   -> fn (subst f (KProd []))
-    | KFixM(o,f) -> gn o; fn (subst f (KProd []))
+    | KFixM(o,f) -> fn (subst f (KProd []))
     | KFixN(o,f) -> fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f OConv)
     | KUVar(u,_)   -> raise Exit
-    | KDefi(d,o,a) -> Array.iter gn o; Array.iter fn a
+    | KDefi(d,o,a) -> Array.iter fn a
     | KWith(k,c) -> let (_,b) = c in fn k; fn b
     | KMRec(_,k)
     | KNRec(_,k) -> fn k

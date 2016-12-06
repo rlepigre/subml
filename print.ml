@@ -97,7 +97,7 @@ let rec print_ordinal unfold ff o =
     match orepr o with
     | OLess(o,w) as o0 when unfold ->
        begin
-         match wrepr w with
+         match w with
          | In(t,a) -> (* TODO: print the int *)
             fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
               (print_term false) t (print_kind false false) (subst a o0)
@@ -109,7 +109,6 @@ let rec print_ordinal unfold ff o =
               (fun i -> free_of (new_ovari ("o_"^string_of_int i))) in
             let (k1,k2) = msubst f os in
             fprintf ff "ϵ(%a,%a)" (print_kind false false) k1 (print_kind false false) k2
-         | Link _ -> fprintf ff "?"
        end
     | OLess(o,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
