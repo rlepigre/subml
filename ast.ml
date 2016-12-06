@@ -252,12 +252,14 @@ and typ_prf =
 (** Used as initial value *)
 let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
 
+(**{2 Unfolding unification variables indirections and definitions.
+      Also perform mu/nu contractions} *)
+
 (** This flags controls the merging of consecutive mu and nu
     (true by default disables by --no-contr) *)
 let contract_mu = ref true
 
-(** Unfolding unification variables indirections and definitions.
-    Also perform mu/nu contractions *)
+(** Main shared function *)
 let rec repr : bool -> kind -> kind = fun unfold -> function
   | KUVar({uvar_val = {contents = Some k}; uvar_arity=arity}, os) ->
      assert (mbinder_arity k = arity);
@@ -333,7 +335,9 @@ let typ_env : typ_env = Hashtbl.create 17
 let val_env : val_env = Hashtbl.create 17
 let verbose : bool ref = ref false
 
-(** Bindbox type shortcuts. *)
+(****************************************************************************)
+(**{2                     Bindbox type shortcuts.                          }*)
+(****************************************************************************)
 type tvar = term' variable
 type tbox = term bindbox
 
@@ -364,7 +368,10 @@ let mk_free_ovari : ovar -> ordinal =
 let new_ovari : string -> ovar =
   new_var mk_free_ovari
 
-(** sugaring for ordinals *)
+(****************************************************************************)
+(**{2                    Smart constructors for ordinals                   }*)
+(****************************************************************************)
+
 let oconv = box OConv
 
 let osucc o = box_apply (fun o -> OSucc o) o
@@ -449,8 +456,8 @@ let kuvar : kuvar -> obox array -> kbox =
   fun u os ->
     box_apply (fun os -> KUVar(u,os)) (box_array os)
 
-(* Unification variable management. Useful for typing. *)
-let (new_kuvar, new_kuvara, reset_uvar, new_ouvara, new_ouvar) =
+(** Unification variable management. Useful for typing. *)
+let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
   let c = ref 0 in
   let new_kuvara ?(state=Free) n : kuvar = {
     uvar_key = (incr c; !c);
@@ -461,7 +468,7 @@ let (new_kuvar, new_kuvara, reset_uvar, new_ouvara, new_ouvar) =
   let new_kuvar ?(state=Free) () =
     KUVar(new_kuvara ~state 0, [||])
   in
-  let reset_uvar () = c := 0 in
+  let reset_all () = c := 0 in
   let new_ouvara ?bound n : ouvar = {
     uvar_key = (incr c; !c);
     uvar_val = ref None;
@@ -471,12 +478,8 @@ let (new_kuvar, new_kuvara, reset_uvar, new_ouvara, new_ouvar) =
   let new_ouvar ?bound () =
     OUVar(new_ouvara ?bound 0, [||])
   in
-  (new_kuvar, new_kuvara, reset_uvar, new_ouvara, new_ouvar)
+  (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar)
 
-(* Resset all counters. *)
-let reset_all () =
-  (* FIXME: should have everything in the ctxt *)
-  reset_uvar ()
 
 (****************************************************************************)
 (**{2                     Definition of widely used types                  }*)
