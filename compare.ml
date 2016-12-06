@@ -1,16 +1,18 @@
+(****************************************************************************)
+(**{3           Comparison on types, terms and ordinals                    }*)
+(****************************************************************************)
+
 open Ast
 open Bindlib
 open Position
 open Term
 
-(****************************************************************************
- *                  Function dealing with variables                         *
- ****************************************************************************)
-let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
+(****************************************************************************)
+(**{2                      General function                                }*)
+(****************************************************************************)
 
-(****************************************************************************
- *                  Equality of types, terms and ordinals                   *
- ****************************************************************************)
+let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
+(** equality on variables *)
 
 let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list -> ('a * 'b) list
                  -> bool = fun eq l1 l2 ->
@@ -25,7 +27,10 @@ let eq_option : ('a -> 'a -> bool) -> 'a option -> 'a option -> bool
   | _ -> false
 
 let eq_strict : bool ref = ref false
+(** this boolean control the fact that an equality is strict:
+    i.e. it can not instanciate unification variables *)
 
+(** make a function strict by changing and restoring [eq_strict] *)
 let strict f a =
   let save = !eq_strict in
   eq_strict := true;
