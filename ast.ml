@@ -107,7 +107,7 @@ and ('a,'b) uvar =
   }
 
 and kuvar = (kind, kuvar_state ref) uvar
-(** univifation variables for types *)
+(** unification variables for types *)
 
 and kuvar_state =
   (** state of a type variables, use to infer sum and product types *)
@@ -144,50 +144,56 @@ and ord_wit =
       - (o_i < o_j) if (i,j) in rel
       - and k1(o_1,\dots,o_n) < k2(o_1,\dots,o_n) is false *)
 
-(** Abstract syntax tree for terms. *)
+(** Abstract syntax tree for terms, all indexed with position *)
 and term = term' position
+
 and term' =
-  (**** Main term constructors ****)
-  (* Type coercion. *)
-  | TCoer of term * kind
-  (* Free λ-variable. *)
+  (** {2 Main term constructors } ****)
   | TVari of term' variable
-  (* λ-abstraction. *)
+  (** Free λ-variable. *)
   | TAbst of kind option * (term', term) binder
-  (* Application. *)
+  (** λ-abstraction. *)
   | TAppl of term * term
-  (* Record. *)
+  (** Application. *)
   | TReco of (string * term) list
-  (* Projection. *)
+  (** Record. *)
   | TProj of term * string
-  (* Variant. *)
+  (** Projection. *)
   | TCons of string * term
-  (* Case analysis. *)
+  (** Variant. *)
   | TCase of term * (string * term) list * term option
-  (* User-defined term. *)
+  (** Case analysis. *)
   | TDefi of value_def
-  (* Print a string (side effect) and behave like the term. *)
+  (** User-defined term. *)
   | TPrnt of string
-  (* Fixpoint combinator. *)
+  (** Print a string (side effect) and behave like the term. *)
   | TFixY of bool * int * (term', term) binder
-  (* Lambda on a type, semantics via epsilon *)
+  (** Fixpoint combinator, the boolean and integer are indications for the
+      termination checker:
+      - the boolean enable subsumption of induction hypothesis
+      - the integer indicates the number of unrolling to build
+        the induction hypothesis *)
+  | TCoer of term * kind
+  (** Type coercion: not used in the semantics, only used for type-checking *)
   | TKAbs of (kind, term) binder
-  (* Lambda on an ordinal, semantics via epsilon *)
+  (** Lambda on a type, not used in the semantics, allow to introduce variables
+      to write coercion *)
   | TOAbs of (ordinal, term) binder
-  (**** Special constructors (not accessible to user) ****)
-  (* Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness (i.e. a term)
-     that has type A but not type B such that t[u] is in B. *)
+  (** Lambda on an ordinal, as above *)
+  (** {2 Special constructors (not accessible to user) } **)
   | TCnst of ((term', term) binder * kind * kind)
+  (** Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness u (i.e. a term)
+     that u has type A and such that t[u] is not in B. *)
 
 (** Term definition (user defined term) *)
 and value_def =
-  { name       : string      (* Name of the term. *)
-  ; tex_name   : string      (* Latex name of the term. *)
-  ; value      : term        (* Evaluated term. *)
-  ; orig_value : term        (* Original term (not evaluated). *)
-  ; ttype      : kind        (* Type of the term. *)
-  ; proof      : typ_prf     (* Typing proof. *)
-  ; calls_graph: Sct.calls_graph } (* SCT instance. *)
+  { name       : string      (** Name of the term. *)
+  ; tex_name   : string      (** Latex name of the term. *)
+  ; value      : term        (** Evaluated term. *)
+  ; orig_value : term        (** Original term (not evaluated). *)
+  ; ttype      : kind        (** Type of the term. *)
+  ; proof      : typ_prf     (** Typing proof. *)
+  ; calls_graph: Sct.calls_graph  (** SCT instance. *) }
 
 and typ_jdg = term * kind
 and sub_jdg = term * kind * kind
