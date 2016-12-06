@@ -396,8 +396,8 @@ let decompose : ordinal list -> kind -> kind ->
       | OUVar(u,os) ->
          (match u.uvar_state with
          | None -> ()
-         | Some f -> ignore (search pos (msubst f os)));
-         ouvar u (Array.map (search pos) os)
+         | Some f -> ignore (search Eps (msubst f os)));
+         ouvar u (Array.map (search Eps) os)
       | OConv when pos = Pos ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in

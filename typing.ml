@@ -298,7 +298,10 @@ let has_uvar : kind -> bool = fun k ->
 (* FIXME: what to do with duplicates, probably OK *)
 let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
   let r = ref [] in
+  let adone = ref [] in
   let rec fn k =
+    if List.memq k !adone then () else (
+    adone := k::!adone;
     match repr k with
     | KFunc(a,b)   -> fn a; fn b
     | KProd(ls)
@@ -322,13 +325,16 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
     | KWith(k,c)   -> fn k; fn (snd c)
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
-    | _            -> ()
+    | _            -> ())
   in
   fn k; !r
 
 let ouvar_list : kind -> ouvar list = fun k ->
   let r = ref [] in
+  let adone = ref [] in
   let rec fn k =
+    if List.memq k !adone then () else (
+    adone := k::!adone;
     match repr k with
     | KFunc(a,b)   -> fn a; fn b
     | KProd(ls)
@@ -343,7 +349,7 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | KWith(k,c)   -> fn k; fn (snd c)
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
-    | _            -> ()
+    | _            -> ())
   and gn o =
     match orepr o with
     | OSucc(o) -> gn o
@@ -838,12 +844,12 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let p2s = List.map check fs in
         Typ_Prod_i(p1, p2s)
     | TProj(t,l) ->
-        let c' = KProd([(l,c)]) in
+        let c' = new_kuvar ~state:(Prod [(l,constant_mbind 0 c)]) () in
         let p = type_check ctxt t c' in
         Typ_Prod_e(p)
     | TCons(d,v) ->
         let a = new_kuvar () in
-        let c' = KDSum([(d,a)]) in
+        let c' = new_kuvar ~state:(Sum [(d,constant_mbind 0 a)]) () in
         let ptr = Refinter.create ctxt.positive_ordinals in
         let c' =
           if is_normal t then
