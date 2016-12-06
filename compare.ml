@@ -38,6 +38,8 @@ let strict f a =
   eq_strict := save;
   res
 
+(** function to set type variables (a more complex
+    function [safe_set_kuvar] exists) *)
 let set_kuvar v k =
   assert (!(v.uvar_val) = None);
   assert (mbinder_arity k = v.uvar_arity);
@@ -46,45 +48,26 @@ let set_kuvar v k =
     (msubst k (Array.init v.uvar_arity (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
   Timed.(v.uvar_val := Some k)
 
+(** function to set ordinal variables *)
+let set_ouvar v o =
+  Io.log_uni "set %d <- %a\n\n%!"
+    v.uvar_key (!fprint_ordinal false)
+    (msubst o (Array.init v.uvar_arity (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
+  assert (!(v.uvar_val) = None);
+  Timed.(v.uvar_val := Some o)
+
+(** forward references to function binding ordinals in kinds and ordinals *)
+(** TODO: reorder the definition to minimize mutual recursion *)
 let fbind_ordinals  : (ordinal array -> kind -> kind from_ords) ref
     = ref (fun _ -> assert false)
 let fobind_ordinals : (ordinal array -> ordinal -> ordinal from_ords) ref
     = ref (fun _ -> assert false)
 
-let rec eq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
-  let rec eq_kind k1 k2 =
-    Io.log_ord "%a = %a %b\n%!" (!fprint_kind false) k1 (!fprint_kind false) k2 !eq_strict;
-    k1 == k2 || match (full_repr k1, full_repr k2) with
-    | (KVari(x1)   , KVari(x2)   ) -> eq_variables x1 x2
-    | (KFunc(a1,b1), KFunc(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
-    | (KProd(fs1)  , KProd(fs2)  ) -> eq_assoc eq_kind fs1 fs2
-    | (KDSum(cs1)  , KDSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
-    | (KKAll(b1)   , KKAll(b2)   )
-    | (KKExi(b1)   , KKExi(b2)   ) -> eq_kbinder pos b1 b2
-    | (KOAll(b1)   , KOAll(b2)   )
-    | (KOExi(b1)   , KOExi(b2)   ) -> eq_obinder pos b1 b2
-    | (KFixM(o1,f1), KFixM(o2,f2))
-    | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_kbinder pos f1 f2 && eq_ordinal pos o1 o2
-    | (KDPrj(t1,s1), KDPrj(t2,s2)) -> s1 = s2 && eq_term pos t1 t2
-    | (KWith(a1,e1), KWith(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
-                                      eq_kind a1 a2 && s1 = s2 &&
-                                      eq_kind b1 b2
-    | (KUCst(t1,f1), KUCst(t2,f2))
-    | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
-    | (KMRec(p,a1) , KMRec(q,a2) )
-    | (KNRec(p,a1) , KNRec(q,a2) ) -> p == q && eq_kind a1 a2
-    | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordinals pos o1 o2
-    | (KUVar(u1,o1), b           ) when not !eq_strict && kuvar_occur ~safe_ordinals:o1 u1 b = Non
-                                   && !(u1.uvar_state) = Free ->
-       set_kuvar u1 (!fbind_ordinals o1 b); true
-    | (a           , KUVar(u2,o2)) when not !eq_strict && kuvar_occur ~safe_ordinals:o2 u2 a = Non
-                                   && !(u2.uvar_state) = Free ->
-       set_kuvar u2 (!fbind_ordinals o2 a); true
-    | (_           , _           ) -> false
-  in
-  eq_kind k1 k2
+(****************************************************************************)
+(**{2                     Ordinal comparisons                              }*)
+(****************************************************************************)
 
-and eq_ordinals =
+let rec eq_ordinals =
   fun pos o1 o2 ->
     try
       if Array.length o1 <> Array.length o2 then raise Exit;
@@ -95,47 +78,9 @@ and eq_ordinals =
     with
       Exit -> false
 
-and eq_kbinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_kvari "X") in
-  eq_kind pos (subst f1 i) (subst f2 i)
-
 and eq_obinder pos f1 f2 = f1 == f2 ||
   let i = free_of (new_ovari "o") in
   eq_kind pos (subst f1 i) (subst f2 i)
-
-and eq_tbinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_tvari "x") in
-  eq_term pos (subst f1 i) (subst f2 i)
-
-and eq_term : ordinal list -> term -> term -> bool = fun pos t1 t2 ->
-  let rec eq_term t1 t2 =
-    t1.elt == t2.elt ||
-    match (t1.elt, t2.elt) with
-    | (TCoer(t1,_)    , _              ) -> eq_term t1 t2
-    | (_              , TCoer(t2,_)    ) -> eq_term t1 t2
-    | (TDefi(d1)      , _              ) -> eq_term d1.value t2
-    | (_              , TDefi(d2)      ) -> eq_term t1 d2.value
-    | (TKAbs(f)       , _              ) -> eq_term (subst f (KProd[])) t2
-    | (_              , TKAbs(f)       ) -> eq_term t1 (subst f (KProd[]))
-    | (TOAbs(f)       , _              ) -> eq_term (subst f OConv) t2
-    | (_              , TOAbs(f)       ) -> eq_term t1 (subst f OConv)
-    | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
-    | (TAbst(_,f1)    , TAbst(_,f2)    )
-    | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos f1 f2
-    | (TAppl(t1,u1)   , TAppl(t2,u2)   ) -> eq_term t1 t2 && eq_term u1 u2
-    | (TReco(fs1)     , TReco(fs2)     ) -> eq_assoc eq_term fs1 fs2
-    | (TProj(t1,l1)   , TProj(t2,l2)   ) -> l1 = l2 && eq_term t1 t2
-    | (TCons(c1,t1)   , TCons(c2,t2)   ) -> c1 = c2 && eq_term t1 t2
-    | (TCase(t1,l1,d1), TCase(t2,l2,d2)) -> eq_term t1 t2 &&
-                                            eq_assoc eq_term l1 l2 &&
-                                            eq_option eq_term d1 d2
-    | (TPrnt(s1)      , TPrnt(s2)      ) -> s1 = s2
-    | (TCnst(c1)      , TCnst(c2)      ) -> eq_tcnst pos c1 c2
-    | (_              , _              ) -> false
-  in eq_term t1 t2
-
-and eq_tcnst pos (f1,a1,b1) (f2,a2,b2) =
-  eq_tbinder pos f1 f2 && eq_kind pos a1 a2 && eq_kind pos b1 b2
 
 and optpr ff = function
   | None -> ()
@@ -209,6 +154,90 @@ and less_opt_ordinal pos o1 f os = match f with
     assert (mbinder_arity f = Array.length os);
     let o2 = msubst f os in
     less_ordinal pos o1 o2
+
+(****************************************************************************)
+(**{2                     Equality on kinds                                }*)
+(****************************************************************************)
+
+and eq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
+  let rec eq_kind k1 k2 =
+    Io.log_ord "%a = %a %b\n%!" (!fprint_kind false) k1 (!fprint_kind false) k2 !eq_strict;
+    k1 == k2 || match (full_repr k1, full_repr k2) with
+    | (KVari(x1)   , KVari(x2)   ) -> eq_variables x1 x2
+    | (KFunc(a1,b1), KFunc(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
+    | (KProd(fs1)  , KProd(fs2)  ) -> eq_assoc eq_kind fs1 fs2
+    | (KDSum(cs1)  , KDSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
+    | (KKAll(b1)   , KKAll(b2)   )
+    | (KKExi(b1)   , KKExi(b2)   ) -> eq_kbinder pos b1 b2
+    | (KOAll(b1)   , KOAll(b2)   )
+    | (KOExi(b1)   , KOExi(b2)   ) -> eq_obinder pos b1 b2
+    | (KFixM(o1,f1), KFixM(o2,f2))
+    | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_kbinder pos f1 f2 && eq_ordinal pos o1 o2
+    | (KDPrj(t1,s1), KDPrj(t2,s2)) -> s1 = s2 && eq_term pos t1 t2
+    | (KWith(a1,e1), KWith(a2,e2)) -> let (s1,b1) = e1 and (s2,b2) = e2 in
+                                      eq_kind a1 a2 && s1 = s2 &&
+                                      eq_kind b1 b2
+    | (KUCst(t1,f1), KUCst(t2,f2))
+    | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
+    | (KMRec(p,a1) , KMRec(q,a2) )
+    | (KNRec(p,a1) , KNRec(q,a2) ) -> p == q && eq_kind a1 a2
+    | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordinals pos o1 o2
+    | (KUVar(u1,o1), b           ) when not !eq_strict && kuvar_occur ~safe_ordinals:o1 u1 b = Non
+                                   && !(u1.uvar_state) = Free ->
+       set_kuvar u1 (!fbind_ordinals o1 b); true
+    | (a           , KUVar(u2,o2)) when not !eq_strict && kuvar_occur ~safe_ordinals:o2 u2 a = Non
+                                   && !(u2.uvar_state) = Free ->
+       set_kuvar u2 (!fbind_ordinals o2 a); true
+    | (_           , _           ) -> false
+  in
+  eq_kind k1 k2
+
+
+and eq_kbinder pos f1 f2 = f1 == f2 ||
+  let i = free_of (new_kvari "X") in
+  eq_kind pos (subst f1 i) (subst f2 i)
+
+(****************************************************************************)
+(**{2                     Equality on terms                                }*)
+(****************************************************************************)
+
+and eq_term : ordinal list -> term -> term -> bool = fun pos t1 t2 ->
+  let rec eq_term t1 t2 =
+    t1.elt == t2.elt ||
+    match (t1.elt, t2.elt) with
+    | (TCoer(t1,_)    , _              ) -> eq_term t1 t2
+    | (_              , TCoer(t2,_)    ) -> eq_term t1 t2
+    | (TDefi(d1)      , _              ) -> eq_term d1.value t2
+    | (_              , TDefi(d2)      ) -> eq_term t1 d2.value
+    | (TKAbs(f)       , _              ) -> eq_term (subst f (KProd[])) t2
+    | (_              , TKAbs(f)       ) -> eq_term t1 (subst f (KProd[]))
+    | (TOAbs(f)       , _              ) -> eq_term (subst f OConv) t2
+    | (_              , TOAbs(f)       ) -> eq_term t1 (subst f OConv)
+    | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
+    | (TAbst(_,f1)    , TAbst(_,f2)    )
+    | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos f1 f2
+    | (TAppl(t1,u1)   , TAppl(t2,u2)   ) -> eq_term t1 t2 && eq_term u1 u2
+    | (TReco(fs1)     , TReco(fs2)     ) -> eq_assoc eq_term fs1 fs2
+    | (TProj(t1,l1)   , TProj(t2,l2)   ) -> l1 = l2 && eq_term t1 t2
+    | (TCons(c1,t1)   , TCons(c2,t2)   ) -> c1 = c2 && eq_term t1 t2
+    | (TCase(t1,l1,d1), TCase(t2,l2,d2)) -> eq_term t1 t2 &&
+                                            eq_assoc eq_term l1 l2 &&
+                                            eq_option eq_term d1 d2
+    | (TPrnt(s1)      , TPrnt(s2)      ) -> s1 = s2
+    | (TCnst(c1)      , TCnst(c2)      ) -> eq_tcnst pos c1 c2
+    | (_              , _              ) -> false
+  in eq_term t1 t2
+
+and eq_tbinder pos f1 f2 = f1 == f2 ||
+  let i = free_of (new_tvari "x") in
+  eq_term pos (subst f1 i) (subst f2 i)
+
+and eq_tcnst pos (f1,a1,b1) (f2,a2,b2) =
+  eq_tbinder pos f1 f2 && eq_kind pos a1 a2 && eq_kind pos b1 b2
+
+(****************************************************************************)
+(**{2                     Strict equalities                                }*)
+(****************************************************************************)
 
 and strict_eq_kind : kind -> kind -> bool =
   fun k1 k2 -> strict (eq_kind [] k1) k2
@@ -319,13 +348,6 @@ and gen_occur :
   in
   (fun k -> aux Pos Non k), (fun o -> aux3 Non o)
 
-and set_ouvar v o =
-  Io.log_uni "set %d <- %a\n\n%!"
-    v.uvar_key (!fprint_ordinal false)
-    (msubst o (Array.init v.uvar_arity (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
-  assert (!(v.uvar_val) = None);
-  Timed.(v.uvar_val := Some o)
-
 and ouvar_occur : ?safe_ordinals:ordinal array -> ouvar -> ordinal -> bool =
   fun ?(safe_ordinals=[||]) v o ->
     (snd (gen_occur ~safe_ordinals ~ouvar:(fun w -> v.uvar_key = w.uvar_key) ()) o <> Non)
@@ -341,6 +363,10 @@ and kuvar_occur : ?safe_ordinals:ordinal array -> kuvar -> kind -> occur =
 and kuvar_ord_occur : ?safe_ordinals:ordinal array -> kuvar -> ordinal -> bool =
   fun ?(safe_ordinals=[||]) v o ->
     (snd (gen_occur ~safe_ordinals ~kuvar:(fun w -> v.uvar_key = w.uvar_key) ()) o <> Non)
+
+(****************************************************************************)
+(**{2                     Protection of tests                              }*)
+(****************************************************************************)
 
 let eq_kind : ordinal list -> kind -> kind -> bool =
   fun pos k1 k2 -> Timed.pure_test (eq_kind pos k1) k2
