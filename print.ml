@@ -233,7 +233,6 @@ and print_state ff s os = match !s with
       fprintf ff "[%a]" (print_list pvariant " | ") cs
 *)
 and print_occur ff = function
-  | Eps    -> pp_print_string ff "ε"
   | All    -> pp_print_string ff "?"
   | Pos    -> pp_print_string ff "+"
   | Neg    -> pp_print_string ff "-"

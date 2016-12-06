@@ -21,20 +21,18 @@ let map_snd : ('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list = fun f l ->
   List.map (fun (k, v) -> (k, f v)) l
 
 (** {2         AST for kinds (or types), ordinals and terms              }*)
-(** Occurence markers for variables. *)
 type occur =
-  (** The variable does not occur. *)
+  (** Occurence markers for variables. *)
   | Non
-  (** The variable occurs only positively. *)
+  (** The variable does not occur. *)
   | Pos
-  (** The variable occurs only negatively. *)
+  (** The variable occurs only positively. *)
   | Neg
-  (** The variable occurs both positively and negatively. *)
+  (** The variable occurs only negatively. *)
   | All
-  (** The variable occurs under an epsilon witness (special case). *)
-  | Eps
-  (** Special constructor for constructing the variance of definitions. *)
+  (** The variable occurs both positively and negatively. *)
   | Reg of int * occur array
+  (** Special constructor for constructing the variance of definitions. *)
 
 (** Ast of kinds (or types). *)
 type kind =
@@ -607,8 +605,6 @@ let combine oa ob =
   | (_     , Reg(_)) -> assert false
   | (Non   , _     ) -> ob
   | (_     , Non   ) -> oa
-  | (Eps   , _     ) -> Eps
-  | (_     , Eps   ) -> Eps
   | (All   , _     ) -> All
   | (_     , All   ) -> All
   | (Neg   , Pos   ) -> All
@@ -622,8 +618,6 @@ let compose oa ob =
   | (_     , Reg(_)) -> assert false
   | (Non   , _     ) -> Non
   | (_     , Non   ) -> Non
-  | (Eps   , _     ) -> Eps
-  | (_     , Eps   ) -> Eps
   | (All   , _     ) -> All
   | (_     , All   ) -> All
   | (Neg   , Pos   ) -> Neg

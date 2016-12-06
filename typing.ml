@@ -1090,10 +1090,10 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
       | Free   -> true
       | Sum  l ->
          let k = mbind_assoc kdsum v.uvar_arity l in
-         safe_set_kuvar Eps v k os; false
+         safe_set_kuvar All v k os; false
       | Prod l ->
          let k = mbind_assoc kprod v.uvar_arity l in
-         safe_set_kuvar Eps  v k os ; false
+         safe_set_kuvar All  v k os ; false
     in
     let ul = List.filter fn (kuvar_list k) in
     let ol = ouvar_list k in

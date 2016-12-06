@@ -138,8 +138,8 @@ let make_safe pos u k =
        kfixm (binder_name f) (kn pos o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        kfixn (binder_name f) (kn (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
-    | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn Eps t) s (fn pos a)
+    | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn All t) s (fn pos a)
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
     | KNRec(_,k) -> fn pos k
@@ -512,8 +512,8 @@ let decompose : ordinal list -> kind -> kind ->
       | OUVar(u,os) ->
          (match u.uvar_state with
          | None -> ()
-         | Some f -> ignore (search Eps (msubst f os)));
-         ouvar u (Array.map (search Eps) os)
+         | Some f -> ignore (search All (msubst f os)));
+         ouvar u (Array.map (search All) os)
       | OConv when pos = Pos ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
@@ -534,12 +534,12 @@ let decompose : ordinal list -> kind -> kind ->
        kfixm (binder_name f) (search (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        kfixn (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
-    | KDPrj(t,s) -> kdprj (map_term (fn Eps) t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn Eps t) s (fn pos a)
+    | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
+    | KWith(t,c) -> let (s,a) = c in kwith (fn All t) s (fn pos a)
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
     | KNRec(_,k) -> fn pos k
-    | KUVar(u,os) -> kuvar u (Array.map (search Eps) os)
+    | KUVar(u,os) -> kuvar u (Array.map (search All) os)
     | KDefi(td,os,ks)    -> assert false (* TODO: should not open definition, but need
                                             variance for ordinal parameters *)
     | t          -> box t (* FIXME: Témoin de type à traverser *)

@@ -262,7 +262,7 @@ and gen_occur :
          acc := aux (compose occ d.tdef_kvariance.(i)) !acc k) a;
        !acc
     | KUCst(t,f)
-    | KECst(t,f) -> let a = subst f kdummy in aux2 (aux Eps acc a) t
+    | KECst(t,f) -> let a = subst f kdummy in aux2 (aux All acc a) t
     | KUVar(u,os) -> if kuvar u then combine acc occ else Array.fold_left aux3 acc os
     | KMRec(_,k)
     | KNRec(_,k) -> aux occ acc k)
@@ -270,7 +270,7 @@ and gen_occur :
     if List.memq t.elt !adone_t then acc else (
     adone_t := t.elt :: !adone_t;
     match t.elt with
-    | TCnst(t,k1,k2) -> aux2 (aux Eps (aux Eps acc k1) k2) (subst t (TReco []))
+    | TCnst(t,k1,k2) -> aux2 (aux All (aux All acc k1) k2) (subst t (TReco []))
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
@@ -295,14 +295,14 @@ and gen_occur :
     | OLess(o,w) ->
        let acc = aux3 acc o in
        (match w with
-       | In(t,f)|NotIn(t,f) -> aux Eps (aux2 acc t) (subst f odummy)
+       | In(t,f)|NotIn(t,f) -> aux All (aux2 acc t) (subst f odummy)
        | Gen(_,_,f) ->
           let os = Array.make (mbinder_arity f) OConv in
           let (k1,k2) = msubst f os in
-          aux Eps (aux Eps acc k2) k1)
+          aux All (aux All acc k2) k1)
     | OSucc o -> aux3 acc o
     | OUVar(({uvar_state = o} as v), os) ->
-       if ouvar v then combine Eps (aux4 acc os o) else  aux4 (Array.fold_left aux3 acc os) os o
+       if ouvar v then combine All (aux4 acc os o) else  aux4 (Array.fold_left aux3 acc os) os o
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc)
