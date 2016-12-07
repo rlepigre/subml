@@ -434,18 +434,10 @@ let kdefi : type_def -> obox array -> kbox array -> kbox =
     let fn td os ks = KDefi(td,os,ks) in
     box_apply3 fn (box td) (box_array os) (box_array ks)
 
-let kfixn0 : obox -> (kind, kind) binder -> kbox =
-  fun o f ->
-    box_apply (fun o -> KFixN(o,f)) o
-
 let kfixn : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
     let b = vbind mk_free_kvari x f in
     box_apply2 (fun o b -> KFixN(o,b)) o b
-
-let kfixm0 : obox -> (kind, kind) binder -> kbox =
-  fun o f ->
-    box_apply (fun o -> KFixM(o,f)) o
 
 let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
@@ -455,6 +447,16 @@ let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
 let kuvar : kuvar -> obox array -> kbox =
   fun u os ->
     box_apply (fun os -> KUVar(u,os)) (box_array os)
+
+let kucst : string -> tbox -> (kvar -> kbox) -> kbox =
+  fun x t f ->
+    let b = vbind mk_free_kvari x f in
+    box_apply2 (fun t b -> KUCst(t,b)) t b
+
+let kecst : string -> tbox -> (kvar -> kbox) -> kbox =
+  fun x t f ->
+    let b = vbind mk_free_kvari x f in
+    box_apply2 (fun t b -> KECst(t,b)) t b
 
 (** Unification variable management. Useful for typing. *)
 let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =

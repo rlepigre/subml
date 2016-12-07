@@ -21,39 +21,6 @@ let opred o w =
   | _ -> OLess(o, w)
 
 (****************************************************************************
- *                 Binding a unification variable in a type                 *
- ****************************************************************************)
-
-let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
-  unbox (bind mk_free_kvari "X" (fun x ->
-    let rec fn k =
-      match repr k with
-      | KFunc(a,b) -> kfunc (fn a) (fn b)
-      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
-      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u,_) -> assert(!(u.uvar_val) = None); if eq_uvar v u then x else box k
-                      (* TODO: is it ok to ignore ordinal parameters ? *)
-      | KVari(x)   -> box_of_var x
-      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
-      | KDPrj(t,s) -> kdprj (map_term fn t) s
-      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | KMRec(_,k)
-      | KNRec(_,k) -> fn k
-      | t          -> box t
-    and gn o =
-      match orepr o with
-      | OVari x -> box_of_var x
-      | OSucc o -> osucc (gn o)
-      | o -> box o
-    in
-    fn k))
-(****************************************************************************
  *                 setting of unification variable, taking care             *
  *                      of occur-check and sum/prod state                   *
  ****************************************************************************)
@@ -68,7 +35,7 @@ let mbind_assoc cst size l =
 exception Occur_check
 
 (****************************************************************************
- *                            lifting of kind                               *
+*                      lifting of kind and ordinals                         *
 ****************************************************************************)
 
 let rec lift_kind : kind -> kind bindbox = fun k ->
@@ -93,7 +60,9 @@ let rec lift_kind : kind -> kind bindbox = fun k ->
   | KMRec _
   | KNRec _    -> assert false
   | KUVar(u,os)-> kuvar u (Array.map lift_ordinal os)
-  | t          -> box t
+  | KUCst(t,f) -> kucst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
+  | KECst(t,f) -> kecst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
+
 and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
   match orepr o with
   | OVari x -> box_of_var x
@@ -156,6 +125,40 @@ let make_safe pos u k =
   else k
 
 (****************************************************************************
+ *                 Binding a unification variable in a type                 *
+ ****************************************************************************)
+
+let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
+  unbox (bind mk_free_kvari "X" (fun x ->
+    let rec fn k =
+      match repr k with
+      | KFunc(a,b) -> kfunc (fn a) (fn b)
+      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
+      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
+      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
+      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
+      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
+      | KUVar(u,_) -> assert(!(u.uvar_val) = None); if eq_uvar v u then x else box k
+                      (* TODO: is it ok to ignore ordinal parameters ? *)
+      | KVari(x)   -> box_of_var x
+      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
+      | KDPrj(t,s) -> kdprj (map_term fn t) s
+      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
+      | KMRec(_,k)
+      | KNRec(_,k) -> fn k
+      | t          -> box t
+    and gn o =
+      match orepr o with
+      | OVari x -> box_of_var x
+      | OSucc o -> osucc (gn o)
+      | o -> box o
+    in
+    fn k))
+
+(****************************************************************************
  *                Set kuvar with kind.                                      *
  *                     - use the previous function 'make_safe'              *
  *                     - does the occur check                               *
@@ -191,7 +194,6 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ords -> ordinal array -> unit =
        | _ -> raise Occur_check
   in
   set_kuvar v k
-
 
 (****************************************************************************
  *                 bindings of ordinals in type and ordinals                *
@@ -361,40 +363,6 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
 
 let _ = fbind_ordinals := bind_ordinals
 let _ = fobind_ordinals := obind_ordinals
-
-(****************************************************************************
- *                 Binding a unification variable in a type                 *
- ****************************************************************************)
-
-let bind_ovar : ouvar-> kind -> (ordinal, kind) binder = fun ov0 k ->
-  unbox (bind mk_free_ovari "o" (fun x ->
-    let rec fn k =
-      match repr k with
-      | KFunc(a,b) -> kfunc (fn a) (fn b)
-      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
-      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KUVar(u,os)-> assert(!(u.uvar_val) = None); box k
-      | KVari(x)   -> box_of_var x
-      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
-      | KDPrj(t,s) -> kdprj (map_term fn t) s
-      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
-      | KMRec(_,k)
-      | KNRec(_,k) -> fn k
-      | t          -> box t
-    and gn o =
-      match orepr o with
-      | OSucc o  -> osucc (gn o)
-      | OVari x  -> box_of_var x
-      | OUVar(v,_) -> if eq_uvar v ov0 then x else box o (* FIXME *)
-      | o -> box o
-    in
-    fn k))
 
 (****************************************************************************
  *                Closedness tests for terms, kind and ordinals             *
