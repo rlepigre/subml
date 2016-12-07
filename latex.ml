@@ -145,9 +145,9 @@ and print_kind unfold wrap ff t =
      else
        fprintf ff "?%i(%a)" u.uvar_key (print_list print_index_ordinal ", ") (Array.to_list os)
   | KMRec(p,a) -> fprintf ff "%a \\land %a" pkind a
-     (print_list (fun ff o -> pordi ff o) ", ") (Refinter.get p)
+     (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
   | KNRec(p,a) -> fprintf ff "%a \\lor %a" pkind a
-     (print_list (fun ff o -> pordi ff o) ", ") (Refinter.get p)
+     (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
 
 
 and pkind_def unfold ff kd =

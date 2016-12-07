@@ -1,7 +1,7 @@
 (** {3 Basic definition of the Ast of types and programs } *)
 
 open Bindlib
-open Refinter
+open Subset
 open Format
 open Position
 
@@ -66,8 +66,8 @@ type kind =
   (** Constants (a.k.a. epsilon) - used for subtyping. *)
   | KUVar of kuvar * ordinal array
   (** Unification variables - used for typechecking. *)
-  | KMRec of ordinal refinter * kind
-  | KNRec of ordinal refinter * kind
+  | KMRec of ordinal set * kind
+  | KNRec of ordinal set * kind
   (** Ordinal conjunction and disjunction *)
 
 (** Type definition (user defined type). *)
@@ -284,8 +284,8 @@ let rec repr : bool -> kind -> kind = fun unfold -> function
      let a' = KFixN(OConv, f) in
      repr unfold a'
   | KDefi({tdef_value = v}, os, ks) when unfold -> repr unfold (msubst (msubst v os) ks)
-  | KMRec(p,k) when Refinter.is_empty p -> repr unfold k
-  | KNRec(p,k) when Refinter.is_empty p -> repr unfold k
+  | KMRec(p,k) when Subset.is_empty p -> repr unfold k
+  | KNRec(p,k) when Subset.is_empty p -> repr unfold k
   | k -> k
 
 and is_mu unfold f = !contract_mu &&

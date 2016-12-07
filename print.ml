@@ -208,8 +208,11 @@ and print_kind unfold wrap ff t =
      else
        fprintf ff "?%i(%a)" u.uvar_key
          (print_list print_index_ordinal ", ") (Array.to_list os)
-  | KMRec(_,a) -> pkind ff a
-  | KNRec(_,a) -> pkind ff a
+  | KMRec(p,a) -> fprintf ff "%a && {%a}" pkind a
+     (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
+  | KNRec(p,a) -> fprintf ff "%a || {%a}" pkind a
+     (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
+
 (*
 and print_state ff s os = match !s with
   | Free -> ()

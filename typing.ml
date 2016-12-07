@@ -445,11 +445,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        None, Sub_Or_r(subtype ctxt t a0 b)
 
     | (KNRec(ptr,a), KUVar _     )
-        when Refinter.subset (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
+        when Subset.test (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
        None, Sub_Or_l(subtype ctxt t a b0)
 
     | (KUVar _     , KMRec(ptr,b))
-        when Refinter.subset (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
+        when Subset.test (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
        None, Sub_And_r(subtype ctxt t a0 b)
 
     (* unification. (sum and product special) *)
@@ -744,11 +744,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         Sub_OExi_r(p)
 
     | (KNRec(ptr, a), _          )
-        when Refinter.subset (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
+        when Subset.test (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
        Sub_And_l(subtype ctxt t a b0)
 
     | (_           , KMRec(ptr, b))
-        when Refinter.subset (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
+        when Subset.test (eq_ordinal ctxt.positive_ordinals) ptr ctxt.positive_ordinals ->
        Sub_Or_r(subtype ctxt t a0 b)
 
     (* Subtype clash. *)
@@ -775,10 +775,10 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TAbst(ao,f) ->
         let a = match ao with None -> new_kuvar () | Some a -> a in
         let b = new_kuvar () in
-        let ptr = Refinter.create ctxt.positive_ordinals in
+        let ptr = Subset.create ctxt.positive_ordinals in
         let c' = KNRec(ptr,KFunc(a,b)) in
         let p1 = subtype ctxt t c' c in
-        let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Subset.get ptr) in
         let wit = tcnst f a b in
         let p2 = type_check ctxt (subst f wit) b in
         Typ_Func_i(p1, p2)
@@ -792,9 +792,9 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_OAbs(p)
     | TAppl(t,u) when is_neutral t && not (is_neutral u)->
         let a = new_kuvar () in
-        let ptr = Refinter.create ctxt.positive_ordinals in
+        let ptr = Subset.create ctxt.positive_ordinals in
         let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
-        let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Subset.get ptr) in
         let p1 = type_check ctxt u a in
         Typ_Func_e(p1, p2)
     | TAppl(t,u) ->
@@ -805,12 +805,12 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TReco(fs) ->
         let ts = List.map (fun (l,_) -> (l, new_kuvar ())) fs in
         let c' = KProd(ts) in
-        let ptr = Refinter.create ctxt.positive_ordinals in
+        let ptr = Subset.create ctxt.positive_ordinals in
         let c' =
           if is_normal t then KNRec(ptr,c') else c'
         in
         let p1 = subtype ctxt t c' c in
-        let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Subset.get ptr) in
         let check (l,t) =
           let cl = List.assoc l ts in type_check ctxt t cl
         in
@@ -823,14 +823,14 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | TCons(d,v) ->
         let a = new_kuvar () in
         let c' = new_kuvar ~state:(Sum [(d,constant_mbind 0 a)]) () in
-        let ptr = Refinter.create ctxt.positive_ordinals in
+        let ptr = Subset.create ctxt.positive_ordinals in
         let c' =
           if is_normal t then
             KNRec(ptr,c')
           else c'
         in
         let p1 = subtype ctxt t c' c in
-        let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Subset.get ptr) in
         let p2 = type_check ctxt v a in
         Typ_DSum_i(p1, p2)
     | TCase(t,l,d) ->
@@ -843,9 +843,9 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
              let ts = List.map (fun (c,_) -> (c, constant_mbind 0 (List.assoc c ts))) l in
              new_kuvar ~state:(Sum ts) ()
         in
-        let ptr = Refinter.create ctxt.positive_ordinals in
+        let ptr = Subset.create ctxt.positive_ordinals in
         let p1 = type_check ctxt t (KMRec(ptr,k)) in
-        let ctxt = add_positives ctxt (Refinter.get ptr) in
+        let ctxt = add_positives ctxt (Subset.get ptr) in
         let check (d,f) =
           let cc = List.assoc d ts in
           type_check ctxt f (KFunc(cc,c))
