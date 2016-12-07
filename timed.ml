@@ -2,9 +2,12 @@
 (**{3                        Undoable references                           }*)
 (****************************************************************************)
 
-(** replacement of references with possibilities of rollback *)
+(** This module provides alternative functions for updating references
+    (that is, terms of type ['a ref]) and enables the restoration of a
+    previously saved state by "undoing" the updates. *)
 
-(** Time module allows to [save] the current time and [rollback]
+module Time =
+(** [Time] submodule allows to [save] the current time and [rollback]
     the references. If the time is not accessible.
 
     old values are collected by the GC if no time are accessible
@@ -13,7 +16,6 @@
     TODO: Innacessible value after an accessible time are not
     collected.
 *)
-module Time =
   struct
     type t = { mutable next : t option ; undo : unit -> unit }
 

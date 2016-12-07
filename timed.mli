@@ -1,10 +1,21 @@
+(****************************************************************************)
+(**{3                        Undoable references                           }*)
+(****************************************************************************)
+
 (** This module provides alternative functions for updating references
     (that is, terms of type ['a ref]) and enables the restoration of a
     previously saved state by "undoing" the updates. *)
 
-(** The [Time] module provides an abstract notion of time used to save
-    or restore the state of references at a given time. *)
 module Time :
+(** [Time] submodule allows to [save] the current time and [rollback]
+    the references. If the time is not accessible.
+
+    old values are collected by the GC if no time are accessible
+    that would allow to rollback to this value.
+
+    TODO: Innacessible value after an accessible time are not
+    collected.
+*)
   sig
     (** Type representing a precise time in the program execution. *)
     type t

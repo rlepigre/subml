@@ -23,7 +23,7 @@ deploy: www
 
 MLFILES=$(wildcard *.ml) config.ml
 
-doc:
+doc: config.ml
 	ocamlbuild -use-ocamlfind -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
 
 subml.native: $(MLFILES) subml.ml
