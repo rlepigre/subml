@@ -158,6 +158,7 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
 
 let safe_set_kuvar : occur -> kuvar -> kind from_ords -> ordinal array -> unit =
   fun side v k os ->
+    assert(!(v.uvar_val) = None);
   (* side = Pos means we are checking k < KUVar(u,os)
      side = Neg means we are chacking KUVar(u,os) < k
      side <> Pos and Neg means we not in the previous cases *)

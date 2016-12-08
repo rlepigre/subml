@@ -499,7 +499,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
-        begin (* make the correct choice, depending if Sum or Prod *)
+       begin (* make the correct choice, depending if Sum or Prod *)
           match !(ua.uvar_state), !(ub.uvar_state) with
           | _, Sum _ -> safe_set_kuvar Neg ua (bind_ordinals osa b) osa
           | Prod _, _ -> safe_set_kuvar Pos ub (bind_ordinals osb a) osb
@@ -533,10 +533,14 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                in
                let u = new_kuvara ~state new_len in
                let k = KUVar(u,os) in
-               Timed.(ub.uvar_state := Free);
-               Timed.(ua.uvar_state := Free);
-               safe_set_kuvar Neg ua (bind_ordinals osa k) osa;
-               safe_set_kuvar Pos ub (bind_ordinals osb k) osb;
+               (* NOTE: the call to  bind_fn above may (very rarely) instanciate
+                  ua or ub, so we added a test to avoid an assert false  *)
+               if !(ua.uvar_val) = None then (
+                 Timed.(ua.uvar_state := Free);
+                 safe_set_kuvar Neg ua (bind_ordinals osa k) osa);
+               if !(ub.uvar_val) = None then (
+                 Timed.(ub.uvar_state := Free);
+                 safe_set_kuvar Pos ub (bind_ordinals osb k) osb);
         end;
         let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
 
