@@ -145,13 +145,29 @@ and leqi_ordinal pos o1 i o2 =
       not (ouvar_occur ~safe_ordinals:os p o2) &&
       Timed.pure_test (fun () -> less_opt_ordinal pos o2 p.uvar_state os) () ->
      assert false; (* TODO: why *) (*
-     let o2' = new_ouvar ~bound:(0, (constant_mbind 0 o2)) () in
+     let o2' = new_ouvar ~lower:... ~upper:(constant_mbind 0 o2) () in
      set_ouvar p (!fobind_ordinals os o2');
                                      true*)
   | (o1         , OUVar(p,os)) when not !eq_strict && not (ouvar_occur ~safe_ordinals:os p o1) &&
       Timed.pure_test (fun () ->
         let o1 = oadd o1 i in
-        set_ouvar p (!fobind_ordinals os o1); less_opt_ordinal pos o1 p.uvar_state os) () ->
+        less_opt_ordinal pos o1 p.uvar_state os) () ->
+     let general = match orepr o1 with
+         OLess(OConv,_) -> false
+       | OLess(_,_) -> true
+       | _ -> false
+     in
+     let o1 = oadd o1 i in
+     let o1' =
+       if general then
+         new_ouvar
+           ~lower:(constant_mbind 0 o1)
+           ?upper:(match snd p.uvar_state with
+           | None -> None
+           | Some f -> Some (constant_mbind 0 (msubst f os))) ()
+       else o1
+     in
+     set_ouvar p (!fobind_ordinals os o1');
      true
   | (OLess(o1,_),       o2  ) ->
      let i = if List.exists (Timed.pure_test (eq_ordinal pos o1)) pos then i-1 else i in
@@ -164,12 +180,20 @@ and leq_ordinal pos o1 o2 =
 and less_ordinal pos o1 o2 =
   leqi_ordinal pos o1 1 o2
 
-and less_opt_ordinal pos o1 f os = match f with
+and less_opt_ordinal pos o1 (lower,upper) os =
+  (match upper with
   | None -> true
-  | Some (i,f) ->
+  | Some f ->
     assert (mbinder_arity f = Array.length os);
     let o2 = msubst f os in
-    leqi_ordinal pos o1 i o2
+    less_ordinal pos o1 o2) &&
+  (match lower with
+  | None -> true
+  | Some f ->
+    assert (mbinder_arity f = Array.length os);
+    let o2 = msubst f os in
+    leq_ordinal pos o2 o1)
+
 
 (****************************************************************************)
 (**{2                     Equality on kinds                                }*)
@@ -387,11 +411,17 @@ and gen_occur :
     (* we keep this to ensure valid proof when simplifying useless induction
        needed because has_uvar below does no check ordinals *)
     | _             -> acc)
-  and aux4 acc os = function
+  and aux4 acc os (lower, upper) =
+    let acc = match lower with
     | None -> acc
-    | Some (_,f) -> assert (mbinder_arity f = Array.length os ||
-                        (Io.log "==> %d %d\n%!" (mbinder_arity f) (Array.length os); false)
-       ); aux3 acc (msubst f os)
+    | Some f -> aux3 acc (msubst f os)
+    in
+    let acc = match upper with
+    | None -> acc
+    | Some f -> aux3 acc (msubst f os)
+    in
+    acc
+
   in
   (fun k -> aux Pos Non k), (fun o -> aux3 Non o)
 

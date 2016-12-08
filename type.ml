@@ -11,13 +11,15 @@ let rec assoc_ordinal o = function
 
 (* construction of an ordinal < o such that w *)
 
-let opred o w =
+let rec opred o w =
   let o = orepr o in
   match o with
   | OSucc o' -> o'
-  | OUVar({uvar_state = None; uvar_arity = a} as p, os) ->
+  | OUVar({uvar_state = (None,None); uvar_arity = a} as p, os) ->
      let o' = OUVar(new_ouvara a,os) in
      set_ouvar p (!fobind_ordinals os (OSucc o')); o'
+  | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
+     set_ouvar p o'; opred o w
   | _ -> OLess(o, w)
 
 exception Occur_check
@@ -308,16 +310,25 @@ and bind_gn len os x o = (
              let os'' = Array.of_list os'' in
              let new_os = Array.append os' os'' in
              let new_len = Array.length new_os in
-             let bound = match u.uvar_state with
+             let upper = match snd u.uvar_state with
                | None -> None
-               | Some (i, o) ->
+               | Some o ->
                   let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
                     bind_gn new_len new_os x (msubst o os'))
                   in
                   assert (is_closed f);
-                  Some (i, unbox f)
+                  Some (unbox f)
              in
-             let v = new_ouvara ?bound new_len in
+             let lower = match fst u.uvar_state with
+               | None -> None
+               | Some o ->
+                  let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                    bind_gn new_len new_os x (msubst o os'))
+                  in
+                  assert (is_closed f);
+                  Some (unbox f)
+             in
+             let v = new_ouvara ?lower ?upper new_len in
              let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
                ouvar v (Array.init new_len (fun i ->
                  if i < u.uvar_arity then x.(i) else
@@ -462,9 +473,12 @@ let decompose : ordinal list -> kind -> kind ->
       | OSucc o -> osucc(search pos o)
       | OVari o -> box_of_var o
       | OUVar(u,os) ->
-         (match u.uvar_state with
+         (match fst u.uvar_state with
          | None -> ()
-         | Some (_,f) -> ignore (search All (msubst f os)));
+         | Some f -> ignore (search All (msubst f os)));
+         (match snd u.uvar_state with
+         | None -> ()
+         | Some f -> ignore (search All (msubst f os)));
          ouvar u (Array.map (search All) os)
       | OConv when pos = Pos ->
          let n = !i in incr i;
@@ -557,7 +571,7 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
           if general then
             try
               let v = search (List.assoc i rel) in
-              new_ouvar ~bound:(1, constant_mbind 0 v) ()
+              new_ouvar ~upper:(constant_mbind 0 v) ()
             with Not_found ->
               new_ouvar ()
           else

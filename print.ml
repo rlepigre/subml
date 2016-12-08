@@ -116,19 +116,20 @@ let rec print_ordinal unfold ff o =
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
     | OUVar(u,os) ->
-       let print_bound ff = function
-         | None -> ()
-         | Some (i,o) ->
-            if i = 0 then fprintf ff "≤%a" (print_ordinal false) (msubst o os)
-            else if i = 1 then fprintf ff "<%a" (print_ordinal false) (msubst o os)
-            else fprintf ff "<_%d%a" i (print_ordinal false) (msubst o os)
+       let print_upper ff = function
+         | (_,None) -> ()
+         | (_,Some o) -> fprintf ff "<%a" (print_ordinal false) (msubst o os)
+       in
+       let print_lower ff = function
+         | (None,_) -> ()
+         | (Some o,_) -> fprintf ff "%a≤" (print_ordinal false) (msubst o os)
        in
        if os = [||] then
-         fprintf ff "?%i%a" u.uvar_key print_bound u.uvar_state
+         fprintf ff "%a?%i%a" print_lower u.uvar_state u.uvar_key print_upper u.uvar_state
        else
-         fprintf ff "?%i(%a)%a" u.uvar_key
+         fprintf ff "%a?%i(%a)%a" print_lower u.uvar_state u.uvar_key
            (print_list print_index_ordinal ", ") (Array.to_list os)
-           print_bound u.uvar_state
+           print_upper u.uvar_state
 
 and print_index_ordinal ff = function
   | OConv -> fprintf ff "∞"

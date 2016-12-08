@@ -126,7 +126,7 @@ and ordinal =
   | OVari of ordinal variable
   (** Ordinal variable. *)
 
-and ouvar = (ordinal, (int * ordinal from_ords) option) uvar
+and ouvar = (ordinal, (ordinal from_ords) option * (ordinal from_ords) option) uvar
 
 (** ordinal constraints to build above [OLess] witness *)
 and ord_wit =
@@ -465,14 +465,14 @@ let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
     KUVar(new_kuvara ~state 0, [||])
   in
   let reset_all () = c := 0 in
-  let new_ouvara ?bound n : ouvar = {
+  let new_ouvara ?lower ?upper n : ouvar = {
     uvar_key = (incr c; !c);
     uvar_val = ref None;
-    uvar_state = bound;
+    uvar_state = (lower, upper);
     uvar_arity = n;
   } in
-  let new_ouvar ?bound () =
-    OUVar(new_ouvara ?bound 0, [||])
+  let new_ouvar ?lower ?upper () =
+    OUVar(new_ouvara ?lower ?upper 0, [||])
   in
   (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar)
 

@@ -129,9 +129,9 @@ let find_positive ctxt o =
       | _ -> raise Not_found) ctxt.positive_ordinals
   in
   let rec fn i o = match orepr o with
-    | OUVar({ uvar_state = Some(j,f)},os) ->
+    | OUVar({ uvar_state = (_,Some f)},os) ->
        let b = msubst f os in
-       fn (i+j) b
+       fn (i+1) b
     | OConv -> true
     | OSucc o -> if i >= 0 then true else fn (i-1) o
     | OLess(_) as o -> gn i o
@@ -144,7 +144,7 @@ let find_positive ctxt o =
   | OSucc o' -> o'
   | o ->
      if not (fn 0 o) then raise Not_found;
-     new_ouvar ~bound:(1,constant_mbind 0 o) ()
+     new_ouvar ~upper:(constant_mbind 0 o) ()
 
 let is_positive ctxt o =
   match orepr o with
@@ -317,11 +317,10 @@ let print_positives ff ctxt =
       | [] -> ()
       | l -> Io.log "  (%a)\n\n%!" (print_list p_aux ", ") l
 
-let add_pos positives o =
+let rec add_pos positives o =
   let o = orepr o in
   match o with
   | OConv | OSucc _ -> positives
-  | OUVar _-> Io.log "%a\n%!" (print_ordinal false) o; assert false
   | _ ->
     if List.exists (strict_eq_ordinal o) positives then positives else o :: positives
 
