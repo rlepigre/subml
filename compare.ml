@@ -154,7 +154,10 @@ and leqi_ordinal pos o1 i o2 =
         less_opt_ordinal pos o1 p.uvar_state os) () ->
      let general = match orepr o1 with
          OLess(OConv,_) -> false
-       | OLess(_,_) -> true
+       | OLess(o,_) ->
+          (match snd p.uvar_state with
+              None -> true
+            | Some f -> not (strict_eq_ordinal (msubst f os) o))
        | _ -> false
      in
      let o1 = oadd o1 i in

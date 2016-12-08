@@ -472,6 +472,8 @@ let decompose : ordinal list -> kind -> kind ->
       | OLess _ -> let (_, o) = eps_search true o in box o
       | OSucc o -> osucc(search pos o)
       | OVari o -> box_of_var o
+      | OUVar({uvar_state = (Some o', _)} as u, os) when pos = Neg ->
+         set_ouvar u o'; search pos o (* NOTE: avoid looping in flot.typ/compose *)
       | OUVar(u,os) ->
          (match fst u.uvar_state with
          | None -> ()
@@ -496,10 +498,10 @@ let decompose : ordinal list -> kind -> kind ->
     | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn pos (subst f (KVari x)))
     | KOAll(f)   -> koall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
     | KOExi(f)   -> koexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | KFixM(o,f) ->
-       kfixm (binder_name f) (search (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
-    | KFixN(o,f) ->
-       kfixn (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
+    | KFixM(o,f) -> kfixm (binder_name f) (search (neg pos) o)
+       (fun x -> fn pos (subst f (KVari x)))
+    | KFixN(o,f) -> kfixn (binder_name f) (search pos o)
+       (fun x -> fn pos (subst f (KVari x)))
     | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
