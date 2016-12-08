@@ -10,12 +10,12 @@ val rec idt : ∀α NS(α) → NS(α) = fun n →
   | Z    → Z
   | S(n) → S(idt n)
 
-(* FIXME: ordinal indication fails for recursive function
-val rec idt2 : ∀α NS(α) → NS(α) = Λα fun n →
-  case n:N(α) of
+(* FIXME: ordinal indication fails for recursive function *)
+?val rec idt2 : ∀α NS(α) → NS(α) = Λα fun n →
+  case n:NS(α) of
   | Z    → Z
   | S(n) → S(idt2 n)
-*)
+
 
 val idt3 : ∀α F(NS(α)) → F(NS(α)) = idt
 val idt4 : ∀α NS(α+1) → NS(α+1) = idt
@@ -39,6 +39,8 @@ val rec 2 suc1 : ∀α NS(α) → NS(α+1) = fun n →
   | Z  → S Z
   | S n → S (suc1 n)
 
+(* FIXME: probably a heuristic instantiating(or not) wrongly
+   an ordinal variable with a successor *)
 ?val rec suc1' : ∀α NS(α) → NS(α+1) = fun n →
   case n of
   | Z  → S Z
