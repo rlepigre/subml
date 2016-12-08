@@ -82,6 +82,7 @@ and lift_term t = map_term lift_kind t
 
 (****************************************************************************
  *                    Increase ordinals in covariant position               *
+ *                      that cannot be used by the variable u               *
  *                       to allow setting the value of an uvar              *
  ****************************************************************************)
 
