@@ -58,8 +58,6 @@ type kind =
   (** User-defined type applied to arguments: T(A1,...,An). *)
   | KDPrj of term * string
   (** Dot projection t.X. *)
-  | KWith of kind * (string * kind)
-  (** With clause A with X = B. *)
   (* Special constructors (not accessible to user) *)
   | KUCst of term * (kind, kind) binder
   | KECst of term * (kind, kind) binder
@@ -128,7 +126,7 @@ and ordinal =
   | OVari of ordinal variable
   (** Ordinal variable. *)
 
-and ouvar = (ordinal, ordinal from_ords option) uvar
+and ouvar = (ordinal, (int * ordinal from_ords) option) uvar
 
 (** ordinal constraints to build above [OLess] witness *)
 and ord_wit =
@@ -424,10 +422,6 @@ let koexi : string -> (ovar -> kbox) -> kbox =
 let kdprj : tbox -> string -> kbox =
   fun t s ->
     box_apply (fun t -> KDPrj(t,s)) t
-
-let kwith : kbox -> string -> kbox -> kbox =
-  fun a s b ->
-    box_apply2 (fun a b -> KWith(a,(s,b))) a b
 
 let kdefi : type_def -> obox array -> kbox array -> kbox =
   fun td os ks ->

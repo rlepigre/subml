@@ -20,18 +20,6 @@ let opred o w =
      set_ouvar p (!fobind_ordinals os (OSucc o')); o'
   | _ -> OLess(o, w)
 
-(****************************************************************************
- *                 setting of unification variable, taking care             *
- *                      of occur-check and sum/prod state                   *
- ****************************************************************************)
-
-let constant_mbind size k =
-  unbox (mbind mk_free_ovari (Array.make size "_") (fun x -> box k))
-
-let mbind_assoc cst size l =
-  unbox (mbind mk_free_ovari (Array.make size "α")
-           (fun v -> cst (List.map (fun (s,k) -> (s, mbind_apply (box k) (box_array v))) l)))
-
 exception Occur_check
 
 (****************************************************************************
@@ -56,7 +44,6 @@ let rec lift_kind : kind -> kind bindbox = fun k ->
   | KVari(x)   -> box_of_var x
   | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
   | KDPrj(t,s) -> kdprj (map_term lift_kind t) s
-  | KWith(t,c) -> let (s,a) = c in kwith (lift_kind t) s (lift_kind a)
   | KMRec _
   | KNRec _    -> assert false
   | KUVar(u,os)-> kuvar u (Array.map lift_ordinal os)
@@ -109,7 +96,6 @@ let make_safe pos u k =
     | KFixN(o,f) ->
        kfixn (binder_name f) (kn (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
     | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn All t) s (fn pos a)
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
     | KNRec(_,k) -> fn pos k
@@ -147,7 +133,6 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
-      | KWith(t,c) -> let (s,a) = c in kwith (fn t) s (fn a)
       | KMRec(_,k)
       | KNRec(_,k) -> fn k
       | t          -> box t
@@ -231,7 +216,6 @@ let rec bind_fn len os x k =
     | KVari(x)     -> box_of_var x
     | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
     | KDPrj(t,s)   -> kdprj (map_term fn t) s
-    | KWith(t,c)   -> let (s,a) = c in kwith (fn t) s (fn a)
     | KMRec(_,k)
     | KNRec(_,k)   -> fn k
     | KUVar(u,os') ->
@@ -326,12 +310,12 @@ and bind_gn len os x o = (
              let new_len = Array.length new_os in
              let bound = match u.uvar_state with
                | None -> None
-               | Some o ->
+               | Some (i, o) ->
                   let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
                     bind_gn new_len new_os x (msubst o os'))
                   in
                   assert (is_closed f);
-                  Some (unbox f)
+                  Some (i, unbox f)
              in
              let v = new_ouvara ?bound new_len in
              let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
@@ -382,7 +366,6 @@ let rec has_boundvar k =
   | KOAll(f)
   | KOExi(f)   -> has_boundvar (subst f OConv)
   | KDefi(d,o,a) -> Array.iter has_oboundvar o; Array.iter has_boundvar a
-  | KWith(k,c) -> let (_,b) = c in has_boundvar k; has_boundvar b
   | KDPrj(t,s) -> has_tboundvar t
   | KMRec(o,k) -> has_boundvar k (* In the current version, no bound ordinal in o *)
   | KNRec(o,k) -> has_boundvar k (* In the current version, no bound ordinal in o *)
@@ -481,7 +464,7 @@ let decompose : ordinal list -> kind -> kind ->
       | OUVar(u,os) ->
          (match u.uvar_state with
          | None -> ()
-         | Some f -> ignore (search All (msubst f os)));
+         | Some (_,f) -> ignore (search All (msubst f os)));
          ouvar u (Array.map (search All) os)
       | OConv when pos = Pos ->
          let n = !i in incr i;
@@ -504,7 +487,6 @@ let decompose : ordinal list -> kind -> kind ->
     | KFixN(o,f) ->
        kfixn (binder_name f) (search pos o) (fun x -> fn pos (subst f (KVari x)))
     | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
-    | KWith(t,c) -> let (s,a) = c in kwith (fn All t) s (fn pos a)
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
     | KNRec(_,k) -> fn pos k
@@ -575,7 +557,7 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
           if general then
             try
               let v = search (List.assoc i rel) in
-              new_ouvar ~bound:(constant_mbind 0 v) ()
+              new_ouvar ~bound:(1, constant_mbind 0 v) ()
             with Not_found ->
               new_ouvar ()
           else
@@ -610,8 +592,6 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuva
        s1 = s2 && match_kind kuvars ouvars p1 k1) ps1 ps2
   | KDPrj(t1,s1), KDPrj(t2,s2) ->
      s1 = s2 && strict_eq_term t1 t2
-  | KWith(p1,(s1,p2)), KWith(k1,(s2,k2)) ->
-     s1 = s2 && match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
   | KKAll(f), KKAll(g)
   | KKExi(f), KKExi(g) ->
      let v = new_kvari (binder_name f) in

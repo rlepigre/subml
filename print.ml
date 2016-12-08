@@ -118,7 +118,10 @@ let rec print_ordinal unfold ff o =
     | OUVar(u,os) ->
        let print_bound ff = function
          | None -> ()
-         | Some o -> fprintf ff "<%a" (print_ordinal false) (msubst o os)
+         | Some (i,o) ->
+            if i = 0 then fprintf ff "≤%a" (print_ordinal false) (msubst o os)
+            else if i = 1 then fprintf ff "<%a" (print_ordinal false) (msubst o os)
+            else fprintf ff "<_%d%a" i (print_ordinal false) (msubst o os)
        in
        if os = [||] then
          fprintf ff "?%i%a" u.uvar_key print_bound u.uvar_state
@@ -195,8 +198,6 @@ and print_kind unfold wrap ff t =
           (print_array pkind ", ") ks
   | KDPrj(t,s) ->
      fprintf ff "%a.%s" (print_term ~in_proj:false false) t s
-  | KWith(a,(s,b)) ->
-     fprintf ff "%a with %s = %a" pkind a s pkind b
   | KUCst(u,f)
   | KECst(u,f) ->
      let is_exists = match t with KECst(_) -> true | _ -> false in

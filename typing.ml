@@ -129,9 +129,9 @@ let find_positive ctxt o =
       | _ -> raise Not_found) ctxt.positive_ordinals
   in
   let rec fn i o = match orepr o with
-    | OUVar({ uvar_state = Some f},os) ->
+    | OUVar({ uvar_state = Some(j,f)},os) ->
        let b = msubst f os in
-       fn (i+1) b
+       fn (i+j) b
     | OConv -> true
     | OSucc o -> if i >= 0 then true else fn (i-1) o
     | OLess(_) as o -> gn i o
@@ -144,32 +144,17 @@ let find_positive ctxt o =
   | OSucc o' -> o'
   | o ->
      if not (fn 0 o) then raise Not_found;
-     new_ouvar ~bound:(constant_mbind 0 o) ()
+     new_ouvar ~bound:(1,constant_mbind 0 o) ()
 
 let is_positive ctxt o =
   match orepr o with
   | OConv | OSucc _ -> true
   | o -> List.exists (fun o' -> leq_ordinal ctxt.positive_ordinals o' o) ctxt.positive_ordinals
 
-(* FIXME: the function below are certainly missing cases *)
-let rec with_clause a (s,b) = match full_repr a with
-  | KKExi(f) ->
-     if binder_name f = s then subst f b else begin
-       KKExi(binder_from_fun (binder_name f) (fun x ->
-         with_clause (subst f x) (s,b)))
-     end
-  | KFixM(OConv,f) -> with_clause (subst f (KFixM(OConv,f))) (s,b)
-  | KFixN(OConv,f) -> with_clause (subst f (KFixN(OConv,f))) (s,b)
-  | k       ->
-     Io.log "KWith constraint on %s in %a\n%!" s (print_kind false) k;
-     subtype_error ("Illegal use of \"with\" on variable "^s^".")
-
 let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->
      let c = KECst(t,f) in
      if binder_name f = s then c else dot_proj t (subst f c) s
-  | KWith(k,(s',a)) ->
-     if s' = s then a else dot_proj t (with_clause k (s',a)) s
   | k ->
      raise Not_found
 
@@ -199,7 +184,6 @@ let has_leading_ord_quantifier : kind -> bool = fun k ->
     | KKExi(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
-    | KWith(k,s) -> true
     | _ -> false
   in
   fn k
@@ -217,7 +201,6 @@ let has_leading_exists : kind -> bool = fun k ->
     | KKAll(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
-    | KWith(k,s) -> true
     | _ -> false
   in
   fn k
@@ -234,7 +217,6 @@ let has_leading_forall : kind -> bool = fun k ->
     | KKExi(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
-    | KWith(k,s) -> true
     | _ -> false
   in
   fn k
@@ -253,7 +235,6 @@ let has_uvar : kind -> bool = fun k ->
     | KOExi(f)   -> fn (subst f OConv)
     | KUVar(u,_)   -> raise Exit
     | KDefi(d,o,a) -> Array.iter fn a
-    | KWith(k,c) -> let (_,b) = c in fn k; fn b
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     (* we ommit Dprj above because the kind in term are only
@@ -293,7 +274,6 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
        if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
          r := (u,os) :: !r
     | KDefi(d,_,a) -> Array.iter fn a
-    | KWith(k,c)   -> fn k; fn (snd c)
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
     | _            -> ())
@@ -318,7 +298,6 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | KOAll(f)
     | KOExi(f)     -> fn (subst f OConv)
     | KDefi(d,o,a) -> Array.iter gn o;  Array.iter fn a
-    | KWith(k,c)   -> fn k; fn (snd c)
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
     | _            -> ())
@@ -342,7 +321,7 @@ let add_pos positives o =
   let o = orepr o in
   match o with
   | OConv | OSucc _ -> positives
-  | OUVar _ -> assert false
+  | OUVar _-> Io.log "%a\n%!" (print_ordinal false) o; assert false
   | _ ->
     if List.exists (strict_eq_ordinal o) positives then positives else o :: positives
 
@@ -412,7 +391,7 @@ let check_rec
         Io.log_sub "TESTING %a = %a\n%a = %a\n\n%!"
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
-        if eq_kind tpos k1 a' && eq_kind tpos k2 b' && (Io.log_sub "EQ OK\n%!"; true) &&
+        if leq_kind tpos k1 a' && leq_kind tpos b' k2 && (Io.log_sub "EQ OK\n%!"; true) &&
            List.for_all (fun o1 ->
                List.exists (eq_ordinal tpos o1) tpos) pos'
         then (
@@ -433,7 +412,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     print_positives ctxt;
   let a = full_repr a0 in
   let b = full_repr b0 in
-  if eq_kind ctxt.positive_ordinals a b (*strict_eq_kind a b*) then
+  if leq_kind ctxt.positive_ordinals a b (*strict_eq_kind a b*) then
     (t, a0, b0, None, Sub_Lower)
   else (
     try
@@ -637,15 +616,6 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let p1 = type_check ctxt t0 u in
         let p2 = subtype ctxt t a0 (dot_proj t0 u s) in
         Sub_DPrj_r(p1, p2)
-
-    (* KWith clause. *)
-    | (KWith(a,e)  , _           ) ->
-        let p = subtype ctxt t (with_clause a e) b0 in
-        Sub_With_l(p)
-
-    | (_           , KWith(b,e)  ) ->
-        let p = subtype ctxt t a0 (with_clause b e) in
-        Sub_With_r(p)
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->

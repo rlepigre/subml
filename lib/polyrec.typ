@@ -8,10 +8,9 @@ val rec length : ∀A T(A) → Nat = fun t →
    | []   → Z
    | x::l → add (length x.2) (length l)
 
+(*
 type Key = μK [Atom of Nat | Pair of K × K ]
 type Trie(A) = (μK ∃A [Nil | Branch of List(Nat × A) × (K with A = (K with A = A))]) with A = A
-
-(*
 type A = [A]
 
 check Trie(A) ⊂ [Nil | Branch of List(Nat × A) × Trie(Trie(A))]

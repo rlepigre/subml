@@ -142,6 +142,19 @@ let ordinal_variable : occur -> env -> strpos -> obox = fun pos env s ->
     o
   with Not_found -> unbound s
 
+(* FIXME: the function below are certainly missing cases *)
+let rec with_clause a s b = match full_repr a with
+  | KKExi(f) ->
+     if binder_name f = s then subst f b else begin
+       KKExi(binder_from_fun (binder_name f) (fun x ->
+         with_clause (subst f x) s b))
+     end
+  | KFixM(OConv,f) -> with_clause (subst f (KFixM(OConv,f))) s b
+  | KFixN(OConv,f) -> with_clause (subst f (KFixN(OConv,f))) s b
+  | k       ->
+     Io.log "KWith constraint on %s in %a\n%!" s (!fprint_kind false) k;
+     failwith ("Illegal use of \"with\" on variable "^s^".")
+
 (* Lookup a kind variable in the environment. If it does not appear, look for
    the name in the list of type definitions. *)
 let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array -> kbox =
@@ -225,7 +238,8 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                       | Some k -> (c, unsugar_kind ~pos env k)
                     in kdsum (List.map f cs)
   | PDPrj(t,s)   -> kdprj (unsugar_term env t) s
-  | PWith(a,s,b) -> kwith (unsugar_kind ~pos env a) s (unsugar_kind ~pos env b)
+  | PWith(a,s,b) -> lift_kind (with_clause (unbox (unsugar_kind ~pos env a))
+                                 s (unbox (unsugar_kind ~pos env b)))
 
 and unsugar_term : env -> pterm -> tbox = fun env pt ->
   match pt.elt with
