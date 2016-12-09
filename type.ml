@@ -100,8 +100,9 @@ let make_safe pos u k =
        kdefi d
          (Array.mapi (fun i o -> kn (compose d.tdef_ovariance.(i) pos) o) os)
          (Array.mapi (fun i k -> fn (compose d.tdef_kvariance.(i) pos) k) ks)
-
-    | t          -> lift_kind t
+    | KUVar(u,os) -> kuvar u (Array.map lift_ordinal os)
+    | KUCst(t,f)
+    | KECst(t,f) -> lift_kind k
   in
   if pos = Pos || pos = Neg then (
     unbox (mvbind mk_free_ovari (mbinder_names k)
@@ -199,9 +200,10 @@ let index len os x u =
   fn 0
 
 
-let rec bind_fn len os x k =
-  let gn = bind_gn len os x in
-  let fn = bind_fn len os x in
+let rec bind_fn ?(from_generalise=false) len os x k = (
+  let fn = bind_fn ~from_generalise len os x in
+  let gn = bind_gn ~from_generalise len os x in
+  let k = repr k in
   let res = match repr k with
     | KFunc(a,b)   -> kfunc (fn a) (fn b)
     | KProd(fs)    -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
@@ -215,7 +217,7 @@ let rec bind_fn len os x k =
     | KVari(x)     -> box_of_var x
     | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
     | KMRec(_,k)
-    | KNRec(_,k)   -> fn k (* NOTE: safe, because erased in decompose with safe assertion, and
+    | KNRec(_,k)   -> fn k (* NOTE: safe, because erased in generalise with safe assertion, and
                               subtyping is called later when used to instanciate unif var,
                               so if unsafe, subtyping/eq_kind/leq_kind will fail *)
     | KUVar(u,os') ->
@@ -249,11 +251,11 @@ let rec bind_fn len os x k =
            | Sum l ->
               Sum (List.map (fun (s,f) ->
                 (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                  bind_fn new_len new_ords x (msubst f os'))))) l)
+                  bind_fn ~from_generalise new_len new_ords x (msubst f os'))))) l)
            | Prod l ->
               Prod (List.map (fun (s,f) ->
                 (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                  bind_fn new_len new_ords x (msubst f os'))))) l)
+                  bind_fn ~from_generalise new_len new_ords x (msubst f os'))))) l)
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
          let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
@@ -261,20 +263,25 @@ let rec bind_fn len os x k =
                       (fun i -> if i < u.uvar_arity then x.(i) else box
                           (match os''.(i - u.uvar_arity) with
                           | OVari _ -> OConv
-                          (* TODO: not clean: OVari represents OConv in decompose *)
+                          (* TODO: not clean: OVari represents OConv in generalise *)
                           | o -> o)))))
          in
          Io.log_uni "set in bind fn\n%!";
          set_kuvar u k;
          kuvar v (Array.map gn new_ords)
-    | k            -> box k
+    | KUCst(t,f) | KECst(t,f) when from_generalise || len = 0 -> lift_kind k
+    | KUCst(t,f) ->
+         kucst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
+    | KECst(t,f) ->
+         kecst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
+
   in
-  if Bindlib.is_closed res then box k else res
+  if Bindlib.is_closed res then box k else res)
 
 
-and bind_gn len os x o = (
-  let fn = bind_fn len os x in
-  let gn = bind_gn len os x in
+and bind_gn ?(from_generalise=false) len os x o = (
+  let fn = bind_fn ~from_generalise len os x in
+  let gn = bind_gn ~from_generalise len os x in
   let o = orepr o in
   try
     index len os x o
@@ -282,6 +289,7 @@ and bind_gn len os x o = (
     Not_found ->
       let res =
         match orepr o with
+        | OConv    -> box OConv
         | OVari(x) -> box_of_var x
         | OSucc(o) -> osucc (gn o)
         | OLess(o,In(t,f)) ->
@@ -292,16 +300,17 @@ and bind_gn len os x o = (
            oless_NotIn (gn o) (map_term fn t)
              (vbind mk_free_ovari (binder_name f)
                 (fun x -> fn (subst f (OVari x))))
+        | OLess(o,Gen(i,rel,f)) ->
+           oless_Gen (gn o) i rel
+             (mvbind mk_free_ovari (mbinder_names f)
+                (fun x -> let k1,k2 = msubst f (Array.map free_of x) in
+                          box_pair (fn k1) (fn k2)))
         | OUVar(u,os') ->
            let os'' = List.filter (fun o ->
              not (Array.exists (strict_eq_ordinal o) os') &&
                (not (ouvar_occur u o)))
              (Array.to_list os)
            in
-           Io.log_uni "os': %a\n%!" (fun ff l ->
-             Array.iter (Format.fprintf ff "%a " (!fprint_ordinal false)) l) os';
-           Io.log_uni "os'': %a\n%!" (fun ff l ->
-             List.iter (Format.fprintf ff "%a " (!fprint_ordinal false)) l) os'';
            if os'' = [] then
              ouvar u (Array.map gn os')
            else
@@ -312,7 +321,7 @@ and bind_gn len os x o = (
                | None -> None
                | Some o ->
                   let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                    bind_gn new_len new_os x (msubst o os'))
+                    bind_gn ~from_generalise new_len new_os x (msubst o os'))
                   in
                   assert (is_closed f);
                   Some (unbox f)
@@ -321,7 +330,7 @@ and bind_gn len os x o = (
                | None -> None
                | Some o ->
                   let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                    bind_gn new_len new_os x (msubst o os'))
+                    bind_gn ~from_generalise new_len new_os x (msubst o os'))
                   in
                   assert (is_closed f);
                   Some (unbox f)
@@ -332,13 +341,12 @@ and bind_gn len os x o = (
                  if i < u.uvar_arity then x.(i) else
                    box (match os''.(i - u.uvar_arity) with
                    | OVari _ -> OConv
-                          (* TODO: not clean: OVari represents OConv in decompose *)
+                          (* TODO: not clean: OVari represents OConv in generalise *)
                    | o -> o)))))
              in
              Io.log_uni "set in bind gn\n%!";
              set_ouvar u k;
              ouvar v (Array.map gn new_os)
-        | o        -> box o
       in
       if Bindlib.is_closed res then box o else res)
 
@@ -377,10 +385,9 @@ let rec has_boundvar k =
   | KDefi(d,o,a) -> Array.iter has_oboundvar o; Array.iter has_boundvar a
   | KMRec(os,k)
   | KNRec(os,k) -> has_boundvar k (* In the current version, no bound ordinal in os *)
-    (* we ommit Dprj above because the kind in term are only
-       indication for the type-checker and they have no real meaning *)
   | KVari _ -> raise Exit
-  | KUCst _ | KECst _ | KUVar _ -> ()
+  | KUCst(_,f) | KECst (_,f) -> has_boundvar (subst f (KProd []))
+  | KUVar _ -> ()
 
 and has_tboundvar t =
   match t.elt with
@@ -427,7 +434,7 @@ let closed_ordinal o = try has_oboundvar o; true with Exit -> false
 (* This function index all the ordinal in two kinds,
    select the usefull par of the context and return
    the usefull relations between two ordinals *)
-let decompose : ordinal list -> kind -> kind ->
+let generalise : ordinal list -> kind -> kind ->
   int list * (int * int) list * (ordinal, kind * kind) mbinder * (int * ordinal) list
   = fun pos k1 k2 ->
 
@@ -503,9 +510,13 @@ let decompose : ordinal list -> kind -> kind ->
     | KMRec(_,k)
     | KNRec(_,k) -> assert false (* dealt with before in subtype *)
     | KUVar(u,os) -> kuvar u (Array.map (search All) os)
-    | KDefi(td,os,ks)    -> assert false (* TODO: should not open definition, but need
-                                            variance for ordinal parameters *)
-    | t          -> box t (* FIXME: Témoin de type à traverser *)
+    | KDefi(td,os,ks)    -> assert false (* TODO: should not open definition, and use
+                                            variance for ordinal parameters, if the definition
+                                            has no mu/nu *)
+    | KUCst(t,f) | KECst(t,f) -> (* No generalisation of ordinals in witness *)
+       let res = lift_kind k in if is_closed res then box k else res
+
+
   in
   let k1 = unbox (fn Neg k1) in
   let k2 = unbox (fn Pos k2) in
@@ -514,9 +525,9 @@ let decompose : ordinal list -> kind -> kind ->
   let res = List.filter (fun (o,(n,v,k)) -> !k) !res in
   let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
   let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
-  Io.log_uni "bind in decompose\n%!";
-  let k1 = bind_fn (Array.length ovars) ords (Array.map box_of_var ovars) k1 in
-  let k2 = bind_fn (Array.length ovars) ords (Array.map box_of_var ovars) k2 in
+  Io.log_uni "bind in generalise\n%!";
+  let k1 = bind_fn ~from_generalise:true (Array.length ovars) ords (Array.map box_of_var ovars) k1 in
+  let k2 = bind_fn ~from_generalise:true (Array.length ovars) ords (Array.map box_of_var ovars) k2 in
   let both = box_pair k1 k2 in
   let both = unbox (bind_mvar ovars both) in
   let tbl = List.mapi (fun i (o,(n,v,k)) -> (n,i)) res in
@@ -541,10 +552,10 @@ let decompose : ordinal list -> kind -> kind ->
     List.exists (fun (q,_) -> n = q) tbl && List.exists (fun (q,_) -> p = q) tbl) rel in
   let rel = List.map (fun (n,p) -> List.assoc n tbl, List.assoc p tbl) rel in
 
-  Io.log_sub "decompose pos: %a\n%!" (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
-  Io.log_sub "decompose rel: %a\n%!" (fun ff l -> List.iter (fun (a,b) ->
+  Io.log_sub "generalise pos: %a\n%!" (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
+  Io.log_sub "generalise rel: %a\n%!" (fun ff l -> List.iter (fun (a,b) ->
     Format.fprintf ff "(%d,%d) "a b) l) rel;
-  Io.log_sub "decompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
+  Io.log_sub "generalise os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
     Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;
 
   assert(mbinder_arity both = List.length os);
@@ -594,7 +605,8 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuva
   let res = match full_repr p, full_repr k with
   | KUVar(ua,[||]), k when List.memq ua kuvars ->
      set_kuvar ua (constant_mbind 0 k); true
-  | KFunc(p1,p2), KFunc(k1,k2) -> match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
+  | KFunc(p1,p2), KFunc(k1,k2) ->
+     match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
   | KDSum(ps1), KDSum(ps2)
   | KProd(ps1), KProd(ps2) ->
      List.length ps1 = List.length ps2 &&

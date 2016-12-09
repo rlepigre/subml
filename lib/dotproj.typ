@@ -5,7 +5,7 @@ val fst : ∀A ∀B (A * B → A) = fun x → x.1
 type FM(X) = { e : X; op : X → X → X }
 type Monoid = ∃X FM(X)
 
-val prod : Monoid -> Monoid -> Monoid = fun m1 m2 →
+val prod : Monoid → Monoid → Monoid = fun m1 m2 →
   { e  : εX(m1∈FM(X)) * εX(m2∈FM(X)) = (m1.e, m2.e);
     op : εX(m1∈FM(X)) * εX(m2∈FM(X)) →  εX(m1∈FM(X)) * εX(m2∈FM(X)) →  εX(m1∈FM(X)) * εX(m2∈FM(X))
        = (fun z1 z2 → (m1.op z1.1 z2.1, m2.op z1.2 z2.2));
@@ -23,11 +23,11 @@ val vprod : ∀X VSpace(X) → VSpace(X) → VSpace(X) = ΛX fun vs1 vs2 → {
       : (εV(vs1∈FVS(X,V))  * εV(vs2∈FVS(X,V))));
 }
 
-type FC(O,M) = { dom : M → O; codom : M → O; compose : M → M → M }
+type FC(O,M) = { dom : M → O; cod : M → O; cmp : M → M → M }
 type Cat = ∃M ∃O FC(O,M)
 
 val dual : Cat → Cat = fun c →
-  { dom   : εM(c∈∃O FC(O,M)) → εO(c∈FC(O,εM(c∈∃O FC(O,M)))) = c.codom;
-    codom : εM(c∈∃O FC(O,M)) → εO(c∈FC(O,εM(c∈∃O FC(O,M)))) = c.dom;
-    compose : εM(c∈∃O FC(O,M)) → εM(c∈∃O FC(O,M)) → εM(c∈∃O FC(O,M)) = (fun x y → c.compose y x);
+  { dom : εM(c∈∃O FC(O,M)) → εO(c∈FC(O,εM(c∈∃O FC(O,M)))) = c.cod;
+    cod : εM(c∈∃O FC(O,M)) → εO(c∈FC(O,εM(c∈∃O FC(O,M)))) = c.dom;
+    cmp : εM(c∈∃O FC(O,M)) → εM(c∈∃O FC(O,M)) → εM(c∈∃O FC(O,M)) = (fun x y → c.cmp y x);
   }

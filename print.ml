@@ -144,9 +144,9 @@ and print_kind unfold wrap ff t =
   | KVari(x) ->
       pp_print_string ff (name_of x)
   | KFunc(a,b) ->
-      if wrap then pp_print_string ff "(";
-      fprintf ff "%a → %a" pkindw a pkind b;
-      if wrap then pp_print_string ff ")"
+     if wrap then pp_print_string ff "(";
+     fprintf ff "%a → %a" pkindw a pkind b;
+     if wrap then pp_print_string ff ")"
   | KProd(fs) ->
      if is_tuple fs && List.length fs > 0 then begin
        if wrap then pp_print_string ff "(";

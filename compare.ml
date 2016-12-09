@@ -247,12 +247,12 @@ and eq_kbinder pos f1 f2 = f1 == f2 ||
   eq_kind pos (subst f1 i) (subst f2 i)
 
 and eq_tkbinder pos f1 f2 = f1 == f2 ||
-  let i = dummy_pos (free_of (new_tvari "t")) in
+  let i = free_of (new_tvari "t") in
   eq_kind pos (subst f1 i) (subst f2 i)
 
 and leq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
   let rec leq_kind k1 k2 =
-    Io.log_ord "%a = %a %b\n%!" (!fprint_kind false) k1 (!fprint_kind false) k2 !eq_strict;
+    Io.log_ord "%a = %a %b\n%!" (!fprint_kind true) k1 (!fprint_kind true) k2 !eq_strict;
     k1 == k2 || match (full_repr k1, full_repr k2) with
     | (KVari(x1)   , KVari(x2)   ) -> eq_variables x1 x2
     | (KFunc(a1,b1), KFunc(a2,b2)) -> leq_kind a2 a1 && leq_kind b1 b2
@@ -273,6 +273,9 @@ and leq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
   in
   leq_kind k1 k2
 
+and leq_tkbinder pos f1 f2 = f1 == f2 ||
+  let i = free_of (new_tvari "t") in
+  leq_kind pos (subst f1 i) (subst f2 i)
 
 and leq_kbinder pos f1 f2 = f1 == f2 ||
   let i = free_of (new_kvari "X") in
@@ -326,7 +329,7 @@ and strict_eq_kind : kind -> kind -> bool =
 and strict_eq_kbinder : (kind, kind) binder -> (kind, kind) binder -> bool =
   fun f1 f2 -> strict (eq_kbinder [] f1) f2
 
-and strict_eq_tkbinder : (term, kind) binder -> (term, kind) binder -> bool =
+and strict_eq_tkbinder : (term', kind) binder -> (term', kind) binder -> bool =
   fun f1 f2 -> strict (eq_tkbinder [] f1) f2
 
 and strict_eq_tbinder : (term', term) binder -> (term', term) binder -> bool =
@@ -364,7 +367,7 @@ and gen_occur :
     adone_k := k :: !adone_k;
     match k with
     | KVari(x)   -> acc
-    | KFunc(a,b) -> aux (neg occ) (aux occ acc b) a
+    | KFunc(a,b) -> aux (neg occ) (aux occ acc b ) a
     | KProd(ks)
     | KDSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
     | KKAll(f)
@@ -381,7 +384,7 @@ and gen_occur :
          acc := aux (compose occ d.tdef_kvariance.(i)) !acc k) a;
        !acc
     | KUCst(t,f)
-    | KECst(t,f) -> let a = subst f kdummy in aux2 (aux All acc a) t
+    | KECst(t,f) -> aux All acc (subst f kdummy)
     | KUVar(u,os) -> if kuvar u then combine acc occ else Array.fold_left aux3 acc os
     | KMRec(_,k) (* NOTE: safe to ignore ordinals as they are not used in unif var *)
     | KNRec(_,k) -> aux occ acc k)
@@ -468,7 +471,7 @@ let leq_kind : ordinal list -> kind -> kind -> bool =
 let eq_kbinder : ordinal list -> (kind, kind) binder -> (kind, kind) binder -> bool =
   fun pos f1 f2 -> Timed.pure_test (eq_kbinder pos f1) f2
 
-let eq_tkbinder : ordinal list -> (term, kind) binder -> (term, kind) binder -> bool =
+let eq_tkbinder : ordinal list -> (term', kind) binder -> (term', kind) binder -> bool =
   fun pos f1 f2 -> Timed.pure_test (eq_tkbinder pos f1) f2
 
 let eq_term : ordinal list -> term -> term -> bool =

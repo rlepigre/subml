@@ -239,13 +239,13 @@ let has_uvar : kind -> bool = fun k ->
     | KFixN(o,f) -> fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f OConv)
-    | KUVar(u,_)   -> raise Exit
+    | KUVar(u,_) -> raise Exit
     | KDefi(d,o,a) -> Array.iter fn a
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
-    (* we ommit Dprj above because the kind in term are only
-       indication for the type-checker and they have no real meaning *)
-    | t          -> ()
+    | KVari _    -> ()
+    | KUCst(_,f)
+    | KECst(_,f) -> fn (subst f (KProd []))
   in
   try
     fn k; false
@@ -270,7 +270,7 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
     | KFixN(o,f)   -> fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)     -> fn (subst f OConv)
-    | KUVar(u,os)   ->
+    | KUVar(u,os)  ->
        begin
          match !(u.uvar_state) with
          | Free -> ()
@@ -280,9 +280,11 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
        if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
          r := (u,os) :: !r
     | KDefi(d,_,a) -> Array.iter fn a
-    (* we ommit Dprj above because the kind in term are only
-       indication for the type-checker and they have no real meaning *)
-    | _            -> ())
+    | KMRec _
+    | KNRec _      -> assert false
+    | KVari _      -> ()
+    | KUCst(_,f)
+    | KECst(_,f) -> fn (subst f (KProd [])))
   in
   fn k; !r
 
@@ -294,6 +296,7 @@ let ouvar_list : kind -> ouvar list = fun k ->
     if List.memq k !adone then () else (
     adone := k::!adone;
     match k with
+    | KUVar(_,_)   -> () (* ignore ordinals, will be constant *)
     | KFunc(a,b)   -> fn a; fn b
     | KProd(ls)
     | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
@@ -304,14 +307,18 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | KOAll(f)
     | KOExi(f)     -> fn (subst f OConv)
     | KDefi(d,o,a) -> Array.iter gn o;  Array.iter fn a
-    (* we ommit Dprj above because the kind in term are only
-       indication for the type-checker and they have no real meaning *)
-    | _            -> ())
+    | KMRec _
+    | KNRec _      -> assert false
+    | KVari _      -> ()
+    | KUCst(_,f)
+    | KECst(_,f) -> fn (subst f (KProd [])))
   and gn o =
     match orepr o with
-    | OSucc(o) -> gn o
+    | OSucc(o)   -> gn o
     | OUVar(v,_) -> if not (List.exists (eq_uvar v) !r) then r := v :: !r
-    | _        -> ()
+    | OConv      -> ()
+    | OLess _    -> ()
+    | OVari _    -> ()
   in
   fn k; !r
 
@@ -377,7 +384,7 @@ let check_rec
       Io.log_sub "IND %a < %a (%a)\n%!" (print_kind false) a (print_kind false) b
         print_positives ctxt;
       let pos = ctxt.positive_ordinals in
-      let (ipos, rel, both, os) = decompose pos a b in
+      let (ipos, rel, both, os) = generalise pos a b in
       let (os0,tpos,k1,k2) = recompose ipos rel both false in
       let fnum = new_function ctxt.fun_table "S" (List.map Latex.ordinal_to_printer os0) in
       add_call ctxt fnum os false;
@@ -579,18 +586,22 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     match (a,b) with
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
-        let f x = tappl dummy_position (box t) (box_apply dummy_pos x) in
-        let bnd = unbox (bind mk_free_tvari "x" f) in
-        let wit = dummy_pos (tcnst bnd a2 b2) in
+       let wit =
+         let f x = tappl dummy_position (box t) (box_apply dummy_pos x) in
+         let bnd = unbox (bind mk_free_tvari "x" f) in
+         dummy_pos (tcnst bnd a2 b2)
+       in
         (* NOTE: the heuristic below works well for Church like encoding *)
-        if has_uvar b1 then
-          let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
-          let p1 = subtype ctxt wit a2 a1 in
-          Sub_Func(p1, p2)
-        else
-          let p1 = subtype ctxt wit a2 a1 in
-          let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
-          Sub_Func(p1, p2)
+       if has_uvar b1 then
+         let wit = if strict_eq_kind a2 (KProd []) then dummy_pos (TReco []) else wit in
+         let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
+         let p1 = subtype ctxt wit a2 a1 in
+         Sub_Func(p1, p2)
+       else
+         let p1 = subtype ctxt wit a2 a1 in
+         let wit = if strict_eq_kind a2 (KProd []) then dummy_pos (TReco []) else wit in
+         let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
+         Sub_Func(p1, p2)
 
     (* Product type. *)
     | (KProd(fsa)  , KProd(fsb)  ) ->
@@ -893,7 +904,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         in
         let l = if do_subsume then subsumption [] l else l in
         let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
-          let (pos, rel, both, os) = decompose ctxt.positive_ordinals (KProd []) c in
+          let (pos, rel, both, os) = generalise ctxt.positive_ordinals (KProd []) c in
           let (os0, tpos, _, c0) = recompose pos rel both false in
           let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os0) in
           Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
@@ -927,7 +938,8 @@ and search_induction depth ctxt t a c0 hyps =
       calls = ref [];
       delayed = ref[];
       fun_table = copy_table ctxt.fun_table} in
-    try Timed.pure_test (fun () -> ignore (subtype ctxt t a c0); true) () with Subtype_error _ -> true
+    try Timed.pure_test (fun () -> let prf = subtype ctxt t a c0 in check_sub_proof prf; true) ()
+      with Subtype_error _ | Error _ -> true
   in
 
   let rec fn = function

@@ -28,7 +28,9 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
     |TCase(a,fs,d)-> tcase t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
                                         (map_opt fn d)
     | u           -> box_apply (in_pos t.pos) (box u)(* FIXME: no catch all *)
-  in fn t
+  in
+  let res = fn t in
+  if is_closed res then box t else res
 
 (***************************************************************************
 *                            iteration on terms                            *
