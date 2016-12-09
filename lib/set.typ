@@ -35,12 +35,13 @@ val singleton : ∀X X → Tree(X) = fun e →
 
 (* Interface of the set library. *)
 type Ord(X) = {compare : X → X → Cmp}
-type Set(X) = ∃S
+type FSet(X,S) =
   { empty     : S
   ; is_empty  : S → Bool
   ; mem       : X → S → Bool
   ; add       : X → S → S
   ; singleton : X → S }
+type Set(X) = ∃S FSet(X,S)
 
 val makeSet : ∀X Ord(X) → Set(X) = ΛX fun o →
   { empty     : Tree(X)               = Leaf
@@ -55,5 +56,5 @@ val ordNat : Ord(Nat) = {compare = compare}
 
 val setNat : Set(Nat) = makeSet ordNat
 
-val set012 : setNat.S =
+val set012 : εS(setNat ∈ FSet(Nat,S)) =
   setNat.add Z (setNat.add (S Z) (setNat.add (S (S Z)) setNat.empty))

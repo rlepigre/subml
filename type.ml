@@ -41,7 +41,6 @@ let rec lift_kind : kind -> kind bindbox = fun k ->
        (fun x -> lift_kind (subst f (KVari x)))
   | KVari(x)   -> box_of_var x
   | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
-  | KDPrj(t,s) -> kdprj (map_term lift_kind t) s
   | KMRec _
   | KNRec _    -> assert false
   | KUVar(u,os)-> kuvar u (Array.map lift_ordinal os)
@@ -94,7 +93,6 @@ let make_safe pos u k =
        kfixm (binder_name f) (kn pos o) (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) ->
        kfixn (binder_name f) (kn (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
-    | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
     | KVari(x)   -> box_of_var x
     | KMRec(_,k) -> assert (pos = Pos); fn pos k
     | KNRec(_,k) -> assert (pos = Neg); fn pos k
@@ -131,7 +129,6 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
                       (* TODO: is it ok to ignore ordinal parameters ? *)
       | KVari(x)   -> box_of_var x
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
-      | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KMRec(_,k)
       | KNRec(_,k) -> assert false (* NOTE: works because we do not infer type with
                                       KMRec as they are removed when setting
@@ -217,7 +214,6 @@ let rec bind_fn len os x k =
     | KFixN(o,f)   -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
     | KVari(x)     -> box_of_var x
     | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
-    | KDPrj(t,s)   -> kdprj (map_term fn t) s
     | KMRec(_,k)
     | KNRec(_,k)   -> fn k (* NOTE: safe, because erased in decompose with safe assertion, and
                               subtyping is called later when used to instanciate unif var,
@@ -379,7 +375,6 @@ let rec has_boundvar k =
   | KOAll(f)
   | KOExi(f)   -> has_boundvar (subst f OConv)
   | KDefi(d,o,a) -> Array.iter has_oboundvar o; Array.iter has_boundvar a
-  | KDPrj(t,s) -> has_tboundvar t
   | KMRec(os,k)
   | KNRec(os,k) -> has_boundvar k (* In the current version, no bound ordinal in os *)
     (* we ommit Dprj above because the kind in term are only
@@ -504,7 +499,6 @@ let decompose : ordinal list -> kind -> kind ->
        (fun x -> fn pos (subst f (KVari x)))
     | KFixN(o,f) -> kfixn (binder_name f) (search pos o)
        (fun x -> fn pos (subst f (KVari x)))
-    | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
     | KVari(x)   -> box_of_var x
     | KMRec(_,k) -> assert (pos = Neg); fn pos k
     | KNRec(_,k) -> assert (pos = Pos); fn pos k
@@ -608,8 +602,6 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuva
      let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
      List.for_all2 (fun (s1,p1) (s2,k1) ->
        s1 = s2 && match_kind kuvars ouvars p1 k1) ps1 ps2
-  | KDPrj(t1,s1), KDPrj(t2,s2) ->
-     s1 = s2 && strict_eq_term t1 t2
   | KKAll(f), KKAll(g)
   | KKExi(f), KKExi(g) ->
      let v = new_kvari (binder_name f) in

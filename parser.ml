@@ -168,7 +168,6 @@ let parser lgident =
   | "β" -> "β"
   | "γ" -> "γ"
   | "δ" -> "δ"
-  | "ε" -> "ε"
 
 let build_prod l = List.mapi (fun i x -> (string_of_int (i+1), x)) l
 
@@ -214,6 +213,9 @@ let parser dot    : unit grammar = "."
 let parser comma  : unit grammar = ","
 let parser subset : unit grammar = "⊂" | "⊆" | "<"
 let parser infty  : unit grammar = "∞"
+let parser eps    : unit grammar = "ε"
+let parser mem    : unit grammar = "∈"
+let parser notmem : unit grammar = "∉"
 
 let parser is_rec =
   | EMPTY  -> false
@@ -251,12 +253,13 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | "{" fs:kind_reco "}"          when p = `Atm -> in_pos _loc (PProd(fs))
   | fs:kind_prod                  when p = `Prd -> in_pos _loc (PProd(fs))
   | "[" fs:kind_dsum "]"          when p = `Atm -> in_pos _loc (PDSum(fs))
-  | t:tatm "." s:uident           when p = `Atm -> in_pos _loc (PDPrj(t,s))
   | a:kind_atm (s,b):with_eq      when p = `Atm -> in_pos _loc (PWith(a,s,b))
   (* Parenthesis and coercions. *)
   | "(" kind ")"                  when p = `Atm
   | kind_atm                      when p = `Prd
   | kind_prd                      when p = `Fun
+  | eps id:uident '(' t:tatm mem    a:kind ')' when p = `Atm -> in_pos _loc (PECst(t,id,a))
+  | eps id:uident '(' t:tatm notmem a:kind ')' when p = `Atm -> in_pos _loc (PUCst(t,id,a))
 
 and kind_args =
   | EMPTY                           -> ([], [])

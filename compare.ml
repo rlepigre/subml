@@ -226,7 +226,6 @@ and eq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KOExi(b1)   , KOExi(b2)   ) -> eq_obinder pos b1 b2
     | (KFixM(o1,f1), KFixM(o2,f2))
     | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_kbinder pos f1 f2 && eq_ordinal pos o1 o2
-    | (KDPrj(t1,s1), KDPrj(t2,s2)) -> s1 = s2 && eq_term pos t1 t2
     | (KUCst(t1,f1), KUCst(t2,f2))
     | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
     | (KMRec(p,a1) , KMRec(q,a2) )
@@ -265,7 +264,6 @@ and leq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KOExi(b1)   , KOExi(b2)   ) -> leq_obinder pos b1 b2
     | (KFixM(o1,f1), KFixM(o2,f2)) -> leq_kbinder pos f1 f2 && leq_ordinal pos o1 o2
     | (KFixN(o1,f1), KFixN(o2,f2)) -> leq_kbinder pos f1 f2 && leq_ordinal pos o2 o1
-    | (KDPrj(t1,s1), KDPrj(t2,s2)) -> s1 = s2 && eq_term pos t1 t2
     | (KUCst(t1,f1), KUCst(t2,f2))
     | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
     | (KMRec(p,a1) , KMRec(q,a2) )
@@ -375,7 +373,6 @@ and gen_occur :
     | KOExi(f)   -> aux occ acc (subst f odummy)
     | KFixM(o,f)
     | KFixN(o,f) -> aux occ (aux3 acc o) (subst f kdummy)
-    | KDPrj(t,_) -> aux2 acc t
     | KDefi(d,o,a) ->
        let acc = ref acc in
        Array.iteri (fun i o ->

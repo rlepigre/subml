@@ -197,8 +197,6 @@ and print_kind unfold wrap ff t =
       else
         fprintf ff "%s(%a, %a)" td.tdef_name (print_array pordi ", ") os
           (print_array pkind ", ") ks
-  | KDPrj(t,s) ->
-     fprintf ff "%a.%s" (print_term ~in_proj:false false) t s
   | KUCst(u,f)
   | KECst(u,f) ->
      let is_exists = match t with KECst(_) -> true | _ -> false in

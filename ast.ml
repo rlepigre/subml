@@ -56,8 +56,6 @@ type kind =
   (** Least and greatest fixpoint: μα X A, να X A. *)
   | KDefi of type_def * ordinal array * kind array
   (** User-defined type applied to arguments: T(A1,...,An). *)
-  | KDPrj of term * string
-  (** Dot projection t.X. *)
   (* Special constructors (not accessible to user) *)
   | KUCst of term * (kind, kind) binder
   | KECst of term * (kind, kind) binder
@@ -418,10 +416,6 @@ let koall : string -> (ovar -> kbox) -> kbox =
 let koexi : string -> (ovar -> kbox) -> kbox =
   fun x f ->
     box_apply (fun b -> KOExi(b)) (vbind mk_free_ovari x f)
-
-let kdprj : tbox -> string -> kbox =
-  fun t s ->
-    box_apply (fun t -> KDPrj(t,s)) t
 
 let kdefi : type_def -> obox array -> kbox array -> kbox =
   fun td os ks ->

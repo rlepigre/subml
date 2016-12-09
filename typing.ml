@@ -617,19 +617,6 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
         let ps = List.map check_variant csa in
         Sub_DSum(ps)
 
-    (* Dot projection. *)
-    | (KDPrj(t0,s) , _           ) ->
-        let u  = new_kuvar () in
-        let p1 = type_check ctxt t0 u in
-        let p2 = subtype ctxt t (dot_proj t0 u s) b0 in
-        Sub_DPrj_l(p1, p2)
-
-    | (_           , KDPrj(t0,s) ) ->
-        let u  = new_kuvar () in
-        let p1 = type_check ctxt t0 u in
-        let p2 = subtype ctxt t a0 (dot_proj t0 u s) in
-        Sub_DPrj_r(p1, p2)
-
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
         let o', ctxt =
