@@ -184,6 +184,8 @@ let has_leading_ord_quantifier : kind -> bool = fun k ->
     | KKExi(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
+    | KMRec(_,k)
+    | KNRec(_,k) -> fn k
     | _ -> false
   in
   fn k
@@ -201,6 +203,8 @@ let has_leading_exists : kind -> bool = fun k ->
     | KKAll(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
+    | KMRec(_,k)
+    | KNRec(_,k) -> fn k
     | _ -> false
   in
   fn k
@@ -217,6 +221,8 @@ let has_leading_forall : kind -> bool = fun k ->
     | KKExi(f)
     | KFixM(_,f)
     | KFixN(_,f) -> fn (subst f (KProd []))
+    | KMRec(_,k)
+    | KNRec(_,k) -> fn k
     | _ -> false
   in
   fn k

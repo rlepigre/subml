@@ -449,17 +449,14 @@ let decompose : ordinal list -> kind -> kind ->
     match o with
     | OLess(o',w) ->
        (try
-          Io.log_uni "eps_search: %a %b\n%!" (!fprint_ordinal false) o keep;
           let (n,v,k) = assoc_ordinal o !res in
           k := !k || keep;
-          Io.log_uni "eps_search: old %a %d %b\n%!" (!fprint_ordinal false) o n !k;
           (n,o)
         with
           Not_found ->
             let n = !i in incr i;
             let v = new_ovari ("o_" ^ string_of_int n) in
             res := (o, (n, v, ref keep)) :: !res;
-            Io.log_uni "eps_search: new %a %d %b\n%!" (!fprint_ordinal false) o n keep;
             if o' <> OConv then (
                 let (p, _) = eps_search false o' in
                 relation := (n,p)::!relation);
@@ -515,8 +512,6 @@ let decompose : ordinal list -> kind -> kind ->
   let k2 = unbox (fn Pos k2) in
 
   let pos = List.map (fun o -> fst (eps_search false o)) pos in
-  let _ = List.iter (fun (o,(n,v,k)) -> Io.log_uni "after fn: %a %b\n%!"
-    (!fprint_ordinal false) o !k) !res in
   let res = List.filter (fun (o,(n,v,k)) -> !k) !res in
   let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
   let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
