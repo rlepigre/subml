@@ -500,8 +500,8 @@ let decompose : ordinal list -> kind -> kind ->
     | KFixN(o,f) -> kfixn (binder_name f) (search pos o)
        (fun x -> fn pos (subst f (KVari x)))
     | KVari(x)   -> box_of_var x
-    | KMRec(_,k) -> assert (pos = Neg); fn pos k
-    | KNRec(_,k) -> assert (pos = Pos); fn pos k
+    | KMRec(_,k)
+    | KNRec(_,k) -> assert false (* dealt with before in subtype *)
     | KUVar(u,os) -> kuvar u (Array.map (search All) os)
     | KDefi(td,os,ks)    -> assert false (* TODO: should not open definition, but need
                                             variance for ordinal parameters *)

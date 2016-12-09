@@ -258,8 +258,8 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | "(" kind ")"                  when p = `Atm
   | kind_atm                      when p = `Prd
   | kind_prd                      when p = `Fun
-  | eps id:uident '(' t:tatm mem    a:kind ')' when p = `Atm -> in_pos _loc (PECst(t,id,a))
-  | eps id:uident '(' t:tatm notmem a:kind ')' when p = `Atm -> in_pos _loc (PUCst(t,id,a))
+  | eps id:uident '(' t:term mem    a:kind ')' when p = `Atm -> in_pos _loc (PECst(t,id,a))
+  | eps id:uident '(' t:term notmem a:kind ')' when p = `Atm -> in_pos _loc (PUCst(t,id,a))
 
 and kind_args =
   | EMPTY                           -> ([], [])
