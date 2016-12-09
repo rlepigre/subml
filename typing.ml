@@ -453,8 +453,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
            res := (s,prf) :: !res
          with
            Not_found ->
-             res := (s, (t', k, k, None, Sub_Lower)) :: !res;
-             l1 := (s,bind_ordinals os k)::!l1) l;
+             let f = bind_ordinals os k in
+             l1 := (s,f)::!l1;
+             let prf = subtype ctxt t' (msubst f os) k  in
+             res := (s,prf) :: !res) l;
        Timed.(ua.uvar_state := Prod !l1);
        None, Sub_Prod(!res)
 
@@ -474,8 +476,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
            res := (s,prf) :: !res
          with
            Not_found ->
-             res := (s, (t', k, k, None, Sub_Lower)) :: !res;
-             l1 := (s,bind_ordinals os k)::!l1) l;
+             let f = bind_ordinals os k in
+             l1 := (s,f)::!l1;
+             let prf = subtype ctxt t' k (msubst f os) in
+             res := (s,prf) :: !res) l;
        Timed.(ub.uvar_state := Sum !l1);
        None, Sub_DSum(!res)
 
@@ -1069,10 +1073,10 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
       | Free   -> true
       | Sum  l ->
          let k = mbind_assoc kdsum v.uvar_arity l in
-         safe_set_kuvar All v k os; false
+         safe_set_kuvar All v k os; false (* FIXME: should not trust safe_set *)
       | Prod l ->
          let k = mbind_assoc kprod v.uvar_arity l in
-         safe_set_kuvar All  v k os ; false
+         safe_set_kuvar All  v k os ; false (* FIXME: should not trust safe_set *)
     in
     let ul = List.filter fn (kuvar_list k) in
     let ol = ouvar_list k in

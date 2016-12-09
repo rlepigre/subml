@@ -71,6 +71,7 @@ and lift_term t = map_term lift_kind t
  *                       to allow setting the value of an uvar              *
  ****************************************************************************)
 
+(* FIXME: pos is the polarity of the variable u, not k , this is not natural, should be inversed *)
 let make_safe pos u k =
   let rec gn o = match orepr o with
     | o when not (kuvar_ord_occur u o) -> lift_ordinal o
@@ -95,8 +96,8 @@ let make_safe pos u k =
        kfixn (binder_name f) (kn (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
     | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
     | KVari(x)   -> box_of_var x
-    | KMRec(_,k)
-    | KNRec(_,k) -> fn pos k
+    | KMRec(_,k) -> assert (pos = Pos); fn pos k
+    | KNRec(_,k) -> assert (pos = Neg); fn pos k
     | KDefi(d,os,ks) ->
        kdefi d
          (Array.mapi (fun i o -> kn (compose d.tdef_ovariance.(i) pos) o) os)
@@ -132,7 +133,9 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
       | KDPrj(t,s) -> kdprj (map_term fn t) s
       | KMRec(_,k)
-      | KNRec(_,k) -> fn k
+      | KNRec(_,k) -> assert false (* NOTE: works because we do not infer type with
+                                      KMRec as they are removed when setting
+                                      a unification variable *)
       | t          -> box t
     and gn o =
       match orepr o with
@@ -216,7 +219,9 @@ let rec bind_fn len os x k =
     | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
     | KDPrj(t,s)   -> kdprj (map_term fn t) s
     | KMRec(_,k)
-    | KNRec(_,k)   -> fn k
+    | KNRec(_,k)   -> fn k (* NOTE: safe, because erased in decompose with safe assertion, and
+                              subtyping is called later when used to instanciate unif var,
+                              so if unsafe, subtyping/eq_kind/leq_kind will fail *)
     | KUVar(u,os') ->
        let os'' = List.filter (fun o ->
          not (Array.exists (strict_eq_ordinal o) os') && not (kuvar_ord_occur u o))
@@ -375,8 +380,8 @@ let rec has_boundvar k =
   | KOExi(f)   -> has_boundvar (subst f OConv)
   | KDefi(d,o,a) -> Array.iter has_oboundvar o; Array.iter has_boundvar a
   | KDPrj(t,s) -> has_tboundvar t
-  | KMRec(o,k) -> has_boundvar k (* In the current version, no bound ordinal in o *)
-  | KNRec(o,k) -> has_boundvar k (* In the current version, no bound ordinal in o *)
+  | KMRec(os,k)
+  | KNRec(os,k) -> has_boundvar k (* In the current version, no bound ordinal in os *)
     (* we ommit Dprj above because the kind in term are only
        indication for the type-checker and they have no real meaning *)
   | KVari _ -> raise Exit
@@ -501,8 +506,8 @@ let decompose : ordinal list -> kind -> kind ->
        (fun x -> fn pos (subst f (KVari x)))
     | KDPrj(t,s) -> kdprj (map_term (fn All) t) s
     | KVari(x)   -> box_of_var x
-    | KMRec(_,k)
-    | KNRec(_,k) -> fn pos k
+    | KMRec(_,k) -> assert (pos = Neg); fn pos k
+    | KNRec(_,k) -> assert (pos = Pos); fn pos k
     | KUVar(u,os) -> kuvar u (Array.map (search All) os)
     | KDefi(td,os,ks)    -> assert false (* TODO: should not open definition, but need
                                             variance for ordinal parameters *)
