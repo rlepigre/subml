@@ -38,7 +38,7 @@ let search_type_tbl u f is_exists =
   try
     (* use the fact that f is liskely to be enough as a key.
        this is just for printing after all … *)
-    let (name,index,_,_) = List.assq f !epsilon_type_tbl in
+    let (name,index,_,_) = assoc_kkind f !epsilon_type_tbl in
     (name, index)
   with not_found ->
     let base = binder_name f in
@@ -53,7 +53,7 @@ let search_type_tbl u f is_exists =
 
 let search_term_tbl f a b =
   try
-    let (name,index,_,_) = List.assq f !epsilon_term_tbl in
+    let (name,index,_,_) = assoc_tterm f !epsilon_term_tbl in
     (name, index)
   with not_found ->
     let base = binder_name f in
@@ -67,7 +67,7 @@ let search_term_tbl f a b =
 
 let search_ordinal_tbl o =
   try
-    List.assq o !ordinal_tbl
+    assoc_ordinal o !ordinal_tbl
   with
     Not_found ->
       let n = !ordinal_count in incr ordinal_count;
