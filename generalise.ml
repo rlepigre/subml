@@ -111,8 +111,8 @@ let generalise : ordinal list -> kind -> kind ->
   let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
   let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
   Io.log_uni "bind in generalise\n%!";
-  let k1 = bind_fn ~from_generalise:true (Array.length ovars) ords (Array.map box_of_var ovars) k1 in
-  let k2 = bind_fn ~from_generalise:true (Array.length ovars) ords (Array.map box_of_var ovars) k2 in
+  let k1 = bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k1 in
+  let k2 = bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k2 in
   let both = box_pair k1 k2 in
   let both = unbox (bind_mvar ovars both) in
   let tbl = List.mapi (fun i (o,(n,v,k)) -> (n,i)) res in

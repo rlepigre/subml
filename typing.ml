@@ -208,11 +208,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                  | Sum l, _ ->
                     Sum (List.map (fun (s,f) ->
                       (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                        bind_fn new_len os x (msubst f osa))))) l)
+                        bind_fn os x (msubst f osa))))) l)
                  | _, Prod l ->
                     Prod (List.map (fun (s,f) ->
                       (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                        bind_fn new_len os x (msubst f osb))))) l)
+                        bind_fn os x (msubst f osb))))) l)
                  | _ -> assert false
                in
                let u = new_kuvara ~state new_len in
