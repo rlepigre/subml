@@ -33,6 +33,10 @@ exception Loop_error of pos
 let loop_error : pos -> 'a =
   fun p -> raise (Loop_error p)
 
+exception Interrupted of pos
+let interrupted : pos -> 'a =
+  fun p -> raise (Interrupted p)
+
 type induction_node = Sct.index * (int * ordinal) list
 type subtype_ctxt =
   { sub_induction_hyp : sub_induction list

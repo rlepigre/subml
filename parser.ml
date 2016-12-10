@@ -497,6 +497,7 @@ let check pos flag f a =
           | MustFail
           | CanFail  -> raise OK
         end
+    | Sys.Break | Interrupted _ as e -> raise e
     | e               ->
         Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
         raise e
@@ -577,7 +578,7 @@ let parser command top =
   | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t
   | _:set_kw "verbose" b:enables                  -> verbose := b
   | _:set_kw "texfile" fn:string_lit when not top -> Io.(fmts.tex <- fmt_of_file fn)
-  | _:clear_kw                       when top     -> System.clear ()
+  | _:clear_kw                       when top     -> LibTools.clear ()
   | {quit_kw | exit_kw}              when top     -> raise End_of_file
 
 and kind_def = tex_name? uident kind_def_args "=" kind
@@ -623,7 +624,8 @@ let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
   in
   try fn v; not intop with
   | End_of_file            -> true
-  | System.Stopped         -> Io.err "\n[Interrupted]\n%!"; false
+  | Sys.Break              -> Io.err "\n[Interrupted]\n%!"; false
+  | Interrupted(p)         -> Io.err "\n[Interrupted at %a]\n%!" pos1 p; false
   | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false
   | Positivity_error(p,m)  -> Io.err "%a:\n%s\n%!" pos1 p m; false
   | Parse_error(buf,pos,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);

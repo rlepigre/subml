@@ -63,7 +63,7 @@ let rec interact () =
   interact ()
 
 let _ =
-  System.handle_stop true;
+  Sys.catch_break true;
   Arg.parse spec (fun fn -> files := !files @ [fn]) usage;
   let files = if !prelude then "prelude.typ" :: !files else !files in
   let eval = Parser.handle_exception false Parser.eval_file in
