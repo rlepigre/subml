@@ -1,6 +1,13 @@
+(*****************************************************************************)
+(**{3                       GraphML proof printing                          }*)
+(*****************************************************************************)
 open Proof
 open Format
 
+(** The goal of this module is to render proof as graphml
+    that are easy to navigate with Yed *)
+
+(** File header *)
 let head = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <graphml xmlns=\"http://graphml.graphdrawing.org/xmlns/graphml\"
   xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
@@ -14,10 +21,11 @@ let head = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <graph edgedefault=\"directed\" id=\"Typing map\">
 "
 
+(** File trailer *)
 let tail = "</graph>
 </graphml>
 "
-
+(** Node printing *)
 let node ch = fprintf ch
 "<node id=\"%s\">
  <data key=\"d0\">
@@ -30,6 +38,7 @@ let node ch = fprintf ch
 </node>
 "
 
+(** Edge printing *)
 let edge ch = fprintf ch
 "<edge source=\"%s\" target=\"%s\">
  <data key=\"d2\">
@@ -42,6 +51,7 @@ let edge ch = fprintf ch
 </edge>
 "
 
+(** Proof printing, without header and trailer *)
 let to_nodes : formatter -> string proof -> unit = fun ch p ->
   let c = ref 0 in
   let label () = let n = sprintf "node::[%d]" !c in incr c; n in
@@ -54,5 +64,6 @@ let to_nodes : formatter -> string proof -> unit = fun ch p ->
   in
   let _ = to_nodes p in ()
 
+(** Complete proof printing *)
 let output_graphml : formatter -> string proof -> unit = fun ch p ->
   fprintf ch "%s%a%s%!" head to_nodes p tail

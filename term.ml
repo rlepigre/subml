@@ -1,12 +1,13 @@
+(***************************************************************************)
+(**{3                   Usefull fonction on terms                         }*)
+(***************************************************************************)
+
 open Ast
 open Position
 open Bindlib
 open Format
 
-(***************************************************************************
-*                             mapping on terms                             *
-****************************************************************************)
-
+(** Map all kind in a term with the given function *)
 let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
   let rec fn t =
     match t.elt with
@@ -33,46 +34,52 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
   let res = fn t in
   if is_closed res then box t else res
 
-(*****************************************************************
- *              test if a term is normal in CBV                  *
- *****************************************************************)
+(** Test if a term is in normal form for CBV *)
 let is_normal : term -> bool = fun t ->
   let rec fn t =
     match t.elt with
-    | TCoer(t,k)  -> fn t
-    | TVari(x)    -> true
     | TAbst(_)    -> true
-    | TFixY(_)    -> false
-    | TKAbs(f)    -> fn (subst f (KProd []))
-    | TOAbs(f)    -> fn (subst f (OConv))
-    | TAppl(a,b)  -> false
-    | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
-    | TProj(a,s)  -> false
-    | TCons(s,a)  -> fn a
-    | TCase(a,_,_)-> false
-    | TDefi(d)    -> fn d.value
     | TCnst _     -> true
+
+    | TFixY(_)    -> false
+    | TAppl(a,b)  -> false
+    | TCase(a,_,_)-> false
+    | TProj(a,s)  -> false
     | TPrnt _     -> false
+
+    | TCoer(t,k)  -> fn t
+    | TCons(s,a)  -> fn a
+    | TDefi(d)    -> fn d.value
+    | TOAbs(f)    -> fn (subst f (OConv))
+    | TKAbs(f)    -> fn (subst f (KProd []))
+    | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
+
+    | TVari(x)    -> assert false
   in fn t
 
-(*****************************************************************
- *              test if a term is neutral in CBV                 *
- *****************************************************************)
+(** Test if a term is neutral in CBV;
+    This is not the exact definition of neutral.
+    Here, we mean a term whose type in known
+    with elimination or type decocation applied to it *)
 let is_neutral : term -> bool = fun t ->
   let rec fn t =
     match t.elt with
-    | TCoer(t,k)  -> fn t
-    | TVari(x)    -> true
+    | TCoer(t,k)  -> true
+    | TDefi(d)    -> true
+    | TCnst _     -> true
+    | TPrnt _     -> true
+
+    | TCons(s,a)  -> false
     | TAbst(_)    -> false
     | TFixY(_)    -> false
-    | TKAbs(f)    -> fn (subst f (KProd []))
-    | TOAbs(f)    -> fn (subst f (OConv))
-    | TAppl(a,b)  -> fn a
     | TReco(fs)   -> false
+
+    | TAppl(a,b)  -> fn a
     | TProj(a,s)  -> fn a
-    | TCons(s,a)  -> false
     | TCase(a,_,_)-> fn a
-    | TDefi(d)    -> true (* because we know the type *)
-    | TCnst _     -> true
-    | TPrnt _     -> false
+    | TOAbs(f)    -> fn (subst f (OConv))
+    | TKAbs(f)    -> fn (subst f (KProd []))
+
+    | TVari(x)    -> assert false
+
   in fn t
