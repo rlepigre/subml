@@ -20,21 +20,20 @@ let log ff = fprintf  fmts.log ff
 let tex ff = fprintf  fmts.tex ff
 let nul ff = ifprintf fmts.log ff
 
-let read_file : (string -> Input.buffer) ref = ref (fun name ->
-  let rec fn = function
-    | [] -> err "Can not open file %S\n%!" name; exit 1
-    | path::l ->
-       try
-         let filename = Filename.concat path name in
-         let ch = open_in filename in
-         Gc.finalise close_in ch;
-         Input.from_channel ~filename (open_in filename)
-       with _ -> fn l
-  in
-  fn (""::!Config.path))
+let read_file : (string -> Input.buffer) ref =
+  let read_file fn =
+    let add_fn dir = Filename.concat dir fn in
+    let fs = fn :: (List.map add_fn !Config.path) in
+    let rec find = function
+      | []     -> err "File %S not found.\n%!" fn; exit 1
+      | fn::fs -> if Sys.file_exists fn then Input.from_file fn
+                  else find fs
+    in find fs
+  in ref read_file
 
 let file fn = !read_file fn
 
+(*FIXME: close file, just need remembering the file *)
 let fmt_of_file fn = formatter_of_out_channel (open_out fn)
 
 let debug = ref ""
@@ -55,5 +54,3 @@ let log_ord ff = if String.contains !debug debug_ord then log ff else nul ff
 
 let set_debug s =
   debug := if s = "all" then debug_all else s
-
-(*FIXME: close file, just need remembering the file *)
