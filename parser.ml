@@ -4,6 +4,7 @@ open Ast
 open Position
 open Print
 open Eval
+open TypingBase
 open Typing
 open Raw
 open Format

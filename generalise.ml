@@ -184,8 +184,77 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
         Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;
     os, pos, k1, k2
 
-(* Matching kind, used for printing only *)
+(* FIXME: what to do with duplicates, probably OK *)
+let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
+  let r = ref [] in
+  let adone = ref [] in
+  let rec fn k =
+    let k = repr k in
+    if List.memq k !adone then () else (
+    adone := k::!adone;
+    match k with
+    | KFunc(a,b)   -> fn a; fn b
+    | KProd(ls)
+    | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
+    | KKAll(f)
+    | KKExi(f)     -> fn (subst f (KProd []))
+    | KFixM(o,f)
+    | KFixN(o,f)   -> fn (subst f (KProd []))
+    | KOAll(f)
+    | KOExi(f)     -> fn (subst f OConv)
+    | KUVar(u,os)  ->
+       begin
+         match !(u.uvar_state) with
+         | Free -> ()
+         | Sum l | Prod l ->
+            List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) OConv))) l
+       end;
+       if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
+         r := (u,os) :: !r
+    | KDefi(d,_,a) -> Array.iter fn a
+    | KMRec _
+    | KNRec _      -> assert false
+    | KVari _      -> ()
+    | KUCst(_,f,cl)
+    | KECst(_,f,cl) -> fn (subst f (KProd [])))
+  in
+  fn k; !r
 
+let ouvar_list : kind -> ouvar list = fun k ->
+  let r = ref [] in
+  let adone = ref [] in
+  let rec fn k =
+    let k = repr k in
+    if List.memq k !adone then () else (
+    adone := k::!adone;
+    match k with
+    | KUVar(_,_)   -> () (* ignore ordinals, will be constant *)
+    | KFunc(a,b)   -> fn a; fn b
+    | KProd(ls)
+    | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
+    | KKAll(f)
+    | KKExi(f)     -> fn (subst f (KProd []))
+    | KFixM(o,f)
+    | KFixN(o,f)   -> gn o; fn (subst f (KProd []))
+    | KOAll(f)
+    | KOExi(f)     -> fn (subst f OConv)
+    | KDefi(d,o,a) -> Array.iter gn o;  Array.iter fn a
+    | KMRec _
+    | KNRec _      -> assert false
+    | KVari _      -> ()
+    | KUCst(_,f,cl)
+    | KECst(_,f,cl) -> fn (subst f (KProd [])))
+  and gn o =
+    match orepr o with
+    | OSucc(o)   -> gn o
+    | OUVar(v,_) -> if not (List.exists (eq_uvar v) !r) then r := v :: !r
+    | OConv      -> ()
+    | OLess _    -> ()
+    | OVari _    -> ()
+  in
+  fn k; !r
+
+(* Matching kind, used for printing only *)
 let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuvars ouvars p k ->
   let res = match full_repr p, full_repr k with
   | KUVar(ua,[||]), k when List.memq ua kuvars ->
