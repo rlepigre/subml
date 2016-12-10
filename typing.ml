@@ -3,7 +3,6 @@
 open Bindlib
 open Ast
 open Print
-open Sct
 open Position
 open Compare
 open Term
@@ -29,19 +28,18 @@ exception Loop_error of pos
 let loop_error : pos -> 'a =
   fun p -> raise (Loop_error p)
 
-type induction_node = int * (int * ordinal) list
+type induction_node = Sct.index * (int * ordinal) list
 type subtype_ctxt =
   { sub_induction_hyp : sub_induction list
   ; fix_induction_hyp : fix_induction list
   ; top_induction     : induction_node
-  ; fun_table         : fun_table
-  ; calls             : pre_calls ref
+  ; call_graphs       : Sct.call_table
   ; delayed           : (unit -> unit) list ref
   ; positive_ordinals : ordinal list }
 
 (** induction hypothesis for subtyping *)
 and sub_induction =
-      int                  (** the index of the induction hyp *)
+      Sct.index            (** the index of the induction hyp *)
     * int list             (** the positivity context *)
     * (int * int) list     (** the relation between ordinals *)
     * (ordinal, kind * kind) mbinder (** the two kinds *)
@@ -51,12 +49,12 @@ and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
     * kind                    (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
-    * (int                    (* reference of the inductive hyp *)
+    * (Sct.index              (* reference of the inductive hyp *)
        * int list             (** the positivity context *)
        * (int * int) list     (** the relation between ordinals *)
        * (ordinal, kind * kind) mbinder) (** the kind, ignore the first *)
       list ref
-    * (subtype_ctxt * kind * (int * typ_prf) ref) list ref (* proofs yet to be done *)
+    * (subtype_ctxt * kind * (Sct.index * typ_prf) ref) list ref (* proofs yet to be done *)
       (* The use of references here is to do a breadth-first search for
          inductive proof. Depth first here is bad, using too large depth *)
 
@@ -64,9 +62,8 @@ and fix_induction =
 let empty_ctxt () =
   { sub_induction_hyp = []
   ; fix_induction_hyp = []
-  ; top_induction = (-1, [])
-  ; fun_table = init_fun_table ()
-  ; calls = ref []
+  ; top_induction = (Sct.root, [])
+  ; call_graphs = Sct.init_table ()
   ; delayed = ref []
   ; positive_ordinals = [] }
 
@@ -84,8 +81,9 @@ let consecutive =
   in fn 0
 
 let find_indexes ftbl pos index index' a b =
-  Io.log_mat "build matrix for %d %d\n" index index';
-  let c = Sct.arity index ftbl and l = Sct.arity index' ftbl in
+  let open Sct in
+  Io.log_mat "build matrix for %a %a\n" prInd index prInd index';
+  let c = arity index ftbl and l = arity index' ftbl in
   let m = Array.init l (fun _ -> Array.make c Unknown) in
   List.iteri (fun j (j',o') ->
     assert(j=j');
@@ -98,7 +96,7 @@ let find_indexes ftbl pos index index' a b =
         else if leq_ordinal pos o o' then Leq
         else Unknown
       in
-      Io.log_mat "%a\n%!" print_cmp r;
+      Io.log_mat "%a\n%!" prCmp r;
       assert(j < l);
       assert(i < c);
       m.(j).(i) <- r
@@ -106,18 +104,17 @@ let find_indexes ftbl pos index index' a b =
   m
 
 let add_call ctxt fnum os is_induction_hyp =
+  let open Sct in
   let pos = ctxt.positive_ordinals in
-  let calls = ctxt.calls in
+  let calls = ctxt.call_graphs in
   let cur, os0 = ctxt.top_induction in
   assert(consecutive os);
   assert(consecutive os0);
-  let ftbl = ctxt.fun_table in
-  Io.log_mat "adding call %d(%d=%d) -> %d(%d=%d)\n%!"
-    cur (Sct.arity cur ftbl) (List.length os0) fnum (Sct.arity fnum ftbl) (List.length os);
+  Io.log_mat "adding call %a -> %a\n%!" prInd cur prInd fnum;
   Timed.(ctxt.delayed := (fun () ->
-    let m = find_indexes ftbl pos fnum cur os os0 in
+    let m = find_indexes calls pos fnum cur os os0 in
     let call = (fnum, cur, m, is_induction_hyp) in
-    calls := call :: !calls) :: !(ctxt.delayed))
+    Sct.new_call calls call) :: !(ctxt.delayed))
 
 let find_positive ctxt o =
   let rec gn i o =
@@ -348,11 +345,11 @@ let add_positives ctxt gamma =
   in
   { ctxt with positive_ordinals }
 
-exception Induction_hyp of int
+exception Induction_hyp of Sct.index
 
 type induction =
-  | UseInduction of int
-  | NewInduction of (int * kind * kind) option
+  | UseInduction of Sct.index
+  | NewInduction of (Sct.index * kind * kind) option
 
 (* check is a subtyping can be deduced from an induction hypothesis,
    if this is not possible, the subtyping may be added as induction
@@ -388,7 +385,7 @@ let check_rec
       let pos = ctxt.positive_ordinals in
       let (ipos, rel, both, os) = generalise pos a b in
       let (os0,tpos,k1,k2) = recompose ipos rel both false in
-      let fnum = new_function ctxt.fun_table "S" (List.map Latex.ordinal_to_printer os0) in
+      let fnum = Sct.new_function ctxt.call_graphs "S" (List.map Latex.ordinal_to_printer os0) in
       add_call ctxt fnum os false;
       let ctxt = { ctxt with
         sub_induction_hyp = (fnum, ipos, rel, both)::ctxt.sub_induction_hyp;
@@ -575,7 +572,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
   let (ind_res, ctxt) = check_rec t ctxt a b in
   match ind_res with
-  | UseInduction n -> (None, Sub_Ind n)
+  | UseInduction n -> ((None : Sct.index option), Sub_Ind n)
   | NewInduction ind_ref ->
   let (ind_ref,t,a,b,a0,b0) = match ind_ref with
     | None -> (None,t,a,b,a0,b0)
@@ -737,10 +734,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (* Subtype clash. *)
     | (_           , _           ) ->
        subtype_error "Subtyping clash (no rule apply)."
-  in (ind_ref, r)
+  in ((ind_ref : Sct.index option), r)
   in (t, a0, b0, ind_ref, r)
   with Subtype_error e -> (t, a0, b0, None, Sub_Error e)
-       | Occur_check -> (t, a0, b0, None, Sub_Error "Occur_check"))
+         | Occur_check -> (t, a0, b0, None, Sub_Error "Occur_check"))
 
 
 
@@ -908,8 +905,8 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
           let (pos, rel, both, os) = generalise ctxt.positive_ordinals (KProd []) c in
           let (os0, tpos, _, c0) = recompose pos rel both false in
-          let fnum = new_function ctxt.fun_table "Y" (List.map Latex.ordinal_to_printer os0) in
-          Io.log_typ "Adding induction hyp (1) %d:\n  %a => %a\n%!" fnum
+          let fnum = Sct.new_function ctxt.call_graphs "Y" (List.map Latex.ordinal_to_printer os0) in
+          Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!" Sct.prInd fnum
             (print_kind false) c (print_kind false) c0;
           List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
           if os <> [] then hyps_ptr := (fnum, pos, rel, both) :: !hyps_ptr;
@@ -922,7 +919,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         in
         remains := [];
 
-        List.iter (fun (ctxt,t,c,fnum,ptr) -> ptr := (-1, type_check ctxt t c)) l;
+        List.iter (fun (ctxt,t,c,fnum,ptr) -> ptr := (Sct.root, type_check ctxt t c)) l;
         if !remains = [] then
           Typ_TFix(proof_ptr)
         else
@@ -937,9 +934,8 @@ and search_induction depth ctxt t a c0 hyps =
   let _ =
     (* We protect the context to avoid adding calls to the sct *)
     let ctxt = { ctxt with
-      calls = ref [];
       delayed = ref[];
-      fun_table = copy_table ctxt.fun_table} in
+      call_graphs = Sct.copy ctxt.call_graphs} in
     try Timed.pure_test (fun () -> let prf = subtype ctxt t a c0 in check_sub_proof prf; true) ()
       with Subtype_error _ | Error _ -> true
   in
@@ -953,8 +949,8 @@ and search_induction depth ctxt t a c0 hyps =
     | (fnum, pos', rel', both) :: hyps ->
        try
          let (ov, pos, _, a) = recompose pos' rel' both true in
-         Io.log_typ "searching induction hyp (2) with %d %a ~ %a <- %a:\n%!"
-           fnum (print_kind false) a (print_kind false) c0
+         Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
+           Sct.prInd fnum (print_kind false) a (print_kind false) c0
            print_positives { ctxt with positive_ordinals = pos};
            (* need full subtype to rollback unification of variables if it fails *)
          let time = Timed.Time.save () in
@@ -967,8 +963,8 @@ and search_induction depth ctxt t a c0 hyps =
                List.exists (eq_ordinal ctxt.positive_ordinals o1)
                  ctxt.positive_ordinals) pos)
              then raise Exit;
-             Io.log_typ "induction hyp applies with %d %a ~ %a <- %a:\n%!"
-               fnum (print_kind false) a (print_kind false) c0
+             Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
+               Sct.prInd fnum (print_kind false) a (print_kind false) c0
                print_positives { ctxt with positive_ordinals = pos};
              prf
            with Exit | Subtype_error _ | Error.Error _ ->
@@ -1017,7 +1013,7 @@ and check_fix ctxt t do_subsume depth f c0 =
         fix_induction_hyp = (f,a,hyps_ptr, remains)::ctxt.fix_induction_hyp;
       }
     in
-    let proof_ptr = ref (-1, dummy_proof) in
+    let proof_ptr = ref (Sct.root, dummy_proof) in
     assert (!remains = []);
     remains := (ctxt, c0, proof_ptr) :: !remains;
     (* The main function doing the breadth-first search for the proof *)
@@ -1031,30 +1027,28 @@ and check_fix ctxt t do_subsume depth f c0 =
     try search_induction depth ctxt t a c0 hyps with Not_found ->
       (* No inductive hypothesis applies, we add a new induction hyp and
          record the unproved judgment with the other *)
-      let ptr = ref (-1, dummy_proof) in
+      let ptr = ref (Sct.root, dummy_proof) in
       Io.log_typ "adding remain at %d %a\n%!" depth (print_kind false) c0;
       remains := (ctxt, c0, ptr) :: !remains;
       Typ_TFix(ptr)
 
-let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
+let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table =
   fun ?ctxt ?term a b ->
     let term = unbox (generic_tcnst (box a) (box b)) in
     let ctxt =
       {  (empty_ctxt ()) with
-          fun_table = init_fun_table ()
-        ; calls = ref []
+          call_graphs = Sct.init_table ()
         ; delayed = ref []
-        ; top_induction = (-1, [])
+        ; top_induction = (Sct.root, [])
       }
     in
     let p = subtype ctxt term a b in
     List.iter (fun f -> f ()) !(ctxt.delayed);
-    let calls = inline ctxt.fun_table !(ctxt.calls) in
-    if not (sct ctxt.fun_table calls) then loop_error dummy_position;
+    if not (Sct.sct ctxt.call_graphs) then loop_error dummy_position;
     check_sub_proof p;
-    (p, (ctxt.fun_table.table, calls))
+    (p, ctxt.call_graphs)
 
-let type_check : term -> kind option -> kind * typ_prf * calls_graph =
+let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
   fun t k ->
     let k = from_opt' k new_kuvar in
     let ctxt = empty_ctxt () in
@@ -1063,10 +1057,9 @@ let type_check : term -> kind option -> kind * typ_prf * calls_graph =
         let p = type_check ctxt t k in
         check_typ_proof p;
         List.iter (fun f -> f ()) !(ctxt.delayed);
-        let calls = inline ctxt.fun_table !(ctxt.calls) in
-        if not (sct ctxt.fun_table calls) then loop_error t.pos;
+        if not (Sct.sct ctxt.call_graphs) then loop_error t.pos;
         reset_all ();
-        (p, (ctxt.fun_table.table, calls))
+        (p, ctxt.call_graphs)
       with e -> reset_all (); raise e
     in
     let fn (v, os) =

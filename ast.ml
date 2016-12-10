@@ -188,7 +188,7 @@ and value_def =
   ; orig_value : term        (** Original term (not evaluated). *)
   ; ttype      : kind        (** Type of the term. *)
   ; proof      : typ_prf     (** Typing proof. *)
-  ; calls_graph: Sct.calls_graph  (** SCT instance. *) }
+  ; calls_graph: Sct.call_table (** SCT instance. *) }
 
 (** {2 Definition of the ast for proof trees. } *)
 
@@ -219,10 +219,10 @@ and sub_rule =
   | Sub_And_r  of sub_prf
   | Sub_Or_l   of sub_prf
   | Sub_Or_r   of sub_prf
-  | Sub_Ind    of int
+  | Sub_Ind    of Sct.index
   | Sub_Error  of string
 and sub_prf =
-  term * kind * kind * int option * sub_rule
+  term * kind * kind * Sct.index option * sub_rule
   (** the integer is referenced by induction hyp ([Sub_Ind]) *)
 
 (** Typing proof *)
@@ -239,8 +239,8 @@ and typ_rule =
   | Typ_Prod_e of typ_prf
   | Typ_DSum_i of sub_prf * typ_prf
   | Typ_DSum_e of typ_prf * typ_prf list * typ_prf option
-  | Typ_TFix   of (int * typ_prf) ref
-  | Typ_YH     of int * sub_prf
+  | Typ_TFix   of (Sct.index * typ_prf) ref
+  | Typ_YH     of Sct.index * sub_prf
   | Typ_Hole   (* used by dummy_proof below *)
   | Typ_Error  of string
 and typ_prf =

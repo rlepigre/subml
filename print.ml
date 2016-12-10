@@ -377,11 +377,11 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_DSum_i(p1,p2) -> binaryN "+i" c (sub2proof p1) (typ2proof p2)
   | Typ_DSum_e(p,ps,_)-> n_aryN "+e" c (typ2proof p :: List.map typ2proof ps) (* FIXME *)
   | Typ_YH(n,p)       ->
-     let name = sprintf "$H_%d$" n in
+     let name = sprintf "$H_%s$" (Sct.strInd n) in
      unaryN name c (sub2proof p)
   | Typ_TFix{contents=(n,p)}     ->
      (* TODO: proof may be duplicated, print with sharing*)
-     let name = sprintf "$I_%d$" n in
+     let name = sprintf "$I_%s$" (Sct.strInd n) in
      unaryN name c (typ2proof p)
   | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
@@ -416,7 +416,7 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_And_r(p)      -> unaryN "∧r" c (sub2proof p)
   | Sub_Or_l(p)       -> unaryN "∨l" c (sub2proof p)
   | Sub_Or_r(p)       -> unaryN "∨r" c (sub2proof p)
-  | Sub_Ind(n)        -> axiomN (sprintf "$H_%d$" n) c
+  | Sub_Ind(n)        -> axiomN (sprintf "$H_%s$" (Sct.strInd n)) c
   | Sub_Error(msg)    -> axiomN (sprintf "ERROR(%s)" msg) c
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
