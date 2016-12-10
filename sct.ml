@@ -1,10 +1,26 @@
+(*****************************************************************************)
+(**{3                 Size change termination principle                     }*)
+(**         Chin Soon Lee, Neil D. Jones, Amir M. Ben-AmramPOPL2001          *)
+(*****************************************************************************)
 open Format
 
-(** implementation of the sct we need for subtyping and typing:
-    all arguments of a call correpond to a parameter
-    with a know relation : Less of Less of equal *)
+(** Implementation of the sct we need for subtyping and typing:
 
-type cmp = Less | Leq | Unknown
+    - In the case of subtyping, all arguments of a call correpond to a
+      parameter with a know relation : Less of Less of equal. In
+      this case the sct is a decision procedure
+
+    - For typing recursive program, general SCT is used and it is
+      only a correct termination criteria *)
+
+(*****************************************************************************)
+(**{2                     General functions and types                        *)
+(*****************************************************************************)
+
+type cmp =
+  | Less (** argument is stricly smaller than the calling parameter *)
+  | Leq  (** argument is less of equal than the calling parameter   *)
+  | Unknown (** no relation is known between the argument and the parameter *)
 
 (**a call g(x0-1,x1,x1-1) inside f(x0,x1) is
    represented by (g_n, f_n, [|[| Less; Unknown; Unknown |];
@@ -19,36 +35,57 @@ type cmp = Less | Leq | Unknown
    The boolean in pre_call indicates a recursive call, that must no be
    removed by inlining.  *)
 type call = int * int * cmp array array
-type pre_call = int * int * cmp array array * bool
 
-let compose c1 c2 = match c1, c2 with
-  | Unknown, _ | _, Unknown -> Unknown
-  | Less, _ | _, Less -> Less
-  | Leq, Leq -> Leq
+(** In a [pre_call], the boolean is true when the call is a recursive
+    call. i.e. A call to a generalised hypothesis lower in the tree.
+    More precisely, each subtyping in a typing, each rule introducing
+    a new induction hypothesis has a false boolean. All other call
+    are call to an induction hypothesis and have a true boolean.
+*)
+type pre_call = int * int * cmp array array * bool
 
 type calls = call list
 type pre_calls = pre_call list
-type printer = (formatter -> unit) * (formatter -> unit) (* normal / latex *)
-type arities = (int * (string * int * printer array)) list
-type calls_graph = arities * calls
 
+(** TODO: this is not very clean *)
+type printer = (formatter -> unit) * (formatter -> unit) (* normal / latex *)
+
+(** This stores the function table, giving name, arity and the
+    way to print the function for debugging *)
+type arities = (int * (string * int * printer array)) list
 type fun_table =
   { mutable current : int;
     mutable table : arities }
 
+(** Initialisation of a new function table *)
+let init_fun_table () =
+  { current = 0;
+    table = [(-1, ("R", 0, [||]))] }
+
+(** Creation of a new function *)
+let new_function  =
+  fun ftbl name args ->
+    let args = Array.of_list args in
+    let arity = Array.length args in
+    let n = ftbl.current in
+    ftbl.current <- n + 1;
+    ftbl.table <- (n, (name, arity, args))::ftbl.table;
+    n
+
+(** Gives the arity of a given function *)
+let arity i ftbl =
+  try let (_,a,_) = List.assoc i ftbl.table in a
+  with Not_found -> assert false
+
 let copy_table t = { current = t.current; table = t.table }
 
-let mat_prod l1 c1 c2 m1 m2 =
-  Array.init l1 (fun i ->
-    Array.init c2 (fun j ->
-      let r = ref Unknown in
-      for k = 0 to c1 - 1 do
-        r := min !r (compose m1.(i).(k) m2.(k).(j))
-      done;
-      !r
-    ))
+(** A call graph is a function table and a list of calls *)
+type calls_graph = arities * calls
 
-(** printing function for debugging *)
+(*****************************************************************************)
+(**{2               Printing functions for debugging                        }*)
+(*****************************************************************************)
+
 let print_cmp ff c =
   match c with
   | Unknown -> fprintf ff "?"
@@ -82,7 +119,28 @@ let print_call tbl ff (i,j,m) =
 let print_calls tbl ff (l:calls) =
   List.iter (print_call tbl ff) l
 
-(** check if a call (supposed idempotnent) is decreasing *)
+(*****************************************************************************)
+(**{2                   Basic operations on matrices                        }*)
+(*****************************************************************************)
+
+(** Composition of size change information *)
+let compose c1 c2 = match c1, c2 with
+  | Unknown, _ | _, Unknown -> Unknown
+  | Less, _ | _, Less -> Less
+  | Leq, Leq -> Leq
+
+(** The induced matric product *)
+let mat_prod l1 c1 c2 m1 m2 =
+  Array.init l1 (fun i ->
+    Array.init c2 (fun j ->
+      let r = ref Unknown in
+      for k = 0 to c1 - 1 do
+        r := min !r (compose m1.(i).(k) m2.(k).(j))
+      done;
+      !r
+    ))
+
+(** Check if a call (supposed idempotnent) is decreasing *)
 let decrease m =
   try
     Array.iteri (fun i l ->
@@ -93,30 +151,7 @@ let decrease m =
   with
     Exit -> true
 
-module IntArray = struct
-  type t = int array
-  let compare = compare
-end
-
-module IAMap = Map.Make(IntArray)
-
-let init_fun_table () =
-  { current = 0;
-    table = [(-1, ("R", 0, [||]))] }
-
-let new_function  =
-  fun ftbl name args ->
-    let args = Array.of_list args in
-    let arity = Array.length args in
-    let n = ftbl.current in
-    ftbl.current <- n + 1;
-    ftbl.table <- (n, (name, arity, args))::ftbl.table;
-    n
-
-let arity i ftbl =
-  try let (_,a,_) = List.assoc i ftbl.table in a
-  with Not_found -> assert false
-
+(** Check is a matrice subsumes anothe one (i.e, give less infomation) *)
 let subsume m1 m2 =
   try
     Array.iteri (fun i l1 ->
@@ -125,6 +160,10 @@ let subsume m1 m2 =
     true
   with
     Exit -> false
+
+(*****************************************************************************)
+(**{2                          The Main algorithm                           }*)
+(*****************************************************************************)
 
 (** the main function, checking if calls are well-founded *)
 let sct: fun_table -> calls -> bool = fun ftbl ls ->
@@ -190,14 +229,22 @@ let sct: fun_table -> calls -> bool = fun ftbl ls ->
     Io.log_sct "SCT failed (%5d edges added, %6d composed)\n%!" !added !composed;
     false
 
+(*****************************************************************************)
+(**{2                          Inlining                                     }*)
+(*****************************************************************************)
 
+(** Inlining can be deactivated *)
+let do_inline = ref true
+
+(** we inline sub-proof when they have only one non recursive call *)
 type count = Zero | One of call | More
 
-let add_call n call = match n with
-  | Zero -> One call
-  | _ -> More
-
-let do_inline = ref true
+(** function to count the call according to the above comments     *)
+let add_call rec_call n call =
+  if rec_call then More else
+    match n with
+    | Zero -> One call
+    | _ -> More
 
 (** inline function that calls only one function. *)
 (* TODO: inline function that are called at most once *)
@@ -211,7 +258,7 @@ let inline ftbl calls =
   List.iter (
     fun (i,j,m,rec_call) ->
       let old = try Hashtbl.find tbl i with Not_found -> Zero in
-      let n = if rec_call then More else add_call old (i,j,m) in
+      let n = add_call rec_call old (i,j,m) in
       Hashtbl.replace tbl i n) calls;
   let rec fn (j,i,m,r) =
     try
