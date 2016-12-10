@@ -1,3 +1,5 @@
+(**{3 Output functions, general and for debugging channels}*)
+
 open Format
 
 type fmts =
