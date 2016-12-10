@@ -16,9 +16,10 @@ open Binding
  *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
 
-(* This function index all the ordinal in two kinds,
-   select the usefull par of the context and return
-   the usefull relations between two ordinals *)
+(** This function index all the ordinal in two kinds,
+    select the usefull part of the context and returns
+    the usefull relations between two ordinals. It also
+    returns the index of the ordinals *)
 let generalise : ordinal list -> kind -> kind ->
   int list * (int * int) list * (ordinal, kind * kind) mbinder * (int * ordinal) list
   = fun pos k1 k2 ->
