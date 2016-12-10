@@ -176,7 +176,7 @@ and term' =
   | TOAbs of (ordinal, term) binder
   (** Lambda on an ordinal, as above *)
   (** {2 Special constructors (not accessible to user) } **)
-  | TCnst of ((term', term) binder * kind * kind)
+  | TCnst of (term', term) binder * kind * kind * bool
   (** Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness u (i.e. a term)
      that u has type A and such that t[u] is not in B. *)
 
@@ -583,13 +583,18 @@ let tfixy : pos -> bool -> int -> strpos -> (tvar -> tbox) -> tbox =
                     (vbind mk_free_tvari x.elt f)
 
 (* Build a constant. Useful during typing. *)
-let tcnst : (term', term) binder -> kind -> kind -> term' =
-  fun s a b -> TCnst(s,a,b)
+let tcnst : (term', term) binder -> kbox -> kbox -> tbox =
+  (* NOTE: the term is always closed *)
+  fun s a b ->
+    let cl = is_closed a && is_closed b in
+    assert cl; (* NOTE: we do not assume a b closed, but check it.
+                  indeed, map_term could bind under a TCnst *)
+    box_apply dummy_pos (box_apply2 (fun a b -> TCnst(s,a,b,cl)) a b)
 
-let generic_tcnst : kind -> kind -> term =
+let generic_tcnst : kbox -> kbox -> tbox =
   fun a b ->
     let f = bind mk_free_tvari "x" (fun x -> box_apply dummy_pos x) in
-    dummy_pos (TCnst(unbox f,a,b))
+    tcnst (unbox f) a b
 
 (****************************************************************************)
 (**{2                          variance function                           }*)

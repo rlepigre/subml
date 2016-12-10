@@ -579,7 +579,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     | None -> (None,t,a,b,a0,b0)
     | Some(n,a,b) ->
        let a = full_repr a and b = full_repr b in
-       let t = generic_tcnst a b in
+       let t = unbox (generic_tcnst (box a) (box b)) in
        Some n, t, a, b, a, b
   in
   let r =
@@ -589,7 +589,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        let wit =
          let f x = tappl dummy_position (box t) (box_apply dummy_pos x) in
          let bnd = unbox (bind mk_free_tvari "x" f) in
-         dummy_pos (tcnst bnd a2 b2)
+         unbox (tcnst bnd (box a2) (box b2))
        in
         (* NOTE: the heuristic below works well for Church like encoding *)
        if has_uvar b1 then
@@ -760,8 +760,8 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let c' = KNRec(ptr,KFunc(a,b)) in
         let p1 = subtype ctxt t c' c in
         let ctxt = add_positives ctxt (Subset.get ptr) in
-        let wit = tcnst f a b in
-        let p2 = type_check ctxt (subst f wit) b in
+        let wit = unbox (tcnst f (box a) (box b)) in
+        let p2 = type_check ctxt (subst f wit.elt) b in
         Typ_Func_i(p1, p2)
     | TKAbs(f) ->
         let k, b = lambda_kind t c (binder_name f) in
@@ -850,7 +850,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         Typ_Prnt(p)
     | TFixY(do_subsume,depth,f) ->
         check_fix ctxt t do_subsume depth f c
-    | TCnst(_,a,b) ->
+    | TCnst(_,a,b,_) ->
         let p = subtype ctxt t a c in
         Typ_Cnst(p)
     | TVari(_) -> assert false
@@ -1036,7 +1036,7 @@ and check_fix ctxt t do_subsume depth f c0 =
 
 let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * calls_graph =
   fun ?ctxt ?term a b ->
-    let term = generic_tcnst a b in
+    let term = unbox (generic_tcnst (box a) (box b)) in
     let ctxt =
       {  (empty_ctxt ()) with
           fun_table = init_fun_table ()

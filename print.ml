@@ -343,7 +343,7 @@ and print_term ?(in_proj=false) unfold ff t =
       let x = binder_name f in
       let t = subst f (free_of (new_tvari x)) in
       fprintf ff "fix %s → %a" x print_term t
-  | TCnst(f,a,b) ->
+  | TCnst(f,a,b,_) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_%d" name index
 

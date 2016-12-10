@@ -308,7 +308,8 @@ and eq_term : ordinal list -> term -> term -> bool = fun pos t1 t2 ->
                                             eq_assoc eq_term l1 l2 &&
                                             eq_option eq_term d1 d2
     | (TPrnt(s1)      , TPrnt(s2)      ) -> s1 = s2
-    | (TCnst(c1)      , TCnst(c2)      ) -> eq_tcnst pos c1 c2
+    | (TCnst(f1,a1,b1,_)
+                    , TCnst(f2,a2,b2,_)) -> eq_tcnst pos f1 a1 b1 f2 a2 b2
     | (_              , _              ) -> false
   in eq_term t1 t2
 
@@ -316,7 +317,7 @@ and eq_tbinder pos f1 f2 = f1 == f2 ||
   let i = free_of (new_tvari "x") in
   eq_term pos (subst f1 i) (subst f2 i)
 
-and eq_tcnst pos (f1,a1,b1) (f2,a2,b2) =
+and eq_tcnst pos f1 a1 b1 f2 a2 b2 =
   eq_tbinder pos f1 f2 && eq_kind pos a1 a2 && eq_kind pos b1 b2
 
 (****************************************************************************)
@@ -392,7 +393,7 @@ and gen_occur :
     if List.memq t.elt !adone_t then acc else (
     adone_t := t.elt :: !adone_t;
     match t.elt with
-    | TCnst(t,k1,k2) -> aux2 (aux All (aux All acc k1) k2) (subst t (TReco []))
+    | TCnst(t,k1,k2,cl) -> if cl then acc else aux All (aux All acc k1) k2
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t

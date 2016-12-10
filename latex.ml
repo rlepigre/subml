@@ -302,7 +302,7 @@ and print_term unfold lvl ff t =
       let t = subst f (free_of (new_tvari x)) in
       fprintf ff "Y %s . %a" x (print_term 0) t;
      if lvl > 0 then pp_print_string ff ")";
-  | TCnst(f,a,b) ->
+  | TCnst(f,a,b,_) ->
      let name, index = search_term_tbl f a b in
      fprintf ff "%s_{%d}" name index
 
