@@ -14,7 +14,7 @@ open Format
       only a correct termination criteria *)
 
 (*****************************************************************************)
-(**{2                     General functions and types                        *)
+(**{2                     General functions and types                       }*)
 (*****************************************************************************)
 
 type cmp =
