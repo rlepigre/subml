@@ -11,9 +11,6 @@ open Term
 (**{2                      General function                                }*)
 (****************************************************************************)
 
-let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
-(** equality on variables *)
-
 let eq_assoc : ('b -> 'b -> bool) -> ('a * 'b) list -> ('a * 'b) list
                  -> bool = fun eq l1 l2 ->
   List.for_all (fun (k,_) -> List.mem_assoc k l2) l1 &&

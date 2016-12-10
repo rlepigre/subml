@@ -1,12 +1,12 @@
 (** Main function for typing and subtyping *)
-
 open Bindlib
 open Ast
+open Binding
 open Print
 open Position
 open Compare
 open Term
-open Type
+open Generalise
 open Error
 
 (** Raised in case of type error, not propagated because replaced by
@@ -115,6 +115,19 @@ let add_call ctxt fnum os is_induction_hyp =
     let m = find_indexes calls pos fnum cur os os0 in
     let call = (fnum, cur, m, is_induction_hyp) in
     Sct.new_call calls call) :: !(ctxt.delayed))
+
+(** construction of an ordinal < o such that w *)
+let rec opred o w =
+  let o = orepr o in
+  match o with
+  | OSucc o' -> o'
+  | OUVar({uvar_state = (None,None); uvar_arity = a} as p, os) ->
+     let o' = OUVar(new_ouvara a,os) in
+     set_ouvar p (!fobind_ordinals os (OSucc o')); o'
+  | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
+     set_ouvar p o'; opred o w
+  | OUVar _ | OVari _ -> assert false
+  | OLess _ | OConv -> OLess(o, w)
 
 let find_positive ctxt o =
   let rec gn i o =

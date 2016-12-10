@@ -246,6 +246,9 @@ and typ_rule =
 and typ_prf =
   term * kind * typ_rule
 
+let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
+(** Equality on variables *)
+
 (** Used as initial value *)
 let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
 

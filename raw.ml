@@ -1,7 +1,7 @@
 open Ast
 open Bindlib
 open Position
-open Type
+open Binding
 
 (****************************************************************************
  *                              Parser level AST                            *

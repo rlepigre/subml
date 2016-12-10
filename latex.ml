@@ -2,7 +2,6 @@ open Bindlib
 open Format
 open Ast
 open Print
-open Type
 open Position
 open Compare
 
