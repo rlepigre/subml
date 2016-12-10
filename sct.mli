@@ -67,3 +67,7 @@ val do_inline : bool ref
 
 (** Run the sct decision procedure *)
 val sct : call_table -> bool
+
+(** Run the inlining only. Useful to print or store a smaller call_graph.
+    [inline] does nothing if [!do_inline] is false *)
+val inline : call_table -> call_table

@@ -1044,9 +1044,10 @@ let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.
     in
     let p = subtype ctxt term a b in
     List.iter (fun f -> f ()) !(ctxt.delayed);
-    if not (Sct.sct ctxt.call_graphs) then loop_error dummy_position;
+    let call_graphs = Sct.inline ctxt.call_graphs in
+    if not (Sct.sct call_graphs) then loop_error dummy_position;
     check_sub_proof p;
-    (p, ctxt.call_graphs)
+    (p, call_graphs)
 
 let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
   fun t k ->
@@ -1057,9 +1058,10 @@ let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
         let p = type_check ctxt t k in
         check_typ_proof p;
         List.iter (fun f -> f ()) !(ctxt.delayed);
-        if not (Sct.sct ctxt.call_graphs) then loop_error t.pos;
+    let call_graphs = Sct.inline ctxt.call_graphs in
+        if not (Sct.sct call_graphs) then loop_error t.pos;
         reset_all ();
-        (p, ctxt.call_graphs)
+        (p, call_graphs)
       with e -> reset_all (); raise e
     in
     let fn (v, os) =
