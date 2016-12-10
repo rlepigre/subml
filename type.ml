@@ -44,8 +44,12 @@ let rec lift_kind : kind -> kind bindbox = fun k ->
   | KMRec _
   | KNRec _    -> assert false
   | KUVar(u,os)-> kuvar u (Array.map lift_ordinal os)
-  | KUCst(t,f) -> kucst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
-  | KECst(t,f) -> kecst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
+  | KUCst(t,f,cl) ->
+     if cl then box k else
+       kucst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
+  | KECst(t,f,cl) ->
+     if cl then box k else
+       kecst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
 
 and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
   match orepr o with
@@ -101,8 +105,8 @@ let make_safe pos u k =
          (Array.mapi (fun i o -> kn (compose d.tdef_ovariance.(i) pos) o) os)
          (Array.mapi (fun i k -> fn (compose d.tdef_kvariance.(i) pos) k) ks)
     | KUVar(u,os) -> kuvar u (Array.map lift_ordinal os)
-    | KUCst(t,f)
-    | KECst(t,f) -> lift_kind k
+    | KUCst(t,f,cl)
+    | KECst(t,f,cl) -> if cl then box k else lift_kind k
   in
   if pos = Pos || pos = Neg then (
     unbox (mvbind mk_free_ovari (mbinder_names k)
@@ -269,10 +273,11 @@ let rec bind_fn ?(from_generalise=false) len os x k = (
          Io.log_uni "set in bind fn\n%!";
          set_kuvar u k;
          kuvar v (Array.map gn new_ords)
-    | KUCst(t,f) | KECst(t,f) when from_generalise || len = 0 -> lift_kind k
-    | KUCst(t,f) ->
+    | KUCst(t,f,true) | KECst(t,f,true) -> box k
+    | KUCst(t,f,_) | KECst(t,f,_) when from_generalise || len = 0 -> lift_kind k
+    | KUCst(t,f,_) ->
          kucst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
-    | KECst(t,f) ->
+    | KECst(t,f,_) ->
          kecst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
 
   in
@@ -386,7 +391,7 @@ let rec has_boundvar k =
   | KMRec(os,k)
   | KNRec(os,k) -> has_boundvar k (* In the current version, no bound ordinal in os *)
   | KVari _ -> raise Exit
-  | KUCst(_,f) | KECst (_,f) -> has_boundvar (subst f (KProd []))
+  | KUCst(_,f,cl) | KECst (_,f,cl) -> if not cl then has_boundvar (subst f (KProd []))
   | KUVar _ -> ()
 
 and has_tboundvar t =
@@ -513,8 +518,8 @@ let generalise : ordinal list -> kind -> kind ->
     | KDefi(td,os,ks)    -> assert false (* TODO: should not open definition, and use
                                             variance for ordinal parameters, if the definition
                                             has no mu/nu *)
-    | KUCst(t,f) | KECst(t,f) -> (* No generalisation of ordinals in witness *)
-       let res = lift_kind k in if is_closed res then box k else res
+    | KUCst(t,f,cl) | KECst(t,f,cl) -> (* No generalisation of ordinals in witness *)
+       if cl then box k else lift_kind k
 
 
   in

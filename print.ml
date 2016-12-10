@@ -197,8 +197,8 @@ and print_kind unfold wrap ff t =
       else
         fprintf ff "%s(%a, %a)" td.tdef_name (print_array pordi ", ") os
           (print_array pkind ", ") ks
-  | KUCst(u,f)
-  | KECst(u,f) ->
+  | KUCst(u,f,_)
+  | KECst(u,f,_) ->
      let is_exists = match t with KECst(_) -> true | _ -> false in
      let name, index =search_type_tbl u f is_exists in
      fprintf ff "%s_%d" name index

@@ -226,8 +226,8 @@ and eq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KOExi(b1)   , KOExi(b2)   ) -> eq_obinder pos b1 b2
     | (KFixM(o1,f1), KFixM(o2,f2))
     | (KFixN(o1,f1), KFixN(o2,f2)) -> eq_kbinder pos f1 f2 && eq_ordinal pos o1 o2
-    | (KUCst(t1,f1), KUCst(t2,f2))
-    | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
+    | (KUCst(t1,f1,_), KUCst(t2,f2,_))
+    | (KECst(t1,f1,_), KECst(t2,f2,_)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
     | (KMRec(p,a1) , KMRec(q,a2) )
     | (KNRec(p,a1) , KNRec(q,a2) ) -> p == q && eq_kind a1 a2
     | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordinals pos o1 o2
@@ -264,8 +264,8 @@ and leq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KOExi(b1)   , KOExi(b2)   ) -> leq_obinder pos b1 b2
     | (KFixM(o1,f1), KFixM(o2,f2)) -> leq_kbinder pos f1 f2 && leq_ordinal pos o1 o2
     | (KFixN(o1,f1), KFixN(o2,f2)) -> leq_kbinder pos f1 f2 && leq_ordinal pos o2 o1
-    | (KUCst(t1,f1), KUCst(t2,f2))
-    | (KECst(t1,f1), KECst(t2,f2)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
+    | (KUCst(t1,f1,_), KUCst(t2,f2,_))
+    | (KECst(t1,f1,_), KECst(t2,f2,_)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
     | (KMRec(p,a1) , KMRec(q,a2) )
     | (KNRec(p,a1) , KNRec(q,a2) ) -> (* FIXME: can do better *) p == q && leq_kind a1 a2
     | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordinals pos o1 o2
@@ -383,8 +383,8 @@ and gen_occur :
        Array.iteri (fun i k ->
          acc := aux (compose occ d.tdef_kvariance.(i)) !acc k) a;
        !acc
-    | KUCst(t,f)
-    | KECst(t,f) -> aux All acc (subst f kdummy)
+    | KUCst(t,f,cl)    (* no occurence possible in closed terms *)
+    | KECst(t,f,cl) -> if cl then acc else aux All acc (subst f kdummy)
     | KUVar(u,os) -> if kuvar u then combine acc occ else Array.fold_left aux3 acc os
     | KMRec(_,k) (* NOTE: safe to ignore ordinals as they are not used in unif var *)
     | KNRec(_,k) -> aux occ acc k)

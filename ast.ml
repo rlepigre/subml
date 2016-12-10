@@ -56,10 +56,11 @@ type kind =
   (** Least and greatest fixpoint: μα X A, να X A. *)
   | KDefi of type_def * ordinal array * kind array
   (** User-defined type applied to arguments: T(A1,...,An). *)
+  | KUCst of term * (kind, kind) binder * bool
+  | KECst of term * (kind, kind) binder * bool
+  (** Constants (a.k.a. epsilon) - used for subtyping.
+      the boolean tells if the term is closed - i.e. no bindlib variables *)
   (* Special constructors (not accessible to user) *)
-  | KUCst of term * (kind, kind) binder
-  | KECst of term * (kind, kind) binder
-  (** Constants (a.k.a. epsilon) - used for subtyping. *)
   | KUVar of kuvar * ordinal array
   (** Unification variables - used for typechecking. *)
   | KMRec of ordinal set * kind
@@ -439,12 +440,14 @@ let kuvar : kuvar -> obox array -> kbox =
 let kucst : string -> tbox -> (kvar -> kbox) -> kbox =
   fun x t f ->
     let b = vbind mk_free_kvari x f in
-    box_apply2 (fun t b -> KUCst(t,b)) t b
+    let cl = is_closed t && is_closed b in
+    box_apply2 (fun t b -> KUCst(t,b,cl)) t b
 
 let kecst : string -> tbox -> (kvar -> kbox) -> kbox =
   fun x t f ->
     let b = vbind mk_free_kvari x f in
-    box_apply2 (fun t b -> KECst(t,b)) t b
+    let cl = is_closed t && is_closed b in
+    box_apply2 (fun t b -> KECst(t,b,cl)) t b
 
 (** Unification variable management. Useful for typing. *)
 let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =

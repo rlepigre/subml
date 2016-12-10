@@ -153,14 +153,14 @@ let is_positive ctxt o =
 
 let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->
-     let c = KECst(t,f) in
+     let c = KECst(t,f,true) in (* NOTE: used only for close term *)
      if binder_name f = s then c else dot_proj t (subst f c) s
   | k ->
      raise Not_found
 
 let lambda_kind t k s = match full_repr k with
   | KKAll(f) when binder_name f = s ->
-     let c = KUCst(t,f) in
+     let c = KUCst(t,f,true) in (* NOTE: used only for close term *)
      c, (subst f c)
   | _ -> type_error ("type lambda mismatch for "^s)
 
@@ -244,8 +244,8 @@ let has_uvar : kind -> bool = fun k ->
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | KVari _    -> ()
-    | KUCst(_,f)
-    | KECst(_,f) -> fn (subst f (KProd []))
+    | KUCst(_,f,cl)
+    | KECst(_,f,cl) -> if not cl then fn (subst f (KProd []))
   in
   try
     fn k; false
@@ -283,8 +283,8 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
     | KMRec _
     | KNRec _      -> assert false
     | KVari _      -> ()
-    | KUCst(_,f)
-    | KECst(_,f) -> fn (subst f (KProd [])))
+    | KUCst(_,f,cl)
+    | KECst(_,f,cl) -> if not cl then fn (subst f (KProd [])))
   in
   fn k; !r
 
@@ -310,8 +310,8 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | KMRec _
     | KNRec _      -> assert false
     | KVari _      -> ()
-    | KUCst(_,f)
-    | KECst(_,f) -> fn (subst f (KProd [])))
+    | KUCst(_,f,cl)
+    | KECst(_,f,cl) -> if not cl then fn (subst f (KProd [])))
   and gn o =
     match orepr o with
     | OSucc(o)   -> gn o
@@ -690,7 +690,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Universal quantification over kinds. *)
     | (_           , KKAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (KUCst(t,f))) in
+        let p = subtype ctxt t a0 (subst f (KUCst(t,f,true))) in
         Sub_KAll_r(p)
 
     | (KKAll(f)    , _           ) ->
@@ -699,7 +699,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
 
     (* Existantial quantification over kinds. *)
     | (KKExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (KECst(t,f))) b0 in
+        let p = subtype ctxt t (subst f (KECst(t,f,true))) b0 in
         Sub_KExi_l(p)
 
     | (_           , KKExi(f)    ) ->
