@@ -72,7 +72,7 @@ let is_neutral : term -> bool = fun t ->
     | TProj(a,s)  -> fn a
     | TCons(s,a)  -> false
     | TCase(a,_,_)-> fn a
-    | TDefi(d)    -> true
+    | TDefi(d)    -> true (* because we know the type *)
     | TCnst _     -> true
     | TPrnt _     -> false
   in fn t

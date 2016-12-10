@@ -774,14 +774,14 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
         let p = type_check ctxt (subst f k) b in
         Typ_OAbs(p)
     | TAppl(t,u) when is_neutral t && not (is_neutral u)->
-        let a = new_kuvar () in
+        let a = if strict_eq_term u (dummy_pos (TReco [])) then KProd [] else new_kuvar () in
         let ptr = Subset.create ctxt.positive_ordinals in
         let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
         let ctxt = add_positives ctxt (Subset.get ptr) in
         let p1 = type_check ctxt u a in
         Typ_Func_e(p1, p2)
     | TAppl(t,u) ->
-        let a = new_kuvar () in
+        let a = if strict_eq_term u (dummy_pos (TReco [])) then KProd [] else new_kuvar () in
         let p1 = type_check ctxt u a in
         let p2 = type_check ctxt t (KFunc(a,c)) in
         Typ_Func_e(p1, p2)
