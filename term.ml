@@ -6,6 +6,7 @@ open Ast
 open Position
 open Bindlib
 open Format
+open LibTools
 
 (** Map all kind in a term with the given function *)
 let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->

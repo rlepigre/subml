@@ -12,22 +12,10 @@ open Typing
 open Raw
 open Format
 open Position
+open LibTools
 
 (* Definition of a "location" function for DeCaP. *)
 #define LOCATE locate
-
-(****************************************************************************
- *                    Missing standard library functions                    *
- ****************************************************************************)
-
-let int_of_chars s =
-  let f acc c = acc * 10 + (Char.code c - Char.code '0') in
-  List.fold_left f 0 (List.rev s)
-
-let string_of_chars s =
-  let s = Array.of_list s in
-  let res = String.make (Array.length s) ' ' in
-  Array.iteri (fun i c -> res.[i] <- c) s; res
 
 (****************************************************************************
  *                      Handling of blanks and comments                     *

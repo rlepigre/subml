@@ -4,21 +4,7 @@ open Bindlib
 open Subset
 open Format
 open Position
-
-let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
-  match o with None -> None | Some e -> Some (f e)
-
-let iter_opt : ('a -> unit) -> 'a option -> unit = fun f o ->
-  match o with None -> () | Some e -> f e
-
-let from_opt : 'a option -> 'a -> 'a = fun o d ->
-  match o with None -> d | Some e -> e
-
-let from_opt' : 'a option -> (unit -> 'a) -> 'a = fun o f ->
-  match o with None -> f () | Some e -> e
-
-let map_snd : ('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list = fun f l ->
-  List.map (fun (k, v) -> (k, f v)) l
+open LibTools
 
 (** {2         AST for kinds (or types), ordinals and terms              }*)
 type occur =

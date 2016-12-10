@@ -11,7 +11,7 @@ open Term
 open Generalise
 open TypingBase
 open Error
-
+open LibTools
 
 exception Induction_hyp of Sct.index
 

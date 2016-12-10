@@ -6,6 +6,7 @@ open Ast
 open Bindlib
 open Position
 open Term
+open LibTools
 
 (****************************************************************************)
 (**{2                      General function                                }*)
@@ -490,14 +491,6 @@ let less_ordinal : ordinal list -> ordinal -> ordinal -> bool =
 (****************************************************************************)
 (**{2                     Searching functions                              }*)
 (****************************************************************************)
-
-let assoc_gen eq o l =
-  let rec fn =
-    function
-    | [] -> raise Not_found
-    | (o',v)::l -> if eq o o' then v else fn l
-  in
-  fn l
 
 let assoc_ordinal o l = assoc_gen strict_eq_ordinal o l
 let assoc_kind k l = assoc_gen strict_eq_kind k l
