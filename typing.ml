@@ -245,7 +245,7 @@ let has_uvar : kind -> bool = fun k ->
     | KNRec(_,k) -> fn k
     | KVari _    -> ()
     | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> if not cl then fn (subst f (KProd []))
+    | KECst(_,f,cl) -> fn (subst f (KProd []))
   in
   try
     fn k; false
@@ -284,7 +284,7 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
     | KNRec _      -> assert false
     | KVari _      -> ()
     | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> if not cl then fn (subst f (KProd [])))
+    | KECst(_,f,cl) -> fn (subst f (KProd [])))
   in
   fn k; !r
 
@@ -311,7 +311,7 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | KNRec _      -> assert false
     | KVari _      -> ()
     | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> if not cl then fn (subst f (KProd [])))
+    | KECst(_,f,cl) -> fn (subst f (KProd [])))
   and gn o =
     match orepr o with
     | OSucc(o)   -> gn o

@@ -105,8 +105,8 @@ let make_safe pos u k =
          (Array.mapi (fun i o -> kn (compose d.tdef_ovariance.(i) pos) o) os)
          (Array.mapi (fun i k -> fn (compose d.tdef_kvariance.(i) pos) k) ks)
     | KUVar(u,os) -> kuvar u (Array.map lift_ordinal os)
-    | KUCst(t,f,cl)
-    | KECst(t,f,cl) -> if cl then box k else lift_kind k
+    | KUCst(t,f,cl) -> kucst (binder_name f) (box t) (fun x -> fn pos (subst f (KVari x)))
+    | KECst(t,f,cl) -> kecst (binder_name f) (box t) (fun x -> fn pos (subst f (KVari x)))
   in
   if pos = Pos || pos = Neg then (
     unbox (mvbind mk_free_ovari (mbinder_names k)
@@ -138,7 +138,8 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       | KNRec(_,k) -> assert false (* NOTE: works because we do not infer type with
                                       KMRec as they are removed when setting
                                       a unification variable *)
-      | t          -> box t
+      | KUCst(t,f,cl) -> kucst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
+      | KECst(t,f,cl) -> kecst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
     and gn o =
       match orepr o with
       | OVari x -> box_of_var x
@@ -273,8 +274,8 @@ let rec bind_fn ?(from_generalise=false) len os x k = (
          Io.log_uni "set in bind fn\n%!";
          set_kuvar u k;
          kuvar v (Array.map gn new_ords)
-    | KUCst(t,f,true) | KECst(t,f,true) -> box k
-    | KUCst(t,f,_) | KECst(t,f,_) when from_generalise || len = 0 -> lift_kind k
+    | KUCst(t,f,cl) | KECst(t,f,cl) when from_generalise || len = 0 ->
+       if cl then box k else lift_kind k
     | KUCst(t,f,_) ->
          kucst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
     | KECst(t,f,_) ->
@@ -370,66 +371,6 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
 
 let _ = fbind_ordinals := bind_ordinals
 let _ = fobind_ordinals := obind_ordinals
-
-(****************************************************************************
- *                Closedness tests for terms, kind and ordinals             *
- ****************************************************************************)
-
-let rec has_boundvar k =
-  let k = repr k in
-  match k with
-  | KFunc(a,b) -> has_boundvar a; has_boundvar b
-  | KProd(ls)
-  | KDSum(ls)  -> List.iter (fun (l,a) -> has_boundvar a) ls
-  | KKAll(f)
-  | KKExi(f)   -> has_boundvar (subst f (KProd []))
-  | KFixM(o,f)
-  | KFixN(o,f) -> has_oboundvar o; has_boundvar (subst f (KProd []))
-  | KOAll(f)
-  | KOExi(f)   -> has_boundvar (subst f OConv)
-  | KDefi(d,o,a) -> Array.iter has_oboundvar o; Array.iter has_boundvar a
-  | KMRec(os,k)
-  | KNRec(os,k) -> has_boundvar k (* In the current version, no bound ordinal in os *)
-  | KVari _ -> raise Exit
-  | KUCst(_,f,cl) | KECst (_,f,cl) -> if not cl then has_boundvar (subst f (KProd []))
-  | KUVar _ -> ()
-
-and has_tboundvar t =
-  match t.elt with
-  | TCoer(t,k) -> has_tboundvar t; has_boundvar k
-  | TVari _ -> raise Exit
-  | TAbst(ko, b) ->
-     has_tboundvar (subst b (TReco []));
-     (match ko with None -> () | Some k -> has_boundvar k)
-  | TAppl(t1,t2) -> has_tboundvar t1; has_tboundvar t2;
-  | TReco(l) -> List.iter (fun (_,t) -> has_tboundvar t) l
-  | TProj(t,s) -> has_tboundvar t
-  | TCons(s,t) -> has_tboundvar t
-  | TCase(t,l,ao) -> has_tboundvar t; List.iter (fun (_,t) ->  has_tboundvar t) l;
-    (match ao with None -> () | Some t -> has_tboundvar t)
-  | TFixY(_,_,b) -> has_tboundvar (subst b (TReco []))
-  | TKAbs(b) -> has_tboundvar (subst b (KProd []))
-  | TOAbs(b) -> has_tboundvar (subst b OConv)
-  | TDefi _ | TPrnt _ | TCnst _ -> ()
-
-and has_oboundvar o =
-  let o = orepr o in
-    match o with
-    | OVari _ -> raise Exit
-    | OSucc o -> has_oboundvar o
-    | OLess(o,w) ->
-       (match w with
-       | In(t,b) | NotIn(t,b) ->
-          has_oboundvar o; has_tboundvar t; has_boundvar (subst b OConv)
-       | Gen(t,r,f) ->
-          let os = Array.make (mbinder_arity f) OConv in
-          let (k1,k2) = msubst f os in
-          has_boundvar k1; has_boundvar k2)
-    | OUVar _ | OConv -> ()
-
-let closed_term t = try has_tboundvar t; true with Exit -> false
-let closed_kind k = try has_boundvar k; true with Exit -> false
-let closed_ordinal o = try has_oboundvar o; true with Exit -> false
 
 (****************************************************************************
  *                    Decomposition type, ordinals                          *
