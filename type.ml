@@ -16,7 +16,8 @@ let rec opred o w =
      set_ouvar p (!fobind_ordinals os (OSucc o')); o'
   | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
      set_ouvar p o'; opred o w
-  | _ -> OLess(o, w)
+  | OUVar _ | OVari _ -> assert false
+  | OLess _ | OConv -> OLess(o, w)
 
 exception Occur_check
 
@@ -77,8 +78,7 @@ and lift_term t = map_term lift_kind t
 (* FIXME: pos is the polarity of the variable u, not k , this is not natural, should be inversed *)
 let make_safe pos u k =
   let rec gn o = match orepr o with
-    | o when not (kuvar_ord_occur u o) -> lift_ordinal o
-    | OLess(o',_) -> gn o'
+    | OLess(o',_) as o when kuvar_ord_occur u o -> gn o'
     | o -> lift_ordinal o
   in
   let kn pos o =
@@ -144,7 +144,8 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
       match orepr o with
       | OVari x -> box_of_var x
       | OSucc o -> osucc (gn o)
-      | o -> box o
+      | OConv   -> oconv
+      | _ -> assert false
     in
     fn k))
 

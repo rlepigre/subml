@@ -143,7 +143,8 @@ let ordinal_variable : occur -> env -> strpos -> obox = fun pos env s ->
     o
   with Not_found -> unbound s
 
-(* FIXME: the function below are certainly missing cases *)
+(* TODO: the function below are certainly missing cases.
+   this is only a syntactic sugar and we will discover it on examples *)
 let rec with_clause a s b = match full_repr a with
   | KKExi(f) ->
      if binder_name f = s then subst f b else begin

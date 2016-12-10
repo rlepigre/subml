@@ -142,6 +142,7 @@ let find_positive ctxt o =
   match orepr o with
   | OConv -> OConv
   | OSucc o' -> o'
+  | OVari _ -> assert false
   | o ->
      if not (fn 0 o) then raise Not_found;
      new_ouvar ~upper:(constant_mbind 0 o) ()
@@ -149,6 +150,7 @@ let find_positive ctxt o =
 let is_positive ctxt o =
   match orepr o with
   | OConv | OSucc _ -> true
+  | OVari _ -> assert false
   | o -> List.exists (fun o' -> leq_ordinal ctxt.positive_ordinals o' o) ctxt.positive_ordinals
 
 let rec dot_proj t k s = match full_repr k with
