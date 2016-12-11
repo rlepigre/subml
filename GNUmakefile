@@ -61,8 +61,8 @@ test: all
 	@ grep -P '\t' lib/*.typ lib/*/*.typ | wc -l
 	@ echo -n "Longest line:           "
 	@ wc -L *.ml *.mli | tail -n 1 | colrm 1 3 | colrm 4 10
-	@ echo "(Use \"grep -n -P '\t' *.ml\" to find the tabulations...)"
-	@ echo "(Use \"wc -L *.ml\" to find longest line stats on all files...)"
+	@ echo "(Use \"grep -n -P '\t' *.ml *.mli\" to find the tabulations...)"
+	@ echo "(Use \"wc -L *.ml *.mli\" to find longest line stats on all files...)"
 
 clean:
 	ocamlbuild -clean

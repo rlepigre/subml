@@ -98,12 +98,14 @@ and print_kind unfold wrap ff t =
   | KOAll(f)  ->
       if wrap then pp_print_string ff "(";
       let x = new_ovari (binder_name f) in
-      fprintf ff "\\forall %s.%a" (convert_ordinal (name_of x)) pkind (subst f (free_of x));
+      fprintf ff "\\forall %s.%a"
+        (convert_ordinal (name_of x)) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
   | KOExi(f)  ->
       if wrap then pp_print_string ff "(";
       let x = new_ovari (binder_name f) in
-      fprintf ff "\\exists%s.%a" (convert_ordinal (name_of x)) pkind (subst f (free_of x));
+      fprintf ff "\\exists%s.%a"
+        (convert_ordinal (name_of x)) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
   | KFixM(o,b) ->
       if wrap then pp_print_string ff "(";
@@ -138,7 +140,8 @@ and print_kind unfold wrap ff t =
      if os = [||] then
        fprintf ff "?%i" u.uvar_key
      else
-       fprintf ff "?%i(%a)" u.uvar_key (print_list print_index_ordinal ", ") (Array.to_list os)
+       fprintf ff "?%i(%a)" u.uvar_key
+         (print_list print_index_ordinal ", ") (Array.to_list os)
   | KMRec(p,a) -> fprintf ff "%a \\land %a" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
   | KNRec(p,a) -> fprintf ff "%a \\lor %a" pkind a

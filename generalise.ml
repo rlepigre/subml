@@ -96,9 +96,9 @@ let generalise : ordinal list -> kind -> kind ->
     | KMRec(_,k)
     | KNRec(_,k) -> assert false (* dealt with before in subtype *)
     | KUVar(u,os) -> kuvar u (Array.map (search All) os)
-    | KDefi(td,os,ks)    -> assert false (* TODO: should not open definition, and use
-                                            variance for ordinal parameters, if the definition
-                                            has no mu/nu *)
+    | KDefi(td,os,ks) -> assert false (* TODO: should not open definition, and use
+                                      variance for ordinal parameters, if the definition
+                                      has no mu/nu *)
     | KUCst(t,f,cl) | KECst(t,f,cl) -> (* No generalisation of ordinals in witness *)
        if cl then box k else lift_kind k
 
@@ -138,8 +138,10 @@ let generalise : ordinal list -> kind -> kind ->
     List.exists (fun (q,_) -> n = q) tbl && List.exists (fun (q,_) -> p = q) tbl) rel in
   let rel = List.map (fun (n,p) -> List.assoc n tbl, List.assoc p tbl) rel in
 
-  Io.log_sub "generalise pos: %a\n%!" (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
-  Io.log_sub "generalise rel: %a\n%!" (fun ff l -> List.iter (fun (a,b) ->
+  Io.log_sub "generalise pos: %a\n%!"
+    (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
+  Io.log_sub "generalise rel: %a\n%!"
+    (fun ff l -> List.iter (fun (a,b) ->
     Format.fprintf ff "(%d,%d) "a b) l) rel;
   Io.log_sub "generalise os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
     Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;
@@ -256,7 +258,8 @@ let ouvar_list : kind -> ouvar list = fun k ->
   fn k; !r
 
 (* Matching kind, used for printing only *)
-let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool = fun kuvars ouvars p k ->
+let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
+  = fun kuvars ouvars p k ->
   let res = match full_repr p, full_repr k with
   | KUVar(ua,[||]), k when List.memq ua kuvars ->
      set_kuvar ua (constant_mbind 0 k); true

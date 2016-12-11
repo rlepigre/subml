@@ -63,9 +63,10 @@ and fix_induction =
        * (int * int) list     (** the relation between ordinals *)
        * (ordinal, kind * kind) mbinder) (** the kind, ignore the first *)
       list ref
-    * (subtype_ctxt * kind * (Sct.index * typ_prf) ref) list ref (* proofs yet to be done *)
+    * (subtype_ctxt * kind * (Sct.index * typ_prf) ref) list ref
       (* The use of references here is to do a breadth-first search for
-         inductive proof. Depth first here is bad, using too large depth *)
+         inductive proof. Depth first here is bad, using too large depth.
+         The reference holds proofs yet to be done *)
 
 (** the initial empty context *)
 let empty_ctxt () =
@@ -169,7 +170,9 @@ let is_positive ctxt o =
   match orepr o with
   | OConv | OSucc _ -> true
   | OVari _ -> assert false
-  | o -> List.exists (fun o' -> leq_ordinal ctxt.positive_ordinals o' o) ctxt.positive_ordinals
+  | o ->
+     List.exists (fun o' -> leq_ordinal ctxt.positive_ordinals o' o)
+       ctxt.positive_ordinals
 
    let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->
@@ -190,7 +193,8 @@ let rec add_pos positives o =
   match o with
   | OConv | OSucc _ -> positives
   | _ ->
-    if List.exists (strict_eq_ordinal o) positives then positives else o :: positives
+     if List.exists (strict_eq_ordinal o) positives
+     then positives else o :: positives
 
 let add_positive ctxt o =
   { ctxt with positive_ordinals = add_pos ctxt.positive_ordinals o }
@@ -213,7 +217,8 @@ let lambda_ordinal t k s =
   | KOAll(f) when binder_name f = s ->
      let c = OLess(OConv, NotIn(t,f)) in
      c, (subst f c)
-  | _ -> Io.err "%a\n%!" (print_kind false) k; type_error ("ordinal lambda mismatch for "^s)
+  | _ -> Io.err "%a\n%!" (print_kind false) k;
+         type_error ("ordinal lambda mismatch for "^s)
 
 (* These three functions are only used for heuristics *)
 let has_leading_ord_quantifier : kind -> bool = fun k ->

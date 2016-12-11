@@ -66,13 +66,11 @@ let check_rec
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
-(*        Io.log_sub "PRE %d %d\n%a = %a\n\n%!" (mbinder_arity both0) (mbinder_arity both)
-          (print_kind false) k1  (print_kind false) k2;*)
         let (ov,pos',a',b') = recompose pos0 rel0 both0 true in
         Io.log_sub "TESTING %a = %a\n%a = %a\n\n%!"
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
-        if leq_kind tpos k1 a' && leq_kind tpos b' k2 && (Io.log_sub "EQ OK\n%!"; true) &&
+        if leq_kind tpos k1 a' && leq_kind tpos b' k2 &&
            List.for_all (fun o1 ->
                List.exists (eq_ordinal tpos o1) tpos) pos'
         then (
@@ -197,8 +195,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                  else
                    if   (List.exists (strict_eq_ordinal o) osal &&
                          List.exists (strict_eq_ordinal o) osbl)
-                     || (List.exists (strict_eq_ordinal o) osal && not (kuvar_ord_occur ub o))
-                     || (List.exists (strict_eq_ordinal o) osbl && not (kuvar_ord_occur ua o))
+                     || (List.exists (strict_eq_ordinal o) osal
+                         && not (kuvar_ord_occur ub o))
+                     || (List.exists (strict_eq_ordinal o) osbl
+                         && not (kuvar_ord_occur ua o))
                    then o::acc
                    else acc) [] (osal @ osbl)
                in
@@ -310,8 +310,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
              let ctxt = add_positive ctxt o in
              o', ctxt
         in
-        Io.log_sub "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
-        Io.log_sub "creating %a < %a\n%!" (print_ordinal true) o' (print_ordinal true) o;
+        Io.log_sub "creating %a < %a\n%!"
+          (print_ordinal false) o' (print_ordinal false) o;
+        Io.log_sub "creating %a < %a\n%!"
+          (print_ordinal true) o' (print_ordinal true) o;
         let cst = KFixN(o', f) in
         let prf = subtype ctxt t a0 (subst f cst) in
         Sub_FixN_r prf
@@ -328,8 +330,10 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
              let ctxt = add_positive ctxt o in
              o', ctxt
         in
-        Io.log_sub "creating %a < %a\n%!" (print_ordinal false) o' (print_ordinal false) o;
-        Io.log_sub "creating %a < %a\n%!" (print_ordinal true) o' (print_ordinal true) o;
+        Io.log_sub "creating %a < %a\n%!"
+          (print_ordinal false) o' (print_ordinal false) o;
+        Io.log_sub "creating %a < %a\n%!"
+          (print_ordinal true) o' (print_ordinal true) o;
         let cst = KFixM(o', f) in
         let prf = subtype ctxt t (subst f cst) b0 in
         Sub_FixM_l prf
@@ -590,7 +594,8 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
             (print_kind false) c (print_kind false) c0;
           List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
           if os <> [] then hyps_ptr := (fnum, pos, rel, both) :: !hyps_ptr;
-          let ctxt = { ctxt with top_induction = (fnum, os0); positive_ordinals = tpos} in
+          let ctxt = { ctxt with top_induction = (fnum, os0);
+                                 positive_ordinals = tpos} in
           Some (ctxt,t,c0,fnum,ptr)) l
         in
         let l = List.fold_left (fun acc -> function
