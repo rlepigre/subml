@@ -53,7 +53,9 @@ let check_rec
       let pos = ctxt.positive_ordinals in
       let (ipos, rel, both, os) = generalise pos a b in
       let (os0,tpos,k1,k2) = recompose ipos rel both false in
-      let fnum = Sct.new_function ctxt.call_graphs "S" (List.map Latex.ordinal_to_printer os0) in
+      let fnum = Sct.new_function ctxt.call_graphs "S"
+        (List.map Latex.ordinal_to_printer os0)
+      in
       add_call ctxt fnum os false;
       let ctxt = { ctxt with
         sub_induction_hyp = (fnum, ipos, rel, both)::ctxt.sub_induction_hyp;
@@ -415,112 +417,117 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     (print_term false) t (print_kind false) c print_positives ctxt;
   let r =
     try
-    match t.elt with
-    | TCoer(t,a) ->
-        let p1 = subtype ctxt t a c in
-        let p2 = type_check ctxt t a in
-        Typ_Coer(p1, p2)
-    | TAbst(ao,f) ->
-        let a = match ao with None -> new_kuvar () | Some a -> a in
-        let b = new_kuvar () in
-        let ptr = Subset.create ctxt.positive_ordinals in
-        let c' = KNRec(ptr,KFunc(a,b)) in
-        let p1 = subtype ctxt t c' c in
-        let ctxt = add_positives ctxt (Subset.get ptr) in
-        let wit = unbox (tcnst f (box a) (box b)) in
-        let p2 = type_check ctxt (subst f wit.elt) b in
-        Typ_Func_i(p1, p2)
-    | TKAbs(f) ->
-        let k, b = lambda_kind t c (binder_name f) in
-        let p = type_check ctxt (subst f k) b in
-        Typ_KAbs(p)
-    | TOAbs(f) ->
-        let k, b = lambda_ordinal t c (binder_name f) in
-        let p = type_check ctxt (subst f k) b in
-        Typ_OAbs(p)
-    | TAppl(t,u) when is_neutral t && not (is_neutral u)->
-        let a = if strict_eq_term u (dummy_pos (TReco [])) then KProd [] else new_kuvar () in
-        let ptr = Subset.create ctxt.positive_ordinals in
-        let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
-        let ctxt = add_positives ctxt (Subset.get ptr) in
-        let p1 = type_check ctxt u a in
-        Typ_Func_e(p1, p2)
-    | TAppl(t,u) ->
-        let a = if strict_eq_term u (dummy_pos (TReco [])) then KProd [] else new_kuvar () in
-        let p1 = type_check ctxt u a in
-        let p2 = type_check ctxt t (KFunc(a,c)) in
-        Typ_Func_e(p1, p2)
-    | TReco(fs) ->
-        let ts = List.map (fun (l,_) -> (l, new_kuvar ())) fs in
-        let c' = KProd(ts) in
-        let ptr = Subset.create ctxt.positive_ordinals in
-        let c' =
-          if is_normal t then KNRec(ptr,c') else c'
-        in
-        let p1 = subtype ctxt t c' c in
-        let ctxt = add_positives ctxt (Subset.get ptr) in
-        let check (l,t) =
-          let cl = List.assoc l ts in type_check ctxt t cl
-        in
-        let p2s = List.map check fs in
-        Typ_Prod_i(p1, p2s)
-    | TProj(t,l) ->
-        let c' = new_kuvar ~state:(Prod [(l,constant_mbind 0 c)]) () in
-        let p = type_check ctxt t c' in
-        Typ_Prod_e(p)
-    | TCons(d,v) ->
-        let a = new_kuvar () in
-        let c' = new_kuvar ~state:(Sum [(d,constant_mbind 0 a)]) () in
-        let ptr = Subset.create ctxt.positive_ordinals in
-        let c' =
-          if is_normal t then
-            KNRec(ptr,c')
-          else c'
-        in
-        let p1 = subtype ctxt t c' c in
-        let ctxt = add_positives ctxt (Subset.get ptr) in
-        let p2 = type_check ctxt v a in
-        Typ_DSum_i(p1, p2)
-    | TCase(t,l,d) ->
-        let ts = List.map (fun (c,_) -> (c, new_kuvar ())) l in
-        let k =
-          match d with
-            None ->
-              KDSum ts
-          | _    ->
-             let ts = List.map (fun (c,_) -> (c, constant_mbind 0 (List.assoc c ts))) l in
-             new_kuvar ~state:(Sum ts) ()
-        in
-        let ptr = Subset.create ctxt.positive_ordinals in
-        let p1 = type_check ctxt t (KMRec(ptr,k)) in
-        let ctxt = add_positives ctxt (Subset.get ptr) in
-        let check (d,f) =
-          let cc = List.assoc d ts in
-          type_check ctxt f (KFunc(cc,c))
-        in
-        let p2s = List.map check l in
-        let p3 =
-          match d, k with
-          | None, _ -> None
-          | Some f, KUVar({ uvar_state = { contents = Sum ts }}, os)  ->
-             let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
-             let ts = List.map (fun (c,k) -> (c, msubst k os)) ts in
-             Some (type_check ctxt f (KFunc(KDSum ts,c)))
-          | _ -> assert false
-        in
-        Typ_DSum_e(p1, p2s, p3)
-    | TDefi(v) ->
-        let p = subtype ctxt v.value v.ttype c in
-        Typ_Defi(p)
-    | TPrnt(_) ->
-        let p = subtype ctxt t (KProd []) c in
-        Typ_Prnt(p)
-    | TFixY(do_subsume,depth,f) ->
-        check_fix ctxt t do_subsume depth f c
-    | TCnst(_,a,b,_) ->
-        let p = subtype ctxt t a c in
-        Typ_Cnst(p)
-    | TVari(_) -> assert false
+      match t.elt with
+      | TCoer(t,a) ->
+         let p1 = subtype ctxt t a c in
+         let p2 = type_check ctxt t a in
+         Typ_Coer(p1, p2)
+      | TAbst(ao,f) ->
+         let a = match ao with None -> new_kuvar () | Some a -> a in
+         let b = new_kuvar () in
+         let ptr = Subset.create ctxt.positive_ordinals in
+         let c' = KNRec(ptr,KFunc(a,b)) in
+         let p1 = subtype ctxt t c' c in
+         let ctxt = add_positives ctxt (Subset.get ptr) in
+         let wit = unbox (tcnst f (box a) (box b)) in
+         let p2 = type_check ctxt (subst f wit.elt) b in
+         Typ_Func_i(p1, p2)
+      | TKAbs(f) ->
+         let k, b = lambda_kind t c (binder_name f) in
+         let p = type_check ctxt (subst f k) b in
+         Typ_KAbs(p)
+      | TOAbs(f) ->
+         let k, b = lambda_ordinal t c (binder_name f) in
+         let p = type_check ctxt (subst f k) b in
+         Typ_OAbs(p)
+      | TAppl(t,u) when is_neutral t && not (is_neutral u)->
+         let a =
+           if strict_eq_term u (dummy_pos (TReco []))
+           then KProd [] else new_kuvar () in
+         let ptr = Subset.create ctxt.positive_ordinals
+         in
+         let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
+         let ctxt = add_positives ctxt (Subset.get ptr) in
+         let p1 = type_check ctxt u a in
+         Typ_Func_e(p1, p2)
+      | TAppl(t,u) ->
+         let a = if strict_eq_term u (dummy_pos (TReco []))
+           then KProd [] else new_kuvar ()
+         in
+         let p1 = type_check ctxt u a in
+         let p2 = type_check ctxt t (KFunc(a,c)) in
+         Typ_Func_e(p1, p2)
+      | TReco(fs) ->
+         let ts = List.map (fun (l,_) -> (l, new_kuvar ())) fs in
+         let c' = KProd(ts) in
+         let ptr = Subset.create ctxt.positive_ordinals in
+         let c' =
+           if is_normal t then KNRec(ptr,c') else c'
+         in
+         let p1 = subtype ctxt t c' c in
+         let ctxt = add_positives ctxt (Subset.get ptr) in
+         let check (l,t) =
+           let cl = List.assoc l ts in type_check ctxt t cl
+         in
+         let p2s = List.map check fs in
+         Typ_Prod_i(p1, p2s)
+      | TProj(t,l) ->
+         let c' = new_kuvar ~state:(Prod [(l,constant_mbind 0 c)]) () in
+         let p = type_check ctxt t c' in
+         Typ_Prod_e(p)
+      | TCons(d,v) ->
+         let a = new_kuvar () in
+         let c' = new_kuvar ~state:(Sum [(d,constant_mbind 0 a)]) () in
+         let ptr = Subset.create ctxt.positive_ordinals in
+         let c' =
+           if is_normal t then
+             KNRec(ptr,c')
+           else c'
+         in
+         let p1 = subtype ctxt t c' c in
+         let ctxt = add_positives ctxt (Subset.get ptr) in
+         let p2 = type_check ctxt v a in
+         Typ_DSum_i(p1, p2)
+      | TCase(t,l,d) ->
+         let ts = List.map (fun (c,_) -> (c, new_kuvar ())) l in
+         let k =
+           match d with
+             None ->
+               KDSum ts
+           | _    ->
+              let ts = List.map (fun (c,_) -> (c, constant_mbind 0 (List.assoc c ts))) l in
+              new_kuvar ~state:(Sum ts) ()
+         in
+         let ptr = Subset.create ctxt.positive_ordinals in
+         let p1 = type_check ctxt t (KMRec(ptr,k)) in
+         let ctxt = add_positives ctxt (Subset.get ptr) in
+         let check (d,f) =
+           let cc = List.assoc d ts in
+           type_check ctxt f (KFunc(cc,c))
+         in
+         let p2s = List.map check l in
+         let p3 =
+           match d, k with
+           | None, _ -> None
+           | Some f, KUVar({ uvar_state = { contents = Sum ts }}, os)  ->
+              let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
+              let ts = List.map (fun (c,k) -> (c, msubst k os)) ts in
+              Some (type_check ctxt f (KFunc(KDSum ts,c)))
+           | _ -> assert false
+         in
+         Typ_DSum_e(p1, p2s, p3)
+      | TDefi(v) ->
+         let p = subtype ctxt v.value v.ttype c in
+         Typ_Defi(p)
+      | TPrnt(_) ->
+         let p = subtype ctxt t (KProd []) c in
+         Typ_Prnt(p)
+      | TFixY(do_subsume,depth,f) ->
+         check_fix ctxt t do_subsume depth f c
+      | TCnst(_,a,b,_) ->
+         let p = subtype ctxt t a c in
+         Typ_Cnst(p)
+      | TVari(_) -> assert false
     with
     | Subtype_error msg (* FIXME: could we avoid Subtype_error in typing.
                            It not, should use the same exception *)
@@ -576,7 +583,9 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
           let (pos, rel, both, os) = generalise ctxt.positive_ordinals (KProd []) c in
           let (os0, tpos, _, c0) = recompose pos rel both false in
-          let fnum = Sct.new_function ctxt.call_graphs "Y" (List.map Latex.ordinal_to_printer os0) in
+          let fnum = Sct.new_function ctxt.call_graphs "Y"
+            (List.map Latex.ordinal_to_printer os0)
+          in
           Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!" Sct.prInd fnum
             (print_kind false) c (print_kind false) c0;
           List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
@@ -607,8 +616,10 @@ and search_induction depth ctxt t a c0 hyps =
     let ctxt = { ctxt with
       delayed = ref[];
       call_graphs = Sct.copy ctxt.call_graphs} in
-    try Timed.pure_test (fun () -> let prf = subtype ctxt t a c0 in check_sub_proof prf; true) ()
-      with Subtype_error _ | Error _ -> true
+    try Timed.pure_test (fun () ->
+      let prf = subtype ctxt t a c0 in
+      check_sub_proof prf; true) ()
+    with Subtype_error _ | Error _ -> true
   in
 
   let rec fn = function
@@ -703,8 +714,8 @@ and check_fix ctxt t do_subsume depth f c0 =
       remains := (ctxt, c0, ptr) :: !remains;
       Typ_TFix(ptr)
 
-let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table =
-  fun ?ctxt ?term a b ->
+let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table
+  = fun ?ctxt ?term a b ->
     let term = unbox (generic_tcnst (box a) (box b)) in
     let ctxt =
       {  (empty_ctxt ()) with

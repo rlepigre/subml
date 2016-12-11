@@ -270,7 +270,8 @@ let sct_only : call_table -> bool = fun ftbl ->
           incr added;
           let t' = tbl.(j) in
           Array.iteri (fun k t -> List.iter (fun m' ->
-            Io.log_sct "\tcompose: %a * %a = %!" print_call (i,j,m,true) print_call (j,k,m',true);
+            Io.log_sct "\tcompose: %a * %a = %!"
+              print_call (i,j,m,true) print_call (j,k,m',true);
             let (_, a, _) = List.assoc k arities in
             let (_, b, _) = List.assoc j arities in
             let (_, d, _) = List.assoc i arities in

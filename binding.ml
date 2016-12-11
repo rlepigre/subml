@@ -55,7 +55,8 @@ and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
   | OLess(o,Gen(i,r,p))  ->
      oless_Gen (lift_ordinal o) i r
        (mvbind mk_free_ovari (mbinder_names p) (fun xs ->
-         let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in box_pair (lift_kind k1) (lift_kind k2)))
+         let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in
+         box_pair (lift_kind k1) (lift_kind k2)))
   | OUVar(u,os) -> ouvar u (Array.map lift_ordinal os)
   | OConv -> box o
 
@@ -223,9 +224,10 @@ let rec bind_fn ?(from_generalise=false) os x k = (
     | KVari(x)     -> box_of_var x
     | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
     | KMRec(_,k)
-    | KNRec(_,k)   -> fn k (* NOTE: safe, because erased in generalise with safe assertion, and
-                              subtyping is called later when used to instanciate unif var,
-                              so if unsafe, subtyping/eq_kind/leq_kind will fail *)
+    | KNRec(_,k)   -> fn k
+    (* NOTE: safe, because erased in generalise with safe assertion, and
+       subtyping is called later when used to instanciate unif var,
+       so if unsafe, subtyping/eq_kind/leq_kind will fail *)
     | KUVar(u,os') ->
        let os'' = List.filter (fun o ->
          not (Array.exists (strict_eq_ordinal o) os') && not (kuvar_ord_occur u o))

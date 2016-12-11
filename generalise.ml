@@ -120,7 +120,7 @@ let generalise : ordinal list -> kind -> kind ->
   let os = List.map (fun (o,(n,v,_)) -> (List.assoc n tbl, o)) res in
 
   let rec next start n =
-    if List.exists (fun (q,_) -> n = q) tbl then ((*if not start then Io.log "SKIP\n%!";*) n) else
+    if List.exists (fun (q,_) -> n = q) tbl then n else
       try
         assert (List.length (List.find_all (fun (n',_) -> n = n') !relation) <= 1);
         let n = List.assoc n !relation in
