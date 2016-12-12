@@ -43,7 +43,6 @@ type subtype_ctxt =
   ; fix_induction_hyp : fix_induction list
   ; top_induction     : induction_node
   ; call_graphs       : Sct.call_table
-  ; delayed           : (unit -> unit) list ref
   ; positive_ordinals : ordinal list }
 
 (** induction hypothesis for subtyping *)
@@ -74,7 +73,6 @@ let empty_ctxt () =
   ; fix_induction_hyp = []
   ; top_induction = (Sct.root, [])
   ; call_graphs = Sct.init_table ()
-  ; delayed = ref []
   ; positive_ordinals = [] }
 
 
@@ -120,10 +118,9 @@ let add_call ctxt fnum os is_induction_hyp =
   assert(consecutive os);
   assert(consecutive os0);
   Io.log_mat "adding call %a -> %a\n%!" prInd cur prInd fnum;
-  Timed.(ctxt.delayed := (fun () ->
-    let m = find_indexes calls pos fnum cur os os0 in
-    let call = (fnum, cur, m, is_induction_hyp) in
-    Sct.new_call calls call) :: !(ctxt.delayed))
+  let m = find_indexes calls pos fnum cur os os0 in
+  let call = (fnum, cur, m, is_induction_hyp) in
+  Sct.new_call calls call
 
 (** construction of an ordinal < o such that w *)
 let rec opred o w =

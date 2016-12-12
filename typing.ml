@@ -619,7 +619,6 @@ and search_induction depth ctxt t a c0 hyps =
   let _ =
     (* We protect the context to avoid adding calls to the sct *)
     let ctxt = { ctxt with
-      delayed = ref[];
       call_graphs = Sct.copy ctxt.call_graphs} in
     try Timed.pure_test (fun () ->
       let prf = subtype ctxt t a c0 in
@@ -725,12 +724,10 @@ let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.
     let ctxt =
       {  (empty_ctxt ()) with
           call_graphs = Sct.init_table ()
-        ; delayed = ref []
         ; top_induction = (Sct.root, [])
       }
     in
     let p = subtype ctxt term a b in
-    List.iter (fun f -> f ()) !(ctxt.delayed);
     let call_graphs = Sct.inline ctxt.call_graphs in
     if not (Sct.sct call_graphs) then loop_error dummy_position;
     check_sub_proof p;
@@ -744,7 +741,6 @@ let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
       try
         let p = type_check ctxt t k in
         check_typ_proof p;
-        List.iter (fun f -> f ()) !(ctxt.delayed);
     let call_graphs = Sct.inline ctxt.call_graphs in
         if not (Sct.sct call_graphs) then loop_error t.pos;
         reset_all ();
