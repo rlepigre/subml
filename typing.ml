@@ -33,7 +33,7 @@ let check_rec
           If we keep ordinal variables, it may loops on
           useful examples.
           IMPROVE: can we do better ?*)
-       ignore (leq_ordinal ctxt.positive_ordinals o o')
+       ignore (eq_ordinal ctxt.positive_ordinals o o')
     | _ -> ()
     end;
 
@@ -91,7 +91,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     print_positives ctxt;
   let a = full_repr a0 in
   let b = full_repr b0 in
-  if leq_kind ctxt.positive_ordinals a b (*strict_eq_kind a b*) then
+  if eq_kind ctxt.positive_ordinals a b then
     (t, a0, b0, None, Sub_Lower)
   else (
     try

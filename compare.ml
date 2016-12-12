@@ -150,6 +150,9 @@ and leqi_ordinal pos o1 i o2 =
   | (OUVar({uvar_state = (_, Some o')},os),       o2  )
        when strict (leqi_ordinal pos (msubst o' os) (i-1)) o2 ->
     true
+  | (OUVar({uvar_state = (Some o',_)} as p,os),       o2  ) ->
+     set_ouvar ~msg:"leq3" p o';
+     leqi_ordinal pos o1 i o2
   | (OUVar(p,os)   , o2      ) when i<=0 && not !eq_strict &&
       not (ouvar_occur ~safe_ordinals:os p o2) &&
       Timed.pure_test (fun () -> less_opt_ordinal pos o2 p.uvar_state os) () ->
@@ -186,10 +189,7 @@ and leqi_ordinal pos o1 i o2 =
      in
      let f = !fobind_ordinals os o1' in
      set_ouvar ~msg:"leq2" p f;
-     leq_ordinal pos o1' (msubst f os)
-  | (OUVar({uvar_state = (Some o',_)} as p,os),       o2  ) ->
-     set_ouvar ~msg:"leq3" p o';
-     leqi_ordinal pos o1 i o2
+    leq_ordinal pos o1' (msubst f os)
   | (OLess(o1,_),       o2  ) ->
      let i = if List.exists (Timed.pure_test (eq_ordinal pos o1)) pos then i-1 else i in
      leqi_ordinal pos o1 i o2

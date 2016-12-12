@@ -171,7 +171,7 @@ let is_positive ctxt o =
   | OConv | OSucc _ -> true
   | OVari _ -> assert false
   | o ->
-     List.exists (fun o' -> leq_ordinal ctxt.positive_ordinals o' o)
+     List.exists (fun o' -> eq_ordinal ctxt.positive_ordinals o' o)
        ctxt.positive_ordinals
 
    let rec dot_proj t k s = match full_repr k with
