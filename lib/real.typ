@@ -47,9 +47,9 @@ val rec mulDI : ∀α D → IS(α) → IS(α) = fun a1 b _ →
   let (b1,b') = b {} in
   (mulD a1 b1, mulDI a1 b')
 
-(* fail termination, mainly because p is given type I1
+(* fail termination, mainly because q is given type I1
    and average in the final call is given type I1 → I1 → I1
-   loosing the type of q ... *)
+   loosing the type of p ... *)
 
 ?val rec mulI : I1 → I1 → I1 =
    fun a b →
@@ -62,6 +62,4 @@ val rec mulDI : ∀α D → IS(α) → IS(α) = fun a1 b _ →
                   fun _ → (mulD a1 b1, mulI a'' b''))) in
       let p = average (fun _ → (mulD a0 b1, average (mulDI b1 a'') (mulDI a1 b'')))
                            (average (mulDI b0 a'') (mulDI a0 b'')) in
-      average (fun _ → (mulD a0 b0,
-                          (fun _ → (mulD a1 b0,
-                           (fun _ → (mulD a1 b1, mulI a'' b'')))))) q
+      average q p
