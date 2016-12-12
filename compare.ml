@@ -65,11 +65,11 @@ let set_kuvar v k =
   Timed.(v.uvar_val := Some k)
 
 (** function to set ordinal variables *)
-let set_ouvar v o =
-  Io.log_uni "set %d <- %a\n\n%!"
+let set_ouvar ?(msg="") v o =
+  Io.log_uni "set %d <- %a (%s)\n\n%!"
     v.uvar_key (!fprint_ordinal false)
     (msubst o (Array.init v.uvar_arity
-                 (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
+                 (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) msg;
   assert (!(v.uvar_val) = None);
   Timed.(v.uvar_val := Some o)
 
@@ -99,10 +99,6 @@ and eq_obinder pos f1 f2 = f1 == f2 ||
   let i = free_of (new_ovari "o") in
   eq_kind pos (subst f1 i) (subst f2 i)
 
-and leq_obinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_ovari "o") in
-  leq_kind pos (subst f1 i) (subst f2 i)
-
 and optpr ff = function
   | None -> ()
   | Some o -> !fprint_ordinal false ff o
@@ -115,12 +111,12 @@ and eq_ordinal : ordinal list -> ordinal -> ordinal -> bool = fun pos o1 o2 ->
   | (OUVar(v1,o1), OUVar(v2,o2)) when eq_uvar v1 v2 -> eq_ordinals pos o1 o2
   | (OUVar(p,os), o2         ) when not !eq_strict &&
                                     not (ouvar_occur ~safe_ordinals:os p o2) &&
-      Timed.pure_test (fun () -> set_ouvar p
+      Timed.pure_test (fun () -> set_ouvar ~msg:"eq1" p
         (!fobind_ordinals os o2); less_opt_ordinal pos o2 p.uvar_state os) () ->
      (eq_ordinal pos o1 o2)
   | (o1         , OUVar(p,os)   ) when not !eq_strict &&
                                        not (ouvar_occur ~safe_ordinals:os p o1) &&
-      Timed.pure_test (fun () -> set_ouvar p
+      Timed.pure_test (fun () -> set_ouvar ~msg:"eq2" p
         (!fobind_ordinals os o1); less_opt_ordinal pos o1 p.uvar_state os) () ->
      (eq_ordinal pos o1 o2)
   | (OConv       , OConv       ) -> true
@@ -151,6 +147,9 @@ and leqi_ordinal pos o1 i o2 =
      leqi_ordinal pos o1 (i-1) o2
   | (o1         , OSucc o2  ) -> leqi_ordinal pos o1 (i-1) o2
   | (OSucc o1   ,       o2  ) -> leqi_ordinal pos o1 (i+1) o2
+  | (OUVar({uvar_state = (_, Some o')},os),       o2  )
+       when strict (leqi_ordinal pos (msubst o' os) (i-1)) o2 ->
+    true
   | (OUVar(p,os)   , o2      ) when i<=0 && not !eq_strict &&
       not (ouvar_occur ~safe_ordinals:os p o2) &&
       Timed.pure_test (fun () -> less_opt_ordinal pos o2 p.uvar_state os) () ->
@@ -160,7 +159,7 @@ and leqi_ordinal pos o1 i o2 =
            | Some f -> Some (constant_mbind 0 (msubst f os)))
        ~upper:(constant_mbind 0 o2) () in
      let f = !fobind_ordinals os o2' in
-     set_ouvar p f;
+     set_ouvar ~msg:"leq1" p f;
      leq_ordinal pos (msubst f os) o2'
   | (o1         , OUVar(p,os)) when not !eq_strict &&
                                     not (ouvar_occur ~safe_ordinals:os p o1) &&
@@ -186,8 +185,11 @@ and leqi_ordinal pos o1 i o2 =
        else o1'
      in
      let f = !fobind_ordinals os o1' in
-     set_ouvar p f;
+     set_ouvar ~msg:"leq2" p f;
      leq_ordinal pos o1' (msubst f os)
+  | (OUVar({uvar_state = (Some o',_)} as p,os),       o2  ) ->
+     set_ouvar ~msg:"leq3" p o';
+     leqi_ordinal pos o1 i o2
   | (OLess(o1,_),       o2  ) ->
      let i = if List.exists (Timed.pure_test (eq_ordinal pos o1)) pos then i-1 else i in
      leqi_ordinal pos o1 i o2
@@ -258,37 +260,6 @@ and eq_kbinder pos f1 f2 = f1 == f2 ||
 and eq_tkbinder pos f1 f2 = f1 == f2 ||
   let i = free_of (new_tvari "t") in
   eq_kind pos (subst f1 i) (subst f2 i)
-
-and leq_kind : ordinal list -> kind -> kind -> bool = fun pos k1 k2 ->
-  let rec leq_kind k1 k2 =
-    Io.log_ord "%a = %a %b\n%!" (!fprint_kind true) k1 (!fprint_kind true) k2 !eq_strict;
-    k1 == k2 || match (full_repr k1, full_repr k2) with
-    | (KVari(x1)   , KVari(x2)   ) -> eq_variables x1 x2
-    | (KFunc(a1,b1), KFunc(a2,b2)) -> leq_kind a2 a1 && leq_kind b1 b2
-    | (KProd(fs1)  , KProd(fs2)  ) -> eq_assoc leq_kind fs1 fs2
-    | (KDSum(cs1)  , KDSum(cs2)  ) -> eq_assoc leq_kind cs1 cs2
-    | (KKAll(b1)   , KKAll(b2)   )
-    | (KKExi(b1)   , KKExi(b2)   ) -> leq_kbinder pos b1 b2
-    | (KOAll(b1)   , KOAll(b2)   )
-    | (KOExi(b1)   , KOExi(b2)   ) -> leq_obinder pos b1 b2
-    | (KFixM(o1,f1), KFixM(o2,f2)) -> leq_kbinder pos f1 f2 && leq_ordinal pos o1 o2
-    | (KFixN(o1,f1), KFixN(o2,f2)) -> leq_kbinder pos f1 f2 && leq_ordinal pos o2 o1
-    | (KUCst(t1,f1,_), KUCst(t2,f2,_))
-    | (KECst(t1,f1,_), KECst(t2,f2,_)) -> eq_kbinder pos f1 f2 && eq_term pos t1 t2
-    | (KMRec(p,a1) , KMRec(q,a2) )
-    | (KNRec(p,a1) , KNRec(q,a2) ) -> (* FIXME: can do better *) p == q && leq_kind a1 a2
-    | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordinals pos o1 o2
-    | (_           , _           ) -> false
-  in
-  leq_kind k1 k2
-
-and leq_tkbinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_tvari "t") in
-  leq_kind pos (subst f1 i) (subst f2 i)
-
-and leq_kbinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_kvari "X") in
-  leq_kind pos (subst f1 i) (subst f2 i)
 
 (****************************************************************************)
 (**{2                     Equality on terms                                }*)
@@ -474,9 +445,6 @@ and kuvar_ord_occur : ?safe_ordinals:ordinal array -> kuvar -> ordinal -> bool =
 (****************************************************************************)
 
 let eq_kind : ordinal list -> kind -> kind -> bool =
-  fun pos k1 k2 -> Timed.pure_test (eq_kind pos k1) k2
-
-let leq_kind : ordinal list -> kind -> kind -> bool =
   fun pos k1 k2 -> Timed.pure_test (eq_kind pos k1) k2
 
 let eq_kbinder : ordinal list -> (kind, kind) binder -> (kind, kind) binder -> bool =

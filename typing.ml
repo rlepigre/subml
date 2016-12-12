@@ -70,7 +70,7 @@ let check_rec
         Io.log_sub "TESTING %a = %a\n%a = %a\n\n%!"
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
-        if leq_kind tpos k1 a' && leq_kind tpos b' k2 &&
+        if eq_kind tpos k1 a' && eq_kind tpos b' k2 &&
            List.for_all (fun o1 ->
                List.exists (eq_ordinal tpos o1) tpos) pos'
         then (
@@ -163,7 +163,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
        let osal = Array.to_list osa in
        let osbl = Array.to_list osb in
        let (_,os) = List.fold_left2 (fun (i,acc) o1 o2 ->
-         if eq_ordinal ctxt.positive_ordinals o1 o2 then
+         if strict_eq_ordinal o1 o2 then
            (i+1,i::acc)
          else
            (i+1,acc)) (0,[]) osal osbl
