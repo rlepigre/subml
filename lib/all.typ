@@ -10,6 +10,8 @@ include "natbin.typ"
 include "stream.typ"
 include "state_array.typ"
 include "tree23.typ"
+include "int.typ"
+include "real.typ"
 
 (* Church encoding *)
 include "church/bool.typ"
