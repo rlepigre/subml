@@ -1,6 +1,7 @@
 (* Binary coding of natural numbers using inductive types and native sums *)
 
-type Bin  = μK [ End | Zero of K | One of K ] (* allowed trailing zero *)
+type FBin(α) = μα K [ End | Zero of K | One of K ] (* allowed trailing zero *)
+type Bin  = FBin(∞)
 type EBin = [ Error | End | Zero of Bin | One of Bin ]
 type RBin = [ Minus of Bin | End | Zero of Bin | One of Bin ] (*relative numbers*)
 
@@ -32,6 +33,95 @@ val rec pred : Bin → Bin = fun x →
   | End    → End
   | One  n → times2 n
   | Zero n → One(pred n)
+
+val rec is_zero : Bin → Bool = fun x →
+  case x of
+  | End    → tru
+  | One _  → fls
+  | Zero x → is_zero x
+
+val rec normalise : ∀α FBin(α) → FBin(α) = fun x →
+  case x of
+  | End    → End
+  | One x  → One (normalise x)
+  | Zero x → if is_zero x then End else Zero (normalise x)
+
+type BitFun = [Z|O] → [Z|O] → [Z|O]
+
+(* FIXME should work with these type ? *)
+(* val rec bitwise : BitFun → ∀α FBin(α) → FBin(α) → FBin(α) = fun f x y → *)
+(* val rec bitwise : ∀α BitFun → FBin(α) → FBin(α) → FBin(α) = fun f x y → *)
+val rec bitwise : BitFun → Bin → Bin → Bin = fun f x y →
+  let x = normalise x in
+  let y = normalise y in
+  case x of
+  | End    → (case y of
+              | End    → End
+              | One y  → (case f Z O of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y))
+              | Zero y → (case f Z Z of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y)))
+  | Zero x → (case y of
+              | End    → (case f Z Z of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y))
+              | One y  → (case f Z O of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y))
+              | Zero y → (case f Z Z of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y)))
+  | One x  → (case y of
+              | End    → (case f O Z of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y))
+              | One y  → (case f O O of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y))
+              | Zero y → (case f O Z of
+                          | Z → Zero (bitwise f x y)
+                          | O → One  (bitwise f x y)))
+
+val land : Bin → Bin → Bin =
+  bitwise (fun x y → case x of Z → Z | O → y)
+
+val lor  : Bin → Bin → Bin =
+  bitwise (fun x y → case x of O → O | Z → y)
+
+val lxor : Bin → Bin → Bin =
+  bitwise (fun x y → case x of O → (case y of Z → O | O → Z) | Z → y)
+
+val eq_bin : Bin → Bin → Bool = fun x y →
+  is_zero (lxor x y)
+
+val rec land : Bin → Bin → Bin = fun x y →
+  let x = normalise x in
+  let y = normalise y in
+  case x of
+  | End    → End
+  | One x  → (case y of
+              | End    → End
+              | One y  → One (land x y)
+              | Zero y → Zero (land x y))
+  | Zero x → (case y of
+              | End → End
+              | _   → Zero (land x y))
+
+val rec lor : Bin → Bin → Bin = fun x y →
+  let x = normalise x in
+  let y = normalise y in
+  case x of
+  | End    → End : Bin
+  | One x  → (case y of
+              | End    → One x
+              | One y  → One (lor x y)
+              | Zero y → One (lor x y))
+  | Zero x → (case y of
+              | End    → Zero x
+              | One y  → One (lor x y)
+              | Zero y → Zero (lor x y))
 
 val opp : RBin → RBin = fun x →
   case x of
@@ -82,7 +172,7 @@ val rec add_aux : Carry → Bin → Bin → Bin = fun c x y →
         | Zero → times2 (add_aux (Zero:Carry) x' y')
         | One  → One(add_aux (Zero:Carry) x' y')))
 
-val add : Bin → Bin → Bin = add_aux Zero
+val add_bin : Bin → Bin → Bin = add_aux Zero
 
 val catch : (Bin → EBin) → EBin → EBin =
   fun f x → case x of Error → Error | x → f x
@@ -128,13 +218,13 @@ val rec sub_aux : Carry → Bin → Bin → EBin = fun c x y →
 
 val sub = sub_aux Zero
 
-val 20 = add 10 10
+val 20 = add_bin 10 10
 
 val rec mul : Bin → Bin → Bin = fun x y →
   case x of
   | End     → 0
   | Zero x' → times2 (mul y x')
-  | One  x' → add y (times2 (mul y x'))
+  | One  x' → add_bin y (times2 (mul y x'))
 
 val 100 = mul 10 10
 
