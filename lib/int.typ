@@ -3,6 +3,7 @@ type Pos = μX [Z | S of X]
 type Neg = μX [Z | P of X]
 type Int = [Z | S of Pos | P of Neg]
 type PS(α) = μα X [Z | S of X]
+type NS(α) = μα X [Z | P of X]
 
 val 0 : Pos = Z
 val 1 : Pos = S 0
@@ -73,14 +74,11 @@ val  opp : Int → Int = fun n →
   | S p → P (oppP p)
   | P n → S (oppN n)
 
-val rec 3 bus : Int → Int → Int = fun m n →
-  case m of
-  | Z → n
-  | S m → (case m of Z → pre n | S m → bus m (pre (pre n)))
-  | P m → (case m of Z → suc n | P m → bus m (suc (suc n)))
-
-(* FIXME *)
-val sub = fun n m → bus m n
+val rec sub : Int → Int → Int = fun n m →
+  case n of
+  | Z → opp m
+  | S n → (case n of Z → suc (opp m) | S n → suc (suc (sub n m)))
+  | P n → (case n of Z → pre (opp m) | P n → pre (pre (sub n m)))
 
 eval print("0  : "); add n10 10
 eval print("0  : "); sub 10 10
