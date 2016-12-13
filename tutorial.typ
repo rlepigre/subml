@@ -80,7 +80,7 @@ eval (fun x y z → x)
 (* obtained value is the displayed in the log. Note than an error is raised *)
 (* if the type of the expression cannot be inferred.                        *)
 
-val idCurry : ∀X X → X = ΛX fun (x : X) → (x : X)
+val idCurry : ∀X X → X = fun x → x
 
 (* In the system, type annotations are sometimes to help the  type-checker. *)
 (* Type indications can be given by the used on function arguments  and  on *)

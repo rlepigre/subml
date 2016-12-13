@@ -282,10 +282,6 @@ and tatm = (pterm `Atm)
 and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | lambda xs:var+ dot t:term$    when p = `Lam -> in_pos _loc (PLAbs(xs,t))
   | fun_kw xs:var+ arrow t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
-  | klam x:uident t:term$         when p = `Lam -> let x = in_pos _loc_x x in
-                                                   in_pos _loc (PKAbs(x,t))
-  | klam o:lgident t:term$        when p = `Lam -> let o = in_pos _loc_o o in
-                                                   in_pos _loc (POAbs(o,t))
   | t:tapp u:tcol                 when p = `App -> pappl _loc t u
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
   | "print(" - s:string_lit - ")" when p = `Atm -> in_pos _loc (PPrnt(s))

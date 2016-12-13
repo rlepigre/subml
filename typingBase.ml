@@ -202,21 +202,6 @@ let add_positives ctxt gamma =
   in
   { ctxt with positive_ordinals }
 
-
-let lambda_kind t k s = match full_repr k with
-  | KKAll(f) when binder_name f = s ->
-     let c = KUCst(t,f,true) in (* NOTE: used only for close term *)
-     c, (subst f c)
-  | _ -> type_error ("type lambda mismatch for "^s)
-
-let lambda_ordinal t k s =
-  match full_repr k with
-  | KOAll(f) when binder_name f = s ->
-     let c = OLess(OConv, NotIn(t,f)) in
-     c, (subst f c)
-  | _ -> Io.err "%a\n%!" (print_kind false) k;
-         type_error ("ordinal lambda mismatch for "^s)
-
 (* These three functions are only used for heuristics *)
 let has_leading_ord_quantifier : kind -> bool = fun k ->
   let rec fn k =

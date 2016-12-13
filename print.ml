@@ -301,14 +301,6 @@ and print_term ?(in_proj=false) unfold ff t =
         | None   -> fprintf ff "λ%s %a" x print_term t
         | Some a -> fprintf ff "λ(%s : %a) %a" x pkind a print_term t
       end
-  | TKAbs(f) ->
-     let x = binder_name f in
-     let t = subst f (free_of (new_kvari (binder_name f))) in
-     fprintf ff "Λ%s %a" x print_term t
-  | TOAbs(f) ->
-     let x = binder_name f in
-     let t = subst f (free_of (new_ovari (binder_name f))) in
-     fprintf ff "Λ%s %a" x print_term t
   | TAppl(t,u) ->
       fprintf ff "(%a) %a" print_term t print_term u
   | TReco(fs) ->

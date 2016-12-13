@@ -200,30 +200,6 @@ and print_term unfold lvl ff t =
      in
      fprintf ff "\\lambda%a" fn t;
      if lvl > 0 then pp_print_string ff ")";
-  | TKAbs(_) ->
-     if lvl > 0 then pp_print_string ff "(";
-     let rec fn ff t = match t.elt with
-       | TKAbs(b) ->
-          let x = binder_name b in
-          let t = subst b (free_of (new_kvari x)) in
-          fprintf ff " %s%a" x fn t
-       | _        ->
-          fprintf ff ".%a" (print_term 0) t
-     in
-     fprintf ff "\\Lambda %a" fn t;
-     if lvl > 0 then pp_print_string ff ")";
-  | TOAbs(_) ->
-     if lvl > 0 then pp_print_string ff "(";
-     let rec fn ff t = match t.elt with
-       | TOAbs(b) ->
-          let x = binder_name b in
-          let t = subst b (free_of (new_ovari x)) in
-          fprintf ff " %s%a" (convert_ordinal x) fn t
-       | _        ->
-          fprintf ff ".%a" (print_term 0) t
-     in
-     fprintf ff "\\Lambda %a" fn t;
-     if lvl > 0 then pp_print_string ff ")";
   | TAppl(t,u) ->
      if lvl > 1 then pp_print_string ff "(";
     fprintf ff "%a\\,%a" (print_term 1) t (print_term 2) u;

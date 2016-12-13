@@ -61,6 +61,10 @@ let mmbinder_names : type a b c.(a,b,c) mmbinder -> a -> string array * string a
 
 let mmsubst b xs ys = msubst (msubst b xs) ys
 
+let mmsubst_dummy b duma dumb =
+  let (aa, bb) = mmbinder_arities b duma in
+  mmsubst b (Array.make aa duma) (Array.make bb dumb)
+
 (*{2 Miscelaneous }*)
 
 (** clear the terminal *)

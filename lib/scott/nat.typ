@@ -17,7 +17,8 @@ type SNat' = ∀P T(P) → U(P) → T(P) → P
 
 check SNat ⊂ SNat'
 
-val iter : ∀P P → (P → P) → SNat → P = ΛP fun a f n →
+val iter : ∀P P → (P → P) → SNat → P = fun a f n →
+  let P such that a : P in
   (n : SNat')
     (fun p r → f (p r (fun r → a) r)):T(P)
     (fun r → a)
@@ -49,7 +50,8 @@ val 100 = mul 10 10
 type U(P) = ∀Y Y → SNat → P
 type T(P) = ∀Y (Y → U(P) → Y → SNat → P) → Y → SNat → P
 
-val recu : ∀P P → (SNat → P → P) → SNat → P = ΛP fun a f n →
+val recu : ∀P P → (SNat → P → P) → SNat → P = fun a f n →
+  let P such that a : P in
   (n : ∀P T(P) → U(P) → T(P) → SNat → P)
      (fun p r q → f q (p r (fun r q → a) r (pred q))):T(P)
      (fun r q → a)
@@ -68,5 +70,6 @@ val zz : ∀P G(P) → U(P) = fun f r → f (fun x → x) z'
 val sc : ∀P ∀K G(P) -> T(P) = fun f p r →
   f (fun s → p r (zz f) r) (s' p)
 
-val fixp : ∀P ∀K G(P) → SNat → P = ΛP fun f n →
+val fixp : ∀P ∀K G(P) → SNat → P = fun f n →
+  let P such that _ : P in
   (n : ∀P T(P) → U(P) → T(P) → P) (sc f) (zz f) (sc f)

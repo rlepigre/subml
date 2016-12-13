@@ -19,10 +19,6 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
                        (fun x -> fn (subst f (TVari x)))
     | TFixY(b,n,f)-> tfixy t.pos b n (in_pos t.pos (binder_name f))
                        (fun x -> fn (subst f (TVari x)))
-    | TKAbs(f)    -> tkabs t.pos (dummy_pos (binder_name f))
-                       (fun x -> fn (subst f (KVari x)))
-    | TOAbs(f)    -> toabs t.pos (dummy_pos (binder_name f))
-                       (fun x -> fn (subst f (OVari x)))
     | TAppl(a,b)  -> tappl t.pos (fn a) (fn b)
     | TReco(fs)   -> treco t.pos (List.map (fun (s,a) -> (s, fn a)) fs)
     | TProj(a,s)  -> tproj t.pos (fn a) s
@@ -58,8 +54,6 @@ let is_normal : term -> bool = fun t ->
     | TCoer(t,k)  -> fn t
     | TCons(s,a)  -> fn a
     | TDefi(d)    -> fn d.value
-    | TOAbs(f)    -> fn (subst f (OConv))
-    | TKAbs(f)    -> fn (subst f (KProd []))
     | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
 
     | TMLet(b,x,bt)->
@@ -89,8 +83,6 @@ let is_neutral : term -> bool = fun t ->
     | TAppl(a,b)  -> fn a
     | TProj(a,s)  -> fn a
     | TCase(a,_,_)-> fn a
-    | TOAbs(f)    -> fn (subst f (OConv))
-    | TKAbs(f)    -> fn (subst f (KProd []))
 
     | TMLet(b,x,bt)->
        let (oa, ka) = mmbinder_arities bt OConv in

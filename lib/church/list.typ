@@ -10,12 +10,13 @@ type List(A) = ∀X ((A → X → X) → X → X)
 val nil = (λcs nl.nl) : ∀A List(A)
 val cons : ∀A (A → List(A) → List(A)) = fun a l → λcs nl. cs a (l cs nl)
 
-val car : ∀A (List(A) → Err(A)) = ΛA λ(l:List(A)).l (λx y.unit x) error
+val car : ∀A (List(A) → Err(A)) =
+  fun l → let A such that l:List(A) in l (λx y.unit x) error
 
 val cdr : ∀A (List(A) → List(A)) =
-        ΛA λ(l:List(A)).l
-             (λa p x y.p (cons a x) x)
-             (λx y.y) (nil:List(A)) (nil:List(A))
+  fun l → let A such that l:List(A) in
+    l (λa p x y.p (cons a x) x)
+      (λx y.y) (nil:List(A)) (nil:List(A))
 
 
 val sum = λl.l:List(CNat) add 0

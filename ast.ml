@@ -156,11 +156,6 @@ and term' =
         the induction hypothesis *)
   | TCoer of term * kind
   (** Type coercion: not used in the semantics, only used for type-checking *)
-  | TKAbs of (kind, term) binder
-  (** Lambda on a type, not used in the semantics, allow to introduce variables
-      to write coercion *)
-  | TOAbs of (ordinal, term) binder
-  (** Lambda on an ordinal, as above *)
   | TMLet of kind from_kinds from_ords * term option * term from_kinds from_ords
   (** Matching over type to access the typing environment *)
   (** {2 Special constructors (not accessible to user) } **)
@@ -488,12 +483,6 @@ let tvari_p : pos -> term' variable -> term =
 let tabst_p : pos -> kind option -> (term', term) binder -> term =
   fun p ko b -> in_pos p (TAbst(ko,b))
 
-let tkabs_p : pos -> (kind, term) binder -> term =
-  fun p b -> in_pos p (TKAbs(b))
-
-let toabs_p : pos -> (ordinal, term) binder -> term =
-  fun p b -> in_pos p (TOAbs(b))
-
 let tappl_p : pos -> term -> term -> term =
   fun p t u -> in_pos p (TAppl(t,u))
 
@@ -535,14 +524,6 @@ let tvari : pos -> term' variable -> tbox =
 let tabst : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
   fun p ko x f ->
     box_apply2 (tabst_p p) (box_opt ko) (vbind mk_free_tvari x.elt f)
-
-let tkabs : pos -> strpos -> (kvar -> tbox) -> tbox =
-  fun p x f ->
-    box_apply (tkabs_p p) (vbind mk_free_kvari x.elt f)
-
-let toabs : pos -> strpos -> (ovar -> tbox) -> tbox =
-  fun p o f ->
-    box_apply (toabs_p p) (vbind mk_free_ovari o.elt f)
 
 let idt : tbox =
   let fn x = box_apply dummy_pos (box_of_var x) in

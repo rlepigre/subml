@@ -43,7 +43,8 @@ type FSet(X,S) =
   ; singleton : X → S }
 type Set(X) = ∃S FSet(X,S)
 
-val makeSet : ∀X Ord(X) → Set(X) = ΛX fun o →
+val makeSet : ∀X Ord(X) → Set(X) = fun o →
+  let X such that o:Ord(X) in
   { empty     : Tree(X)               = Leaf
   ; is_empty  : Tree(X) → Bool        = is_empty
   ; mem       : X → Tree(X) → Bool    = mem o.compare

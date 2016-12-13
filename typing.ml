@@ -461,14 +461,6 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let wit = unbox (tcnst f (box a) (box b)) in
          let p2 = type_check ctxt (subst f wit.elt) b in
          Typ_Func_i(p1, p2)
-      | TKAbs(f) ->
-         let k, b = lambda_kind t c (binder_name f) in
-         let p = type_check ctxt (subst f k) b in
-         Typ_KAbs(p)
-      | TOAbs(f) ->
-         let k, b = lambda_ordinal t c (binder_name f) in
-         let p = type_check ctxt (subst f k) b in
-         Typ_OAbs(p)
       | TAppl(t,u) when is_neutral t && not (is_neutral u)->
          let a =
            if strict_eq_term u (dummy_pos (TReco []))

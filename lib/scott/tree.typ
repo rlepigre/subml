@@ -13,7 +13,9 @@ type U(A,P) = ∀Y (A → Y → P)
 type T(A,B,P) = ∀Y ((Y → U(A,P) → Y → P) → B → (Y → U(A,P) → Y → P) → Y → P)
 
 val iter : ∀A∀B∀P (A → P) → (P → B → P → P) → Tree(A,B) → P =
- ΛA ΛB ΛP fun f g t →
+ fun f g t →
+   let A,B such that t : Tree(A,B) in
+   let P such that _ : P in
    t:∀P(T(A,B,P) → U(A,P) → T(A,B,P) → P)
      (fun sl b sr r → g (sl r (fun a r → f a):U(A,P) r) b (sr r (fun a r → f a):U(A,P) r)) : T(A,B,P)
      (fun a r → f a):U(A,P)
@@ -23,16 +25,18 @@ type U(A,B,P) = ∀Y (A → Y → Tree(A,B) → P)
 type T(A,B,P) = ∀Y ((Y → U(A,B,P) → Y → Tree(A,B) → P) → B → (Y → U(A,B,P) → Y → Tree(A,B) → P) → Y → Tree(A,B) → P)
 
 val recu : ∀A∀B∀P (A → P) → (Tree(A,B) → P → B → Tree(A,B) → P → P) → Tree(A,B) → P =
-  ΛAΛBΛP fun f g t →
-   t:∀P(T(A,B,P) → U(A,B,P) → T(A,B,P) → Tree(A,B) → P)
-     (fun sl b sr r tt →
+  fun f g t →
+    let A,B such that t : Tree(A,B) in
+    let P such that _ : P in
+    t:∀P(T(A,B,P) → U(A,B,P) → T(A,B,P) → Tree(A,B) → P)
+      (fun sl b sr r tt →
         tt (fun slt bt srt → g slt (sl r (fun a r tt → f a):U(A,B,P) r slt) b srt (sr r (fun a r tt → f a):U(A,B,P) r srt))
           (fun at → f at (*impossible*))) : T(A,B,P)
-     (fun a r tt → f a):U(A,B,P)
-     (fun sl b sr r tt →
+      (fun a r tt → f a):U(A,B,P)
+      (fun sl b sr r tt →
         tt (fun slt bt srt → g slt (sl r (fun a r tt → f a):U(A,B,P) r slt) b srt (sr r (fun a r tt → f a):U(A,B,P) r srt))
-          (fun at → f at (*impossible*))) : T(A,B,P)
-     t
+           (fun at → f at (*impossible*))) : T(A,B,P)
+      t
 
 
 type F2_Tree(A,B,K1,K2) = ∀X ((K1 → B → K2 → X) → (A → X) → X)
@@ -55,8 +59,11 @@ val node'' : ∀A∀B∀P (G2(A,B,P) -> T(A,B,P)) =
    fun f sl b sr r1 r2
   → f (fun r1' → sl r1' (leaf'' f) r1' r2) (fun r2' → sr r2' (leaf'' f) r1 r2') (node' r1 b r2)
 
-val fix2 : ∀A∀B∀P G2(A,B,P) → Tree(A,B) → P = ΛAΛBΛP fun f t →
-   t:∀P(T(A,B,P) → U(A,P) → T(A,B,P) → T(A,B,P) → P) (node'' f) (leaf'' f) (node'' f) (node'' f)
+val fix2 : ∀A∀B∀P G2(A,B,P) → Tree(A,B) → P =
+   fun f t →
+     let A,B such that t : Tree(A,B) in
+     let P such that _ : P in
+     t:∀P(T(A,B,P) → U(A,P) → T(A,B,P) → T(A,B,P) → P) (node'' f) (leaf'' f) (node'' f) (node'' f)
 
 type G(A,B,P) = ∀K ((K → P)  → (K → P) → F_Tree(A,B,K) → P)
 type U(A,P) = ∀K (A → K → P)
@@ -68,8 +75,11 @@ val leaf'' : ∀A∀B∀P (G(A,B,P) -> U(A,P)) = fun f a r → f (fun x → x) (
 val node'' : ∀A∀B∀P (G(A,B,P) -> T(A,B,P)) =
   fun f sl b sr r → f (sl r (leaf'' f)) (sr r (leaf'' f)) (node' r b r)
 
-val fix1 : ∀A∀B∀P (G(A,B,P) → Tree(A,B) → P) = ΛAΛBΛP fun f t →
-  t:∀P(T(A,B,P) → U(A,P) → T(A,B,P) → P) (node'' f) (leaf'' f) (node'' f)
+val fix1 : ∀A∀B∀P (G(A,B,P) → Tree(A,B) → P) =
+  fun f t →
+    let A,B such that t : Tree(A,B) in
+    let P such that _ : P in
+    t:∀P(T(A,B,P) → U(A,P) → T(A,B,P) → P) (node'' f) (leaf'' f) (node'' f)
 
 val tree1 = leaf 1
 val tree2 = leaf 2

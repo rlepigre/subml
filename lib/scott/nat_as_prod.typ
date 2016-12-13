@@ -17,7 +17,8 @@ type Nat' = ∀P ({s : T(P); z : T(P) → P } → T(P) → P)
 check Nat ⊂ Nat'
 
 val iter_nat : ∀P (Nat → P → (P → P) → P) =
-  ΛP fun n a f →
+  fun n a f →
+    let P such that _ : P in
     let delta : T(P) = fun p x → f (p { z = (fun x → a); s = x } x) in
     n:Nat' {z = (fun x → a); s = delta} delta
 
@@ -34,7 +35,8 @@ type Nat' = ∀P ({s : T(P); z : T(P) → Nat → P } → T(P) → Nat → P)
 check Nat ⊂ Nat'
 
 val rec_nat : ∀P (Nat → P → (Nat → P → P) → P) =
-  ΛP fun n a f →
+  fun n a f →
+     let P such that _ : P in
      let delta : T(P) = fun p x q → f q (p { z = (fun x p → a); s = x } x (pred q)) in
      n:Nat' { z = (fun x p → a); s = delta} delta n
 
@@ -45,7 +47,8 @@ type Nat' = ∀P {s : T(P); z : T(P) → P } → T(P) → P
 check Nat ⊂ Nat'
 
 val fix_nat : ∀P (∀K (K → P) → F_Nat(K) → P) → Nat → P =
-  ΛP fun f n →
+  fun f n →
+     let P such that _ : P in
      let z' : ∀Y (Y → P) =
            fun r → f (fun x → x) (λx.x.z) in
      let s' : T(P) = (* FIXME: z = r below give an error on f above ??? *)

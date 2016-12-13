@@ -273,10 +273,8 @@ and eq_term : ordinal list -> term -> term -> bool = fun pos t1 t2 ->
     | (_              , TCoer(t2,_)    ) -> eq_term t1 t2
     | (TDefi(d1)      , _              ) -> eq_term d1.value t2
     | (_              , TDefi(d2)      ) -> eq_term t1 d2.value
-    | (TKAbs(f)       , _              ) -> eq_term (subst f (KProd[])) t2
-    | (_              , TKAbs(f)       ) -> eq_term t1 (subst f (KProd[]))
-    | (TOAbs(f)       , _              ) -> eq_term (subst f OConv) t2
-    | (_              , TOAbs(f)       ) -> eq_term t1 (subst f OConv)
+    | (TMLet(_,_,t1)  , _              ) -> eq_term (mmsubst_dummy t1 OConv (KProd [])) t2
+    | (_              , TMLet(_,_,t2)  ) -> eq_term t1 (mmsubst_dummy t2 OConv (KProd []))
     | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
     | (TAbst(_,f1)    , TAbst(_,f2)    )
     | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos f1 f2
@@ -377,13 +375,9 @@ and gen_occur :
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
-    | TMLet(b,x,bt)->
-       let (oa, ka) = mmbinder_arities bt OConv in
-       aux2 acc (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
+    | TMLet(b,x,bt)  -> aux2 acc (mmsubst_dummy bt OConv (KProd []))
     | TFixY(_,_,f)
     | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
-    | TKAbs(f)       -> aux2 acc (subst f (KProd []))
-    | TOAbs(f)       -> aux2 acc (subst f OConv)
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
     | TCase(t,l,d)   ->

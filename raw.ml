@@ -40,8 +40,6 @@ and pterm' =
   | PProj of pterm * string
   | PCons of string * pterm option
   | PCase of pterm * (string * ppat * pterm) list * (ppat * pterm) option
-  | PKAbs of strpos * pterm
-  | POAbs of strpos * pterm
   | PPrnt of string
   | PFixY of strpos * bool * int * pterm
 and ppat =
@@ -271,12 +269,6 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                          in
                          tabst pos ko x f
                    in aux true env vs
-  | PKAbs(s,f)  -> let f xk =
-                     unsugar_term (add_kind s.elt xk Non env) f
-                   in tkabs s.pos s f
-  | POAbs(s,f)  -> let f xo =
-                      unsugar_term (add_ordi s.elt xo Non env) f
-                   in toabs s.pos s f
   | PCoer(t,k)  -> tcoer pt.pos (unsugar_term env t) (unsugar_kind env k)
   | PMLet(osn,ksn,k,x,t) ->
      let osn = Array.of_list osn and ksn = Array.of_list ksn in
