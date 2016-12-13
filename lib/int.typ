@@ -2,6 +2,7 @@
 type Pos = μX [Z | S of X]
 type Neg = μX [Z | P of X]
 type Int = [Z | S of Pos | P of Neg]
+type PS(α) = μα X [Z | S of X]
 
 val 0 : Pos = Z
 val 1 : Pos = S 0
@@ -56,15 +57,52 @@ val rec 3 add : Int → Int → Int = fun n m →
   | S n → add n (suc m)
   | P n → add n (pre m)
 
-val rec 3 sub : Int → Int → Int = fun n m →
+val rec oppP : Pos → Neg = fun n →
   case n of
-  | Z → m
-  | S n → (case n of Z → pre m | S n → sub n (pre (pre m)))
-  | P n → (case n of Z → suc m | P n → sub n (suc (suc m)))
+  | Z → Z
+  | S p → P (oppP p)
 
-eval add n10 10
-eval sub 10 10
-eval sub n10 n10
+val rec oppN : Neg → Pos = fun n →
+  case n of
+  | Z → Z
+  | P p → S (oppN p)
+
+val  opp : Int → Int = fun n →
+  case n of
+  | Z → Z
+  | S p → P (oppP p)
+  | P n → S (oppN n)
+
+val rec 3 bus : Int → Int → Int = fun m n →
+  case m of
+  | Z → n
+  | S m → (case m of Z → pre n | S m → bus m (pre (pre n)))
+  | P m → (case m of Z → suc n | P m → bus m (suc (suc n)))
+
+(* FIXME *)
+val sub = fun n m → bus m n
+
+eval print("0  : "); add n10 10
+eval print("0  : "); sub 10 10
+eval print("0  : "); sub n10 n10
+
+eval print("15 : "); add 10 5
+eval print("15 : "); add 5 10
+eval print("-5 : "); add n10 5
+eval print("-5 : "); add 5 n10
+eval print("5  : "); add 10 n5
+eval print("5  : "); add n5 10
+eval print("-15: "); add n10 n5
+eval print("-15: "); add n5 n10
+
+eval print("5  : "); sub 10 5
+eval print("-5 : "); sub 5 10
+eval print("-15: "); sub n10 5
+eval print("15 : "); sub 5 n10
+eval print("15 : "); sub 10 n5
+eval print("-15: "); sub n5 10
+eval print("-5 : "); sub n10 n5
+eval print("5  : "); sub n5 n10
 
 val rec half : Int → Int = fun n →
   case n of
