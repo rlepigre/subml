@@ -10,7 +10,7 @@ let syncload  = Js.Unsafe.variable "syncloadsubmlfile"
 let onmessage event =
   let fname = Js.to_string event##data##fname in
   let args = Js.to_string event##data##args in
-  let res = handle_exception false (full_of_string fname) args in
+  let res = handle_exception (full_of_string fname) args in
   Io.log "Editor content loaded\n%!";
   let result = Js.string (if res then "OK" else "ERROR") in
   let response = jsnew js_object () in
@@ -50,5 +50,5 @@ let _ =
   (* Register callback. *)
   Js.Unsafe.set js_self (Js.string "onmessage") onmessage;
   (* Load the prelude. *)
-  ignore (handle_exception false full_of_buffer (Io.file "prelude.typ"));
+  ignore (handle_exception full_of_buffer (Io.file "prelude.typ"));
   Io.log "File \"prelude.typ\" loaded\n%!"
