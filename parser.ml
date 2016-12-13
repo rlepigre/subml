@@ -603,15 +603,15 @@ let eval_file =
   in
   read_file := eval_file; eval_file
 
-let handle_exception : bool -> ('a -> 'b) -> 'a -> bool = fun intop fn v ->
+let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
   let pos1 = print_position in
   let pos2 ff (buf,pos) =
     let open Input in
     fprintf ff "File %S, line %d, characters %d" (filename buf) (line_num buf)
       (utf8_col_num buf pos)
   in
-  try fn v; not intop with
-  | End_of_file            -> true
+  try fn v; true with
+  | End_of_file            -> raise End_of_file
   | Sys.Break              -> Io.err "\n[Interrupted]\n%!"; false
   | Interrupted(p)         -> Io.err "\n[Interrupted at %a]\n%!" pos1 p; false
   | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false

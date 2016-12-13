@@ -35,8 +35,18 @@ let read_file : (string -> Input.buffer) ref =
 
 let file fn = !read_file fn
 
-(*FIXME: close file, just need remembering the file *)
-let fmt_of_file fn = formatter_of_out_channel (open_out fn)
+let ((fmt_of_file : string -> formatter), (close_files : unit -> unit)) =
+  let channels = ref [] in
+  let fmt_of_file fn =
+    let ch = open_out fn in
+    channels := ch :: !channels;
+    formatter_of_out_channel ch
+  in
+  let close_files () =
+    List.iter close_out !channels;
+    channels := []
+  in
+  (fmt_of_file, close_files)
 
 let debug = ref ""
 let debug_sct = 'y'

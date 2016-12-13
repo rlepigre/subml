@@ -42,30 +42,36 @@ let spec = Arg.align
   ; ( "--debug"
     , Arg.String Io.set_debug
     , "s  Display the debugging informations
-        't': typing
-        's': subtyping
-        'u': unification
-        'y': size change principle
-        'm': sct matrix coefficient" )
+                   't': typing
+                   's': subtyping
+                   'u': unification
+                   'y': size change principle
+                   'm': sct matrix coefficient" )
   ; ( "-I"
     , Arg.String (fun s -> Config.path := s :: ! Config.path)
     , "s  Add the given directory to the path")
   ]
 
-open Graph
-
-let usage = Printf.sprintf "Usage: %s [ARGS] [FILES]" Sys.argv.(0)
-
-let rec interact () =
-  Printf.printf ">> %!";
-  let loop () = Parser.toplevel_of_string (read_line ()) in
-  if Parser.handle_exception true loop () then exit 0;
-  interact ()
-
 let _ =
   Sys.catch_break true;
+
+  (* Reading the command lien arguments and gathering the files. *)
+  let usage = Printf.sprintf "Usage: %s [ARGS] [FILES]" Sys.argv.(0) in
   Arg.parse spec (fun fn -> files := !files @ [fn]) usage;
   let files = if !prelude then "prelude.typ" :: !files else !files in
-  let eval = Parser.handle_exception false Parser.eval_file in
-  if not (List.for_all eval files) then exit 1;
-  if not !quit then interact ()
+
+  (* Handle the files given on the command line. *)
+  let eval = Parser.handle_exception Parser.eval_file in
+  let ok = List.for_all eval files in
+
+  (* Run the toplevel. *)
+  let handle_line () = Parser.toplevel_of_string (read_line ()) in
+  if not !quit && ok then
+    begin try while true do
+      Printf.printf ">> %!";
+      ignore (Parser.handle_exception handle_line ())
+    done with End_of_file -> () end;
+
+  (* Close opened file and exit. *)
+  Io.close_files ();
+  if not ok then exit 1
