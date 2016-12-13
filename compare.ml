@@ -377,6 +377,9 @@ and gen_occur :
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
+    | TMLet(b,x,bt)->
+       let (oa, ka) = mmbinder_arities bt OConv in
+       aux2 acc (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
     | TFixY(_,_,f)
     | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
     | TKAbs(f)       -> aux2 acc (subst f (KProd []))

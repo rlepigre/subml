@@ -6,6 +6,7 @@ open Format
 open Ast
 open Position
 open Compare
+open LibTools
 
 let rec print_list pelem sep ff = function
   | []    -> ()
@@ -285,7 +286,11 @@ and print_term ?(in_proj=false) unfold ff t =
     fprintf ff "[%a]" position t.pos
   else match t.elt with
   | TCoer(t,a) ->
-      fprintf ff "(%a : %a)" print_term t pkind a
+     fprintf ff "(%a : %a)" print_term t pkind a
+  | TMLet(b,x,bt)->
+     let (oa, ka) = mmbinder_arities bt OConv in
+     let t = mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])) in
+     fprintf ff "FIXME %a" print_term t (* FIXME *)
   | TVari(x) ->
       pp_print_string ff (name_of x)
   | TAbst(ao,b) ->

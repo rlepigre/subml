@@ -161,6 +161,8 @@ and term' =
       to write coercion *)
   | TOAbs of (ordinal, term) binder
   (** Lambda on an ordinal, as above *)
+  | TMLet of kind from_kinds from_ords * term option * term from_kinds from_ords
+  (** Matching over type to access the typing environment *)
   (** {2 Special constructors (not accessible to user) } **)
   | TCnst of (term', term) binder * kind * kind * bool
   (** Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness u (i.e. a term)
@@ -516,6 +518,10 @@ let tprnt_p : pos -> string -> term =
 let tfixy_p : pos -> bool -> int -> (term', term) binder -> term =
   fun p b n t -> in_pos p (TFixY(b,n,t))
 
+let tmlet_p : pos -> kind from_kinds from_ords -> term option ->
+              term from_kinds from_ords -> term =
+  fun p b x t -> in_pos p (TMLet(b,x,t))
+
 (****************************************************************************)
 (** {2                   Smart constructors for terms                      }*)
 (****************************************************************************)
@@ -570,6 +576,16 @@ let tprnt : pos -> string -> tbox =
 let tfixy : pos -> bool -> int -> strpos -> (tvar -> tbox) -> tbox =
   fun p b n x f -> box_apply (tfixy_p p b n)
                     (vbind mk_free_tvari x.elt f)
+
+let tmlet : pos -> string array -> string array ->
+            (ovar array -> kvar array -> kbox) -> tbox option ->
+            (ovar array -> kvar array -> tbox) -> tbox =
+  fun p os ks f x tf -> box_apply3 (tmlet_p p)
+    (mvbind mk_free_ovari os
+       (fun x -> mvbind mk_free_kvari ks (f x)))
+    (box_opt x)
+    (mvbind mk_free_ovari os
+       (fun x -> mvbind mk_free_kvari ks (tf x)))
 
 (* Build a constant. Useful during typing. *)
 let tcnst : (term', term) binder -> kbox -> kbox -> tbox =

@@ -13,6 +13,9 @@ let rec eval : term -> term = fun t0 ->
   match t0.elt with
   (* Type annotations are ignored. *)
   | TCoer(t,_)   -> eval t
+  | TMLet(b,x,bt)->
+       let (oa, ka) = mmbinder_arities bt OConv in
+       eval (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
   | TKAbs(f)     -> eval (subst f (KProd []))
   | TOAbs(f)     -> eval (subst f OConv)
   (* Unfold definition. *)

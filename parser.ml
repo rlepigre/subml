@@ -170,6 +170,8 @@ let build_prod l = List.mapi (fun i x -> (string_of_int (i+1), x)) l
 let case_kw = new_keyword "case"
 let rec_kw  = new_keyword "rec"
 let let_kw  = new_keyword "let"
+let such_kw = new_keyword "such"
+let that_kw = new_keyword "that"
 let val_kw  = new_keyword "val"
 let of_kw   = new_keyword "of"
 let in_kw   = new_keyword "in"
@@ -299,6 +301,7 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
                                   when p = `Lam -> pfixY x _loc_u n u
   | "[" term_list "]"             when p = `Atm
   | term_llet                     when p = `Lam
+  | term_mlet                     when p = `Lam
   | term_cond                     when p = `Atm
   | t:tapp "::" u:tseq$           when p = `Seq -> list_cons _loc t u
   (* Parenthesis and coercions. *)
@@ -326,6 +329,15 @@ and term_llet = let_kw r:is_rec n:int_lit? pat:rpat "=" t:term in_kw u:term ->
       | _ -> give_up ()
   in
   in_pos _loc (PAppl(apply_rpat pat u, t))
+
+and ords_kinds =
+  | EMPTY                     -> ([], [])
+  | ks:(list_sep' uident ",") -> ([], ks)
+  | os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")}?[[]]
+
+and term_mlet = let_kw (os,ks):ords_kinds
+                  such_kw that_kw id:loptident ':' k:kind in_kw u:term ->
+  in_pos _loc (PMLet(os,ks,k,id,u))
 
 and term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
   pcond _loc c t e

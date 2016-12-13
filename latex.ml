@@ -7,7 +7,7 @@ open Ast
 open Print
 open Position
 open Compare
-
+open LibTools
 
 let break_hint = ref 0
 
@@ -178,6 +178,10 @@ and print_term unfold lvl ff t =
   match t.elt with
   | TCoer(t,a) ->
       fprintf ff "%a{:}%a" (print_term 2) t pkind a
+  | TMLet(b,x,bt)->
+     let (oa, ka) = mmbinder_arities bt OConv in
+     let t = mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])) in
+     fprintf ff "FIXME %a" (print_term 2) t (* FIXME *)
   | TVari(x) ->
       pp_print_string ff (name_of x)
   | TAbst(_) ->

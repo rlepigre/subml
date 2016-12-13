@@ -32,6 +32,7 @@ and pkind' =
 and pterm  = pterm' position
 and pterm' =
   | PCoer of pterm * pkind
+  | PMLet of string list * string list * pkind * string * pterm
   | PLVar of string
   | PLAbs of (strpos * pkind option) list * pterm
   | PAppl of pterm * pterm
@@ -111,11 +112,20 @@ let empty_env : env = { terms = [] ; kinds = [] ; ordinals = [] }
 let add_term : string -> tvar -> env -> env = fun x t env ->
   { env with terms = (x,t) :: env.terms }
 
-let add_kind : string -> kbox -> occur -> env -> env = fun x k occ env ->
-  { env with kinds = (x,(k,occ)) :: env.kinds }
+let add_kind : string -> kvar -> occur -> env -> env = fun x k occ env ->
+  { env with kinds = (x,(box_of_var k,occ)) :: env.kinds }
 
-let add_ordinal : string -> obox -> occur -> env -> env = fun x o occ env ->
-  { env with ordinals = (x,(o,occ)) :: env.ordinals }
+let add_ordi : string -> ovar -> occur -> env -> env = fun x o occ env ->
+  { env with ordinals = (x,(box_of_var o,occ)) :: env.ordinals }
+
+let add_kinds : string array -> kvar array -> env -> env = fun ksn ks env ->
+  let fn (i,env) x =  (i+1, add_kind ksn.(i) x Non env) in
+  snd (Array.fold_left fn (0,env) ks)
+
+let add_ordis : string array -> ovar array -> env -> env = fun osn os env ->
+  let fn (i,env) x =  (i+1, add_ordi osn.(i) x Non env) in
+  snd (Array.fold_left fn (0,env) os)
+
 
 exception Unbound of strpos
 let unbound s = raise (Unbound(s))
@@ -213,24 +223,24 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   | PTVar(s,os,ks) ->
      kind_variable pos env (in_pos pk.pos s) (Array.of_list os) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =
-                      unsugar_kind ~pos (add_kind x (box_of_var xk) Non env) k
+                      unsugar_kind ~pos (add_kind x xk Non env) k
                     in kkall x f
   | PKExi(x,k)   -> let f xk =
-                      unsugar_kind (add_kind x (box_of_var xk) Non env) k
+                      unsugar_kind (add_kind x xk Non env) k
                     in kkexi x f
   | POAll(o,k)   -> let f xo =
-                      unsugar_kind (add_ordinal o (box_of_var xo) Non env) k
+                      unsugar_kind (add_ordi o xo Non env) k
                     in koall o f
   | POExi(o,k)   -> let f xo =
-                      unsugar_kind (add_ordinal o (box_of_var xo) Non env) k
+                      unsugar_kind (add_ordi o xo Non env) k
                     in koexi o f
   | PFixM(o,x,k) -> let o = unsugar_ordinal ~pos env o in
                     let f xk =
-                      unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
+                      unsugar_kind ~pos (add_kind x xk pos env) k
                     in kfixm x o f
   | PFixN(o,x,k) -> let o = unsugar_ordinal ~pos:(neg pos) env o in
                     let f xk =
-                      unsugar_kind ~pos (add_kind x (box_of_var xk) pos env) k
+                      unsugar_kind ~pos (add_kind x xk pos env) k
                     in kfixn x o f
   | PProd(fs)    -> let f (l,k) = (l, unsugar_kind ~pos env k) in
                     kprod (List.map f fs)
@@ -241,9 +251,9 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                     in kdsum (List.map f cs)
   | PWith(a,s,b) -> lift_kind (with_clause (unbox (unsugar_kind ~pos env a))
                                  s (unbox (unsugar_kind ~pos env b)))
-  | PUCst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x (box_of_var xk) Non env) k in
+  | PUCst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x xk Non env) k in
                     kucst x (unsugar_term env t) f
-  | PECst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x (box_of_var xk) Non env) k in
+  | PECst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x xk Non env) k in
                     kecst x (unsugar_term env t) f
 
 and unsugar_term : env -> pterm -> tbox = fun env pt ->
@@ -262,12 +272,19 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                          tabst pos ko x f
                    in aux true env vs
   | PKAbs(s,f)  -> let f xk =
-                     unsugar_term (add_kind s.elt (box_of_var xk) Non env) f
+                     unsugar_term (add_kind s.elt xk Non env) f
                    in tkabs s.pos s f
   | POAbs(s,f)  -> let f xo =
-                      unsugar_term (add_ordinal s.elt (box_of_var xo) Non env) f
+                      unsugar_term (add_ordi s.elt xo Non env) f
                    in toabs s.pos s f
   | PCoer(t,k)  -> tcoer pt.pos (unsugar_term env t) (unsugar_kind env k)
+  | PMLet(osn,ksn,k,x,t) ->
+     let osn = Array.of_list osn and ksn = Array.of_list ksn in
+     let mkenv os ks = add_ordis osn os (add_kinds ksn ks env) in
+     let bk os ks = unsugar_kind (mkenv os ks) k in
+     let x = match x with "" -> None | x -> Some (term_variable env (in_pos pt.pos x)) in
+     let bt os ks = unsugar_term (mkenv os ks) t in
+     tmlet pt.pos osn ksn bk x bt
   | PAppl(t,u)  -> tappl pt.pos (unsugar_term env t) (unsugar_term env u)
   | PLVar(x)    -> term_variable env (in_pos pt.pos x)
   | PPrnt(s)    -> tprnt pt.pos s

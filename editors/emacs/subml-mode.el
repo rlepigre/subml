@@ -26,7 +26,7 @@
 		      (regexp-opt '("case" "of" "val" "let" "in" "rec" "fun" "eval"
 				    "include" "type" "if" "then" "else" "check"
                                     "fix" "unfold" "clear" "quit" "parse" "latex"
-                                    "exit" "set" "html" ))
+                                    "exit" "set" "html" "such" "that"))
                       "\\>")
               'font-lock-keyword-face)
         )
@@ -38,9 +38,10 @@
  "A transliteration scheme for Subml."
  nil t t t t nil t nil nil nil t)
 (quail-define-rules
+ ("\\l" ?λ)
+ ("->" ?→)
  ("\\m" ?μ)
  ("\\n" ?ν)
- ("\\l" ?λ)
  ("\\L" ?Λ)
  ("\\a" ?α)
  ("\\b" ?β)
@@ -52,7 +53,6 @@
  ("\\E" ?∃)
  ("\\in" ?∈)
  ("\\ni" ?∉)
- ("->" ?→)
  ("\\*" ?×)
  ("\\<" ?⊂))
 

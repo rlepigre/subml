@@ -426,6 +426,31 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p1 = subtype ctxt t a c in
          let p2 = type_check ctxt t a in
          Typ_Coer(p1, p2)
+      | TMLet(b,x,bt) ->
+         let k = match x with
+           | None -> c
+           | Some t -> (match t.elt with
+                       | TCnst(_,c,_,_) -> c
+                       | TDefi d -> d.ttype
+                       | _ -> assert false (* NOTE: Only variable allowed by parsing *))
+         in
+         (* TODO: share code with try_fold_def *)
+         let oargs = Array.init (mbinder_arity b) (fun n -> new_ouvar ()) in
+         let b = msubst b oargs in
+         let kargs = Array.init (mbinder_arity b) (fun n -> new_kuvar ()) in
+         let k' = msubst b kargs in
+         let lkargs = List.map (function KUVar(u,_) -> u | _ -> assert false)
+           (Array.to_list kargs) in
+         let loargs = List.map (function OUVar(u,_) -> u | _ -> assert false)
+           (Array.to_list oargs) in
+         if match_kind lkargs loargs k' k
+         then
+           let t = mmsubst bt oargs kargs in
+           let p = type_check ctxt t c in
+           Typ_KAbs(p) (* FIXME *)
+         else
+           type_error "Type matching failed"
+
       | TAbst(ao,f) ->
          let a = match ao with None -> new_kuvar () | Some a -> a in
          let b = new_kuvar () in
@@ -766,7 +791,7 @@ let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
 let try_fold_def : kind -> kind = fun k ->
   let save_debug = !Io.debug in
   Io.debug := "";
-  let match_def k def =
+  let match_def k def = (* TODO: share code with TMLet *)
     let kargs = Array.init def.tdef_karity (fun n -> new_kuvar ()) in
     let oargs = Array.init def.tdef_oarity (fun n -> new_ouvar ()) in
     let lkargs = List.map (function KUVar(u,_) -> u | _ -> assert false)

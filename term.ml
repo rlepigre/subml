@@ -30,6 +30,13 @@ let map_term : (kind -> kbox) -> term -> tbox = fun kn t ->
     |TCase(a,fs,d)-> tcase t.pos (fn a) (List.map (fun (s,a) -> (s, fn a)) fs)
        (map_opt fn d)
     | TCnst(f,a,b,cl)-> if cl then box t else tcnst f (kn a) (kn b)
+    | TMLet(b,x,bt)->
+       tmlet t.pos
+         (mbinder_names b)
+         (mbinder_names (msubst b (Array.make (mbinder_arity b) OConv)))
+         (fun os ks -> kn (mmsubst b  (Array.map free_of os) (Array.map free_of ks)))
+         (map_opt fn x)
+         (fun os ks -> fn (mmsubst bt (Array.map free_of os) (Array.map free_of ks)))
     | TDefi _ | TPrnt _ -> box t
   in
   let res = fn t in
@@ -54,6 +61,10 @@ let is_normal : term -> bool = fun t ->
     | TOAbs(f)    -> fn (subst f (OConv))
     | TKAbs(f)    -> fn (subst f (KProd []))
     | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
+
+    | TMLet(b,x,bt)->
+       let (oa, ka) = mmbinder_arities bt OConv in
+       fn (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
 
     | TVari(x)    -> assert false
   in fn t
@@ -80,6 +91,10 @@ let is_neutral : term -> bool = fun t ->
     | TCase(a,_,_)-> fn a
     | TOAbs(f)    -> fn (subst f (OConv))
     | TKAbs(f)    -> fn (subst f (KProd []))
+
+    | TMLet(b,x,bt)->
+       let (oa, ka) = mmbinder_arities bt OConv in
+       fn (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
 
     | TVari(x)    -> assert false
 

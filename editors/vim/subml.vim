@@ -21,7 +21,7 @@ syntax match PMLSpecial "set [a-z]* [a-z]*"
 highlight link PMLSpecial Include
 
 " Keywords
-syntax keyword PMLKeyword val rec type eval include check
+syntax keyword PMLKeyword val rec type eval include check such that
 syntax keyword PMLKeyword fun case of fix if then else match with let in
 
 highlight link PMLKeyword Keyword

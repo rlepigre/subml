@@ -40,6 +40,27 @@ let string_of_chars : char list -> string = fun s ->
   let res = String.make (Array.length s) ' ' in
   Array.iteri (fun i c -> res.[i] <- c) s; res
 
+(*{2 Bindlib extension }*)
+
+open Bindlib
+
+type ('a,'b,'c) mmbinder = ('a, ('b,'c) mbinder) mbinder
+
+let mmbinder_arities : type a b c.(a,b,c) mmbinder -> a -> int * int = fun b dum ->
+  let aa = mbinder_arity b in
+  let b = msubst b (Array.make aa dum) in
+  let ba = mbinder_arity b in
+  (aa, ba)
+
+let mmbinder_names : type a b c.(a,b,c) mmbinder -> a -> string array * string array = fun b dum ->
+  let aa = mbinder_arity b in
+  let an = mbinder_names b in
+  let b = msubst b (Array.make aa dum) in
+  let bn = mbinder_names b in
+  (an, bn)
+
+let mmsubst b xs ys = msubst (msubst b xs) ys
+
 (*{2 Miscelaneous }*)
 
 (** clear the terminal *)
