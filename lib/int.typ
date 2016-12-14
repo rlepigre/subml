@@ -93,6 +93,22 @@ val rec sub : Int → Int → Int = fun n m →
   | S n → (case n of Z → suc (opp m) | S n → suc (suc (sub n m)))
   | P n → (case n of Z → pre (opp m) | P n → pre (pre (sub n m)))
 
+val rec print_pos : Pos → {} = fun n →
+  case n of
+  | Z → print("Z")
+  | S n → print("S"); print_pos n
+
+val rec print_neg : Neg → {} = fun n →
+  case n of
+  | Z → print("Z")
+  | P n → print("P"); print_neg n
+
+val print_int : Int → {} = fun n →
+  case n of
+  | Z → print("Z")
+  | S n → print("S"); print_pos n
+  | P n → print("P"); print_neg n
+
 eval print("0  : "); add n10 10
 eval print("0  : "); sub 10 10
 eval print("0  : "); sub n10 n10
