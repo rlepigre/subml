@@ -42,44 +42,41 @@ val rec find : ∀A Key → PTree(A) → Option(A) =
     | Leaf(j,x)       → if eq_bin k j then Some x else None
     | Branch(_,m,l,r) → find k (if zero_bit k m then l else r)
 
+val lowest_bit : Bin → Bin =
+  fun x → land x (carryless_incr (complement x))
 
+val branching_bit : Bin → Bin → Bin =
+  fun p0 p1 → lowest_bit (lxor p0 p1)
 
-(*
+val mask : Bin → Bin → Bin =
+  fun p m → land p (carryless_decr m)
 
-let lowest_bit x = x land (-x)
+val join : ∀A Bin → PTree(A) → Bin → PTree(A) → PTree(A) =
+  fun p0 t0 p1 t1 →
+    let m = branching_bit p0 p1 in
+    if zero_bit p0 m then Branch(mask p0 m, m, t0, t1)
+    else Branch(mask p0 m, m, t1, t0)
 
-let branching_bit p0 p1 = lowest_bit (p0 lxor p1)
+val match_prefix : Bin → Bin → Bin → Bool =
+  fun k p m → eq_bin (mask k m) p
 
-let mask p m = p land (m-1)
+val ptree_add : ∀A Key → A → PTree(A) → PTree(A) =
+  fun k x t →
+    let A such that x : A in
+    let rec ins : PTree(A) → PTree(A) = fun t →
+      case t of
+      | Empty             → Leaf (k,x)
+      | Leaf(j,_)         → if eq_bin j k then Leaf (k,x)
+                            else join k (Leaf(k,x)) j t
+      | Branch(p,m,t0,t1) → if match_prefix k p m then
+                              if zero_bit k m then Branch (p, m, ins t0, t1)
+                              else Branch (p, m, t0, ins t1)
+                                  else join k (Leaf(k,x)) p t
+    in
+    ins t
 
-let join (p0,t0,p1,t1) =
-  let m = branching_bit p0 p1 in
-  if zero_bit p0 m then
-    Branch (mask p0 m, m, t0, t1)
-  else
-    Branch (mask p0 m, m, t1, t0)
-
-let match_prefix k p m = (mask k m) == p
-
-let add k x t =
-  let rec ins = function
-    | Empty -> Leaf (k,x)
-    | Leaf (j,_) as t ->
-	if j == k then Leaf (k,x) else join (k, Leaf (k,x), j, t)
-    | Branch (p,m,t0,t1) as t ->
-	if match_prefix k p m then
-	  if zero_bit k m then
-	    Branch (p, m, ins t0, t1)
-	  else
-	    Branch (p, m, t0, ins t1)
-	else
-	  join (k, Leaf (k,x), p, t)
-  in
-  ins t
-
-let singleton k v =
-  add k v empty
-*)
+val singleton : ∀A Key → A → PTree(A) =
+  fun k v → ptree_add k v empty
 
 val branch : ∀A Bin → Bin → PTree(A) → PTree(A) → PTree(A) =
   fun p m t0 t1 →
@@ -87,22 +84,19 @@ val branch : ∀A Bin → Bin → PTree(A) → PTree(A) → PTree(A) =
     | Empty   → t1
     | _       → (case t1 of Empty → t0 | _ → Branch(p,m,t0,t1))
 
-(*
-let remove k t =
-  let rec rmv = function
-    | Empty -> Empty
-    | Leaf (j,_) as t -> if k == j then Empty else t
-    | Branch (p,m,t0,t1) as t ->
-	if match_prefix k p m then
-	  if zero_bit k m then
-	    branch (p, m, rmv t0, t1)
-	  else
-	    branch (p, m, t0, rmv t1)
-	else
-	  t
-  in
-  rmv t
-*)
+val remove : ∀A Key → PTree(A) → PTree(A) =
+  fun k t →
+    let A such that t : PTree(A) in
+    let rec rmv : PTree(A) → PTree(A) = fun t →
+      case t of
+      | Empty             → Empty
+      | Leaf(j,_)         → if eq_bin k j then Empty else t
+      | Branch(p,m,t0,t1) → if match_prefix k p m then
+                              if zero_bit k m then branch p m (rmv t0) t1
+                              else branch p m t0 (rmv t1)
+                            else t
+    in
+    rmv t
 
 val rec 2 cardinal : ∀A PTree(A) → Nat =
   fun t →
@@ -160,24 +154,32 @@ val rec filter : ∀A (Key → A → Bool) → PTree(A) → PTree(A) =
     | Leaf(k,v)         → if p k v then t else Empty
     | Branch(q,m,t0,t1) → branch q m (filter p t0) (filter p t1)
 
+
+val partition : ∀A (Key → A → Bool) → PTree(A) → PTree(A) * PTree(A) =
+  fun p t →
+    let A such that t : PTree(A) in
+    let rec part : PTree(A) * PTree(A) → PTree(A) → PTree(A) * PTree(A) =
+      fun acc t →
+        case t of
+        | Empty             → acc
+        | Leaf(k,v)         → if p k v then (ptree_add k v acc.1, acc.2)
+                              else (acc.1, ptree_add k v acc.2)
+        | Branch(_,_,t0,t1) → part (part acc t0) t1
+    in
+    part (Empty, Empty) t
+
+val rec choose : ∀A PTree(A) → Option(Key * A) =
+  fun t →
+    case t of
+    | Empty           → None
+    | Leaf(k,v)       → Some (k,v)
+    | Branch(_,_,t,_) → choose t
+
 (*
-let partition p s =
-  let rec part (t,f as acc) = function
-    | Empty -> acc
-    | Leaf (k, v) -> if p k v then (add k v t, f) else (t, add k v f)
-    | Branch (_,_,t0,t1) -> part (part acc t0) t1
-  in
-  part (Empty, Empty) s
-
-let rec choose = function
-  | Empty -> raise Not_found
-  | Leaf (k, v) -> (k, v)
-  | Branch (_, _, t0, _) -> choose t0   (* we know that [t0] is non-empty *)
-
 let split x m =
   let coll k v (l, b, r) =
-    if k < x then add k v l, b, r
-    else if k > x then l, b, add k v r
+    if k < x then ptree_add k v l, b, r
+    else if k > x then l, b, ptree_add k v r
     else l, Some v, r
   in
   fold coll m (empty, None, empty)
@@ -201,22 +203,21 @@ let rec max_binding = function
 let bindings m =
   fold (fun k v acc -> (k, v) :: acc) m []
 
-(* we order constructors as Empty < Leaf < Branch *)
 let compare cmp t1 t2 =
   let rec compare_aux t1 t2 = match t1,t2 with
     | Empty, Empty -> 0
     | Empty, _ -> -1
     | _, Empty -> 1
     | Leaf (k1,x1), Leaf (k2,x2) ->
-	let c = compare k1 k2 in
-	if c <> 0 then c else cmp x1 x2
+        let c = compare k1 k2 in
+        if c <> 0 then c else cmp x1 x2
     | Leaf _, Branch _ -> -1
     | Branch _, Leaf _ -> 1
     | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) ->
-	let c = compare p1 p2 in
-	if c <> 0 then c else
-	let c = compare m1 m2 in
-	if c <> 0 then c else
+        let c = compare p1 p2 in
+        if c <> 0 then c else
+        let c = compare m1 m2 in
+        if c <> 0 then c else
         let c = compare_aux l1 l2 in
         if c <> 0 then c else
         compare_aux r1 r2
@@ -228,17 +229,15 @@ let equal eq t1 t2 =
     | Empty, Empty -> true
     | Leaf (k1,x1), Leaf (k2,x2) -> k1 = k2 && eq x1 x2
     | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) ->
-	p1 = p2 && m1 = m2 && equal_aux l1 l2 && equal_aux r1 r2
+        p1 = p2 && m1 = m2 && equal_aux l1 l2 && equal_aux r1 r2
     | _ -> false
   in
   equal_aux t1 t2
 
 let merge f m1 m2 =
-  let add m k = function None -> m | Some v -> add k v m in
-  (* first consider all bindings in m1 *)
+  let ptree_add m k = function None -> m | Some v -> ptree_add k v m in
   let m = fold
-    (fun k1 v1 m -> add m k1 (f k1 (Some v1) (find_opt k1 m2))) m1 empty in
-  (* then bindings in m2 that are not in m1 *)
-  fold (fun k2 v2 m -> if mem k2 m1 then m else add m k2 (f k2 None (Some v2)))
+    (fun k1 v1 m -> ptree_add m k1 (f k1 (Some v1) (find_opt k1 m2))) m1 empty in
+  fold (fun k2 v2 m -> if mem k2 m1 then m else ptree_add m k2 (f k2 None (Some v2)))
     m2 m
 *)

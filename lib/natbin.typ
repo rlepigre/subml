@@ -40,6 +40,24 @@ val rec is_zero : Bin → Bool = fun x →
   | One _  → fls
   | Zero x → is_zero x
 
+val rec complement : ∀α FBin(α) → FBin(α) = fun x →
+  case x of
+  | End    → End
+  | One  x → Zero (complement x)
+  | Zero x → One  (complement x)
+
+val rec carryless_incr : ∀α FBin(α) → FBin(α) = fun x →
+  case x of
+  | End    → End
+  | One  x → One (carryless_incr x)
+  | Zero x → One x
+
+val rec carryless_decr : ∀α FBin(α) → FBin(α) = fun x →
+  case x of
+  | End    → End
+  | Zero x → (case x of End → Zero End | _ → One (carryless_decr x))
+  | One  x → Zero x
+
 val rec normalise : ∀α FBin(α) → FBin(α) = fun x →
   case x of
   | End    → End
