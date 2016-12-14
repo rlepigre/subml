@@ -48,35 +48,35 @@ val rec normalise : ∀α FBin(α) → FBin(α) = fun x →
 
 type BitFun = [Z|O] → [Z|O] → [Z|O]
 
-(* FIXME should work with these type ? *)
-(* val rec bitwise : BitFun → ∀α FBin(α) → FBin(α) → FBin(α) = fun f x y → *)
-(* val rec bitwise : ∀α BitFun → FBin(α) → FBin(α) → FBin(α) = fun f x y → *)
-val rec bitwise : BitFun → Bin → Bin → Bin = fun f x y →
-  let x = normalise x in
-  let y = normalise y in
+val rec bitmap : ∀α ([Z|O] → [Z|O]) → FBin(α) → FBin(α) = fun f x →
   case x of
-  | End    → (case y of
-              | End    → End
+  | End    → End
+  | Zero x → (case f Z of
+              | Z → Zero (bitmap f x)
+              | O → One  (bitmap f x))
+  | One  x →  (case f O of
+              | Z → Zero (bitmap f x)
+              | O → One  (bitmap f x))
+
+(* FIXME should work with these type ? Need a max on ordinals ? *)
+(* val rec bitwise : BitFun → ∀α FBin(α) → FBin(α) → FBin(α) = fun f x0 y0 → *)
+(* val rec bitwise : ∀α BitFun → FBin(α) → FBin(α) → FBin(α) = fun f x0 y0 → *)
+val rec bitwise : BitFun → Bin → Bin → Bin = fun f x0 y0 →
+  let x0 = normalise x0 in
+  let y0 = normalise y0 in
+  let g = f Z in
+  case x0 of
+  | End    → bitmap g y0
+  | Zero x → (case y0 of
+              | End    → bitmap g x0
               | One y  → (case f Z O of
                           | Z → Zero (bitwise f x y)
                           | O → One  (bitwise f x y))
               | Zero y → (case f Z Z of
                           | Z → Zero (bitwise f x y)
                           | O → One  (bitwise f x y)))
-  | Zero x → (case y of
-              | End    → (case f Z Z of
-                          | Z → Zero (bitwise f x y)
-                          | O → One  (bitwise f x y))
-              | One y  → (case f Z O of
-                          | Z → Zero (bitwise f x y)
-                          | O → One  (bitwise f x y))
-              | Zero y → (case f Z Z of
-                          | Z → Zero (bitwise f x y)
-                          | O → One  (bitwise f x y)))
-  | One x  → (case y of
-              | End    → (case f O Z of
-                          | Z → Zero (bitwise f x y)
-                          | O → One  (bitwise f x y))
+  | One x  → (case y0 of
+              | End    → bitmap g x0
               | One y  → (case f O O of
                           | Z → Zero (bitwise f x y)
                           | O → One  (bitwise f x y))

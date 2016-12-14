@@ -9,12 +9,14 @@ open Bindlib
 open Format
 open Term
 open Binding
-
+open Print
 
 (****************************************************************************
  *                    Decomposition type, ordinals                          *
  *             includes compression of consecutive mus and nus              *
  ****************************************************************************)
+
+exception FailGeneralise
 
 (** This function index all the ordinal in two kinds,
     select the usefull part of the context and returns
@@ -55,15 +57,15 @@ let generalise : ordinal list -> kind -> kind ->
                 relation := (n,p)::!relation);
             (n, o))
     | o -> assert false
-  and search pos o =
+  and search occ o =
     let o = orepr o in
     let res =
       match o with
       | OLess _ -> let (_, o) = eps_search true o in box o
-      | OSucc o -> osucc(search pos o)
+      | OSucc o -> osucc(search occ o)
       | OVari o -> box_of_var o
-      | OUVar({uvar_state = (Some o', _)} as u, os) when pos = Neg ->
-         set_ouvar u o'; search pos o (* NOTE: avoid looping in flot.typ/compose *)
+      | OUVar({uvar_state = (Some o', _)} as u, os) when occ = Neg ->
+         set_ouvar u o'; search occ o (* NOTE: avoid looping in flot.typ/comocce *)
       | OUVar(u,os) ->
          (match fst u.uvar_state with
          | None -> ()
@@ -72,29 +74,29 @@ let generalise : ordinal list -> kind -> kind ->
          | None -> ()
          | Some f -> ignore (search All (msubst f os)));
          ouvar u (Array.map (search All) os)
-      | OConv when pos = Pos ->
+      | OConv when occ = Pos ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
          res := (free_of v, (n, v, ref true)) :: !res; box_of_var v
       | OConv   -> box OConv
     in
     res
-  and fn pos k =
+  and fn occ k =
     match full_repr k with
-    | KFunc(a,b) -> kfunc (fn (neg pos) a) (fn pos b)
-    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn pos a)) fs)
-    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
-    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn pos (subst f (KVari x)))
-    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn pos (subst f (KVari x)))
-    | KOAll(f)   -> koall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | KFixM(o,f) -> kfixm (binder_name f) (search (neg pos) o)
-       (fun x -> fn pos (subst f (KVari x)))
-    | KFixN(o,f) -> kfixn (binder_name f) (search pos o)
-       (fun x -> fn pos (subst f (KVari x)))
+    | KFunc(a,b) -> kfunc (fn (neg occ) a) (fn occ b)
+    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn occ a)) fs)
+    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn occ a)) cs)
+    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn occ (subst f (KVari x)))
+    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn occ (subst f (KVari x)))
+    | KOAll(f)   -> koall (binder_name f) (fun x -> fn occ (subst f (OVari x)))
+    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn occ (subst f (OVari x)))
+    | KFixM(o,f) -> kfixm (binder_name f) (search (neg occ) o)
+       (fun x -> fn occ (subst f (KVari x)))
+    | KFixN(o,f) -> kfixn (binder_name f) (search occ o)
+       (fun x -> fn occ (subst f (KVari x)))
     | KVari(x)   -> box_of_var x
     | KMRec(_,k)
-    | KNRec(_,k) -> assert false (* dealt with before in subtype *)
+    | KNRec(_,k) -> raise FailGeneralise
     | KUVar(u,os) -> kuvar u (Array.map (search All) os)
     | KDefi(td,os,ks) -> assert false (* TODO: should not open definition, and use
                                       variance for ordinal parameters, if the definition
@@ -144,7 +146,7 @@ let generalise : ordinal list -> kind -> kind ->
     (fun ff l -> List.iter (fun (a,b) ->
     Format.fprintf ff "(%d,%d) "a b) l) rel;
   Io.log_sub "generalise os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
-    Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;
+    Format.fprintf ff "(%d,%a) "n (print_ordinal false) o) l) os;
 
   assert(mbinder_arity both = List.length os);
   (pos, rel, both, os)
@@ -184,7 +186,7 @@ let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -
     let pos = List.map (fun i -> assert (i < arity); ovars.(i)) pos in
     let os = Array.to_list (Array.mapi (fun i x -> (i,x)) ovars) in
     Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
-        Format.fprintf ff "(%d,%a) "n (!fprint_ordinal false) o) l) os;
+        Format.fprintf ff "(%d,%a) "n (print_ordinal false) o) l) os;
     os, pos, k1, k2
 
 (* FIXME: what to do with duplicates, probably OK *)

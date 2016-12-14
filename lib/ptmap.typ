@@ -153,14 +153,12 @@ val rec exists : ∀A (Key → A → Bool) → PTree(A) → Bool =
     | Leaf(k,v)         → p k v
     | Branch(_,_,t0,t1) → or (exists p t0) (exists p t1)
 
-(*
-val rec 2 filter : ∀A (Key → A → Bool) → PTree(A) → PTree(A) =
+val rec filter : ∀A (Key → A → Bool) → PTree(A) → PTree(A) =
   fun p t →
     case t of
     | Empty             → Empty
     | Leaf(k,v)         → if p k v then t else Empty
-    | Branch(p,m,t0,t1) → branch p m (filter p t0) (filter p t1)
-*)
+    | Branch(q,m,t0,t1) → branch q m (filter p t0) (filter p t1)
 
 (*
 let partition p s =

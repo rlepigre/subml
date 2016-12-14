@@ -1,6 +1,22 @@
 (* A type for binary trees. *)
 type SNode(A,T) = {value : A; left : T; right : T}
 type Tree(A) = μX [Leaf | Node of SNode(A,X)]
+type STree(α,A) = μα X [Leaf | Node of SNode(A,X)]
+
+val rec map : ∀α ∀A ∀B (A → B) → STree(α,A) → STree(α,B) = fun f t →
+  case t of
+  | Leaf → Leaf
+  | Node(r) → Node{ value = f r.value; left = map f r.left; right = map f r.right}
+
+val rec map2 : ∀α ∀A ∀B ∀C (A → B → C) → STree(α,A) → STree(α,B) → STree(α,C) = fun f t1 t2 →
+  case t1 of
+  | Leaf → Leaf
+  | Node(r1) → (case t2 of
+     | Leaf → Leaf
+     | Node(r2) →
+         Node{ value = f r1.value r2.value;
+               left  = map2 f r1.left  r2.left;
+               right = map2 f r1.right r2.right})
 
 (* A type for red-black trees. *)
 type RBNode(A,T) = {value : A; color : [R | B]; left : T; right : T}

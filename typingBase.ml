@@ -129,10 +129,11 @@ let rec opred o w =
   | OSucc o' -> o'
   | OUVar({uvar_state = (None,None); uvar_arity = a} as p, os) ->
      let o' = OUVar(new_ouvara a,os) in
-     set_ouvar p (!fobind_ordinals os (OSucc o')); o'
+     set_ouvar p (obind_ordinals os (OSucc o')); o'
   | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
      set_ouvar p o'; opred o w
-  | OUVar _ | OVari _ -> assert false
+  | OUVar _ -> type_error "opred fails"; (* FIXME: can we do better ? *)
+  | OVari _ -> assert false
   | OLess _ | OConv -> OLess(o, w)
 
 let find_positive ctxt o =

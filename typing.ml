@@ -80,7 +80,7 @@ let check_rec
       ) (List.tl ctxt.sub_induction_hyp);
       Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
       (NewInduction (Some (fnum, k1, k2)), ctxt)
-    with Exit            -> (NewInduction None, ctxt)
+    with Exit | FailGeneralise -> (NewInduction None, ctxt)
        | Induction_hyp n -> (UseInduction n, ctxt)
 
 let fixpoint_depth = ref 1
@@ -602,7 +602,10 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         in
         let l = if do_subsume then subsumption [] l else l in
         let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
-          let (pos, rel, both, os) = generalise ctxt.positive_ordinals (KProd []) c in
+          let (pos, rel, both, os) =
+            try generalise ctxt.positive_ordinals (KProd []) c
+            with FailGeneralise -> assert false
+          in
           let (os0, tpos, _, c0) = recompose pos rel both false in
           let fnum = Sct.new_function ctxt.call_graphs "Y"
             (List.map Latex.ordinal_to_printer os0)
@@ -670,7 +673,7 @@ and search_induction depth ctxt t a c0 hyps =
                Sct.prInd fnum (print_kind false) a (print_kind false) c0
                print_positives { ctxt with positive_ordinals = pos};
              prf
-           with Exit | Subtype_error _ | Error.Error _ ->
+           with Exit | Subtype_error _ | Error.Error _ when hyps <> [] (* to get a subtyping error message *) ->
              Timed.Time.rollback time;
              raise Exit
          in

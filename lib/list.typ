@@ -39,6 +39,16 @@ val rec map : ∀A ∀B ∀α ((A → B) → SList(α,A) → SList(α,B)) = fun 
 (* Check that the above type is general enough *)
 val map' : ∀A ∀B ((A → B) → List(A) → List(B)) = map
 
+val rec map2 : ∀A ∀B ∀C ∀α ((A → B → C) → SList(α,A) → SList(α,B) → SList(α,C)) = fun f l1 l2 →
+  case l1 of
+  | []   → []
+  | x::l1 → (case l2 of
+            | [] → []
+            | y::l2 → f x y :: map2 f l1 l2)
+
+(* Check that the above type is general enough *)
+val map2' : ∀A ∀B ∀C ∀α ((A → B → C) → List(A) → List(B) → List(C)) = map2
+
 val rec append : ∀A (List(A) → List(A) → List(A)) = fun l1 l2 →
   case l1 of
   | []   → l2
