@@ -573,8 +573,7 @@ let tcnst : (term', term) binder -> kbox -> kbox -> tbox =
   (* NOTE: the term is always closed *)
   fun s a b ->
     let cl = is_closed a && is_closed b in
-    assert cl; (* NOTE: we do not assume a b closed, but check it.
-                  indeed, map_term could bind under a TCnst *)
+    assert cl; (* NOTE: we do not assume a b closed, but check it *)
     box_apply dummy_pos (box_apply2 (fun a b -> TCnst(s,a,b,cl)) a b)
 
 let generic_tcnst : kbox -> kbox -> tbox =

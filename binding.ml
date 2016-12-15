@@ -16,52 +16,63 @@ open Compare
     This allows to bind the variables in this structure. *)
 
 (** Lifting for kinds *)
-let rec lift_kind : kind -> kind bindbox = fun k ->
-  match repr k with
-  | KFunc(a,b) -> kfunc (lift_kind a) (lift_kind b)
-  | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, lift_kind a)) fs)
-  | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, lift_kind a)) cs)
-  | KKAll(f)   -> kkall (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
-  | KKExi(f)   -> kkexi (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
-  | KOAll(f)   -> koall (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
-  | KOExi(f)   -> koexi (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
-  | KFixM(o,f) ->
-     kfixm (binder_name f) (lift_ordinal o)
-       (fun x -> lift_kind (subst f (KVari x)))
-  | KFixN(o,f) ->
-     kfixn (binder_name f) (lift_ordinal o)
-       (fun x -> lift_kind (subst f (KVari x)))
-  | KVari(x)   -> box_of_var x
-  | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
-  | KMRec _
-  | KNRec _    -> assert false
-  | KUVar(u,os)-> kuvar u (Array.map lift_ordinal os)
-  | KUCst(t,f,cl) ->
-     if cl then box k else
-       kucst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
-  | KECst(t,f,cl) ->
-     if cl then box k else
-       kecst (binder_name f) (lift_term t) (fun x -> lift_kind (subst f (KVari x)))
+let rec lift_kind : ?fkind:(kind -> (kind -> kbox) -> (ordinal -> obox) -> (kind -> kbox) -> kbox) ->
+                    ?ford :(ordinal -> (kind -> kbox) -> (ordinal -> obox) -> (ordinal -> obox) -> obox) ->
+                    kind -> kbox
+  = fun ?(fkind=fun k _ _ defk -> defk (repr k)) ?(ford=fun o _ _ defo -> defo (orepr o)) k ->
+  let lift_kind = lift_kind ~fkind ~ford in
+  let lift_ordinal = lift_ordinal ~fkind ~ford in
+  fkind k lift_kind lift_ordinal (
+    function
+    | KFunc(a,b) -> kfunc (lift_kind a) (lift_kind b)
+    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, lift_kind a)) fs)
+    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, lift_kind a)) cs)
+    | KKAll(f)   -> kkall (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
+    | KKExi(f)   -> kkexi (binder_name f) (fun x -> lift_kind (subst f (KVari x)))
+    | KOAll(f)   -> koall (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
+    | KOExi(f)   -> koexi (binder_name f) (fun x -> lift_kind (subst f (OVari x)))
+    | KFixM(o,f) ->
+       kfixm (binder_name f) (lift_ordinal o)
+         (fun x -> lift_kind (subst f (KVari x)))
+    | KFixN(o,f) ->
+       kfixn (binder_name f) (lift_ordinal o)
+         (fun x -> lift_kind (subst f (KVari x)))
+    | KVari(x)   -> box_of_var x
+    | KDefi(d,o,a) -> kdefi d (Array.map lift_ordinal o) (Array.map lift_kind a)
+    | KMRec _
+    | KNRec _    -> assert false
+    | KUVar(u,os)-> kuvar u (Array.map lift_ordinal os)
+    | KUCst(t,f,cl) ->
+       if cl then box k else
+         kucst (binder_name f) (box t) (fun x -> lift_kind (subst f (KVari x)))
+    | KECst(t,f,cl) ->
+       if cl then box k else
+         kecst (binder_name f) (box t) (fun x -> lift_kind (subst f (KVari x))))
+
 
 (** Lifting for ordinals *)
-and lift_ordinal : ordinal -> ordinal bindbox = fun o ->
-  match orepr o with
-  | OVari x -> box_of_var x
-  | OSucc o -> osucc (lift_ordinal o)
-  | OLess(o,In(t,w))  -> oless_In (lift_ordinal o) (lift_term t)
-     (vbind mk_free_ovari (binder_name w) (fun x -> lift_kind (subst w (OVari x))))
-  | OLess(o,NotIn(t,w))  -> oless_NotIn (lift_ordinal o) (lift_term t)
-     (vbind mk_free_ovari (binder_name w) (fun x -> lift_kind (subst w (OVari x))))
-  | OLess(o,Gen(i,r,p))  ->
-     oless_Gen (lift_ordinal o) i r
-       (mvbind mk_free_ovari (mbinder_names p) (fun xs ->
-         let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in
-         box_pair (lift_kind k1) (lift_kind k2)))
-  | OUVar(u,os) -> ouvar u (Array.map lift_ordinal os)
-  | OConv -> box o
+and lift_ordinal : ?fkind:(kind -> (kind -> kbox) -> (ordinal -> obox) -> (kind -> kbox) -> kbox) ->
+                    ?ford :(ordinal -> (kind -> kbox) -> (ordinal -> obox) -> (ordinal -> obox) -> obox) ->
+                      ordinal -> obox
+   = fun ?(fkind=fun k _ _ defk -> defk (repr k)) ?(ford=fun o _ _ defo -> defo (orepr o)) o ->
+  let lift_kind = lift_kind ~fkind ~ford in
+  let lift_ordinal = lift_ordinal ~fkind ~ford in
+  ford o lift_kind lift_ordinal (
+    function
+    | OVari x -> box_of_var x
+    | OSucc o -> osucc (lift_ordinal o)
+    | OLess(o,In(t,w))  -> oless_In (lift_ordinal o) (box t)
+       (vbind mk_free_ovari (binder_name w) (fun x -> lift_kind (subst w (OVari x))))
+    | OLess(o,NotIn(t,w))  -> oless_NotIn (lift_ordinal o) (box t)
+       (vbind mk_free_ovari (binder_name w) (fun x -> lift_kind (subst w (OVari x))))
+    | OLess(o,Gen(i,r,p))  ->
+       oless_Gen (lift_ordinal o) i r
+         (mvbind mk_free_ovari (mbinder_names p) (fun xs ->
+           let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in
+           box_pair (lift_kind k1) (lift_kind k2)))
+    | OUVar(u,os) -> ouvar u (Array.map lift_ordinal os)
+    | OConv -> box o)
 
-(** Lifting for terms: automatic from [Term.map_term] *)
-and lift_term t = map_term lift_kind t
 
 (****************************************************************************)
 (**{2               bindings of a type in a type and ordinals              }*)
@@ -110,35 +121,12 @@ let make_safe pos u k =
 (** binding a unification variable in a kind *)
 let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
   unbox (bind mk_free_kvari "X" (fun x ->
-    let rec fn k =
+    let fkind k self_kind _ def_kind =
       match repr k with
-      | KFunc(a,b) -> kfunc (fn a) (fn b)
-      | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
-      | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
-      | KKAll(f)   -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-      | KOAll(f)   -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KOExi(f)   -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-      | KFixM(o,f) -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-      | KFixN(o,f) -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
       | KUVar(u,_) -> assert(!(u.uvar_val) = None); if eq_uvar v u then x else box k
-                      (* TODO: is it ok to ignore ordinal parameters ? *)
-      | KVari(x)   -> box_of_var x
-      | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
-      | KMRec(_,k)
-      | KNRec(_,k) -> assert false (* NOTE: works because we do not infer type with
-                                      KMRec as they are removed when setting
-                                      a unification variable *)
-      | KUCst(t,f,cl) -> kucst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
-      | KECst(t,f,cl) -> kecst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
-    and gn o =
-      match orepr o with
-      | OVari x -> box_of_var x
-      | OSucc o -> osucc (gn o)
-      | OConv   -> oconv
-      | _ -> assert false
+      | k -> def_kind k
     in
-    fn k))
+    lift_kind ~fkind k))
 
 
 (****************************************************************************)
@@ -204,27 +192,11 @@ let index os x u =
   in
   fn 0
 
-(** [bind_fn ?(from_generalise=false) os x k]
-    Bind an array [os] of ordinals in the kind [k]. [x] is the array
-    of bindlib variables to be used *)
-let rec bind_fn ?(from_generalise=false) os x k = (
-  let fn = bind_fn ~from_generalise os x in
-  let gn = bind_gn ~from_generalise os x in
-  let k = repr k in
-  let res = match repr k with
-    | KFunc(a,b)   -> kfunc (fn a) (fn b)
-    | KProd(fs)    -> kprod (List.map (fun (l,a) -> (l, fn a)) fs)
-    | KDSum(cs)    -> kdsum (List.map (fun (c,a) -> (c, fn a)) cs)
-    | KKAll(f)     -> kkall (binder_name f) (fun x -> fn (subst f (KVari x)))
-    | KKExi(f)     -> kkexi (binder_name f) (fun x -> fn (subst f (KVari x)))
-    | KOAll(f)     -> koall (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | KOExi(f)     -> koexi (binder_name f) (fun x -> fn (subst f (OVari x)))
-    | KFixM(o,f)   -> kfixm (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-    | KFixN(o,f)   -> kfixn (binder_name f) (gn o) (fun x -> fn (subst f (KVari x)))
-    | KVari(x)     -> box_of_var x
-    | KDefi(d,o,a) -> kdefi d (Array.map gn o) (Array.map fn a)
+let rec bind_both ?(from_generalise=false) os x =
+  let fkind k self_kind self_ord def_kind =
+    let res = match repr k with
     | KMRec(_,k)
-    | KNRec(_,k)   -> fn k
+    | KNRec(_,k)   -> self_kind k
     (* NOTE: safe, because erased in generalise with safe assertion, and
        subtyping is called later when used to instanciate unif var,
        so if unsafe, subtyping/eq_kind/leq_kind will fail *)
@@ -235,7 +207,7 @@ let rec bind_fn ?(from_generalise=false) os x k = (
        in
        (* nothing to do *)
        if os'' = [] then
-         kuvar u (Array.map gn os')
+         kuvar u (Array.map self_ord os')
        else
          (* if the variable value is recursive, we fix its value
             or produce occur_check now, otherwise it loops *)
@@ -247,7 +219,7 @@ let rec bind_fn ?(from_generalise=false) os x k = (
          in
          if is_recursive <> Non then
            (safe_set_kuvar Non u (constant_mbind 0 (KProd [] (*ignored anyway*))) os';
-            fn k)
+            self_kind k)
        else
          (* general case *)
          let os'' = Array.of_list os'' in
@@ -274,92 +246,76 @@ let rec bind_fn ?(from_generalise=false) os x k = (
                           (* TODO: not clean: OVari represents OConv in generalise *)
                           | o -> o)))))
          in
-         Io.log_uni "set in bind fn\n%!";
          set_kuvar u k;
-         kuvar v (Array.map gn new_ords)
+         kuvar v (Array.map self_ord new_ords)
     | KUCst(t,f,cl) | KECst(t,f,cl) when from_generalise || os = [||] ->
-       if cl then box k else lift_kind k
-    | KUCst(t,f,_) ->
-         kucst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
-    | KECst(t,f,_) ->
-         kecst (binder_name f) (box t) (fun x -> fn (subst f (KVari x)))
-
+         if cl then box k else lift_kind k
+    | k -> def_kind k
+    in
+    if Bindlib.is_closed res then box k else res
   in
-  if Bindlib.is_closed res then box k else res)
+  let ford o self_kind self_ord def_ord =
+    let o = orepr o in
+    let res =
+      try  index os x o with Not_found ->
+      match o with
+      | OUVar(u,os') ->
+         let os'' = List.filter (fun o ->
+           not (Array.exists (strict_eq_ordinal o) os') &&
+             (not (ouvar_occur u o)))
+           (Array.to_list os)
+         in
+         if os'' = [] then
+           ouvar u (Array.map self_ord os')
+         else
+           let os'' = Array.of_list os'' in
+           let new_os = Array.append os' os'' in
+           let new_len = Array.length new_os in
+           let upper = match snd u.uvar_state with
+             | None -> None
+             | Some o ->
+                let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                  bind_gn ~from_generalise new_os x (msubst o os'))
+                in
+                assert (is_closed f);
+                Some (unbox f)
+           in
+           let lower = match fst u.uvar_state with
+             | None -> None
+             | Some o ->
+                let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                  bind_gn ~from_generalise new_os x (msubst o os'))
+                in
+                assert (is_closed f);
+                Some (unbox f)
+           in
+           let v = new_ouvara ?lower ?upper new_len in
+           let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
+             ouvar v (Array.init new_len (fun i ->
+               if i < u.uvar_arity then x.(i) else
+                 box (match os''.(i - u.uvar_arity) with
+                 | OVari _ -> OConv
+                   (* TODO: not clean: OVari represents OConv in generalise *)
+                 | o -> o)))))
+           in
+           Io.log_uni "set in bind gn\n%!";
+           set_ouvar u k;
+           ouvar v (Array.map self_ord new_os)
+      | o -> def_ord o
+      in
+      if Bindlib.is_closed res then box o else res
+  in
+  (lift_kind ~fkind ~ford, lift_ordinal ~fkind ~ford)
 
-(** [bind_fn ?(from_generalise=false) len os x k]
+(** [bind_fn ?(from_generalise=false) os x k]
+    Bind an array [os] of ordinals in the kind [k]. [x] is the array
+    of bindlib variables to be used *)
+and bind_fn ?(from_generalise=false) os x = fst (bind_both ~from_generalise os x)
+
+(** [bind_gn ?(from_generalise=false) len os x o]
     Bind an array [os] of ordinals in the ordinal [o]. [x] is the array
     of bindlib variables to be used *)
-and bind_gn ?(from_generalise=false) os x o = (
-  let fn = bind_fn ~from_generalise os x in
-  let gn = bind_gn ~from_generalise os x in
-  let o = orepr o in
-  try
-    index os x o
-  with
-    Not_found ->
-      let res =
-        match orepr o with
-        | OConv    -> box OConv
-        | OVari(x) -> box_of_var x
-        | OSucc(o) -> osucc (gn o)
-        | OLess(o,In(t,f)) ->
-           oless_In (gn o) (map_term fn t)
-             (vbind mk_free_ovari (binder_name f)
-                (fun x -> fn (subst f (OVari x))))
-        | OLess(o,NotIn(t,f)) ->
-           oless_NotIn (gn o) (map_term fn t)
-             (vbind mk_free_ovari (binder_name f)
-                (fun x -> fn (subst f (OVari x))))
-        | OLess(o,Gen(i,rel,f)) ->
-           oless_Gen (gn o) i rel
-             (mvbind mk_free_ovari (mbinder_names f)
-                (fun x -> let k1,k2 = msubst f (Array.map free_of x) in
-                          box_pair (fn k1) (fn k2)))
-        | OUVar(u,os') ->
-           let os'' = List.filter (fun o ->
-             not (Array.exists (strict_eq_ordinal o) os') &&
-               (not (ouvar_occur u o)))
-             (Array.to_list os)
-           in
-           if os'' = [] then
-             ouvar u (Array.map gn os')
-           else
-             let os'' = Array.of_list os'' in
-             let new_os = Array.append os' os'' in
-             let new_len = Array.length new_os in
-             let upper = match snd u.uvar_state with
-               | None -> None
-               | Some o ->
-                  let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                    bind_gn ~from_generalise new_os x (msubst o os'))
-                  in
-                  assert (is_closed f);
-                  Some (unbox f)
-             in
-             let lower = match fst u.uvar_state with
-               | None -> None
-               | Some o ->
-                  let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
-                    bind_gn ~from_generalise new_os x (msubst o os'))
-                  in
-                  assert (is_closed f);
-                  Some (unbox f)
-             in
-             let v = new_ouvara ?lower ?upper new_len in
-             let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
-               ouvar v (Array.init new_len (fun i ->
-                 if i < u.uvar_arity then x.(i) else
-                   box (match os''.(i - u.uvar_arity) with
-                   | OVari _ -> OConv
-                          (* TODO: not clean: OVari represents OConv in generalise *)
-                   | o -> o)))))
-             in
-             Io.log_uni "set in bind gn\n%!";
-             set_ouvar u k;
-             ouvar v (Array.map gn new_os)
-      in
-      if Bindlib.is_closed res then box o else res)
+and bind_gn ?(from_generalise=false) os x = snd (bind_both ~from_generalise os x)
 
 (** binding ordinals in one ordinal *)
 let obind_ordinals : ordinal array -> ordinal -> (ordinal, ordinal) mbinder = fun os o ->
