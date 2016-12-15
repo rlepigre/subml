@@ -132,7 +132,7 @@ let rec opred o w =
      set_ouvar p (obind_ordinals os (OSucc o')); o'
   | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
      set_ouvar p o'; opred o w
-  | OUVar _ -> type_error "opred fails"; (* FIXME: can we do better ? *)
+  | OUVar _ -> subtype_error "opred fails"; (* FIXME: can we do better ? *)
   | OVari _ -> assert false
   | OLess _ | OConv -> OLess(o, w)
 

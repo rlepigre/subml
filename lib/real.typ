@@ -117,7 +117,7 @@ eval extract 10  (mulI i12 test16)
 
 eval extract 10 test16
 eval extract 10 (average test16 test16)
-eval extract 8  (mulI test16 test16)
+eval extract 10 (mulI test16 test16)
 
 eval extract 10 test23
 eval extract 10 (average test23 test23)
