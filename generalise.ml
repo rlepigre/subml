@@ -57,57 +57,38 @@ let generalise : ordinal list -> kind -> kind ->
                 relation := (n,p)::!relation);
             (n, o))
     | o -> assert false
-  and search occ o =
+  and ford occ o (self_kind:self_kind) (self_ord:self_ord) def_ord =
     let o = orepr o in
     let res =
       match o with
       | OLess _ -> let (_, o) = eps_search true o in box o
-      | OSucc o -> osucc(search occ o)
-      | OVari o -> box_of_var o
       | OUVar({uvar_state = (Some o', _)} as u, os) when occ = Neg ->
-         set_ouvar u o'; search occ o (* NOTE: avoid looping in flot.typ/comocce *)
-      | OUVar(u,os) ->
-         (match fst u.uvar_state with
-         | None -> ()
-         | Some f -> ignore (search All (msubst f os)));
-         (match snd u.uvar_state with
-         | None -> ()
-         | Some f -> ignore (search All (msubst f os)));
-         ouvar u (Array.map (search All) os)
+         set_ouvar u o'; self_ord ~occ o (* NOTE: avoid looping in flot.typ/compose *)
       | OConv when occ = Pos ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
          res := (free_of v, (n, v, ref true)) :: !res; box_of_var v
-      | OConv   -> box OConv
+      | o -> def_ord o
     in
     res
-  and fn occ k =
+  and fkind occ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
     match full_repr k with
-    | KFunc(a,b) -> kfunc (fn (neg occ) a) (fn occ b)
-    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn occ a)) fs)
-    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn occ a)) cs)
-    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn occ (subst f (KVari x)))
-    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn occ (subst f (KVari x)))
-    | KOAll(f)   -> koall (binder_name f) (fun x -> fn occ (subst f (OVari x)))
-    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn occ (subst f (OVari x)))
-    | KFixM(o,f) -> kfixm (binder_name f) (search (neg occ) o)
-       (fun x -> fn occ (subst f (KVari x)))
-    | KFixN(o,f) -> kfixn (binder_name f) (search occ o)
-       (fun x -> fn occ (subst f (KVari x)))
-    | KVari(x)   -> box_of_var x
+    | KFixM(o,f) -> kfixm (binder_name f) (self_ord ~occ:(neg occ) o)
+       (fun x -> self_kind ~occ (subst f (KVari x)))
+    | KFixN(o,f) -> kfixn (binder_name f) (self_ord ~occ o)
+       (fun x -> self_kind ~occ (subst f (KVari x)))
     | KMRec(_,k)
     | KNRec(_,k) -> raise FailGeneralise
-    | KUVar(u,os) -> kuvar u (Array.map (search All) os)
-    | KDefi(td,os,ks) -> assert false (* TODO: should not open definition, and use
-                                      variance for ordinal parameters, if the definition
-                                      has no mu/nu *)
-    | KUCst(t,f,cl) | KECst(t,f,cl) -> (* No generalisation of ordinals in witness *)
-       if cl then box k else lift_kind k
-
+      (* NOTE:Lets unroll once more to propagate positiveness infos *)
+    | KDefi(td,os,ks) -> assert false
+      (* TODO: should not open definition if the definition has no mu/nu *)
+    | KUCst(t,f,cl) | KECst(t,f,cl) ->
+       if cl then box k else map_kind k (* NOTE: no generalization in witness *)
+    | k -> def_kind k
 
   in
-  let k1 = unbox (fn Neg k1) in
-  let k2 = unbox (fn Pos k2) in
+  let k1 = unbox (map_kind ~fkind ~ford ~occ:Neg k1) in
+  let k2 = unbox (map_kind ~fkind ~ford ~occ:Pos k2) in
 
   let pos = List.map (fun o -> fst (eps_search false o)) pos in
   let res = List.filter (fun (o,(n,v,k)) -> !k) !res in

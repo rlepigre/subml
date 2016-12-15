@@ -247,7 +247,7 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                       | None   -> (c, kprod [])
                       | Some k -> (c, unsugar_kind ~pos env k)
                     in kdsum (List.map f cs)
-  | PWith(a,s,b) -> lift_kind (with_clause (unbox (unsugar_kind ~pos env a))
+  | PWith(a,s,b) -> map_kind (with_clause (unbox (unsugar_kind ~pos env a))
                                  s (unbox (unsugar_kind ~pos env b)))
   | PUCst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x xk Non env) k in
                     kucst x (unsugar_term env t) f
