@@ -63,9 +63,9 @@ let generalise : ordinal list -> kind -> kind ->
     let res =
       match o with
       | OLess _ -> let (_, o) = eps_search true o in box o
-      | OUVar({uvar_state = (Some o', _)} as u, os) when occ = Neg ->
+      | OUVar({uvar_state = (Some o', _)} as u, os) when occ = Pos ->
          set_ouvar u o'; self_ord ~occ o (* NOTE: avoid looping in flot.typ/compose *)
-      | OConv when occ = Pos ->
+      | OConv when occ = Neg ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
          res := (free_of v, (n, v, ref true)) :: !res; box_of_var v
@@ -74,10 +74,6 @@ let generalise : ordinal list -> kind -> kind ->
     res
   and fkind occ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
     match full_repr k with
-    | KFixM(o,f) -> kfixm (binder_name f) (self_ord ~occ:(neg occ) o)
-       (fun x -> self_kind ~occ (subst f (KVari x)))
-    | KFixN(o,f) -> kfixn (binder_name f) (self_ord ~occ o)
-       (fun x -> self_kind ~occ (subst f (KVari x)))
     | KMRec(_,k)
     | KNRec(_,k) -> raise FailGeneralise
       (* NOTE:Lets unroll once more to propagate positiveness infos *)
