@@ -10,6 +10,7 @@ open Format
 open Term
 open Binding
 open Print
+open AstMap
 
 (****************************************************************************
  *                    Decomposition type, ordinals                          *

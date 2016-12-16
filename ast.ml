@@ -459,7 +459,6 @@ let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
   in
   (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar)
 
-
 (****************************************************************************)
 (**{2                     Definition of widely used types                  }*)
 (****************************************************************************)
@@ -580,6 +579,45 @@ let generic_tcnst : kbox -> kbox -> tbox =
   fun a b ->
     let f = bind mk_free_tvari "x" (fun x -> box_apply dummy_pos x) in
     tcnst (unbox f) a b
+
+(****************************************************************************)
+(**{2                           Syntactic sugars                           }*)
+(****************************************************************************)
+
+(** dot projection *)
+let rec do_dot_proj t k s = match full_repr k with
+  | KKExi(f) ->
+     let c = KECst(t,f,true) in
+     if binder_name f = s then c else do_dot_proj t (subst f c) s
+  | k ->
+     failwith "Illegal dot projection"
+
+let dot_proj : tbox -> string -> kbox = fun x s ->
+  let rec fn t = match t.elt with
+    | TVari x -> fn (in_pos t.pos (free_of x))
+    | TDefi(d) -> do_dot_proj t d.ttype s
+    | TCnst(_,a,_,_) -> do_dot_proj t a s
+    | _ -> failwith "Illegal dot projection"
+  in
+  box_apply fn x
+
+(** with clause *)
+let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
+  let rec fn a b =
+    match full_repr a with
+    | KVari x -> fn (free_of x) b
+    | KKExi(f) | KKAll(f) ->
+       if binder_name f = s then subst f b else begin
+         KKExi(binder_from_fun (binder_name f) (fun x ->
+           fn (subst f x) b))
+       end
+    | KFixM(OConv,f) -> fn (subst f (KFixM(OConv,f))) b
+    | KFixN(OConv,f) -> fn (subst f (KFixN(OConv,f))) b
+    | k       ->
+       Io.log "KWith constraint on %s in %a\n%!" s (!fprint_kind false) k;
+      failwith ("Illegal use of \"with\" on variable "^s^".")
+  in
+  box_apply2 fn a b
 
 (****************************************************************************)
 (**{2                          variance function                           }*)

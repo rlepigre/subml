@@ -49,6 +49,7 @@ include "infer.typ"
 
 (* Test files *)
 include "dotproj.typ"
+include "dotprojeps.typ"
 include "tree.typ"
 include "polyrec.typ"
 include "tests.typ"
