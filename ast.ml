@@ -606,9 +606,14 @@ let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
   let rec fn a b =
     match full_repr a with
     | KVari x -> fn (free_of x) b
-    | KKExi(f) | KKAll(f) ->
+    | KKExi(f) ->
        if binder_name f = s then subst f b else begin
          KKExi(binder_from_fun (binder_name f) (fun x ->
+           fn (subst f x) b))
+       end
+    | KKAll(f) ->
+       if binder_name f = s then subst f b else begin
+         KKAll(binder_from_fun (binder_name f) (fun x ->
            fn (subst f x) b))
        end
     | KFixM(OConv,f) -> fn (subst f (KFixM(OConv,f))) b
