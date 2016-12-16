@@ -26,6 +26,7 @@ and pkind' =
   | PFixM of pordinal * string * pkind
   | PFixN of pordinal * string * pkind
   | PWith of pkind * string * pkind
+  | PDPrj of strpos * string
   | PUCst of pterm * string * pkind
   | PECst of pterm * string * pkind
 
@@ -248,7 +249,8 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                       | Some k -> (c, unsugar_kind ~pos env k)
                     in kdsum (List.map f cs)
   | PWith(a,s,b) -> map_kind (with_clause (unbox (unsugar_kind ~pos env a))
-                                 s (unbox (unsugar_kind ~pos env b)))
+                                s (unbox (unsugar_kind ~pos env b)))
+  | PDPrj(x,s)   -> dot_proj (term_variable env x) s
   | PUCst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x xk Non env) k in
                     kucst x (unsugar_term env t) f
   | PECst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x xk Non env) k in

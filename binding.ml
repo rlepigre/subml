@@ -343,3 +343,20 @@ let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
      hence we set the pointers defined in compare *)
 let _ = fbind_ordinals := bind_ordinals
 let _ = fobind_ordinals := obind_ordinals
+
+let rec do_dot_proj t k s = match full_repr k with
+  | KKExi(f) ->
+     let c = KECst(t,f,true) in
+     if binder_name f = s then c else do_dot_proj t (subst f c) s
+  | k ->
+     failwith "Illegal dot projection"
+
+
+let dot_proj : tbox -> string -> kbox = fun x s ->
+  let rec fn t = match t.elt with
+    | TVari x -> fn (in_pos t.pos (free_of x))
+    | TDefi(d) -> do_dot_proj t d.ttype s
+    | TCnst(_,a,_,_) -> do_dot_proj t a s
+    | _ -> failwith "Illegal dot projection"
+  in
+  box_apply fn x

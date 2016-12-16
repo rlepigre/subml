@@ -248,6 +248,7 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | fs:kind_prod                  when p = `Prd -> in_pos _loc (PProd(fs))
   | "[" fs:kind_dsum "]"          when p = `Atm -> in_pos _loc (PDSum(fs))
   | a:kind_atm (s,b):with_eq      when p = `Atm -> in_pos _loc (PWith(a,s,b))
+  | id:lident '.' s:uident        when p = `Atm -> in_pos _loc (PDPrj(in_pos _loc_id id,s))
   (* Parenthesis and coercions. *)
   | "(" kind ")"                  when p = `Atm
   | kind_atm                      when p = `Prd
