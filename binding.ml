@@ -13,26 +13,6 @@ open AstMap
 (**{2               bindings of a type in a type and ordinals              }*)
 (****************************************************************************)
 
-(** Increase ordinals in covariant position that cannot be used by the
-    variable u to allow setting the value of an uvar
-*)
-let make_safe occ u k =
-  let ford occ o (self_kind:self_kind) (self_ord:self_ord) def_ord =
-    match o with
-    | OLess(o',_) as o when kuvar_ord_occur u o && occ = Neg -> self_ord o'
-    | o -> def_ord o
-  in
-  let fkind occ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
-    match repr k with
-    | KMRec(_,k)
-    | KNRec(_,k) -> assert (occ = Neg); self_kind ~occ k
-    | k -> def_kind k
-  in
-  if occ = Pos || occ = Neg then (
-    unbox (mvbind mk_free_ovari (mbinder_names k)
-             (fun xs -> map_kind ~fkind ~ford ~occ (msubst k (Array.map (fun x -> OVari x) xs)))))
-  else k
-
 (** binding a unification variable in a kind *)
 let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
   unbox (bind mk_free_kvari "X" (fun x ->
@@ -73,7 +53,6 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ords -> ordinal array -> unit =
     | Prod l -> mbind_assoc kprod v.uvar_arity l
   in
   assert (mbinder_arity k = v.uvar_arity);
-  let k = make_safe (neg side) v k in
   let k =
     match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
     | Non -> k
