@@ -16,43 +16,21 @@ open AstMap
 (** Increase ordinals in covariant position that cannot be used by the
     variable u to allow setting the value of an uvar
 *)
-(* FIXME: use AstMap *)
-let make_safe pos u k =
-  let rec gn o = match orepr o with
-    | OLess(o',_) as o when kuvar_ord_occur u o -> gn o'
-    | o -> map_ordinal o
+let make_safe occ u k =
+  let ford occ o (self_kind:self_kind) (self_ord:self_ord) def_ord =
+    match o with
+    | OLess(o',_) as o when kuvar_ord_occur u o && occ = Neg -> self_ord o'
+    | o -> def_ord o
   in
-  let kn pos o =
-    if pos = Neg then gn o else map_ordinal o
-  in
-  let rec fn pos k =
+  let fkind occ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
     match repr k with
-    | KFunc(a,b) -> kfunc (fn (neg pos) a) (fn pos b)
-    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, fn pos a)) fs)
-    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, fn pos a)) cs)
-    | KKAll(f)   -> kkall (binder_name f) (fun x -> fn pos (subst f (KVari x)))
-    | KKExi(f)   -> kkexi (binder_name f) (fun x -> fn pos (subst f (KVari x)))
-    | KOAll(f)   -> koall (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | KOExi(f)   -> koexi (binder_name f) (fun x -> fn pos (subst f (OVari x)))
-    | KFixM(o,f) ->
-       kfixm (binder_name f) (kn pos o) (fun x -> fn pos (subst f (KVari x)))
-    | KFixN(o,f) ->
-       kfixn (binder_name f) (kn (neg pos) o) (fun x -> fn pos (subst f (KVari x)))
-    | KVari(x)   -> box_of_var x
-    | KMRec(_,k) -> assert (pos = Neg); fn pos k
-    | KNRec(_,k) -> assert (pos = Pos); fn pos k
-    | KDefi(d,os,ks) ->
-       kdefi d
-         (Array.mapi (fun i o -> kn (compose d.tdef_ovariance.(i) pos) o) os)
-         (Array.mapi (fun i k -> fn (compose d.tdef_kvariance.(i) pos) k) ks)
-    | KUVar(u,os) -> kuvar u (Array.map map_ordinal os)
-    | KUCst(t,f,cl) -> kucst (binder_name f) (box t) (fun x -> fn pos (subst f (KVari x)))
-    | KECst(t,f,cl) -> kecst (binder_name f) (box t) (fun x -> fn pos (subst f (KVari x)))
-    | KPrnt _ -> assert false
+    | KMRec(_,k)
+    | KNRec(_,k) -> assert (occ = Neg); self_kind ~occ k
+    | k -> def_kind k
   in
-  if pos = Pos || pos = Neg then (
+  if occ = Pos || occ = Neg then (
     unbox (mvbind mk_free_ovari (mbinder_names k)
-             (fun xs -> fn pos (msubst k (Array.map (fun x -> OVari x) xs)))))
+             (fun xs -> map_kind ~fkind ~ford ~occ (msubst k (Array.map (fun x -> OVari x) xs)))))
   else k
 
 (** binding a unification variable in a kind *)
