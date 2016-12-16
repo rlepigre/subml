@@ -146,7 +146,10 @@ and print_kind unfold wrap ff t =
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
   | KNRec(p,a) -> fprintf ff "%a \\lor %a" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
-
+  | KPrnt x -> match x with
+  | FreeVr s -> pp_print_string ff s
+  | DotPrj(x, s) -> fprintf ff "%s.%s" x s
+  | WithCl(x, s, k) -> fprintf ff "%a with %s = %a" pkind x s pkind k
 
 and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_tex_name;
@@ -189,7 +192,7 @@ and print_term unfold lvl ff t =
      let rec fn ff t = match t.elt with
        | TAbst(ao,b) ->
           let x = binder_name b in
-          let t = subst b (free_of (new_tvari x)) in
+          let t = subst b (TPrnt x) in
           begin
             match ao with
             | None   -> fprintf ff " %s%a" x fn t
@@ -246,7 +249,7 @@ and print_term unfold lvl ff t =
        | TAbst(_,f) ->
           let x = binder_name f in
           let x = if x = "_" then "" else x in
-          let t = subst f (free_of (new_tvari x)) in
+          let t = subst f (TPrnt x) in
           fprintf ff "\\mathrm{%s} %s \\rightarrow %a" c x (print_term 0) t
        | _          ->
           fprintf ff "\\mathrm{%s} \\rightarrow %a" c (print_term 0) b
@@ -255,7 +258,7 @@ and print_term unfold lvl ff t =
        | None                 -> ()
        | Some{elt=TAbst(_,f)} ->
           let x = binder_name f in
-          let t = subst f (free_of (new_tvari x)) in
+          let t = subst f (TPrnt x) in
           fprintf ff "%s \\rightarrow %a" x (print_term 0) t
        | Some b               ->
           fprintf ff "\\_ \\rightarrow %a" (print_term 0) b
@@ -263,7 +266,7 @@ and print_term unfold lvl ff t =
      begin
        match l,d with
        | [c,{elt = TAbst(_,f)}], None when
-             let x = free_of (new_tvari (binder_name f)) in
+             let x = TPrnt (binder_name f) in
              (subst f x).elt == x ->
           fprintf ff "\\mathrm{%s}.%a" c (print_term 0) t
        | _ ->
@@ -281,7 +284,7 @@ and print_term unfold lvl ff t =
   | TFixY(_,ko,f) ->
      if lvl > 0 then pp_print_string ff "(";
       let x = binder_name f in
-      let t = subst f (free_of (new_tvari x)) in
+      let t = subst f (TPrnt x) in
       fprintf ff "Y %s . %a" x (print_term 0) t;
      if lvl > 0 then pp_print_string ff ")";
   | TCnst(f,a,b,_) ->
@@ -312,10 +315,10 @@ let print_kind_def unfold ff kd =
 
 let print_epsilon_tbls ch =
   List.iter (fun (f,(name,index,a,b)) ->
-    let x = new_tvari (binder_name f) in
-    let t = subst f (free_of x) in
+    let x = binder_name f in
+    let t = subst f (TPrnt x) in
     fprintf ch "%s_{%d} &= \\epsilon_{%s \\in %a}(%a \\notin %a)\\\\\n"
-      name index (name_of x) (print_kind false) a (print_term false) t
+      name index x (print_kind false) a (print_term false) t
       (print_kind false) b) !epsilon_term_tbl;
   List.iter (fun (f,(name,index,u,is_exists)) ->
     let x = new_kvari (binder_name f) in

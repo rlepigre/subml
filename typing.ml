@@ -799,7 +799,6 @@ let try_fold_def : kind -> kind = fun k ->
   let res =
     match repr k with
     | KDefi _ -> k
-    | k when has_uvar k -> k
     | _ ->
        let defs = Hashtbl.fold (fun _ a l -> a::l) typ_env [] in
        let defs = List.sort

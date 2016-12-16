@@ -278,6 +278,7 @@ let has_uvar : kind -> bool = fun k ->
     | KVari _    -> ()
     | KUCst(_,f,cl)
     | KECst(_,f,cl) -> fn (subst f (KProd []))
+    | KPrnt _    -> assert false
   in
   try
     fn k; false

@@ -49,7 +49,8 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
          kucst (binder_name f) (box t) (fun x -> map_kind ~occ:All (subst f (KVari x)))
     | KECst(t,f,cl) ->
        if cl then box k else
-         kecst (binder_name f) (box t) (fun x -> map_kind ~occ:All (subst f (KVari x))))
+         kecst (binder_name f) (box t) (fun x -> map_kind ~occ:All (subst f (KVari x)))
+    | KPrnt _ -> box k)
 
 
 (** Mapping for ordinals *)

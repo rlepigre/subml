@@ -52,6 +52,16 @@ type kind =
   | KMRec of ordinal set * kind
   | KNRec of ordinal set * kind
   (** Ordinal conjunction and disjunction *)
+  | KPrnt of kprint
+  (** Used for printing only *)
+
+and kprint =
+  | FreeVr of string
+  (** used to print variable only *)
+  | DotPrj of string * string
+  (** used for printing dot proj only *)
+  | WithCl of kind * string * kind
+  (** used for printing with clause only *)
 
 (** Type definition (user defined type). *)
 and type_def =
@@ -145,8 +155,6 @@ and term' =
   | TCase of term * (string * term) list * term option
   (** Case analysis. *)
   | TDefi of value_def
-  (** User-defined term. *)
-  | TPrnt of string
   (** Print a string (side effect) and behave like the term. *)
   | TFixY of bool * int * (term', term) binder
   (** Fixpoint combinator, the boolean and integer are indications for the
@@ -162,6 +170,8 @@ and term' =
   | TCnst of (term', term) binder * kind * kind * bool
   (** Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness u (i.e. a term)
      that u has type A and such that t[u] is not in B. *)
+  | TPrnt of string
+  (** For printing only *)
 
 (** Term definition (user defined term) *)
 and value_def =
@@ -597,6 +607,7 @@ let dot_proj : tbox -> string -> kbox = fun x s ->
     | TVari x -> fn (in_pos t.pos (free_of x))
     | TDefi(d) -> do_dot_proj t d.ttype s
     | TCnst(_,a,_,_) -> do_dot_proj t a s
+    | TPrnt x -> KPrnt (DotPrj(x,s)) (** printing only *)
     | _ -> failwith "Illegal dot projection"
   in
   box_apply fn x
@@ -618,6 +629,7 @@ let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
        end
     | KFixM(OConv,f) -> fn (subst f (KFixM(OConv,f))) b
     | KFixN(OConv,f) -> fn (subst f (KFixN(OConv,f))) b
+    | KPrnt(p) as k -> KPrnt(WithCl(k,s,b))
     | k       ->
        Io.log "KWith constraint on %s in %a\n%!" s (!fprint_kind false) k;
       failwith ("Illegal use of \"with\" on variable "^s^".")

@@ -16,6 +16,7 @@ open AstMap
 (** Increase ordinals in covariant position that cannot be used by the
     variable u to allow setting the value of an uvar
 *)
+(* FIXME: use AstMap *)
 let make_safe pos u k =
   let rec gn o = match orepr o with
     | OLess(o',_) as o when kuvar_ord_occur u o -> gn o'
@@ -47,6 +48,7 @@ let make_safe pos u k =
     | KUVar(u,os) -> kuvar u (Array.map map_ordinal os)
     | KUCst(t,f,cl) -> kucst (binder_name f) (box t) (fun x -> fn pos (subst f (KVari x)))
     | KECst(t,f,cl) -> kecst (binder_name f) (box t) (fun x -> fn pos (subst f (KVari x)))
+    | KPrnt _ -> assert false
   in
   if pos = Pos || pos = Neg then (
     unbox (mvbind mk_free_ovari (mbinder_names k)

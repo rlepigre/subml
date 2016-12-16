@@ -366,7 +366,8 @@ and gen_occur :
     | KECst(t,f,cl) -> if cl then acc else aux All acc (subst f kdummy)
     | KUVar(u,os) -> if kuvar u then combine acc occ else Array.fold_left aux3 acc os
     | KMRec(_,k) (* NOTE: safe to ignore ordinals as they are not used in unif var *)
-    | KNRec(_,k) -> aux occ acc k)
+    | KNRec(_,k) -> aux occ acc k
+    | KPrnt _ -> assert false)
   and aux2 acc t =
     if List.memq t.elt !adone_t then acc else (
     adone_t := t.elt :: !adone_t;

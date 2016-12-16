@@ -92,6 +92,8 @@ let rec full_iter fn ptr =
  *                           Printing of a type                             *
  ****************************************************************************)
 
+let new_prvar f = KPrnt(FreeVr(binder_name f))
+
 let rec print_ordinal unfold ff o =
   let o = orepr o in
   match o with
@@ -170,11 +172,11 @@ and print_kind unfold wrap ff t =
       in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
   | KKAll(f)  ->
-      let x = new_kvari (binder_name f) in
-      fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
+      let x = new_prvar f in
+      fprintf ff "∀%s %a" (binder_name f) pkind (subst f x)
   | KKExi(f)  ->
-      let x = new_kvari (binder_name f) in
-      fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
+      let x = new_prvar f in
+      fprintf ff "∃%s %a" (binder_name f) pkind (subst f x)
   | KOAll(f)  ->
       let x = new_ovari (binder_name f) in
       fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
@@ -182,13 +184,13 @@ and print_kind unfold wrap ff t =
       let x = new_ovari (binder_name f) in
       fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
   | KFixM(o,b) ->
-      let x = new_kvari (binder_name b) in
-      let a = subst b (free_of x) in
-      fprintf ff "μ%a%s %a" print_index_ordinal o (name_of x) pkindw a
+      let x = new_prvar b in
+      let a = subst b x in
+      fprintf ff "μ%a%s %a" print_index_ordinal o (binder_name b) pkindw a
   | KFixN(o,b) ->
-      let x = new_kvari (binder_name b) in
-      let a = subst b (free_of x) in
-      fprintf ff "ν%a%s %a" print_index_ordinal o (name_of x) pkindw a
+      let x = new_prvar b in
+      let a = subst b x in
+      fprintf ff "ν%a%s %a" print_index_ordinal o (binder_name b) pkindw a
   | KDefi(td,os,ks) ->
       if unfold then
         print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
@@ -216,6 +218,10 @@ and print_kind unfold wrap ff t =
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
   | KNRec(p,a) -> fprintf ff "(%a || {%a})" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
+  | KPrnt x -> match x with
+  | FreeVr s -> pp_print_string ff s
+  | DotPrj(x, s) -> fprintf ff "%s.%s" x s
+  | WithCl(x, s, k) -> fprintf ff "%a with %s = %a" pkind x s pkind k
 
 (*
 and print_state ff s os = match !s with
@@ -452,11 +458,11 @@ let print_epsilon_tbls ff =
       (print_kind false) a (print_term false) t (print_kind false) b)
       epsilon_term_tbl;
   full_iter (fun (f,(name,index,u,is_exists)) ->
-    let x = new_kvari (binder_name f) in
-    let k = subst f (free_of x) in
+    let x = new_prvar f in
+    let k = subst f x in
     let symbol = if is_exists then "∈" else "∉" in
       fprintf ff "%s_%d = ϵ(%s, %a %s %a)\n" name index
-      (name_of x) (print_term false) u symbol (print_kind false) k) epsilon_type_tbl;
+      (binder_name f) (print_term false) u symbol (print_kind false) k) epsilon_type_tbl;
   full_iter (fun (o,n) ->
     fprintf ff "%a = %a\n" (print_ordinal false) o (print_ordinal true) o) ordinal_tbl
 
