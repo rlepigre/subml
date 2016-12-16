@@ -5,8 +5,11 @@
 open Ast
 open Bindlib
 
-(** Mapping function are used to push back data structure in bindlib boxes.
-    This allows to bind the variables in this structure. *)
+(** Mapping functions allows to apply some treatment to some constructor
+    and use the default treatment to recurse for the other constructor.
+
+    The output of Mapping function are bindlib's boxes, so you can
+    use Mapping functions to bind some variables in a kind or ordinal *)
 
 type self_kind = ?occ:occur -> kind -> kbox
 type self_ord  = ?occ:occur -> ordinal -> obox
