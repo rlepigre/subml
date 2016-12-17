@@ -39,29 +39,18 @@ let interrupted : pos -> 'a =
 
 type induction_node = Sct.index * (int * ordinal) list
 type subtype_ctxt =
-  { sub_induction_hyp : sub_induction list
+  { sub_induction_hyp : schema list
   ; fix_induction_hyp : fix_induction list
   ; top_induction     : induction_node
   ; call_graphs       : Sct.call_table
   ; positive_ordinals : ordinal list }
-
-(** induction hypothesis for subtyping *)
-and sub_induction =
-      Sct.index            (** the index of the induction hyp *)
-    * int list             (** the positivity context *)
-    * (int * int) list     (** the relation between ordinals *)
-    * (ordinal, kind * kind) mbinder (** the two kinds *)
 
 (** induction hypothesis for typing recursive programs *)
 and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
     * kind                    (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
-    * (Sct.index              (* reference of the inductive hyp *)
-       * int list             (** the positivity context *)
-       * (int * int) list     (** the relation between ordinals *)
-       * (ordinal, kind * kind) mbinder) (** the kind, ignore the first *)
-      list ref
+    * schema list ref
     * (subtype_ctxt * kind * (Sct.index * typ_prf) ref) list ref
       (* The use of references here is to do a breadth-first search for
          inductive proof. Depth first here is bad, using too large depth.

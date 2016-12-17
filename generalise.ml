@@ -12,20 +12,86 @@ open Binding
 open Print
 open AstMap
 
-(****************************************************************************
- *                    Decomposition type, ordinals                          *
- *             includes compression of consecutive mus and nus              *
- ****************************************************************************)
-
+(** Raised when generalisation is not a good idea.
+    Currently when
+    - KMRec and KNRec are present. *)
 exception FailGeneralise
 
-(** This function index all the ordinal in two kinds,
-    select the usefull part of the context and returns
-    the usefull relations between two ordinals. It also
-    returns the index of the ordinals *)
-let generalise : ordinal list -> kind -> kind ->
-  int list * (int * int) list * (ordinal, kind * kind) mbinder * (int * ordinal) list
-  = fun pos k1 k2 ->
+(** the type of a general typing judgement, i.e. with
+    quantified ordinals *)
+type schema =
+  { sch_index : Sct.index (** index of the schema in the sct call graph *)
+  ; sch_posit : int list  (** the index of positive ordinals *)
+  ; sch_relat : (int * int) list (** relation between ordinals *)
+  ; sch_judge : (ordinal, kind * kind) mbinder (** the kinds of the judgement.
+                                  for typing, only the second kind is used *)
+  }
+
+(** the type of a particular judgement, ordinal being witnesses or
+    ordinal variables *)
+type particular = (int * ordinal) list * ordinal list * kind * kind
+
+(** function to apply a schema. I
+    - If [general = false], it replace the ordinals with appropriate
+      witnesses to prove the schema (not to use it).
+    - If [general = true], we want to use the schema and all ordinals
+      are replaced with variables *)
+let recompose : ?general:bool -> schema -> particular =
+  fun ?(general=true) { sch_posit = pos; sch_relat = rel; sch_judge = both } ->
+    let res = ref [] in
+    let forbidden = ref [] in
+    let arity = mbinder_arity both in
+    let rec search i =
+      assert (i < arity && not (List.mem i !forbidden));
+      try
+        List.assoc i !res
+      with Not_found ->
+        forbidden := i::!forbidden;
+        let o =
+          if general then
+            try
+              let v = search (List.assoc i rel) in
+              new_ouvar ~upper:(constant_mbind 0 v) ()
+            with Not_found ->
+              new_ouvar ()
+          else
+             let o' = try search (List.assoc i rel) with Not_found -> OConv in
+             OLess(o',Gen(i,rel,both))
+        in
+        res := (i, o) :: !res;
+        forbidden := List.tl !forbidden;
+        o
+    in
+    let ovars = Array.init arity search in
+    let (k1, k2) = msubst both ovars in
+    let pos = List.map (fun i -> assert (i < arity); ovars.(i)) pos in
+    let os = Array.to_list (Array.mapi (fun i x -> (i,x)) ovars) in
+    Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
+      Format.fprintf ff "(%d,%a) "n (print_ordinal false) o) l) os;
+
+    os, pos, k1, k2
+
+(** [generalise] create a schema from a judgement. All ordinals
+    that appear in the judgement are quantified over.
+    Ordinal appearing in witnesses are untouched.
+
+    Each ordinal as an index used to denote it in the field
+    [sch_posit] and [sch_relat], to know which ordinals are positive,
+    or comparable with '<'.
+
+    This index is the same as the index in the mbinder [sch_judge]
+    It returns the index of the original variable.
+
+    It also returns the index of the original ordinals to build
+    the initial call in the call graph.
+
+    Finaly in calls [recompose ~genralise:false] to build the
+    instance of the schema with the witnesses that is needed to
+    prove the schema.
+ *)
+let generalise : ordinal list -> kind -> kind -> Sct.call_table ->
+  schema * (int * ordinal) list * particular
+  = fun pos k1 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
      the ordinal will be ovari when it replaces an infinite ordinals (see TODO
@@ -127,47 +193,25 @@ let generalise : ordinal list -> kind -> kind ->
     Format.fprintf ff "(%d,%a) "n (print_ordinal false) o) l) os;
 
   assert(mbinder_arity both = List.length os);
-  (pos, rel, both, os)
+  (* "Y" for typing, "S" for subtyping *)
+  let schema =
+    { sch_index = Sct.root
+    ; sch_posit = pos
+    ; sch_relat = rel
+    ; sch_judge = both
+    }
+  in
+  let (os0,tpos,k1,k2) = recompose ~general:false schema in
+  let name = if strict_eq_kind k1 (KProd []) then "Y" else "S" in
+  let fnum = Sct.new_function call_table name
+    (List.map Latex.ordinal_to_printer os0)
+  in
+  let schema = { schema with sch_index = fnum } in
+  (schema, os, (os0,tpos,k1,k2))
 
-exception BadRecompose
-
-let recompose : int list -> (int * int) list -> (ordinal, kind * kind) mbinder -> bool ->
-    (int * ordinal) list * ordinal list * kind * kind
-  =
-  fun pos rel both general ->
-    let res = ref [] in
-    let forbidden = ref [] in
-    let arity = mbinder_arity both in
-    let rec search i =
-      assert (i < arity && not (List.mem i !forbidden));
-      try
-        List.assoc i !res
-      with Not_found ->
-        forbidden := i::!forbidden;
-        let o =
-          if general then
-            try
-              let v = search (List.assoc i rel) in
-              new_ouvar ~upper:(constant_mbind 0 v) ()
-            with Not_found ->
-              new_ouvar ()
-          else
-             let o' = try search (List.assoc i rel) with Not_found -> OConv in
-             OLess(o',Gen(i,rel,both))
-        in
-        res := (i, o) :: !res;
-        forbidden := List.tl !forbidden;
-        o
-    in
-    let ovars = Array.init arity search in
-    let (k1, k2) = msubst both ovars in
-    let pos = List.map (fun i -> assert (i < arity); ovars.(i)) pos in
-    let os = Array.to_list (Array.mapi (fun i x -> (i,x)) ovars) in
-    Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
-        Format.fprintf ff "(%d,%a) "n (print_ordinal false) o) l) os;
-    os, pos, k1, k2
-
-(* FIXME: what to do with duplicates, probably OK *)
+(** Returns the list of unification variables.
+    When a variable has arguments, they should be identical
+    for all occurences. *)
 let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
   let r = ref [] in
   let adone = ref [] in
@@ -204,6 +248,7 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
   in
   fn k; !r
 
+(** Same as above for ordinal variables *)
 let ouvar_list : kind -> ouvar list = fun k ->
   let r = ref [] in
   let adone = ref [] in
@@ -239,7 +284,8 @@ let ouvar_list : kind -> ouvar list = fun k ->
   in
   fn k; !r
 
-(* Matching kind, used for printing only *)
+(** Matching kind and ordinals, used for printing only,
+    in order to factorise definittion. *)
 let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
   = fun kuvars ouvars p k ->
   let res = match full_repr p, full_repr k with

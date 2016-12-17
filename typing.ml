@@ -51,22 +51,19 @@ let check_rec
       Io.log_sub "IND %a < %a (%a)\n%!" (print_kind false) a (print_kind false) b
         print_positives ctxt;
       let pos = ctxt.positive_ordinals in
-      let (ipos, rel, both, os) = generalise pos a b in
-      let (os0,tpos,k1,k2) = recompose ipos rel both false in
-      let fnum = Sct.new_function ctxt.call_graphs "S"
-        (List.map Latex.ordinal_to_printer os0)
-      in
+      let (schema, os, (os0,tpos,k1,k2)) = generalise pos a b ctxt.call_graphs in
+      let fnum = schema.sch_index in
       add_call ctxt fnum os false;
       let ctxt = { ctxt with
-        sub_induction_hyp = (fnum, ipos, rel, both)::ctxt.sub_induction_hyp;
+        sub_induction_hyp = schema::ctxt.sub_induction_hyp;
         positive_ordinals = tpos;
         top_induction = (fnum, os0)
       } in
-      List.iter (function (index,pos0,rel0,both0) ->
+      List.iter (function schema' ->
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
-        let (ov,pos',a',b') = recompose pos0 rel0 both0 true in
+        let (ov,pos',a',b') = recompose schema' in
         Io.log_sub "TESTING %a = %a\n%a = %a\n\n%!"
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
@@ -75,8 +72,8 @@ let check_rec
                List.exists (eq_ordinal tpos o1) tpos) pos'
         then (
           Io.log_sub "By induction\n\n%!";
-          add_call ctxt index ov true;
-          raise (Induction_hyp index))
+          add_call ctxt schema'.sch_index ov true;
+          raise (Induction_hyp schema'.sch_index))
       ) (List.tl ctxt.sub_induction_hyp);
       Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
       (NewInduction (Some (fnum, k1, k2)), ctxt)
@@ -602,18 +599,16 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         in
         let l = if do_subsume then subsumption [] l else l in
         let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
-          let (pos, rel, both, os) =
-            try generalise ctxt.positive_ordinals (KProd []) c
+          let (schema, os,(os0, tpos, _, c0)) =
+            try generalise ctxt.positive_ordinals (KProd []) c ctxt.call_graphs
             with FailGeneralise -> assert false
           in
-          let (os0, tpos, _, c0) = recompose pos rel both false in
-          let fnum = Sct.new_function ctxt.call_graphs "Y"
-            (List.map Latex.ordinal_to_printer os0)
-          in
-          Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!" Sct.prInd fnum
-            (print_kind false) c (print_kind false) c0;
-          List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
-          if os <> [] then hyps_ptr := (fnum, pos, rel, both) :: !hyps_ptr;
+          let fnum = schema.sch_index in
+          Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!"
+            Sct.prInd fnum (print_kind false) c (print_kind false) c0;
+          List.iter (fun ctxt -> add_call ctxt fnum os false)
+            (ctxt::!subsumed);
+          if os <> [] then hyps_ptr := schema :: !hyps_ptr;
           let ctxt = { ctxt with top_induction = (fnum, os0);
                                  positive_ordinals = tpos} in
           Some (ctxt,t,c0,fnum,ptr)) l
@@ -652,11 +647,11 @@ and search_induction depth ctxt t a c0 hyps =
           do not search really the induction hypothesis *)
        raise Not_found
     | [] -> Io.log_typ "no induction hyp found\n%!"; raise Not_found
-    | (fnum, pos', rel', both) :: hyps ->
+    | schema :: hyps ->
        try
-         let (ov, pos, _, a) = recompose pos' rel' both true in
+         let (ov, pos, _, a) = recompose schema in
          Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
-           Sct.prInd fnum (print_kind false) a (print_kind false) c0
+           Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
            print_positives { ctxt with positive_ordinals = pos};
            (* need full subtype to rollback unification of variables if it fails *)
          let time = Timed.Time.save () in
@@ -670,20 +665,20 @@ and search_induction depth ctxt t a c0 hyps =
                  ctxt.positive_ordinals) pos)
              then raise Exit;
              Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-               Sct.prInd fnum (print_kind false) a (print_kind false) c0
+               Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
                print_positives { ctxt with positive_ordinals = pos};
              prf
            with Exit | Subtype_error _ | Error.Error _ when hyps <> [] (* to get a subtyping error message *) ->
              Timed.Time.rollback time;
              raise Exit
          in
-         add_call ctxt fnum ov true;
-         Typ_YH(fnum,prf)
+         add_call ctxt schema.sch_index ov true;
+         Typ_YH(schema.sch_index,prf)
        with Exit -> fn hyps
   in
   (* HEURISTIC: try induction hypothesis with more parameters first.
      useful for flatten2 in lib/list.typ *)
-  let hyps = List.sort (fun (_,_,_,both) (_,_,_,both') ->
+  let hyps = List.sort (fun {sch_judge = both} {sch_judge = both'} ->
     mbinder_arity both' - mbinder_arity both) hyps in
   fn hyps
 
