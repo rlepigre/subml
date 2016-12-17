@@ -149,7 +149,6 @@ and print_kind unfold wrap ff t =
   | KPrnt x -> match x with
   | FreeVr s -> pp_print_string ff s
   | DotPrj(x, s) -> fprintf ff "%s.%s" x s
-  | WithCl(x, s, k) -> fprintf ff "%a with %s = %a" pkind x s pkind k
 
 and pkind_def unfold ff kd =
   pp_print_string ff kd.tdef_tex_name;

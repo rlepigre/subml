@@ -60,8 +60,6 @@ and kprint =
   (** used to print variable only *)
   | DotPrj of string * string
   (** used for printing dot proj only *)
-  | WithCl of kind * string * kind
-  (** used for printing with clause only *)
 
 (** Type definition (user defined type). *)
 and type_def =
@@ -594,7 +592,7 @@ let generic_tcnst : kbox -> kbox -> tbox =
 (**{2                           Syntactic sugars                           }*)
 (****************************************************************************)
 
-(** dot projection *)
+(** dot projection: computing the witness *)
 let rec do_dot_proj t k s = match full_repr k with
   | KKExi(f) ->
      let c = KECst(t,f,true) in
@@ -602,21 +600,22 @@ let rec do_dot_proj t k s = match full_repr k with
   | k ->
      failwith "Illegal dot projection"
 
-let dot_proj : tbox -> string -> kbox = fun x s ->
-  let rec fn t = match t.elt with
-    | TVari x -> fn (in_pos t.pos (free_of x))
+(** dot projection: we compute the projection
+    if t is an epsilon or a definition.
+    We also deal with a special case for printing !) *)
+let dot_proj : tbox -> string -> kbox = fun t s ->
+  let fn t = match t.elt with
     | TDefi(d) -> do_dot_proj t d.ttype s
     | TCnst(_,a,_,_) -> do_dot_proj t a s
     | TPrnt x -> KPrnt (DotPrj(x,s)) (** printing only *)
     | _ -> failwith "Illegal dot projection"
   in
-  box_apply fn x
+  box_apply fn t
 
 (** with clause *)
 let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
   let rec fn a b =
     match full_repr a with
-    | KVari x -> fn (free_of x) b
     | KKExi(f) ->
        if binder_name f = s then subst f b else begin
          KKExi(binder_from_fun (binder_name f) (fun x ->
@@ -629,9 +628,7 @@ let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
        end
     | KFixM(OConv,f) -> fn (subst f (KFixM(OConv,f))) b
     | KFixN(OConv,f) -> fn (subst f (KFixN(OConv,f))) b
-    | KPrnt(p) as k -> KPrnt(WithCl(k,s,b))
     | k       ->
-       Io.log "KWith constraint on %s in %a\n%!" s (!fprint_kind false) k;
       failwith ("Illegal use of \"with\" on variable "^s^".")
   in
   box_apply2 fn a b

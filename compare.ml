@@ -424,7 +424,7 @@ and gen_occur :
 
 and ouvar_occur : ?safe_ordinals:ordinal array -> ouvar -> ordinal -> bool =
   fun ?(safe_ordinals=[||]) v o ->
-    (snd (gen_occur ~safe_ordinals ~ouvar:(fun w -> v.uvar_key = w.uvar_key) ()) o <> Non)
+    snd (gen_occur ~safe_ordinals ~ouvar:(fun w -> v.uvar_key = w.uvar_key) ()) o <> Non
 
 and ouvar_kind_occur : ?safe_ordinals:ordinal array -> ouvar -> kind -> bool =
   fun ?(safe_ordinals=[||]) v o ->
