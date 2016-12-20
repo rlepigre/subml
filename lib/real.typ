@@ -10,8 +10,6 @@ val d2i : D → Int = fun n →
   | S →  1
   | P → n1
 
-val dbl : Int → Int = fun n → add n n
-
 val rec average' : ∀α Int → IS(α+1) → IS(α+1) → IS(α) = fun c a b _ →
   (*let _ = print("c=");print_int c;print("\n") in*)
   let (a0,a') = a {} in
