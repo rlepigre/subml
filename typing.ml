@@ -82,6 +82,9 @@ let check_rec
 
 let fixpoint_depth = ref 1
 
+(** Used when we can not apply any induction hyp, to give a descent error message *)
+exception NoProof of typ_rule
+
 let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a0 b0 ->
   Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
     (print_term false) t (print_kind false) a0 (print_kind false) b0
@@ -344,7 +347,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             let p = subtype ctxt t (subst f a) b0 in
             if not (is_positive ctxt o) then raise Not_found;
             Sub_FixM_r(p)
-          with Not_found -> subtype_error "Subtyping clash (no rule apply)."
+          with Not_found -> subtype_error "Subtyping clash (no rule apply for left nu)."
         end
 
     | (_           , KFixM(o,f)  ) ->
@@ -355,7 +358,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             let p = subtype ctxt t a0 (subst f b) in
             if not (is_positive ctxt o) then raise Not_found;
             Sub_FixN_l(p)
-          with Not_found -> subtype_error "Subtyping clash (no rule apply)."
+          with Not_found -> subtype_error "Subtyping clash (no rule apply for right mu)."
         end
 
     (* Universal quantification over kinds. *)
@@ -569,9 +572,9 @@ and subsumption acc = function
             let prf = subtype ctxt t c' c in
             check_sub_proof prf;
             assert (not !forward);
-            subsumed' := ctxt :: !subsumed @ !subsumed';
+            subsumed' := (ptr, ctxt) :: !subsumed @ !subsumed';
             subsumption acc tail
-          with Exit | Subtype_error _ | Error.Error _ ->
+          with Exit | Error _ ->
             try
               if not (List.for_all (fun o1 ->
                 List.exists (strict_eq_ordinal o1) ctxt'.positive_ordinals)
@@ -580,9 +583,9 @@ and subsumption acc = function
               let prf = subtype ctxt' t' c c' in
               check_sub_proof prf;
               forward := true;
-              subsumed := ctxt' :: !subsumed' @ !subsumed;
+              subsumed := (ptr', ctxt') :: !subsumed' @ !subsumed;
               gn acc' tail'
-            with Exit | Subtype_error _ | Error.Error _ ->
+            with Exit | Error _ ->
               gn (head'::acc') tail'
      in gn [] acc
 
@@ -590,7 +593,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
       if depth = 0 && !remains <> [] then
          (* the fixpoint was unrolled as much as allowed, and
             no applicable induction hyp was found. *)
-        type_error "can not relate termination depth"
+        Typ_TFix(proof_ptr)
       else
         (* otherwise we unroll once more, and type-check *)
         let l = List.map (fun (ctxt,c,ptr) ->
@@ -606,8 +609,9 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
           let fnum = schema.sch_index in
           Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!"
             Sct.prInd fnum (print_kind false) c (print_kind false) c0;
-          List.iter (fun ctxt -> add_call ctxt fnum os false)
-            (ctxt::!subsumed);
+          List.iter (fun (ptr', ctxt) -> add_call ctxt fnum os false;
+                                         if ptr != ptr' then ptr' := (fnum,(t,c,Typ_TFix(ptr))))
+            ((ptr,ctxt)::!subsumed);
           if os <> [] then hyps_ptr := schema :: !hyps_ptr;
           let ctxt = { ctxt with top_induction = (fnum, os0);
                                  positive_ordinals = tpos} in
@@ -619,7 +623,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         in
         remains := [];
 
-        List.iter (fun (ctxt,t,c,fnum,ptr) -> ptr := (Sct.root, type_check ctxt t c)) l;
+        List.iter (fun (ctxt,t,c,fnum,ptr) -> ptr := (fnum, type_check ctxt t c)) l;
         if !remains = [] then
           Typ_TFix(proof_ptr)
         else
@@ -638,15 +642,16 @@ and search_induction depth ctxt t a c0 hyps =
     try Timed.pure_test (fun () ->
       let prf = subtype ctxt t a c0 in
       check_sub_proof prf; true) ()
-    with Subtype_error _ | Error _ -> true
+    with Error _ -> false
   in
+  let errProof = ref (Typ_Error "Can not find induction hyp") in
 
   let rec fn = function
     | _ when depth > 0 ->
        (* If the depth is not zero, only apply the above heuristic, but
           do not search really the induction hypothesis *)
-       raise Not_found
-    | [] -> Io.log_typ "no induction hyp found\n%!"; raise Not_found
+       raise (NoProof !errProof)
+    | [] -> Io.log_typ "no induction hyp found\n%!"; raise (NoProof !errProof)
     | schema :: hyps ->
        try
          let (ov, pos, _, a) = recompose schema in
@@ -655,23 +660,21 @@ and search_induction depth ctxt t a c0 hyps =
            print_positives { ctxt with positive_ordinals = pos};
            (* need full subtype to rollback unification of variables if it fails *)
          let time = Timed.Time.save () in
-         let prf =
-           try
-             let prf = subtype ctxt t a c0 in
-             check_sub_proof prf;
-             Io.log_sub "eq ok\n%!";
-             if not (List.for_all (fun o1 ->
-               List.exists (eq_ordinal ctxt.positive_ordinals o1)
-                 ctxt.positive_ordinals) pos)
-             then raise Exit;
-             Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-               Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-               print_positives { ctxt with positive_ordinals = pos};
-             prf
-           with Exit | Subtype_error _ | Error.Error _ when hyps <> [] (* to get a subtyping error message *) ->
-             Timed.Time.rollback time;
-             raise Exit
-         in
+         let prf = subtype ctxt t a c0 in
+         (try
+           check_sub_proof prf;
+           Io.log_sub "eq ok\n%!";
+           if not (List.for_all (fun o1 ->
+             List.exists (eq_ordinal ctxt.positive_ordinals o1)
+               ctxt.positive_ordinals) pos)
+           then raise Exit;
+           Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
+             Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
+             print_positives { ctxt with positive_ordinals = pos}
+         with (Exit | Error _) as e ->
+            if e <> Exit then errProof := Typ_YH(schema.sch_index,prf);
+           Timed.Time.rollback time;
+           raise Exit);
          add_call ctxt schema.sch_index ov true;
          Typ_YH(schema.sch_index,prf)
        with Exit -> fn hyps
@@ -725,10 +728,10 @@ and check_fix ctxt t do_subsume depth f c0 =
   (* we reach this point when we are call from type_check inside
      breadth_fitst above *)
   | Some ({contents = hyps }) ->
-    try search_induction depth ctxt t a c0 hyps with Not_found ->
+    try search_induction depth ctxt t a c0 hyps with NoProof rule ->
       (* No inductive hypothesis applies, we add a new induction hyp and
          record the unproved judgment with the other *)
-      let ptr = ref (Sct.root, dummy_proof) in
+      let ptr = ref (Sct.root, (t,c0,rule)) in
       Io.log_typ "adding remain at %d %a\n%!" depth (print_kind false) c0;
       remains := (ctxt, c0, ptr) :: !remains;
       Typ_TFix(ptr)

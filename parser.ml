@@ -483,14 +483,14 @@ let check pos flag f a =
     | Error.Error l as e ->
         begin
           match flag with
-          | MustPass -> Io.err "%a\n%!" Error.display_errors l; raise e
+          | MustPass -> raise e
           | MustFail
           | CanFail  -> raise OK
         end
     | Loop_error p as e ->
         begin
           match flag with
-          | MustPass -> Io.err "LOOP at %a\n%!" print_position p; raise e
+          | MustPass -> raise e
           | MustFail
           | CanFail  -> raise OK
         end
@@ -631,7 +631,7 @@ let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
                               false
   | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
     false
-  | Error.Error l          -> Io.err "%a" Error.display_errors l; false
+  | Error.Error l          -> Io.err "%a\n%!" Error.display_errors l; false
   | Loop_error p           -> Io.err "Oups, loops at %a\n%!" print_position p; false
   | e                      -> Io.err "Uncaught exception %s\n%!"
                                 (Printexc.to_string e);

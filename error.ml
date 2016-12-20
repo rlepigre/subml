@@ -103,8 +103,8 @@ let check_typ_proof p =
   | Some l -> raise (Error l)
 
 let display_error ch = function
-  | Typ(t,k)     -> printf "TYP %a : %a\n" (!fprint_term false) t (!fprint_kind false) k
-  | Sub(t,k1,k2) -> printf "SUB %a ⊂ %a\n" (!fprint_kind false) k1 (!fprint_kind false) k2
-  | Msg(m)       -> printf "MSG %s" m
+  | Typ(t,k)     -> fprintf ch "TYP %a : %a\n" (!fprint_term false) t (!fprint_kind false) k
+  | Sub(t,k1,k2) -> fprintf ch "SUB %a ⊂ %a\n" (!fprint_kind false) k1 (!fprint_kind false) k2
+  | Msg(m)       -> fprintf ch "MSG %s" m
 
 let display_errors ch = List.iter (display_error ch)

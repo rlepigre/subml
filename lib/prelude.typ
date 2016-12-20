@@ -29,6 +29,11 @@ val map_option : ∀X ∀Y (X → Y) → Option(X) → Option(Y) = fun f o →
   | None   → None
   | Some x → Some(f x)
 
+val map_option2 : ∀X ∀Y (X → Option(Y)) → Option(X) → Option(Y) = fun f o →
+  case o of
+  | None   → None
+  | Some x → f x
+
 val from_option : ∀X Option(X) → X → X = fun o d →
   case o of
   | None    → d
