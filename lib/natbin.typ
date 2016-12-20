@@ -2,7 +2,6 @@
 
 type FBin(α) = μα K [ End | Zero of K | One of K ] (* allowed trailing zero *)
 type Bin  = FBin(∞)
-type EBin = [ Error | End | Zero of Bin | One of Bin ]
 type RBin = [ Minus of Bin | End | Zero of Bin | One of Bin ] (*relative numbers*)
 
 
@@ -24,7 +23,7 @@ val 8  : Bin = succ 7
 val 9  : Bin = succ 8
 val 10 : Bin = succ 9
 
-val times2 : Bin → Bin = fun x →
+val times2 : ∀α FBin(α) → FBin(α+1) = fun x →
   case x of | End      → End
             | x        → Zero x
 
@@ -192,49 +191,48 @@ val rec add_aux : Carry → Bin → Bin → Bin = fun c x y →
 
 val add_bin : Bin → Bin → Bin = add_aux Zero
 
-val catch : (Bin → EBin) → EBin → EBin =
-  fun f x → case x of Error → Error | x → f x
+type EBin = Option(Bin)
+type EFBin(α) = Option(FBin(α))
 
-val eOne : EBin → EBin =
-  fun x → case x of Error → Error | x → One x
+val eOne : ∀α EFBin(α) → EFBin(α+1) = map_option (fun x → One x)
 
-val epred : Bin → EBin =
+val rec epred : ∀α FBin(α) → EFBin(α) =
 fun x →
   case x of
-  | End    → Error
-  | One n  → times2 n
-  | Zero n → eOne (pred n)
+  | End    → None
+  | One n  → Some (times2 n)
+  | Zero n → eOne (epred n)
 
-val rec sub_aux : Carry → Bin → Bin → EBin = fun c x y →
+val rec sub_aux : ∀α∀β Carry → FBin(α) → FBin(β) → EFBin(α) = fun c x y →
   case y of
   | End → (
     case c of
-      Zero → x
+      Zero → Some x
     | One  → epred x)
   | Zero y' → (
     case x of
-    | End → Error
+    | End → None
     | Zero x' → (
       case c of
-      | Zero → catch times2 (sub_aux Zero x' y')
+      | Zero → map_option times2 (sub_aux Zero x' y')
       | One  → eOne (sub_aux One x' y'))
     | One x' → (
       case c of
       | Zero → eOne (sub_aux Zero x' y')
-      | One  → catch times2 (sub_aux Zero x' y')))
+      | One  → map_option times2 (sub_aux Zero x' y')))
   | One y' → (
     case x of
-    | End → Error
+    | End → None
     | Zero x' → (
       case c of
       | Zero → eOne (sub_aux One x' y')
-      | One  → catch times2 (sub_aux One x' y'))
+      | One  → map_option times2 (sub_aux One x' y'))
     | One x' → (
       case c of
-      | Zero → catch times2 (sub_aux Zero x' y')
+      | Zero → map_option times2 (sub_aux Zero x' y')
       | One  → eOne (sub_aux One x' y')))
 
-val sub = sub_aux Zero
+val sub : ∀α∀β FBin(α) → FBin(β) → EFBin(α) = sub_aux Zero
 
 val 20 = add_bin 10 10
 
@@ -252,15 +250,52 @@ val rec divmod : Bin → Bin → Bin × Bin =
       End     → (End, End)
     | Zero x' → let r = divmod x' q in
                  (case sub (times2 r.2) q of
-                    Error → (times2 r.1, times2 r.2)
-                  | x → (One r.1, x))
+                    None → (times2 r.1, times2 r.2)
+                  | Some x → (One r.1, x))
     | One x'  → let r = divmod x' q in (* x' = r.1 * q + r.2 ⇒ 2x'+ 1 = 2 r.1 q + 2 r.2 + 1  *)
-                 (case sub (One r.2) q of
-                    Error → (times2 r.1, One r.2)
-                  | x → (One r.1, x))
+                 (case (sub:Bin → Bin → EBin) (One r.2) q of (* FIXME *)
+                    None → (times2 r.1, One r.2)
+                  | Some x → (One r.1, x))
 
 val div : Bin → Bin → Bin = fun x p → (divmod x p).1
 val mod : Bin → Bin → Bin = fun x p → (divmod x p).2
+
+val rec min_aux : ∀α∀β FBin(α) → FBin(β) → FBin(α) × Bool = fun x y →
+  case x of
+  | Zero x →
+    (case y of
+     | Zero y → let (z,b) = min_aux x y in (Zero z, b)
+     | One y → let (z,b) = min_aux x y in ((if b then Zero z else One z), b)
+     | End → (End, fls))
+  | One x →
+    (case y of
+     | Zero y → let (z,b) = min_aux x y in ((if b then One z else Zero z), b)
+     | One y → let (z,b) = min_aux x y in (One z, b)
+     | End → (End, fls))
+  | End → (End, tru)
+
+val min : ∀α FBin(α) → FBin(α) → FBin(α) = fun x y → (min_aux x y).1
+
+val rec gcd : Bin → Bin → EBin =
+  fun x y →
+    case x of
+    | End →
+      (case y of
+      | End → None
+      | y → Some y)
+    | Zero x' →
+      (case y of
+      | End  → Some x
+      | Zero y' → map_option times2 (gcd x' y')
+      | One y' → gcd x' y)
+    | One x' →
+      (case y of
+      | End  → Some x
+      | One y' →
+         (case sub x' y' of
+         | None →  map_option2 (gcd x) (sub y' x')
+         | Some z → gcd z y)
+      | Zero y' → gcd x y')
 
 (*
 Termination of the following functions fails
@@ -301,26 +336,4 @@ val rec fact : Bin → Bin = fun x →
   | x:Bin' → mul x (fact (pred x))
 
 val test = fact 20
-
-
-val rec gcd : Bin → Bin → EBin =
-  fun x y →
-    case x of
-      End →
-      (case y of
-        End → Error
-      | y → y)
-    | Zero x' →
-      (case y of
-        End  → x
-      | Zero y' → catch times2 (gcd x' y')
-      | One y → gcd x' (One y))
-    | One x' →
-      (case y of
-        End  → x
-      | One y' →
-         (case sub x' y' of
-           Error → catch (gcd x) (sub y' x')
-         | z → gcd y z)
-      | Zero y' → gcd x y')
 *)
