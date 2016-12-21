@@ -413,7 +413,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   with Subtype_error e -> (t, a0, b0, None, Sub_Error e)
          | Occur_check -> (t, a0, b0, None, Sub_Error "Occur_check"))
 
-
+(** A boolean test for subtyping *)
+and is_subtype ctxt t a b =
+  Timed.pure_test (fun () ->
+    (** protect the call graph *)
+    let ctxt = { ctxt with call_graphs = Sct.copy ctxt.call_graphs} in
+    let prf = subtype ctxt t a b in
+    try check_sub_proof prf; true with Error _ -> false) ()
 
 and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
@@ -434,22 +440,13 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                        | TDefi d -> d.ttype
                        | _ -> assert false (* NOTE: Only variable allowed by parsing *))
          in
-         (* TODO: share code with try_fold_def *)
          let oargs = Array.init (mbinder_arity b) (fun n -> new_ouvar ()) in
          let b = msubst b oargs in
          let kargs = Array.init (mbinder_arity b) (fun n -> new_kuvar ()) in
          let k' = msubst b kargs in
          let t = mmsubst bt oargs kargs in
-         let x = match x with
-           | None -> t
-           | Some t -> t
-         in
-         let ok =
-           let ctxt = { ctxt with call_graphs = Sct.copy ctxt.call_graphs} in
-           let prf = subtype ctxt x k k' in
-           try check_sub_proof prf; true with Error _ -> false
-         in
-         if ok then
+         let x = from_opt x t in
+         if is_subtype ctxt x k k' then
            let p = type_check ctxt t c in
            Typ_KAbs(p) (* FIXME *)
          else
@@ -568,29 +565,22 @@ and subsumption acc = function
      let rec gn acc' = function
        | [] -> subsumption (head::List.rev acc') tail
        | (ctxt',t',c',ptr',subsumed' as head')::tail' ->
-          try
-            if not (List.for_all (fun o1 ->
-              List.exists (strict_eq_ordinal o1) ctxt.positive_ordinals)
-                      ctxt'.positive_ordinals)
-            then raise Exit;
-            let prf = subtype ctxt t c' c in
-            check_sub_proof prf;
+          if (List.for_all (fun o1 ->
+            List.exists (strict_eq_ordinal o1) ctxt.positive_ordinals)
+                ctxt'.positive_ordinals) && is_subtype ctxt t c' c
+          then begin
             assert (not !forward);
             subsumed' := (ptr, ctxt) :: !subsumed @ !subsumed';
             subsumption acc tail
-          with Exit | Error _ ->
-            try
-              if not (List.for_all (fun o1 ->
+          end else if (List.for_all (fun o1 ->
                 List.exists (strict_eq_ordinal o1) ctxt'.positive_ordinals)
-                        ctxt.positive_ordinals)
-              then raise Exit;
-              let prf = subtype ctxt' t' c c' in
-              check_sub_proof prf;
-              forward := true;
-              subsumed := (ptr', ctxt') :: !subsumed' @ !subsumed;
-              gn acc' tail'
-            with Exit | Error _ ->
-              gn (head'::acc') tail'
+                  ctxt.positive_ordinals) && is_subtype ctxt' t' c c'
+          then begin
+            forward := true;
+            subsumed := (ptr', ctxt') :: !subsumed' @ !subsumed;
+            gn acc' tail'
+          end else
+            gn (head'::acc') tail'
      in gn [] acc
 
 and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
@@ -639,15 +629,7 @@ and search_induction depth ctxt t a c0 hyps =
     (print_kind false) c0 print_positives ctxt;
   (* NOTE: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS,
      can we do better ? *)
-  let _ =
-    (* We protect the context to avoid adding calls to the sct *)
-    let ctxt = { ctxt with
-      call_graphs = Sct.copy ctxt.call_graphs} in
-    try Timed.pure_test (fun () ->
-      let prf = subtype ctxt t a c0 in
-      check_sub_proof prf; true) ()
-    with Error _ -> false
-  in
+  let _ = is_subtype ctxt t a c0 in
   let errProof = ref (Typ_Error "Can not find induction hyp") in
 
   let rec fn = function
