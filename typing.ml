@@ -439,13 +439,17 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let b = msubst b oargs in
          let kargs = Array.init (mbinder_arity b) (fun n -> new_kuvar ()) in
          let k' = msubst b kargs in
-         let lkargs = List.map (function KUVar(u,_) -> u | _ -> assert false)
-           (Array.to_list kargs) in
-         let loargs = List.map (function OUVar(u,_) -> u | _ -> assert false)
-           (Array.to_list oargs) in
-         if match_kind lkargs loargs k' k
-         then
-           let t = mmsubst bt oargs kargs in
+         let t = mmsubst bt oargs kargs in
+         let x = match x with
+           | None -> t
+           | Some t -> t
+         in
+         let ok =
+           let ctxt = { ctxt with call_graphs = Sct.copy ctxt.call_graphs} in
+           let prf = subtype ctxt x k k' in
+           try check_sub_proof prf; true with Error _ -> false
+         in
+         if ok then
            let p = type_check ctxt t c in
            Typ_KAbs(p) (* FIXME *)
          else
