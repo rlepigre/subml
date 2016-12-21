@@ -359,8 +359,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   match r with
   | Typ_Coer(p1,p2)   -> if is_refl p1 then typ2proof p2 else
                          binaryN "$\\subset$" c (sub2proof p1) (typ2proof p2)
-  | Typ_KAbs(p)       -> unaryN "$\\Lambda$" c (typ2proof p)
-  | Typ_OAbs(p)       -> unaryN "$\\Lambda_o$" c (typ2proof p)
+  | Typ_Nope(p)       -> typ2proof p
   | Typ_Defi(p)       -> unaryC "Def" c p
   | Typ_Prnt(p)       -> unaryC "$print$" c p
   | Typ_Cnst(p)       -> unaryC "$=$" c p

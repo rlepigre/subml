@@ -219,8 +219,7 @@ and sub_prf =
 (** Typing proof *)
 and typ_rule =
   | Typ_Coer   of sub_prf * typ_prf
-  | Typ_KAbs   of typ_prf
-  | Typ_OAbs   of typ_prf
+  | Typ_Nope   of typ_prf (* For syntactic sugar *)
   | Typ_Defi   of sub_prf
   | Typ_Prnt   of sub_prf
   | Typ_Cnst   of sub_prf

@@ -448,7 +448,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let x = from_opt x t in
          if is_subtype ctxt x k k' then
            let p = type_check ctxt t c in
-           Typ_KAbs(p) (* FIXME *)
+           Typ_Nope(p)
          else
            type_error "Type matching failed"
 

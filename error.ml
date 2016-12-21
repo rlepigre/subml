@@ -66,8 +66,7 @@ and check_typ_proof (t, k, r) =
     | Typ_Func_i (p2, p1)
     | Typ_DSum_i (p2, p1) -> check_typ_proof p1 &&& check_sub_proof p2
 
-    | Typ_KAbs   p
-    | Typ_OAbs   p
+    | Typ_Nope   p
     | Typ_TFix { contents = (_,p) }
     | Typ_Prod_e p        -> check_typ_proof p
 

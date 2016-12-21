@@ -370,8 +370,7 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   let c = sprintf "%s : %s" (t2s t) (k2s k) in
   match r with
   | Typ_Coer(p1,p2)   -> binaryN "⊆" c (sub2proof p1) (typ2proof p2)
-  | Typ_KAbs(p)       -> unaryN "Λ" c (typ2proof p)
-  | Typ_OAbs(p)       -> unaryN "Λo" c (typ2proof p)
+  | Typ_Nope(p)       -> typ2proof p
   | Typ_Defi(p)       -> hyp ""
   | Typ_Prnt(p)       -> unaryN "print" c (sub2proof p)
   | Typ_Cnst(p)       -> unaryN "=" c (sub2proof p)
