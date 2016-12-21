@@ -46,6 +46,7 @@ include "hard.typ"
 include "lazy_nat.typ"
 include "flot.typ"
 include "infer.typ"
+include "ordinal.typ"
 
 (* Test files *)
 include "dotproj.typ"
