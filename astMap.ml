@@ -25,32 +25,35 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
   let map_ordinal: ?occ:occur -> ordinal -> obox  = map_ordinal ~fkind ~ford in
   fkind occ k map_kind map_ordinal (
     function
-    | KFunc(a,b) -> kfunc (map_kind ~occ:(neg occ) a) (map_kind ~occ b)
-    | KProd(fs)  -> kprod (List.map (fun (l,a) -> (l, map_kind ~occ a)) fs)
-    | KDSum(cs)  -> kdsum (List.map (fun (c,a) -> (c, map_kind ~occ a)) cs)
-    | KKAll(f)   -> kkall (binder_name f) (fun x -> map_kind ~occ (subst f (KVari x)))
-    | KKExi(f)   -> kkexi (binder_name f) (fun x -> map_kind ~occ (subst f (KVari x)))
-    | KOAll(f)   -> koall (binder_name f) (fun x -> map_kind ~occ (subst f (OVari x)))
-    | KOExi(f)   -> koexi (binder_name f) (fun x -> map_kind ~occ (subst f (OVari x)))
-    | KFixM(o,f) ->
-       kfixm (binder_name f) (map_ordinal ~occ o)
-         (fun x -> map_kind  ~occ (subst f (KVari x)))
-    | KFixN(o,f) ->
-       kfixn (binder_name f) (map_ordinal ~occ:(neg occ) o)
-         (fun x -> map_kind  ~occ (subst f (KVari x)))
-    | KVari(x)   -> box_of_var x
-    | KDefi(d,o,a) -> kdefi d (Array.mapi (fun i -> map_ordinal ~occ:(compose d.tdef_ovariance.(i) occ)) o)
-                              (Array.mapi (fun i -> map_kind ~occ:(compose d.tdef_kvariance.(i) occ)) a)
+    | KFunc(a,b)   -> kfunc (map_kind ~occ:(neg occ) a) (map_kind ~occ b)
+    | KProd(fs)    -> kprod (List.map (fun (l,a) -> (l, map_kind ~occ a)) fs)
+    | KDSum(cs)    -> kdsum (List.map (fun (c,a) -> (c, map_kind ~occ a)) cs)
+    | KKAll(f)     -> kkall (binder_name f) (fun x -> map_kind ~occ (subst f (KVari x)))
+    | KKExi(f)     -> kkexi (binder_name f) (fun x -> map_kind ~occ (subst f (KVari x)))
+    | KOAll(f)     -> koall (binder_name f) (fun x -> map_kind ~occ (subst f (OVari x)))
+    | KOExi(f)     -> koexi (binder_name f) (fun x -> map_kind ~occ (subst f (OVari x)))
+    | KFixM(o,f)   -> kfixm (binder_name f) (map_ordinal ~occ o)
+                        (fun x -> map_kind  ~occ (subst f (KVari x)))
+    | KFixN(o,f)   -> kfixn (binder_name f) (map_ordinal ~occ:(neg occ) o)
+                        (fun x -> map_kind  ~occ (subst f (KVari x)))
+    | KVari(x)     -> box_of_var x
+    | KDefi(d,o,a) -> let fn i =
+                        map_ordinal ~occ:(compose d.tdef_ovariance.(i) occ)
+                      in
+                      let gn i =
+                        map_kind ~occ:(compose d.tdef_kvariance.(i) occ)
+                      in
+                      kdefi d (Array.mapi fn o) (Array.mapi gn a)
     | KMRec _
-    | KNRec _    -> assert false
-    | KUVar(u,os)-> kuvar u (Array.map (map_ordinal ~occ:All) os)
-    | KUCst(t,f,cl) ->
-       if cl then box k else
-         kucst (binder_name f) (box t) (fun x -> map_kind ~occ:All (subst f (KVari x)))
-    | KECst(t,f,cl) ->
-       if cl then box k else
-         kecst (binder_name f) (box t) (fun x -> map_kind ~occ:All (subst f (KVari x)))
-    | KPrnt _ -> box k)
+    | KNRec _      -> assert false
+    | KUVar(u,os)  -> kuvar u (Array.map (map_ordinal ~occ:All) os)
+    | KUCst(_,_,c)
+    | KECst(_,_,c) when c -> box k (* binder is closed *)
+    | KUCst(t,f,_) -> kucst (binder_name f) (box t)
+                        (fun x -> map_kind ~occ:All (subst f (KVari x)))
+    | KECst(t,f,_) -> kecst (binder_name f) (box t)
+                        (fun x -> map_kind ~occ:All (subst f (KVari x)))
+    | KPrnt _      -> box k)
 
 
 (** Mapping for ordinals *)

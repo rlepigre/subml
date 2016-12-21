@@ -204,12 +204,14 @@ let rec bind_both ?(from_generalise=false) os x =
 (** [bind_fn ?(from_generalise=false) os x k]
     Bind an array [os] of ordinals in the kind [k]. [x] is the array
     of bindlib variables to be used *)
-and bind_fn ?(from_generalise=false) os x k = (fst (bind_both ~from_generalise os x):?occ:occur -> kind -> kbox) ~occ:Pos k
+and bind_fn ?(from_generalise=false) os x k =
+  (fst (bind_both ~from_generalise os x):?occ:occur -> kind -> kbox) ~occ:Pos k
 
 (** [bind_gn ?(from_generalise=false) len os x o]
     Bind an array [os] of ordinals in the ordinal [o]. [x] is the array
     of bindlib variables to be used *)
-and bind_gn ?(from_generalise=false) os x o = (snd (bind_both ~from_generalise os x):?occ:occur -> ordinal -> obox) ~occ:Pos o
+and bind_gn ?(from_generalise=false) os x o =
+  (snd (bind_both ~from_generalise os x):?occ:occur -> ordinal -> obox) ~occ:Pos o
 
 (** binding ordinals in one ordinal *)
 let obind_ordinals : ordinal array -> ordinal -> (ordinal, ordinal) mbinder = fun os o ->
