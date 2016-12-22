@@ -23,13 +23,13 @@ type schema =
   { sch_index : Sct.index (** index of the schema in the sct call graph *)
   ; sch_posit : int list  (** the index of positive ordinals *)
   ; sch_relat : (int * int) list (** relation between ordinals *)
-  ; sch_judge : (ordinal, kind * kind) mbinder (** the kinds of the judgement.
+  ; sch_judge : (ordi, kind * kind) mbinder (** the kinds of the judgement.
                                   for typing, only the second kind is used *)
   }
 
 (** the type of a particular judgement, ordinal being witnesses or
     ordinal variables *)
-type particular = (int * ordinal) list * ordinal list * kind * kind
+type particular = (int * ordi) list * ordi list * kind * kind
 
 (** function to apply a schema. I
     - If [general = false], it replace the ordinals with appropriate
@@ -67,7 +67,7 @@ let recompose : ?general:bool -> schema -> particular =
     let pos = List.map (fun i -> assert (i < arity); ovars.(i)) pos in
     let os = Array.to_list (Array.mapi (fun i x -> (i,x)) ovars) in
     Io.log_sub "recompose os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
-      Format.fprintf ff "(%d,%a) "n (print_ordinal false) o) l) os;
+      Format.fprintf ff "(%d,%a) "n (print_ordi false) o) l) os;
 
     os, pos, k1, k2
 
@@ -89,8 +89,8 @@ let recompose : ?general:bool -> schema -> particular =
     instance of the schema with the witnesses that is needed to
     prove the schema.
  *)
-let generalise : ordinal list -> kind -> kind -> Sct.call_table ->
-  schema * (int * ordinal) list * particular
+let generalise : ordi list -> kind -> kind -> Sct.call_table ->
+  schema * (int * ordi) list * particular
   = fun pos k1 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
@@ -101,7 +101,7 @@ let generalise : ordinal list -> kind -> kind -> Sct.call_table ->
      The variable is the future variable to be bound using bind_fn
      The boolean ref is to know if the variable occurs in the formula *)
 
-  let res : (ordinal * (int * ovar * bool ref)) list ref = ref [] in
+  let res : (ordi * (int * ovar * bool ref)) list ref = ref [] in
   (* ocunter for the index above *)
   let i = ref 0 in
   (* This table will keep the relation (o, o') when o = OLess(o',_) *)
@@ -111,7 +111,7 @@ let generalise : ordinal list -> kind -> kind -> Sct.call_table ->
     match o with
     | OLess(o',w) ->
        (try
-          let (n,v,k) = assoc_ordinal o !res in
+          let (n,v,k) = assoc_ordi o !res in
           k := !k || keep;
           (n,o)
         with
@@ -190,7 +190,7 @@ let generalise : ordinal list -> kind -> kind -> Sct.call_table ->
     (fun ff l -> List.iter (fun (a,b) ->
     Format.fprintf ff "(%d,%d) "a b) l) rel;
   Io.log_sub "generalise os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
-    Format.fprintf ff "(%d,%a) "n (print_ordinal false) o) l) os;
+    Format.fprintf ff "(%d,%a) "n (print_ordi false) o) l) os;
 
   assert(mbinder_arity both = List.length os);
   (* "Y" for typing, "S" for subtyping *)
@@ -204,7 +204,7 @@ let generalise : ordinal list -> kind -> kind -> Sct.call_table ->
   let (os0,tpos,k1,k2) = recompose ~general:false schema in
   let name = if strict_eq_kind k1 (KProd []) then "Y" else "S" in
   let fnum = Sct.new_function call_table name
-    (List.map Latex.ordinal_to_printer os0)
+    (List.map Latex.ordi_to_printer os0)
   in
   let schema = { schema with sch_index = fnum } in
   (schema, os, (os0,tpos,k1,k2))
@@ -212,7 +212,7 @@ let generalise : ordinal list -> kind -> kind -> Sct.call_table ->
 (** Returns the list of unification variables.
     When a variable has arguments, they should be identical
     for all occurences. *)
-let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
+let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
   let r = ref [] in
   let adone = ref [] in
   let rec fn k =
@@ -233,7 +233,7 @@ let kuvar_list : kind -> (kuvar * ordinal array) list = fun k ->
        begin
          match !(u.uvar_state) with
          | Free -> ()
-         | Sum l | Prod l ->
+         | DSum l | Prod l ->
             List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) OConv))) l
        end;
        if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
@@ -311,17 +311,17 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
   | KFixM(o1,f), KFixM(o2,g)
   | KFixN(o1,f), KFixN(o2,g) ->
      let v = new_kvari (binder_name f) in
-     match_ordinal ouvars o1 o2 &&
+     match_ordi ouvars o1 o2 &&
        match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
   | KVari(v1), KVari(v2) -> compare_variables v1 v2 = 0
   | p, k -> strict_eq_kind p k
   in
   res
 
-and match_ordinal : ouvar list -> ordinal -> ordinal -> bool = fun ouvars p o ->
+and match_ordi : ouvar list -> ordi -> ordi -> bool = fun ouvars p o ->
   let res = match orepr p, orepr o with
     | OUVar(uo,_), o when List.memq uo ouvars ->
        set_ouvar uo (constant_mbind 0 o); true
-    | OSucc(p), OSucc(o) -> match_ordinal ouvars p o
-    | p, k -> strict_eq_ordinal p k in
+    | OSucc(p), OSucc(o) -> match_ordi ouvars p o
+    | p, k -> strict_eq_ordi p k in
   res

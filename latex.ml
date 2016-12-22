@@ -11,7 +11,7 @@ open LibTools
 
 let break_hint = ref 0
 
-let convert_ordinal = function
+let convert_ordi = function
   | "α" -> "\\alpha"
   | "β" -> "\\beta"
   | "γ" -> "\\gamma"
@@ -19,38 +19,38 @@ let convert_ordinal = function
   | "ε" -> "\\varepsilon"
   | s   -> s
 
-let rec print_ordinal unfold ff o =
+let rec print_ordi unfold ff o =
   let o = orepr o in
   match o with
   | OConv   -> pp_print_string ff "\\infty"
   | OUVar _ -> fprintf ff "??"
-  | OSucc o -> fprintf ff "%a+1" (print_ordinal unfold) o
+  | OSucc o -> fprintf ff "%a+1" (print_ordi unfold) o
   | o       ->
-     let n = search_ordinal_tbl o in
+     let n = search_ordi_tbl o in
      match o with
      | OLess(o,In(t,a)) as o0 when unfold -> (* TODO: print the int *)
-        fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
+        fprintf ff "{\\kappa_{{<}%a}}" (print_ordi false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
      | OLess(o,NotIn(t,a)) as o0 when unfold -> (* TODO: print the int *)
-        fprintf ff "{\\kappa_{{<}%a}}" (print_ordinal false) o;
+        fprintf ff "{\\kappa_{{<}%a}}" (print_ordi false) o;
         fprintf ff "(%a \\in %a)" (print_term false 0) t
           (print_kind false false) (subst a o0)
      | OLess(o,Gen(_,_,_)) when unfold -> (* TODO: print the int *)
         fprintf ff "{\\kappa_{GEN}}"
      | OLess(o,_) when unfold ->
-       fprintf ff "{\\alpha_{%d<%a}}" n (print_ordinal false) o
+       fprintf ff "{\\alpha_{%d<%a}}" n (print_ordi false) o
      | OLess(_) -> fprintf ff "{\\kappa_{%d}}" n
-     | OVari(x) -> fprintf ff "%s" (convert_ordinal (name_of x))
+     | OVari(x) -> fprintf ff "%s" (convert_ordi (name_of x))
      | OConv | OSucc _ | OUVar _ -> assert false
 
-and print_index_ordinal ff o = match orepr o with
+and print_index_ordi ff o = match orepr o with
   | OConv -> ()
-  | o -> fprintf ff "_{%a}" (print_ordinal false) o
+  | o -> fprintf ff "_{%a}" (print_ordi false) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
-  let pordi = print_ordinal false in
+  let pordi = print_ordi false in
   let pkindw = print_kind false true in
   let t = (if unfold then fun x -> x else !ftry_fold_def) (repr t) in
   match t with
@@ -99,25 +99,25 @@ and print_kind unfold wrap ff t =
       if wrap then pp_print_string ff "(";
       let x = new_ovari (binder_name f) in
       fprintf ff "\\forall %s.%a"
-        (convert_ordinal (name_of x)) pkind (subst f (free_of x));
+        (convert_ordi (name_of x)) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
   | KOExi(f)  ->
       if wrap then pp_print_string ff "(";
       let x = new_ovari (binder_name f) in
       fprintf ff "\\exists%s.%a"
-        (convert_ordinal (name_of x)) pkind (subst f (free_of x));
+        (convert_ordi (name_of x)) pkind (subst f (free_of x));
       if wrap then pp_print_string ff ")"
   | KFixM(o,b) ->
       if wrap then pp_print_string ff "(";
       let x = new_kvari (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\mu%a %s %a" print_index_ordinal o (name_of x) pkind a;
+      fprintf ff "\\mu%a %s %a" print_index_ordi o (name_of x) pkind a;
       if wrap then pp_print_string ff ")"
   | KFixN(o,b) ->
       if wrap then pp_print_string ff "(";
       let x = new_kvari (binder_name b) in
       let a = subst b (free_of x) in
-      fprintf ff "\\nu%a %s %a" print_index_ordinal o (name_of x) pkind a;
+      fprintf ff "\\nu%a %s %a" print_index_ordi o (name_of x) pkind a;
       if wrap then pp_print_string ff ")"
   | KDefi(td,os,ks) ->
       if unfold then
@@ -141,7 +141,7 @@ and print_kind unfold wrap ff t =
        fprintf ff "?%i" u.uvar_key
      else
        fprintf ff "?%i(%a)" u.uvar_key
-         (print_list print_index_ordinal ", ") (Array.to_list os)
+         (print_list print_index_ordi ", ") (Array.to_list os)
   | KMRec(p,a) -> fprintf ff "%a \\land %a" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
   | KNRec(p,a) -> fprintf ff "%a \\lor %a" pkind a
@@ -327,8 +327,8 @@ let print_epsilon_tbls ch =
       (name_of x) (print_term false) u symbol (print_kind false) k)
     !epsilon_type_tbl;
   List.iter (fun (o,n) ->
-    fprintf ch "%a &= %a\\\\\n" (print_ordinal false) o
-    (print_ordinal true) o) !ordinal_tbl
+    fprintf ch "%a &= %a\\\\\n" (print_ordi false) o
+    (print_ordi true) o) !ordi_tbl
 
 (****************************************************************************
  *                              Proof printing                              *
@@ -336,7 +336,7 @@ let print_epsilon_tbls ch =
 
 type latex_output =
   | Kind    of int * bool * kind
-  | KindDef of int * type_def
+  | KindDef of int * kdef
   | Term    of int * bool * term
   | Text    of string
   | List    of latex_output list
@@ -473,6 +473,6 @@ let output = output true
 
 let ignore_latex = ref false
 
-let ordinal_to_printer (_,o) =
-  (fun ff -> Print.print_ordinal false ff o),
-  (fun ff ->       print_ordinal false ff o)
+let ordi_to_printer (_,o) =
+  (fun ff -> Print.print_ordi false ff o),
+  (fun ff ->       print_ordi false ff o)

@@ -12,9 +12,9 @@ open Bindlib
     use Mapping functions to bind some variables in a kind or ordinal *)
 
 type self_kind = ?occ:occur -> kind -> kbox
-type self_ord  = ?occ:occur -> ordinal -> obox
+type self_ord  = ?occ:occur -> ordi -> obox
 type map_kind  = occur -> kind -> self_kind -> self_ord -> (kind -> kbox) -> kbox
-type map_ord   = occur -> ordinal -> self_kind -> self_ord -> (ordinal -> obox) -> obox
+type map_ord   = occur -> ordi -> self_kind -> self_ord -> (ordi -> obox) -> obox
 
 (** Mapping for kinds *)
 let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
@@ -22,8 +22,8 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
         ?(ford =fun _ o _ _ defo -> defo (orepr o))
         ?(occ=Pos) k ->
   let map_kind: ?occ:occur -> kind -> kbox = map_kind ~fkind ~ford in
-  let map_ordinal: ?occ:occur -> ordinal -> obox  = map_ordinal ~fkind ~ford in
-  fkind occ k map_kind map_ordinal (
+  let map_ordi: ?occ:occur -> ordi -> obox  = map_ordi ~fkind ~ford in
+  fkind occ k map_kind map_ordi (
     function
     | KFunc(a,b)   -> kfunc (map_kind ~occ:(neg occ) a) (map_kind ~occ b)
     | KProd(fs)    -> kprod (List.map (fun (l,a) -> (l, map_kind ~occ a)) fs)
@@ -32,13 +32,13 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
     | KKExi(f)     -> kkexi (binder_name f) (fun x -> map_kind ~occ (subst f (KVari x)))
     | KOAll(f)     -> koall (binder_name f) (fun x -> map_kind ~occ (subst f (OVari x)))
     | KOExi(f)     -> koexi (binder_name f) (fun x -> map_kind ~occ (subst f (OVari x)))
-    | KFixM(o,f)   -> kfixm (binder_name f) (map_ordinal ~occ o)
+    | KFixM(o,f)   -> kfixm (binder_name f) (map_ordi ~occ o)
                         (fun x -> map_kind  ~occ (subst f (KVari x)))
-    | KFixN(o,f)   -> kfixn (binder_name f) (map_ordinal ~occ:(neg occ) o)
+    | KFixN(o,f)   -> kfixn (binder_name f) (map_ordi ~occ:(neg occ) o)
                         (fun x -> map_kind  ~occ (subst f (KVari x)))
     | KVari(x)     -> box_of_var x
     | KDefi(d,o,a) -> let fn i =
-                        map_ordinal ~occ:(compose d.tdef_ovariance.(i) occ)
+                        map_ordi ~occ:(compose d.tdef_ovariance.(i) occ)
                       in
                       let gn i =
                         map_kind ~occ:(compose d.tdef_kvariance.(i) occ)
@@ -46,7 +46,7 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
                       kdefi d (Array.mapi fn o) (Array.mapi gn a)
     | KMRec _
     | KNRec _      -> assert false
-    | KUVar(u,os)  -> kuvar u (Array.map (map_ordinal ~occ:All) os)
+    | KUVar(u,os)  -> kuvar u (Array.map (map_ordi ~occ:All) os)
     | KUCst(_,_,c)
     | KECst(_,_,c) when c -> box k (* binder is closed *)
     | KUCst(t,f,_) -> kucst (binder_name f) (box t)
@@ -57,24 +57,24 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
 
 
 (** Mapping for ordinals *)
-and map_ordinal : ?fkind:map_kind -> ?ford:map_ord -> self_ord
+and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
   = fun ?(fkind=fun _ k _ _ defk -> defk (repr k))
         ?(ford=fun _ o _ _ defo -> defo (orepr o))
         ?(occ=Pos) o ->
   let map_kind = map_kind ~fkind ~ford in
-  let map_ordinal = map_ordinal ~fkind ~ford in
-  ford occ o map_kind map_ordinal (
+  let map_ordi = map_ordi ~fkind ~ford in
+  ford occ o map_kind map_ordi (
     function
     | OVari x -> box_of_var x
-    | OSucc o -> osucc (map_ordinal ~occ o)
-    | OLess(o,In(t,w))  -> oless_In (map_ordinal ~occ o) (box t)
+    | OSucc o -> osucc (map_ordi ~occ o)
+    | OLess(o,In(t,w))  -> oless_In (map_ordi ~occ o) (box t)
        (vbind mk_free_ovari (binder_name w) (fun x -> map_kind ~occ:All (subst w (OVari x))))
-    | OLess(o,NotIn(t,w))  -> oless_NotIn (map_ordinal ~occ o) (box t)
+    | OLess(o,NotIn(t,w))  -> oless_NotIn (map_ordi ~occ o) (box t)
        (vbind mk_free_ovari (binder_name w) (fun x -> map_kind ~occ:All (subst w (OVari x))))
     | OLess(o,Gen(i,r,p))  ->
-       oless_Gen (map_ordinal ~occ o) i r
+       oless_Gen (map_ordi ~occ o) i r
          (mvbind mk_free_ovari (mbinder_names p) (fun xs ->
            let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in
            box_pair (map_kind ~occ:All k1) (map_kind ~occ:All k2)))
-    | OUVar(u,os) -> ouvar u (Array.map (map_ordinal ~occ:All) os)
+    | OUVar(u,os) -> ouvar u (Array.map (map_ordi ~occ:All) os)
     | OConv -> box o)

@@ -36,9 +36,9 @@ let int_of_chars : char list -> int = fun s ->
   List.fold_left f 0 (List.rev s)
 
 let string_of_chars : char list -> string = fun s ->
-  let s = Array.of_list s in
-  let res = String.make (Array.length s) ' ' in
-  Array.iteri (fun i c -> res.[i] <- c) s; res
+  let b = Buffer.create 10 in
+  List.iter (Buffer.add_char b) s;
+  Buffer.contents b
 
 (*{2 Bindlib extension }*)
 

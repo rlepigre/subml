@@ -39,7 +39,7 @@ exception Occur_check
       arguemt. Therefore it is not safe to assume that the unification
       variable is related to k after seting
 *)
-let safe_set_kuvar : occur -> kuvar -> kind from_ords -> ordinal array -> unit =
+let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
   fun side v k os ->
     assert(!(v.uvar_val) = None);
   (* side = Pos means we are checking k < KUVar(u,os)
@@ -48,13 +48,13 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ords -> ordinal array -> unit =
   let k =
     match !(v.uvar_state) with
     | Free -> k
-    | Sum l -> mbind_assoc kdsum v.uvar_arity l
+    | DSum l -> mbind_assoc kdsum v.uvar_arity l
     (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
     | Prod l -> mbind_assoc kprod v.uvar_arity l
   in
   assert (mbinder_arity k = v.uvar_arity);
   let k =
-    match kuvar_occur ~safe_ordinals:os v (msubst k (Array.make v.uvar_arity OConv)) with
+    match kuvar_occur ~safe_ordis:os v (msubst k (Array.make v.uvar_arity OConv)) with
     | Non -> k
     | Pos -> constant_mbind v.uvar_arity (
       KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))
@@ -81,7 +81,7 @@ let index os x u =
   let len = Array.length os in
   let rec fn i =
     if i >= len then raise Not_found else (
-      if strict_eq_ordinal os.(i) u then x.(i) else
+      if strict_eq_ordi os.(i) u then x.(i) else
         fn (i+1))
   in
   fn 0
@@ -96,7 +96,7 @@ let rec bind_both ?(from_generalise=false) os x =
        so if unsafe, subtyping/eq_kind/leq_kind will fail *)
     | KUVar(u,os') ->
        let os'' = List.filter (fun o ->
-         not (Array.exists (strict_eq_ordinal o) os') && not (kuvar_ord_occur u o))
+         not (Array.exists (strict_eq_ordi o) os') && not (kuvar_ord_occur u o))
          (Array.to_list os)
        in
        (* nothing to do *)
@@ -108,7 +108,7 @@ let rec bind_both ?(from_generalise=false) os x =
          let is_recursive =
            match !(u.uvar_state) with
            | Free -> Non
-           | Sum l | Prod l -> List.fold_left (fun acc (_,k) ->
+           | DSum l | Prod l -> List.fold_left (fun acc (_,k) ->
              combine acc (kuvar_occur u (msubst k os'))) Non l
          in
          if is_recursive <> Non then
@@ -122,8 +122,8 @@ let rec bind_both ?(from_generalise=false) os x =
          let state =
            match !(u.uvar_state) with
            | Free -> Free
-           | Sum l ->
-              Sum (List.map (fun (s,f) ->
+           | DSum l ->
+              DSum (List.map (fun (s,f) ->
                 (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
                   bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
            | Prod l ->
@@ -155,7 +155,7 @@ let rec bind_both ?(from_generalise=false) os x =
       match o with
       | OUVar(u,os') ->
          let os'' = List.filter (fun o ->
-           not (Array.exists (strict_eq_ordinal o) os') &&
+           not (Array.exists (strict_eq_ordi o) os') &&
              (not (ouvar_occur u o)))
            (Array.to_list os)
          in
@@ -199,7 +199,7 @@ let rec bind_both ?(from_generalise=false) os x =
       in
       if Bindlib.is_closed res then box o else res
   in
-  (map_kind ~fkind ~ford, map_ordinal ~fkind ~ford)
+  (map_kind ~fkind ~ford, map_ordi ~fkind ~ford)
 
 (** [bind_fn ?(from_generalise=false) os x k]
     Bind an array [os] of ordinals in the kind [k]. [x] is the array
@@ -211,25 +211,25 @@ and bind_fn ?(from_generalise=false) os x k =
     Bind an array [os] of ordinals in the ordinal [o]. [x] is the array
     of bindlib variables to be used *)
 and bind_gn ?(from_generalise=false) os x o =
-  (snd (bind_both ~from_generalise os x):?occ:occur -> ordinal -> obox) ~occ:Pos o
+  (snd (bind_both ~from_generalise os x):?occ:occur -> ordi -> obox) ~occ:Pos o
 
 (** binding ordinals in one ordinal *)
-let obind_ordinals : ordinal array -> ordinal -> (ordinal, ordinal) mbinder = fun os o ->
+let obind_ordis : ordi array -> ordi -> (ordi, ordi) mbinder = fun os o ->
   let len = Array.length os in
   unbox (mbind mk_free_ovari (Array.make len "α") (fun x ->
     bind_gn os x o))
 
 (** binding ordinals in one kind *)
-let bind_ordinals : ordinal array -> kind -> (ordinal, kind) mbinder = fun os k ->
+let bind_ordis : ordi array -> kind -> (ordi, kind) mbinder = fun os k ->
   let len = Array.length os in
   unbox (mbind mk_free_ovari (Array.make len "α") (fun x -> bind_fn os x k))
 
 (** binding of one ordinal in one kind *)
-let bind_ouvar : ouvar -> kind -> (ordinal, kind) binder = fun v k ->
+let bind_ouvar : ouvar -> kind -> (ordi, kind) binder = fun v k ->
   unbox (bind mk_free_ovari "α" (fun x ->
     bind_fn [|OUVar(v,[||])|] [|x|] k))
 
 (** [bind_ordinals] and [obind_ordinals] are needed in compare,
      hence we set the pointers defined in compare *)
-let _ = fbind_ordinals := bind_ordinals
-let _ = fobind_ordinals := obind_ordinals
+let _ = fbind_ordis := bind_ordis
+let _ = fobind_ordis := obind_ordis

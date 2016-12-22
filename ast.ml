@@ -1,4 +1,7 @@
-(** {3 Basic definition of the Ast of types and programs } *)
+(** Abstract syntax tree. Definition of the internal representation of SubML's
+    types, terms and syntactic ordinals in an abstract syntax tree (AST).
+    @author Christophe Raffalli <christophe.raffalli\@univ-savoie.fr>
+    @author Rodolphe Lepigre <rodolphe.lepigre\@univ-savoie.fr> *)
 
 open Bindlib
 open Subset
@@ -6,182 +9,187 @@ open Format
 open Position
 open LibTools
 
-(** {2         AST for kinds (or types), ordinals and terms              }*)
+(****************************************************************************)
+(** {2 Main types for the AST}                                              *)
+(****************************************************************************)
+
+(** Occurence markers for variables. *)
 type occur =
-  (** Occurence markers for variables. *)
-  | Non
-  (** The variable does not occur. *)
-  | Pos
-  (** The variable occurs only positively. *)
-  | Neg
-  (** The variable occurs only negatively. *)
-  | All
-  (** The variable occurs both positively and negatively. *)
+  | Non (** The variable does not occur. *)
+  | Pos (** The variable occurs only positively. *)
+  | Neg (** The variable occurs only negatively. *)
+  | All (** The variable occurs both positively and negatively. *)
   | Reg of int * occur array
   (** Special constructor for constructing the variance of definitions. *)
 
 (** Ast of kinds (or types). *)
 type kind =
-  (** Main type constructors *)
-  | KVari of kind variable
-  (** Type variable. *)
-  | KFunc of kind * kind
-  (** Function type: A ⇒ B. *)
-  | KProd of (string * kind) list
-  (** Product (record) type: {l1 : A1 ; ... ; ln : An}. *)
-  | KDSum of (string * kind) list
-  (** Sum (variant) type: [C1 of A1 | ... | Cn of An]. *)
-  | KKAll of (kind, kind) binder
-  | KKExi of (kind, kind) binder
-  (** Quantifiers over a type: ∀/∃X A. *)
-  | KOAll of (ordinal, kind) binder
-  | KOExi of (ordinal, kind) binder
-  (** Quantifiers over an ordinal: ∀/∃o A. *)
-  | KFixM of ordinal * (kind, kind) binder
-  | KFixN of ordinal * (kind, kind) binder
-  (** Least and greatest fixpoint: μα X A, να X A. *)
-  | KDefi of type_def * ordinal array * kind array
-  (** User-defined type applied to arguments: T(A1,...,An). *)
-  | KUCst of term * (kind, kind) binder * bool
-  | KECst of term * (kind, kind) binder * bool
-  (** Constants (a.k.a. epsilon) - used for subtyping.
-      the boolean tells if the term is closed - i.e. no bindlib variables *)
-  (* Special constructors (not accessible to user) *)
-  | KUVar of kuvar * ordinal array
-  (** Unification variables - used for typechecking. *)
-  | KMRec of ordinal set * kind
-  | KNRec of ordinal set * kind
-  (** Ordinal conjunction and disjunction *)
-  | KPrnt of kprint
-  (** Used for printing only *)
+  (* Main type constructors. *)
 
+  | KVari of kind variable        (** Free type variable. *)
+  | KFunc of kind * kind          (** Arrow type. *)
+  | KProd of (string * kind) list (** Record (or product) type. *)
+  | KDSum of (string * kind) list (** Sum (of Variant) type. *)
+  | KKAll of kkbinder             (** Universal quantifier over a type. *)
+  | KKExi of kkbinder             (** Corresponding existential quantifier. *)
+  | KOAll of okbinder             (** Universal quantifier over an ordinal. *)
+  | KOExi of okbinder             (** Corresponding existential quantifier. *)
+  | KFixM of ordi * kkbinder      (** Least fixpoint with ordinal size. *)
+  | KFixN of ordi * kkbinder      (** Greatest fixpoint with ordinal size. *)
+  | KDefi of kdefi                (** User-defined type with its arguments. *)
+
+  (* Witnesses (a.k.a. epsilons) used with quantifiers over types. Note that
+     the boolean is [true] if the term is closed. *)
+
+  | KUCst of term * kkbinder * bool (** Universal witness. *)
+  | KECst of term * kkbinder * bool (** Existential witness. *)
+
+  (* Special constructors (not accessible to user). *)
+
+  | KUVar of kuvar * ordi array   (** Unification variable. *)
+  | KMRec of ordi set * kind      (** Ordinal conjunction. FIXME wrong name *)
+  | KNRec of ordi set * kind      (** Ordinal disjunction. FIXME wrong name *)
+  | KPrnt of kprint               (** Special pretty-printing constructor. *)
+
+(** [Bindlib] binder for an ordinal in a kind. *)
+and okbinder = (ordi, kind) binder
+
+(** [Bindlib] binder for a kind in a kind. *)
+and kkbinder = (kind, kind) binder
+
+(** Fully applied type definition with its ordinal and kind arguments. *)
+and kdefi = kdef * ordi array * kind array
+
+(** Pretty-printing markers for free variables and dot-projection. *)
 and kprint =
-  | FreeVr of string
-  (** used to print variable only *)
-  | DotPrj of string * string
-  (** used for printing dot proj only *)
+  | FreeVr of string           (** Used to print a variable. *)
+  | DotPrj of string * string  (** Used to print a dot projection. *)
 
-(** Type definition (user defined type). *)
-and type_def =
-  { tdef_name     : string
-  (** Name of the type constructor. *)
-  ; tdef_tex_name : string
-  (** LateX Name of the type constructor. *)
-  ; tdef_oarity   : int
-  (** Number of ordinal parameters. *)
-  ; tdef_karity   : int
-  (** Number of type parameters. *)
-  ; tdef_ovariance : occur array
-  (** Variance of the ordinal parameters *)
-  ; tdef_kvariance : occur array
-  (** Variance of the type parameters *)
-  ; tdef_value    : kind from_kinds from_ords
-  (** Definition of the constructor. *) }
+(** User-defined type with ordinal and kind parameters. *)
+and kdef =
+  { tdef_name      : string      (** Name of the type constructor. *)
+  ; tdef_tex_name  : string      (** LateX Name of the type constructor. *)
+  ; tdef_oarity    : int         (** Number of ordinal parameters. *)
+  ; tdef_karity    : int         (** Number of type parameters. *)
+  ; tdef_ovariance : occur array (** Variance of the ordinal parameters *)
+  ; tdef_kvariance : occur array (** Variance of the type parameters *)
+  ; tdef_value     : okmkbinder  (** Definition of the constructor. *) }
 
-and 'a from_ords  = (ordinal, 'a) mbinder
-(** general bindlib types for 'a parametrised by ordinals *)
+(** [Bindlib] type for a kind parametrised by ordinals and kinds. *)
+and okmkbinder = kind from_kinds from_ordis
+
+(** [Bindlib] type for a term parametrised by ordinals and kinds. *)
+and okmtbinder = term from_kinds from_ordis
+
+(** General [Bindlib] types for ['a] parametrised by ordinals. *)
+and 'a from_ordis  = (ordi, 'a) mbinder
+
+(** General [Bindlib] types for ['a] parametrised by kinds. *)
 and 'a from_kinds = (kind  , 'a) mbinder
-(** general bindlib types for 'a parametrised by types *)
 
-(** Unification variable identified by a key and possibly a value. *)
+(** Unification variable type managed using a union-find algorithm. *)
 and ('a,'b) uvar =
-  { uvar_key : int
-  (* Unique key identifying the variable. *)
-  ; uvar_val : 'a from_ords option ref
-  (** Value of the variable managed as in a union-find algorithm. *)
-  ; uvar_state : 'b
-  (** user extra field *)
-  ; uvar_arity : int
-  (** arity of the unification variables *)
-  }
+  { uvar_key   : int                      (** Unique key (or UID). *)
+  ; uvar_val   : 'a from_ordis option ref (** Value of the variable. *)
+  ; uvar_state : 'b                       (** User-defined state. *)
+  ; uvar_arity : int                      (** Arity of the variable. *) }
 
+(** Unification variable for a kind. *)
 and kuvar = (kind, kuvar_state ref) uvar
-(** unification variables for types *)
 
+(** State of a unification variable for kinds, useful for the inference of sum
+    types and product types. *)
 and kuvar_state =
-  (** state of a type variables, use to infer sum and product types *)
-  | Free
-  | Sum  of (string * kind from_ords) list
-  | Prod of (string * kind from_ords) list
+  | Free                                    (** No constraint. *)
+  | DSum of (string * kind from_ordis) list (** Has the given constructors. *)
+  | Prod of (string * kind from_ordis) list (** Has the given fields. *)
 
 (** Abstract syntax tree for ordinals. *)
-and ordinal =
-  | OConv
-  (** Ordinal large enough to ensure convergence of all fixpoints. *)
-  | OSucc of ordinal
-  (** Succesor *)
-  | OLess of ordinal * ord_wit
-  (** Ordinal created by the μl and νr rules. OLess(o,w) means
-      an ordinal less that o such that w holds. zero is
-      this does not exists *)
-  | OUVar of ouvar * ordinal array
-  (** Unification variables for ordinals. *)
-  | OVari of ordinal variable
-  (** Ordinal variable. *)
+and ordi =
+  (* Main type constructors. *)
 
-and ouvar = (ordinal, (ordinal from_ords) option * (ordinal from_ords) option) uvar
+  | OVari of ordi variable  (** Free ordinal variable. *)
+  | OConv                   (** Biggest ordinal (makes fixpoints converge). *)
+  | OSucc of ordi           (** Succesor of an ordinal. *)
 
-(** ordinal constraints to build above [OLess] witness *)
+  (* Witnesses (a.k.a. epsilons) used in the μl and νr rules. [OLess(o,w)] is
+     an ordinal (strictly) smaller that [o] such that [w] holds, or zero if no
+     such ordinal exists. Contrary to kind witnesses, ordinal witnesses are
+     not accessible to the user. *)
+
+  | OLess of ordi * ord_wit (** Ordinal witness. *)
+
+  | OUVar of ouvar * ordi array (** Unification variables for ordinals. *)
+
+(** Unification variable for an ordinal. *)
+and ouvar = (ordi, (ordi from_ordis) option * (ordi from_ordis) option) uvar
+
+(** Ordinal constraints carried by ordinal witnesses. *)
 and ord_wit =
-  | In     of term * (ordinal, kind) binder
-  (** OLess(o',In(t,f)) means o < o' s.t. t in f(o) *)
-  | NotIn  of term * (ordinal, kind) binder
-  (** OLess(o',In(t,f)) means o < o' s.t. t not in f(o) *)
-  | Gen    of int * (int * int) list * (kind * kind) from_ords
+  | In     of term * (ordi, kind) binder
+  (** [OLess(o',In(t,f))] refers to an ordinal [o] smaller than [o'] and such
+     that [t] has type [Bindlib.subst f o]. *)
+
+  | NotIn  of term * (ordi, kind) binder
+  (** [OLess(o',NotIn(t,f))] refers to an ordinal [o] smaller than [o'] and
+     such that [t] does not have type [Bindlib.subst f o]. *)
+
+  | Gen    of int * (int * int) list * (kind * kind) from_ordis
   (** If o_i = OLess(o'_i,Gen(i,rel,(o |-> k1,k2)))
       means o_1 < o'_1, ..., o_n < o'_n s.t.
       - (o_i < o_j) if (i,j) in rel
-      - and k1(o_1,\dots,o_n) < k2(o_1,\dots,o_n) is false *)
+      - and k1(o_1,\dots,o_n) < k2(o_1,\dots,o_n) is false. FIXME clarify. *)
 
-(** Abstract syntax tree for terms, all indexed with position *)
+(** Abstract syntax tree for terms, with a source code position. *)
 and term = term' position
 
+(** Abstract syntax tree for terms. *)
 and term' =
-  (** {2 Main term constructors } ****)
-  | TVari of term' variable
-  (** Free λ-variable. *)
-  | TAbst of kind option * (term', term) binder
-  (** λ-abstraction. *)
-  | TAppl of term * term
-  (** Application. *)
-  | TReco of (string * term) list
-  (** Record. *)
-  | TProj of term * string
-  (** Projection. *)
-  | TCons of string * term
-  (** Variant. *)
-  | TCase of term * (string * term) list * term option
-  (** Case analysis. *)
-  | TDefi of value_def
-  (** Print a string (side effect) and behave like the term. *)
+  (* Main term constructors. *)
+
+  | TVari of term' variable                            (** Free λ-variable. *)
+  | TAbst of kind option * (term', term) binder        (** λ-abstraction. *)
+  | TAppl of term * term                               (** Application. *)
+  | TReco of (string * term) list                      (** Record. *)
+  | TProj of term * string                             (** Projection. *)
+  | TCons of string * term                             (** Variant. *)
+  | TCase of term * (string * term) list * term option (** Case analysis. *)
+  | TDefi of tdef                                      (** Defined term. *)
   | TFixY of bool * int * (term', term) binder
-  (** Fixpoint combinator, the boolean and integer are indications for the
-      termination checker:
-      - the boolean enable subsumption of induction hypothesis
-      - the integer indicates the number of unrolling to build
-        the induction hypothesis *)
-  | TCoer of term * kind
-  (** Type coercion: not used in the semantics, only used for type-checking *)
-  | TMLet of kind from_kinds from_ords * term option * term from_kinds from_ords
-  (** Matching over type to access the typing environment *)
-  (** {2 Special constructors (not accessible to user) } **)
+  (** Fixpoint combinator. the boolean and integer are indications for the
+      termination checker. The former enables subsumption of induction
+      hypothesis and the latter indicates the number of unrolling to build
+      the induction hypothesis. *)
+
+  (* Type annotations. They are not part of the semantics, and they are only
+     used to guide the type-checking algorithm. *)
+
+  | TCoer of term * kind                               (** Type coercion. *)
+  | TMLet of okmkbinder * term option * okmtbinder
+  (** Matching over a type to access the typing environment. *)
+
+  (* Special constructors (not accessible to user). *)
+
   | TCnst of (term', term) binder * kind * kind * bool
-  (** Constant (a.k.a. epsilon). Cnst(t[x],A,B) = u is a witness u (i.e. a term)
-     that u has type A and such that t[u] is not in B. *)
+  (** Witness (a.k.a. epsilon). [Cnst(f,a,b)] denotes a term [u] of type [a]
+      such that [Bindlib.subst f u] does not have type [b]. *)
   | TPrnt of string
-  (** For printing only *)
+  (** Print a message on the screen. Note that this operation performs is a
+      side-effect. *)
 
 (** Term definition (user defined term) *)
-and value_def =
-  { name       : string      (** Name of the term. *)
-  ; tex_name   : string      (** Latex name of the term. *)
-  ; value      : term        (** Evaluated term. *)
-  ; orig_value : term        (** Original term (not evaluated). *)
-  ; ttype      : kind        (** Type of the term. *)
-  ; proof      : typ_prf     (** Typing proof. *)
+and tdef =
+  { name       : string         (** Name of the term. *)
+  ; tex_name   : string         (** Latex name of the term. *)
+  ; value      : term           (** Evaluated term. *)
+  ; orig_value : term           (** Original term (not evaluated). *)
+  ; ttype      : kind           (** Type of the term. *)
+  ; proof      : typ_prf        (** Typing proof. *)
   ; calls_graph: Sct.call_table (** SCT instance. *) }
 
-(** {2 Definition of the ast for proof trees. } *)
+(****************************************************************************)
+(** {2 Representation of proof trees}                                       *)
+(****************************************************************************)
 
 (** Subtyping proof *)
 and sub_rule =
@@ -273,7 +281,8 @@ let rec repr : bool -> kind -> kind = fun unfold -> function
      let f = binder_from_fun (binder_name f) aux in
      let a' = KFixN(OConv, f) in
      repr unfold a'
-  | KDefi({tdef_value = v}, os, ks) when unfold -> repr unfold (msubst (msubst v os) ks)
+  | KDefi({tdef_value = v}, os, ks) when unfold ->
+      repr unfold (msubst (msubst v os) ks)
   | KMRec(p,k) when Subset.is_empty p -> repr unfold k
   | KNRec(p,k) when Subset.is_empty p -> repr unfold k
   | k -> k
@@ -307,35 +316,36 @@ let fprint_term : (bool -> formatter -> term -> unit) ref =
 let fprint_kind : (bool -> formatter -> kind -> unit) ref =
   ref (fun _ -> assert false)
 
-let fprint_ordinal : (bool -> formatter -> ordinal -> unit) ref =
+let fprint_ordi : (bool -> formatter -> ordi -> unit) ref =
   ref (fun _ -> assert false)
 
 let ftry_fold_def : (kind -> kind) ref =
   ref (fun _ -> assert false)
 
 (****************************************************************************)
-(** {2               Frequently used types and functions                   }*)
+(** {2 Frequently used types and functions}                                 *)
 (****************************************************************************)
 
 (** Value and type environments. *)
-type val_env = (string, value_def) Hashtbl.t
-type typ_env = (string, type_def ) Hashtbl.t
+type val_env = (string, tdef) Hashtbl.t
+type typ_env = (string, kdef ) Hashtbl.t
 
 let typ_env : typ_env = Hashtbl.create 17
 let val_env : val_env = Hashtbl.create 17
 let verbose : bool ref = ref false
 
 (****************************************************************************)
-(**{2                     Bindbox type shortcuts.                          }*)
+(** {2 Bindbox type shortcuts}                                              *)
 (****************************************************************************)
+
 type tvar = term' variable
 type tbox = term bindbox
 
 type kvar = kind variable
 type kbox = kind bindbox
 
-type ovar = ordinal variable
-type obox = ordinal bindbox
+type ovar = ordi variable
+type obox = ordi bindbox
 
 (** Kind variable management. *)
 let mk_free_kvari : kind variable -> kind =
@@ -352,14 +362,14 @@ let new_tvari : string -> term' variable =
   new_var mk_free_tvari
 
 (** Ordinal variable management. *)
-let mk_free_ovari : ovar -> ordinal =
+let mk_free_ovari : ovar -> ordi =
   fun o -> OVari(o)
 
 let new_ovari : string -> ovar =
   new_var mk_free_ovari
 
 (****************************************************************************)
-(**{2                    Smart constructors for ordinals                   }*)
+(** {2 Smart constructors for ordinals}                                     *)
 (****************************************************************************)
 
 let oconv = box OConv
@@ -376,7 +386,7 @@ let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
 let oless_Gen o i rel p = box_apply2 (fun o p -> OLess(o,Gen(i,rel,p))) o p
 
 (****************************************************************************)
-(**{2                     Smart constructors for kinds                     }*)
+(** {2 Smart constructors for kinds}                                        *)
 (****************************************************************************)
 
 let kvari : string -> kbox =
@@ -411,7 +421,7 @@ let koexi : string -> (ovar -> kbox) -> kbox =
   fun x f ->
     box_apply (fun b -> KOExi(b)) (vbind mk_free_ovari x f)
 
-let kdefi : type_def -> obox array -> kbox array -> kbox =
+let kdefi : kdef -> obox array -> kbox array -> kbox =
   fun td os ks ->
     let fn td os ks = KDefi(td,os,ks) in
     box_apply3 fn (box td) (box_array os) (box_array ks)
@@ -467,7 +477,7 @@ let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
   (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar)
 
 (****************************************************************************)
-(**{2                     Definition of widely used types                  }*)
+(** {2 Definition of widely used types}                                     *)
 (****************************************************************************)
 
 let bot : kind =
@@ -477,7 +487,7 @@ let top : kind =
   unbox (kkexi "X" (fun x -> box_of_var x))
 
 (****************************************************************************)
-(**{2              Functional constructors with position for terms         }*)
+(** {2 Functional constructors with position for terms}                     *)
 (****************************************************************************)
 
 let tcoer_p : pos -> term -> kind -> term =
@@ -504,7 +514,7 @@ let tcons_p : pos -> string -> term -> term =
 let tcase_p : pos -> term -> (string * term) list -> term option -> term =
   fun p t cs cd -> in_pos p (TCase(t,cs,cd))
 
-let tdefi_p : pos -> value_def -> term =
+let tdefi_p : pos -> tdef -> term =
   fun p v -> in_pos p (TDefi(v))
 
 let tprnt_p : pos -> string -> term =
@@ -513,12 +523,11 @@ let tprnt_p : pos -> string -> term =
 let tfixy_p : pos -> bool -> int -> (term', term) binder -> term =
   fun p b n t -> in_pos p (TFixY(b,n,t))
 
-let tmlet_p : pos -> kind from_kinds from_ords -> term option ->
-              term from_kinds from_ords -> term =
+let tmlet_p : pos -> okmkbinder -> term option -> okmtbinder -> term =
   fun p b x t -> in_pos p (TMLet(b,x,t))
 
 (****************************************************************************)
-(** {2                   Smart constructors for terms                      }*)
+(** {2 Smart constructors for terms}                                        *)
 (****************************************************************************)
 
 let tcoer : pos -> tbox -> kbox -> tbox =
@@ -554,7 +563,7 @@ let tcase : pos -> tbox -> (string * tbox) list -> tbox option -> tbox =
 let tcons : pos -> string -> tbox -> tbox =
   fun p c t -> box_apply (fun t -> tcons_p p c t) t
 
-let tdefi : pos -> value_def -> tbox =
+let tdefi : pos -> tdef -> tbox =
   fun p vd -> box (tdefi_p p vd)
 
 let tprnt : pos -> string -> tbox =
@@ -588,7 +597,7 @@ let generic_tcnst : kbox -> kbox -> tbox =
     tcnst (unbox f) a b
 
 (****************************************************************************)
-(**{2                           Syntactic sugars                           }*)
+(** {2 Syntactic sugars}                                                    *)
 (****************************************************************************)
 
 (** dot projection: computing the witness *)
@@ -633,7 +642,7 @@ let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
   box_apply2 fn a b
 
 (****************************************************************************)
-(**{2                          variance function                           }*)
+(** {2 Variance function}                                                   *)
 (****************************************************************************)
 
 let combine oa ob =

@@ -37,13 +37,13 @@ exception Interrupted of pos
 let interrupted : pos -> 'a =
   fun p -> raise (Interrupted p)
 
-type induction_node = Sct.index * (int * ordinal) list
+type induction_node = Sct.index * (int * ordi) list
 type subtype_ctxt =
   { sub_induction_hyp : schema list
   ; fix_induction_hyp : fix_induction list
   ; top_induction     : induction_node
   ; call_graphs       : Sct.call_table
-  ; positive_ordinals : ordinal list }
+  ; positive_ordis : ordi list }
 
 (** induction hypothesis for typing recursive programs *)
 and fix_induction =
@@ -62,7 +62,7 @@ let empty_ctxt () =
   ; fix_induction_hyp = []
   ; top_induction = (Sct.root, [])
   ; call_graphs = Sct.init_table ()
-  ; positive_ordinals = [] }
+  ; positive_ordis = [] }
 
 
 (****************************************************************************
@@ -78,11 +78,11 @@ let find_indexes ftbl pos index index' a b =
     assert(j=j');
     List.iteri (fun i (i',o) ->
       assert(i=i');
-      Io.log_mat "  compare %d %a <=? %d %a => %!" i (print_ordinal false) o
-        j (print_ordinal false) o';
+      Io.log_mat "  compare %d %a <=? %d %a => %!" i (print_ordi false) o
+        j (print_ordi false) o';
       let r =
-        if less_ordinal pos o o' then Less
-        else if leq_ordinal pos o o' then Leq
+        if less_ordi pos o o' then Less
+        else if leq_ordi pos o o' then Leq
         else Unknown
       in
       Io.log_mat "%a\n%!" prCmp r;
@@ -101,7 +101,7 @@ let consecutive =
 
 let add_call ctxt fnum os is_induction_hyp =
   let open Sct in
-  let pos = ctxt.positive_ordinals in
+  let pos = ctxt.positive_ordis in
   let calls = ctxt.call_graphs in
   let cur, os0 = ctxt.top_induction in
   assert(consecutive os);
@@ -118,7 +118,7 @@ let rec opred o w =
   | OSucc o' -> o'
   | OUVar({uvar_state = (None,None); uvar_arity = a} as p, os) ->
      let o' = OUVar(new_ouvara a,os) in
-     set_ouvar p (obind_ordinals os (OSucc o')); o'
+     set_ouvar p (obind_ordis os (OSucc o')); o'
   | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
      set_ouvar p o'; opred o w
   | OUVar _ -> subtype_error "opred fails"; (* FIXME: can we do better ? *)
@@ -128,11 +128,11 @@ let rec opred o w =
 let find_positive ctxt o =
   let rec gn i o =
     if i <= 0 then
-      List.exists (strict_eq_ordinal o) ctxt.positive_ordinals
+      List.exists (strict_eq_ordi o) ctxt.positive_ordis
     else
       List.exists (function
-      | OLess(o',_) as o0 when strict_eq_ordinal o o' -> gn (i-1) o0
-      | _ -> raise Not_found) ctxt.positive_ordinals
+      | OLess(o',_) as o0 when strict_eq_ordi o o' -> gn (i-1) o0
+      | _ -> raise Not_found) ctxt.positive_ordis
   in
   let rec fn i o = match orepr o with
     | OUVar({ uvar_state = (_,Some f)},os) ->
@@ -144,7 +144,7 @@ let find_positive ctxt o =
     | OUVar _ -> true
     | OVari _ -> assert false
   in
-  (*  Io.log "find positive %a\n%!" (print_ordinal false) o;*)
+  (*  Io.log "find positive %a\n%!" (print_ordi false) o;*)
   match orepr o with
   | OConv -> OConv
   | OSucc o' -> o'
@@ -158,8 +158,8 @@ let is_positive ctxt o =
   | OConv | OSucc _ -> true
   | OVari _ -> assert false
   | o ->
-     List.exists (fun o' -> eq_ordinal ctxt.positive_ordinals o' o)
-       ctxt.positive_ordinals
+     List.exists (fun o' -> eq_ordi ctxt.positive_ordis o' o)
+       ctxt.positive_ordis
 
    let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->
@@ -170,8 +170,8 @@ let is_positive ctxt o =
 (* FIXME: end of the function which certainly miss cases *)
 
 let print_positives ff ctxt =
-  let p_aux = print_ordinal false in
-  match ctxt.positive_ordinals with
+  let p_aux = print_ordi false in
+  match ctxt.positive_ordis with
       | [] -> ()
       | l -> Io.log "  (%a)\n\n%!" (print_list p_aux ", ") l
 
@@ -180,17 +180,17 @@ let rec add_pos positives o =
   match o with
   | OConv | OSucc _ -> positives
   | _ ->
-     if List.exists (strict_eq_ordinal o) positives
+     if List.exists (strict_eq_ordi o) positives
      then positives else o :: positives
 
 let add_positive ctxt o =
-  { ctxt with positive_ordinals = add_pos ctxt.positive_ordinals o }
+  { ctxt with positive_ordis = add_pos ctxt.positive_ordis o }
 
 let add_positives ctxt gamma =
-  let positive_ordinals =
-    List.fold_left add_pos ctxt.positive_ordinals gamma
+  let positive_ordis =
+    List.fold_left add_pos ctxt.positive_ordis gamma
   in
-  { ctxt with positive_ordinals }
+  { ctxt with positive_ordis }
 
 (* These three functions are only used for heuristics *)
 let has_leading_ord_quantifier : kind -> bool = fun k ->

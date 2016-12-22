@@ -27,14 +27,14 @@ let is_tuple ls =
     Exit -> false
 
 (* managment of a table to name ordinals and epsilon when printing *)
-let ordinal_count = ref 0
-let ordinal_tbl = ref []
+let ordi_count = ref 0
+let ordi_tbl = ref []
 let epsilon_term_tbl = ref[]
 let epsilon_type_tbl = ref[]
 
 let reset_epsilon_tbls () =
-  ordinal_count := 0;
-  ordinal_tbl := [];
+  ordi_count := 0;
+  ordi_tbl := [];
   epsilon_term_tbl := [];
   epsilon_type_tbl := []
 
@@ -69,13 +69,13 @@ let search_term_tbl f a b =
     epsilon_term_tbl := (f,(base,index,a,b)) :: !epsilon_term_tbl;
     (base, index)
 
-let search_ordinal_tbl o =
+let search_ordi_tbl o =
   try
-    assoc_ordinal o !ordinal_tbl
+    assoc_ordi o !ordi_tbl
   with
     Not_found ->
-      let n = !ordinal_count in incr ordinal_count;
-      ordinal_tbl := (o,n)::!ordinal_tbl;
+      let n = !ordi_count in incr ordi_count;
+      ordi_tbl := (o,n)::!ordi_tbl;
       n
 
 let rec full_iter fn ptr =
@@ -94,21 +94,21 @@ let rec full_iter fn ptr =
 
 let new_prvar f = KPrnt(FreeVr(binder_name f))
 
-let rec print_ordinal unfold ff o =
+let rec print_ordi unfold ff o =
   let o = orepr o in
   match o with
   | OConv   -> pp_print_string ff "∞"
   | _       ->
-    let n = search_ordinal_tbl o in
+    let n = search_ordi_tbl o in
     match orepr o with
     | OLess(o,w) as o0 when unfold ->
        begin
          match w with
          | In(t,a) -> (* TODO: print the int *)
-            fprintf ff "ϵ(<%a,%a∈%a)" (print_ordinal false) o
+            fprintf ff "ϵ(<%a,%a∈%a)" (print_ordi false) o
               (print_term false) t (print_kind false false) (subst a o0)
          | NotIn(t,a) ->  (* TODO: print the int *)
-            fprintf ff "ϵ(<%a,%a∉%a)" (print_ordinal false) o
+            fprintf ff "ϵ(<%a,%a∉%a)" (print_ordi false) o
               (print_term false) t (print_kind false false) (subst a o0)
          | Gen(t,r,f) -> (* FIXME *)
             let os = Array.init (mbinder_arity f)
@@ -118,32 +118,32 @@ let rec print_ordinal unfold ff o =
        end
     | OLess(o,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
-       fprintf ff "s(%a)" (print_ordinal false) o
+       fprintf ff "s(%a)" (print_ordi false) o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
     | OUVar(u,os) ->
        let print_upper ff = function
          | (_,None) -> ()
-         | (_,Some o) -> fprintf ff "<%a" (print_ordinal false) (msubst o os)
+         | (_,Some o) -> fprintf ff "<%a" (print_ordi false) (msubst o os)
        in
        let print_lower ff = function
          | (None,_) -> ()
-         | (Some o,_) -> fprintf ff "%a≤" (print_ordinal false) (msubst o os)
+         | (Some o,_) -> fprintf ff "%a≤" (print_ordi false) (msubst o os)
        in
        if os = [||] then
          fprintf ff "%a?%i%a" print_lower u.uvar_state u.uvar_key print_upper u.uvar_state
        else
          fprintf ff "%a?%i(%a)%a" print_lower u.uvar_state u.uvar_key
-           (print_list print_index_ordinal ", ") (Array.to_list os)
+           (print_list print_index_ordi ", ") (Array.to_list os)
            print_upper u.uvar_state
 
-and print_index_ordinal ff = function
+and print_index_ordi ff = function
   | OConv -> fprintf ff "∞"
-  | o -> fprintf ff "%a" (print_ordinal false) o
+  | o -> fprintf ff "%a" (print_ordi false) o
 
 and print_kind unfold wrap ff t =
   let pkind = print_kind unfold false in
-  let pordi = print_ordinal unfold in
+  let pordi = print_ordi unfold in
   let pkindw = print_kind unfold true in
   let t = if unfold then repr t else !ftry_fold_def (repr t) in
   match t with
@@ -186,11 +186,11 @@ and print_kind unfold wrap ff t =
   | KFixM(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
-      fprintf ff "μ%a%s %a" print_index_ordinal o (binder_name b) pkindw a
+      fprintf ff "μ%a%s %a" print_index_ordi o (binder_name b) pkindw a
   | KFixN(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
-      fprintf ff "ν%a%s %a" print_index_ordinal o (binder_name b) pkindw a
+      fprintf ff "ν%a%s %a" print_index_ordi o (binder_name b) pkindw a
   | KDefi(td,os,ks) ->
       if unfold then
         print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
@@ -213,7 +213,7 @@ and print_kind unfold wrap ff t =
        fprintf ff "?%i" u.uvar_key
      else
        fprintf ff "?%i(%a)" u.uvar_key
-         (print_list print_index_ordinal ", ") (Array.to_list os)
+         (print_list print_index_ordi ", ") (Array.to_list os)
   | KMRec(p,a) -> fprintf ff "(%a && {%a})" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
   | KNRec(p,a) -> fprintf ff "(%a || {%a})" pkind a
@@ -442,8 +442,8 @@ let _ = fprint_kind := print_kind; fprint_term := print_term
 let print_kind_def unfold ff kd =
   pkind_def unfold ff kd; pp_print_flush ff ()
 
-let print_ordinal unfold ff o =
-  print_ordinal unfold ff o; pp_print_flush ff ()
+let print_ordi unfold ff o =
+  print_ordi unfold ff o; pp_print_flush ff ()
 
 let print_position ff o =
   position ff o; pp_print_flush ff ()
@@ -462,11 +462,11 @@ let print_epsilon_tbls ff =
       fprintf ff "%s_%d = ϵ(%s, %a %s %a)\n" name index
       (binder_name f) (print_term false) u symbol (print_kind false) k) epsilon_type_tbl;
   full_iter (fun (o,n) ->
-    fprintf ff "%a = %a\n" (print_ordinal false) o (print_ordinal true) o) ordinal_tbl
+    fprintf ff "%a = %a\n" (print_ordi false) o (print_ordi true) o) ordi_tbl
 
-exception Find_tdef of type_def
+exception Find_tdef of kdef
 
-let find_tdef : kind -> type_def = fun t ->
+let find_tdef : kind -> kdef = fun t ->
   try
     let fn _ d =
       if d.tdef_oarity = 0 && d.tdef_karity = 0 then
@@ -478,4 +478,4 @@ let find_tdef : kind -> type_def = fun t ->
   with
     Find_tdef(t) -> t
 
-let _ = fprint_ordinal := print_ordinal
+let _ = fprint_ordi := print_ordi
