@@ -549,7 +549,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TCnst(_,a,b,_) ->
          let p = subtype ctxt t a c in
          Typ_Cnst(p)
-      | TVari(_) -> assert false
+      | TVari _ | TVars _ -> assert false
     with
     | Subtype_error msg (* FIXME: could we avoid Subtype_error in typing.
                            It not, should use the same exception *)

@@ -8,6 +8,10 @@ open Position
 open Compare
 open LibTools
 
+(** control some differences when printing for LaTeX *)
+let latex_mode = ref false
+let break_hint = ref 0
+
 let rec print_list pelem sep ff = function
   | []    -> ()
   | [e]   -> pelem ff e
@@ -104,21 +108,25 @@ let rec print_ordi unfold ff o =
     | OLess(o,w) as o0 when unfold ->
        begin
          match w with
-         | In(t,a) -> (* TODO: print the int *)
-            fprintf ff "ϵ(<%a,%a∈%a)" (print_ordi false) o
+         | In(t,a) ->
+            fprintf ff "ε(<%a,%a∈%a)" (print_ordi false) o
               (print_term false) t (print_kind false false) (subst a o0)
-         | NotIn(t,a) ->  (* TODO: print the int *)
-            fprintf ff "ϵ(<%a,%a∉%a)" (print_ordi false) o
+         | NotIn(t,a) ->
+            fprintf ff "ε(<%a,%a∉%a)" (print_ordi false) o
               (print_term false) t (print_kind false false) (subst a o0)
-         | Gen(t,r,f) -> (* FIXME *)
+         | Gen(i,r,f) ->
             let os = Array.init (mbinder_arity f)
               (fun i -> free_of (new_ovari ("o_"^string_of_int i))) in
             let (k1,k2) = msubst f os in
-            fprintf ff "ϵ(%a,%a)" (print_kind false false) k1 (print_kind false false) k2
+            fprintf ff "ε^%d(%a ⊂ %a)" i (print_kind false false) k1 (print_kind false false) k2
        end
     | OLess(o,_) -> fprintf ff "κ%d" n
     | OSucc(o) ->
-       fprintf ff "s(%a)" (print_ordi false) o
+       let rec fn i o =
+         match orepr o with
+           OSucc(o) -> fn (i+1) o
+         | o -> fprintf ff "%a+%d" (print_ordi false) o i
+       in fn 1 o
     | OVari(x) -> fprintf ff "%s" (name_of x)
     | OConv -> fprintf ff "∞"
     | OUVar(u,os) ->
@@ -142,10 +150,10 @@ and print_index_ordi ff = function
   | o -> fprintf ff "%a" (print_ordi false) o
 
 and print_kind unfold wrap ff t =
-  let pkind = print_kind unfold false in
-  let pordi = print_ordi unfold in
-  let pkindw = print_kind unfold true in
-  let t = if unfold then repr t else !ftry_fold_def (repr t) in
+  let pkind = print_kind false false in
+  let pordi = print_ordi false in
+  let pkindw = print_kind false true in
+  let t = (if unfold then fun x -> x else !ftry_fold_def) (repr t) in
   match t with
   | KVari(x) ->
       pp_print_string ff (name_of x)
@@ -161,47 +169,70 @@ and print_kind unfold wrap ff t =
          fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
        done;
        if wrap then pp_print_string ff ")"
-     end else begin
-       let pfield ff (l,a) = fprintf ff "%s : %a" l pkind a in
-       fprintf ff "{%a}" (print_list pfield "; ") fs
-     end
+     end else
+       if !break_hint = 0 then begin
+         let pfield ff (l,a) =
+           fprintf ff (if !latex_mode then "\\mathrm{%s} : %a" else "%s : %a")
+             l pkind a
+         in
+         fprintf ff (if !latex_mode then "\\{%a\\}" else "{%a}")
+           (print_list pfield "; ") fs
+       end else begin
+         decr break_hint;
+         let pfield ff (l,a) = fprintf ff "\\mathrm{%s} &: %a" l pkind a in
+         fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
+         fprintf ff "\\begin{array}{ll}%a" (print_list pfield ";\\\\\n") fs;
+         fprintf ff "\\end{array}\\right\\}";
+         incr break_hint
+       end
   | KDSum(cs) ->
       let pvariant ff (c,a) =
-        if a = KProd [] then pp_print_string ff c
-        else fprintf ff "%s of %a" c pkind a
+       match repr a with
+       | KProd [] ->
+          fprintf ff (if !latex_mode then "\\mathrm{%s}" else "%s") c
+       | _        ->
+          fprintf ff (if !latex_mode then "\\mathrm{%s} \\of %a" else "%s of %a")
+            c pkind a
       in
       fprintf ff "[%a]" (print_list pvariant " | ") cs
   | KKAll(f)  ->
       let x = new_prvar f in
-      fprintf ff "∀%s %a" (binder_name f) pkind (subst f x)
+      fprintf ff "∀%s.%a" (binder_name f) pkind (subst f x)
   | KKExi(f)  ->
       let x = new_prvar f in
-      fprintf ff "∃%s %a" (binder_name f) pkind (subst f x)
+      fprintf ff "∃%s.%a" (binder_name f) pkind (subst f x)
   | KOAll(f)  ->
       let x = new_ovari (binder_name f) in
-      fprintf ff "∀%s %a" (name_of x) pkind (subst f (free_of x))
+      fprintf ff "∀%s.%a" (name_of x) pkind (subst f (free_of x))
   | KOExi(f)  ->
       let x = new_ovari (binder_name f) in
-      fprintf ff "∃%s %a" (name_of x) pkind (subst f (free_of x))
+      fprintf ff "∃%s.%a" (name_of x) pkind (subst f (free_of x))
   | KFixM(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
-      fprintf ff "μ%a%s %a" print_index_ordi o (binder_name b) pkindw a
+      if strict_eq_ordi o OConv then
+        fprintf ff "μ%s.%a" (binder_name b) pkindw a
+      else
+        fprintf ff "μ_%a%s.%a" print_index_ordi o (binder_name b) pkindw a
   | KFixN(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
-      fprintf ff "ν%a%s %a" print_index_ordi o (binder_name b) pkindw a
-  | KDefi(td,os,ks) ->
-      if unfold then
-        print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
-      else if Array.length ks = 0 && Array.length os = 0 then
-        pp_print_string ff td.tdef_name
-      else if Array.length os = 0 then
-        fprintf ff "%s(%a)" td.tdef_name (print_array pkind ", ") ks
-      else if Array.length ks = 0 then
-        fprintf ff "%s(%a)" td.tdef_name (print_array pordi ", ") os
+      if strict_eq_ordi o OConv then
+        fprintf ff "ν%s.%a" (binder_name b) pkindw a
       else
-        fprintf ff "%s(%a, %a)" td.tdef_name (print_array pordi ", ") os
+        fprintf ff "ν_%a%s.%a" print_index_ordi o (binder_name b) pkindw a
+  | KDefi(td,os,ks) ->
+     let name = if !latex_mode then td.tdef_tex_name else td.tdef_name in
+     if unfold then
+       print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
+     else if Array.length ks = 0 && Array.length os = 0 then
+       pp_print_string ff name
+     else if Array.length os = 0 then
+       fprintf ff "%s(%a)" name (print_array pkind ", ") ks
+     else if Array.length ks = 0 then
+       fprintf ff "%s(%a)" name (print_array pordi ", ") os
+     else
+       fprintf ff "%s(%a, %a)" name (print_array pordi ", ") os
           (print_array pkind ", ") ks
   | KUCst(u,f,_)
   | KECst(u,f,_) ->
@@ -214,9 +245,9 @@ and print_kind unfold wrap ff t =
      else
        fprintf ff "?%i(%a)" u.uvar_key
          (print_list print_index_ordi ", ") (Array.to_list os)
-  | KMRec(p,a) -> fprintf ff "(%a && {%a})" pkind a
+  | KMRec(p,a) -> fprintf ff "(%a ∧ {%a})" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
-  | KNRec(p,a) -> fprintf ff "(%a || {%a})" pkind a
+  | KNRec(p,a) -> fprintf ff "(%a ∨ {%a})" pkind a
      (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
   | KPrnt x -> match x with
   | FreeVr s -> pp_print_string ff s
@@ -252,7 +283,8 @@ and print_occur ff = function
   | Reg(_) -> pp_print_string ff "R"
 
 and pkind_def unfold ff kd =
-  fprintf ff "type %s" kd.tdef_name;
+  let name = if !latex_mode then kd.tdef_tex_name else kd.tdef_name in
+  fprintf ff "type %s" name;
   let pkind = print_kind unfold false in
   let onames = mbinder_names kd.tdef_value in
   let os = new_mvar mk_free_ovari onames in
@@ -284,33 +316,78 @@ and pkind_def unfold ff kd =
     pos.filename pos.line_start pos.col_start pos.col_end
 
 and print_term ?(in_proj=false) unfold ff t =
-  let print_term = print_term unfold in
+  let print_term = print_term false in
   let pkind = print_kind false false in
   let not_def t = match t.elt with TDefi _ -> false | _ -> true in
-  if not in_proj && not unfold && t.pos <> dummy_position && not_def t then
-    fprintf ff "[%a]" position t.pos
+  if not !latex_mode && not in_proj && not unfold &&
+    t.pos <> dummy_position && not_def t then
+      fprintf ff "[%a]" position t.pos
   else match t.elt with
   | TCoer(t,a) ->
      fprintf ff "(%a : %a)" print_term t pkind a
   | TMLet(b,x,bt)->
      let (oa, ka) = mmbinder_arities bt OConv in
      let t = mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])) in
-     fprintf ff "FIXME %a" print_term t (* FIXME *)
+     fprintf ff "%a" print_term t (* FIXME *)
   | TVari(x) ->
       pp_print_string ff (name_of x)
+  | TVars(s) ->
+      pp_print_string ff s
   | TAbst(ao,b) ->
-      let x = binder_name b in
-      let t = subst b (free_of (new_tvari x)) in
-      begin
-        match ao with
-        | None   -> fprintf ff "λ%s %a" x print_term t
-        | Some a -> fprintf ff "λ(%s : %a) %a" x pkind a print_term t
-      end
-  | TAppl(t,u) ->
-      fprintf ff "(%a) %a" print_term t print_term u
+     let rec fn ff t = match t.elt with
+       | TAbst(ao,b) ->
+          let x = binder_name b in
+          let t = subst b (TVars x) in
+          begin
+            match ao with
+            | None   -> fprintf ff " %s%a" x fn t
+            | Some a -> fprintf ff " %s{:}%a%a" x pkind a fn t
+          end
+       | _ ->
+          fprintf ff ".%a" print_term t
+     in
+     fprintf ff "λ%a" fn t;
+  | TAppl _ ->
+     let rec fn ff t = match t.elt with
+       | TAppl(t,u) ->
+          fprintf ff "%a %a" fn t print_term u
+       | _ ->
+          fprintf ff "(%a)" print_term t
+     in fn ff t
   | TReco(fs) ->
-      let pfield ff (l,t) = fprintf ff "%s = %a" l print_term t in
-      fprintf ff "{%a}" (print_list pfield "; ") fs
+     if is_tuple fs then begin
+       pp_print_string ff "(";
+       for i = 1 to List.length fs do
+         if i = 2 then fprintf ff ", ";
+         fprintf ff "%a" print_term (List.assoc (string_of_int i) fs)
+       done;
+       pp_print_string ff ")";
+     end else begin
+       let fn s t =
+         match t.elt with
+         | TCoer(t,k) -> t, fun ff -> fprintf ff "%s %a" s pkind k
+         | _          -> t, fun ff -> ()
+       in
+       if !break_hint = 0 then begin
+         let pfield ff (l,t) =
+           let t, pt = fn ":" t in
+           fprintf ff (if !latex_mode then "\\mathrm{%s} %t = %a" else "%s %t = %a")
+             l pt print_term t
+         in
+         fprintf ff (if !latex_mode then "\\{%a\\}" else "{%a}")
+           (print_list pfield "; ") fs
+       end else begin
+         decr break_hint;
+         let pfield ff (l,t) =
+           let t, pt = fn ":" t in
+           fprintf ff "\\mathrm{%s} %t &= %a" l pt print_term t
+         in
+         fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
+         fprintf ff "\\begin{array}{ll}%a" (print_list pfield ";\\\\\n") fs;
+         fprintf ff "\\end{array}\\right\\}";
+         incr break_hint
+       end
+     end
   | TProj(t,l) ->
       fprintf ff "%a.%s" print_term t l
   | TCons(c,t) ->
@@ -341,12 +418,13 @@ and print_term ?(in_proj=false) unfold ff t =
      if unfold then
        print_term ff v.orig_value
      else
-       pp_print_string ff v.name
+       let name = if !latex_mode then v.tex_name else v.name in
+       pp_print_string ff name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
   | TFixY(_,_,f) ->
       let x = binder_name f in
-      let t = subst f (free_of (new_tvari x)) in
+      let t = subst f (TVars x) in
       fprintf ff "fix %s → %a" x print_term t
   | TCnst(f,a,b,_) ->
      let name, index = search_term_tbl f a b in
@@ -381,11 +459,11 @@ let rec typ2proof : typ_prf -> string Proof.proof = fun (t,k,r) ->
   | Typ_DSum_i(p1,p2) -> binaryN "+i" c (sub2proof p1) (typ2proof p2)
   | Typ_DSum_e(p,ps,_)-> n_aryN "+e" c (typ2proof p :: List.map typ2proof ps) (* FIXME *)
   | Typ_YH(n,p)       ->
-     let name = sprintf "$H_%s$" (Sct.strInd n) in
+     let name = sprintf "H_%s" (Sct.strInd n) in
      unaryN name c (sub2proof p)
   | Typ_TFix{contents=(n,p)}     ->
      (* TODO: proof may be duplicated, print with sharing*)
-     let name = sprintf "$I_%s$" (Sct.strInd n) in
+     let name = sprintf "I_%s" (Sct.strInd n) in
      unaryN name c (typ2proof p)
   | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
@@ -420,7 +498,7 @@ and     sub2proof : sub_prf -> string Proof.proof = fun (t,a,b,ir,r) ->
   | Sub_And_r(p)      -> unaryN "∧r" c (sub2proof p)
   | Sub_Or_l(p)       -> unaryN "∨l" c (sub2proof p)
   | Sub_Or_r(p)       -> unaryN "∨r" c (sub2proof p)
-  | Sub_Ind(n)        -> axiomN (sprintf "$H_%s$" (Sct.strInd n)) c
+  | Sub_Ind(n)        -> axiomN (sprintf "H_%s" (Sct.strInd n)) c
   | Sub_Error(msg)    -> axiomN (sprintf "ERROR(%s)" msg) c
 
 let print_typing_proof    ch p = Proof.output ch (typ2proof p)
@@ -479,3 +557,5 @@ let find_tdef : kind -> kdef = fun t ->
     Find_tdef(t) -> t
 
 let _ = fprint_ordi := print_ordi
+
+let ordi_to_printer (_,o) ff = print_ordi false ff o

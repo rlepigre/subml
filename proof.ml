@@ -35,7 +35,7 @@ let ternaryN n c p1 p2 p3 = n_aryN n c [p1;p2;p3]
 let output : formatter -> string proof -> unit = fun ch p ->
   let output_name ch = function
     | None    -> ()
-    | Some(n) -> fprintf ch "  \\RightLabel{%s}\n" n
+    | Some(n) -> fprintf ch "  \\RightLabel{$%s$}\n" n
   in
   let macro_name = function
     | 1 -> "Unary"
@@ -46,11 +46,11 @@ let output : formatter -> string proof -> unit = fun ch p ->
     | _ -> assert false
   in
   let rec output ch = function
-    | Hyp(s)         -> fprintf ch "  \\AxiomC{%s}\n" s
+    | Hyp(s)         -> fprintf ch "  \\AxiomC{$%s$}\n" s
     | Rule(ps, c, n) -> List.iter (output ch) ps;
                         if ps = [] then fprintf ch "  \\AxiomC{}\n";
                         output_name ch n;
                         let macro = macro_name (max 1 (List.length ps)) in
-                        fprintf ch "  \\%sInfC{%s}\n" macro c;
+                        fprintf ch "  \\%sInfC{$%s$}\n" macro c;
   in
   fprintf ch "\\begin{prooftree}\n%a\\end{prooftree}\n%!" output p

@@ -385,6 +385,7 @@ and gen_occur :
        let acc = match d with None -> acc | Some t -> aux2 acc t in
        List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
     | TVari(_)
+    | TVars(_)
     | TDefi(_)
     | TPrnt(_)       -> acc)
   and aux3 acc o =

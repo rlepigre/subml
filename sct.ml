@@ -44,8 +44,8 @@ type call = index * index * cmp array array * bool
 type calls = call list
 
 
-(** TODO: this is not very clean *)
-type printer = (formatter -> unit) * (formatter -> unit) (* normal / latex *)
+(** We giev a printing function for the parameter names *)
+type printer = formatter -> unit
 
 (** This stores the function table, giving name, arity and the
     way to print the function for debugging *)
@@ -110,7 +110,7 @@ let print_call ff tbl (i,j,m,_) =
   let (_, ai, _) = try List.assoc i tbl with Not_found -> assert false in
   let print_args ff =
     for j = 0 to aj - 1 do
-      fprintf ff "%s%t" (if j = 0 then "" else ",") (fst prj.(j))
+      fprintf ff "%s%t" (if j = 0 then "" else ",") prj.(j)
     done
   in
   let (namei, _, _) = try List.assoc i tbl with Not_found -> assert false in
@@ -123,7 +123,7 @@ let print_call ff tbl (i,j,m,_) =
       let c = m.(j).(i) in
       if c <> Unknown then (
       let sep = if !some then " " else "" in
-      fprintf ff "%s%a%t" sep prCmp c (fst prj.(j));
+      fprintf ff "%s%a%t" sep prCmp c prj.(j);
       some := true)
     done
   done;
@@ -147,7 +147,7 @@ let latex_print_calls ff tbl =
       try List.assoc j arities with Not_found -> assert false
     in
     for j = 0 to aj - 1 do
-      fprintf ff "%s%t" (if j = 0 then "" else ",") (snd prj.(j))
+      fprintf ff "%s%t" (if j = 0 then "" else ",") prj.(j)
     done
   in
   let f (j,_) =
@@ -170,7 +170,7 @@ let latex_print_calls ff tbl =
         let c = m.(j).(i) in
         if c <> Unknown then (
           let sep = if !some then " " else "" in
-          fprintf ff "%s%a%t" sep prCmp c (snd prj.(j));
+          fprintf ff "%s%a%t" sep prCmp c prj.(j);
           some := true)
       done;
       if not !some then fprintf ff "?";

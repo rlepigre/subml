@@ -30,7 +30,8 @@ let is_normal : term -> bool = fun t ->
        let (oa, ka) = mmbinder_arities bt OConv in
        fn (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
 
-    | TVari(x)    -> assert false
+    | TVari _
+    | TVars _   -> assert false
   in fn t
 
 (** Test if a term is neutral in CBV;
@@ -58,6 +59,7 @@ let is_neutral : term -> bool = fun t ->
        let (oa, ka) = mmbinder_arities bt OConv in
        fn (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
 
-    | TVari(x)    -> assert false
+    | TVari _
+    | TVars _   -> assert false
 
   in fn t

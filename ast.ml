@@ -1,3 +1,4 @@
+
 (** Abstract syntax tree. Definition of the internal representation of SubML's
     types, terms and syntactic ordinals in an abstract syntax tree (AST).
     @author Christophe Raffalli <christophe.raffalli\@univ-savoie.fr>
@@ -176,6 +177,8 @@ and term' =
   | TPrnt of string
   (** Print a message on the screen. Note that this operation performs is a
       side-effect. *)
+  | TVars of string
+  (** Special pretty printing constructor *)
 
 (** Term definition (user defined term) *)
 and tdef =
@@ -615,7 +618,7 @@ let dot_proj : tbox -> string -> kbox = fun t s ->
   let fn t = match t.elt with
     | TDefi(d) -> do_dot_proj t d.ttype s
     | TCnst(_,a,_,_) -> do_dot_proj t a s
-    | TPrnt x -> KPrnt (DotPrj(x,s)) (** printing only *)
+    | TVars x -> KPrnt (DotPrj(x,s)) (** printing only *)
     | _ -> failwith "Illegal dot projection"
   in
   box_apply fn t

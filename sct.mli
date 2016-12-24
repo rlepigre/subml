@@ -36,8 +36,8 @@ type call_table
 val init_table : unit -> call_table
 val copy : call_table -> call_table
 
-(** TODO: this is not very clean *)
-type printer = (formatter -> unit) * (formatter -> unit) (* normal / latex *)
+(** We giev a printing function for the parameter names *)
+type printer = formatter -> unit
 
 (** the index of the main function *)
 val root : index

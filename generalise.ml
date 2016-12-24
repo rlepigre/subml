@@ -204,7 +204,7 @@ let generalise : ordi list -> kind -> kind -> Sct.call_table ->
   let (os0,tpos,k1,k2) = recompose ~general:false schema in
   let name = if strict_eq_kind k1 (KProd []) then "Y" else "S" in
   let fnum = Sct.new_function call_table name
-    (List.map Latex.ordi_to_printer os0)
+    (List.map Print.ordi_to_printer os0)
   in
   let schema = { schema with sch_index = fnum } in
   (schema, os, (os0,tpos,k1,k2))
