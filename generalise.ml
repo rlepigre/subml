@@ -17,16 +17,6 @@ open AstMap
     - KMRec and KNRec are present. *)
 exception FailGeneralise
 
-(** the type of a general typing judgement, i.e. with
-    quantified ordinals *)
-type schema =
-  { sch_index : Sct.index (** index of the schema in the sct call graph *)
-  ; sch_posit : int list  (** the index of positive ordinals *)
-  ; sch_relat : (int * int) list (** relation between ordinals *)
-  ; sch_judge : (ordi, kind * kind) mbinder (** the kinds of the judgement.
-                                  for typing, only the second kind is used *)
-  }
-
 (** the type of a particular judgement, ordinal being witnesses or
     ordinal variables *)
 type particular = (int * ordi) list * ordi list * kind * kind

@@ -66,3 +66,4 @@ let rec eval : term -> term = fun t0 ->
             end
         | _          -> assert false
       end
+  | TVars _ -> assert false

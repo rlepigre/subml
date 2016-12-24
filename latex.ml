@@ -42,10 +42,13 @@ let rec output toplevel ch =
      else
        fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
   | SProof (p,calls) ->
+     let save = !ignore_witness in
+     ignore_witness := false;
      print_subtyping_proof ch p;
      fprintf ch "\\begin{center}\n";
      if Sct.is_empty calls then Sct.latex_print_calls ch calls;
      fprintf ch "\\end{center}\n%!";
+     ignore_witness := save
   | TProof p      -> print_typing_proof ch p
   | Witnesses     -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindDef(n,t)  ->

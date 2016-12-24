@@ -28,8 +28,6 @@ let rec check_sub_proof (t, k1, k2, _, r) =
   let res =
     match r with
     | Sub_Delay { contents = p }
-    | Sub_With_l p
-    | Sub_With_r p
     | Sub_KAll_r p
     | Sub_KAll_l p
     | Sub_KExi_l p
@@ -49,8 +47,6 @@ let rec check_sub_proof (t, k1, k2, _, r) =
     | Sub_Func   (p1, p2) -> check_sub_proof p1 &&& check_sub_proof p2
     | Sub_Prod   ps
     | Sub_DSum   ps       -> for_all (fun (l,p) -> check_sub_proof p) ps
-    | Sub_DPrj_r (p1, p2)
-    | Sub_DPrj_l (p1, p2) -> check_typ_proof p1 &&& check_sub_proof p2
     | Sub_Lower
     | Sub_Ind _           -> None
     | Sub_Error msg       -> Some [ Msg msg ]

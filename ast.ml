@@ -190,6 +190,16 @@ and tdef =
   ; proof      : typ_prf        (** Typing proof. *)
   ; calls_graph: Sct.call_table (** SCT instance. *) }
 
+(** the type of a general typing judgement, i.e. with
+    quantified ordinals *)
+and schema =
+  { sch_index : Sct.index (** index of the schema in the sct call graph *)
+  ; sch_posit : int list  (** the index of positive ordinals *)
+  ; sch_relat : (int * int) list (** relation between ordinals *)
+  ; sch_judge : (ordi, kind * kind) mbinder (** the kinds of the judgement.
+                                  for typing, only the second kind is used *)
+  }
+
 (****************************************************************************)
 (** {2 Representation of proof trees}                                       *)
 (****************************************************************************)
@@ -201,10 +211,6 @@ and sub_rule =
   | Sub_Func   of sub_prf * sub_prf
   | Sub_Prod   of (string * sub_prf) list
   | Sub_DSum   of (string * sub_prf) list
-  | Sub_DPrj_l of typ_prf * sub_prf
-  | Sub_DPrj_r of typ_prf * sub_prf
-  | Sub_With_l of sub_prf
-  | Sub_With_r of sub_prf
   | Sub_KAll_r of sub_prf
   | Sub_KAll_l of sub_prf
   | Sub_KExi_l of sub_prf
@@ -224,7 +230,7 @@ and sub_rule =
   | Sub_Ind    of Sct.index
   | Sub_Error  of string
 and sub_prf =
-  term * kind * kind * Sct.index option * sub_rule
+  term * kind * kind * (schema * term * kind * kind * (ordi * ordi) list) option * sub_rule
   (** the integer is referenced by induction hyp ([Sub_Ind]) *)
 
 (** Typing proof *)

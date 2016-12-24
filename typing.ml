@@ -17,7 +17,7 @@ exception Induction_hyp of Sct.index
 
 type induction =
   | UseInduction of Sct.index
-  | NewInduction of (Sct.index * kind * kind) option
+  | NewInduction of (schema * kind * kind * (ordi * ordi) list) option
 
 (* check is a subtyping can be deduced from an induction hypothesis,
    if this is not possible, the subtyping may be added as induction
@@ -76,7 +76,10 @@ let check_rec
           raise (Induction_hyp schema'.sch_index))
       ) (List.tl ctxt.sub_induction_hyp);
       Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
-      (NewInduction (Some (fnum, k1, k2)), ctxt)
+      let tros = List.map2 (fun (_,o1) (_,o2) ->
+        let o2 = match o2 with OVari _ -> OConv | _ -> o2 in
+        (o1,o2)) os0 os in
+      (NewInduction (Some (schema, k1, k2, tros)), ctxt)
     with Exit | FailGeneralise -> (NewInduction None, ctxt)
        | Induction_hyp n -> (UseInduction n, ctxt)
 
@@ -93,22 +96,21 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   let b = full_repr b0 in
   if eq_kind ctxt.positive_ordis a b then
     (t, a0, b0, None, Sub_Lower)
-  else (
-    try
-    let ind_ref, r = match (a,b) with
+  else try try
+    let rule = match (a,b) with
     | (KMRec(ptr,a), _           ) ->
-       None, Sub_And_l(subtype ctxt t a b0)
+       Sub_And_l(subtype ctxt t a b0)
 
     | (_           , KNRec(ptr,b))->
-       None, Sub_Or_r(subtype ctxt t a0 b)
+       Sub_Or_r(subtype ctxt t a0 b)
 
     | (KNRec(ptr,a), KUVar _     )
         when Subset.test (eq_ordi ctxt.positive_ordis) ptr ctxt.positive_ordis ->
-       None, Sub_Or_l(subtype ctxt t a b0)
+       Sub_Or_l(subtype ctxt t a b0)
 
     | (KUVar _     , KMRec(ptr,b))
         when Subset.test (eq_ordi ctxt.positive_ordis) ptr ctxt.positive_ordis ->
-       None, Sub_And_r(subtype ctxt t a0 b)
+       Sub_And_r(subtype ctxt t a0 b)
 
     (* unification. (sum and product special) *)
     | (KUVar(ua,os), KProd(l))
@@ -132,7 +134,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
              let prf = subtype ctxt t' (msubst f os) k  in
              res := (s,prf) :: !res) l;
        Timed.(ua.uvar_state := Prod !l1);
-       None, Sub_Prod(!res)
+       Sub_Prod(!res)
 
     | (KDSum(l)   , KUVar(ub,os))
        when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
@@ -155,7 +157,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
              let prf = subtype ctxt t' k (msubst f os) in
              res := (s,prf) :: !res) l;
        Timed.(ub.uvar_state := DSum !l1);
-       None, Sub_DSum(!res)
+       Sub_DSum(!res)
 
     (* Handling of unification variables, same variable different
        parameters: keep the common one only. *)
@@ -179,7 +181,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
          (* this will use the uvar_state if it is not Free, we could try
             to delay this *)
          safe_set_kuvar Neg ua f osa);
-       let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
+       let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
@@ -228,30 +230,31 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                  Timed.(ub.uvar_state := Free);
                  safe_set_kuvar Pos ub (bind_ordis osb k) osb);
         end;
-        let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
+        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (KUVar(ua,os), b            ) ->
         safe_set_kuvar Neg ua (bind_ordis os b0) os;
-        let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
+        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (a           ,(KUVar(ub,os)))  ->
         safe_set_kuvar Pos ub (bind_ordis os a0) os;
-        let (_,_,_,_,r) = subtype ctxt t a0 b0 in None, r
+        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
 
-    | _ ->
-
+    | _ -> raise Exit
+  in (t, a0, b0, None, rule)
+  with Exit ->
   let (ind_res, ctxt) = check_rec t ctxt a b in
   match ind_res with
-  | UseInduction n -> ((None : Sct.index option), Sub_Ind n)
+  | UseInduction n -> (t, a0, b0, None, Sub_Ind n)
   | NewInduction ind_ref ->
   let (ind_ref,t,a,b,a0,b0) = match ind_ref with
     | None -> (None,t,a,b,a0,b0)
-    | Some(n,a,b) ->
+    | Some(n,a,b,tros) ->
        let a = full_repr a and b = full_repr b in
-       let t = unbox (generic_tcnst (box a) (box b)) in
-       Some n, t, a, b, a, b
+       let t1 = unbox (generic_tcnst (box a) (box b)) in
+       Some (n, t, a0, b0, tros), t1, a, b, a, b
   in
-  let r =
+  let rule =
     match (a,b) with
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
@@ -408,10 +411,9 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (* Subtype clash. *)
     | (_           , _           ) ->
        subtype_error "Subtyping clash (no rule apply)."
-  in ((ind_ref : Sct.index option), r)
-  in (t, a0, b0, ind_ref, r)
+  in (t, a0, b0, ind_ref, rule)
   with Subtype_error e -> (t, a0, b0, None, Sub_Error e)
-         | Occur_check -> (t, a0, b0, None, Sub_Error "Occur_check"))
+         | Occur_check -> (t, a0, b0, None, Sub_Error "Occur_check")
 
 (** A boolean test for subtyping *)
 and is_subtype ctxt t a b =
