@@ -29,6 +29,21 @@ let assoc_gen : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b =
     in
     fn l
 
+(** iteration over a reference on list.
+    [list_ref_iter fn r] ensure that [fn] has been called on
+    all initial elements of !r and all elements that are member
+    on !r at the end of the call. *)
+let rec list_ref_iter : ('a -> unit) -> 'a list ref -> unit =
+  fun fn ptr ->
+    let rec gn old nouv = function
+      | l when l == old ->
+         if !ptr != nouv then gn nouv !ptr !ptr else ()
+      | x::l -> fn x; gn old nouv l
+      | [] -> assert false
+    in
+    gn [] !ptr !ptr
+
+
 (*{2 functions related to [char] }*)
 
 let int_of_chars : char list -> int = fun s ->

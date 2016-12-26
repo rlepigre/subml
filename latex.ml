@@ -29,8 +29,6 @@ let rec to_string = function
   | List(l) -> "{" ^ String.concat "" (List.map to_string l) ^"}"
   | _       -> assert false
 
-let is_refl : sub_prf -> bool = fun (t,a,b,ir,r) -> strict_eq_kind a b
-
 let rec output toplevel ch =
   let output = output false in function
   | Kind(n,ufd,k) -> break_hint := n; print_kind ufd ch k; break_hint := 0

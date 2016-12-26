@@ -95,7 +95,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
   let a = full_repr a0 in
   let b = full_repr b0 in
   if eq_kind ctxt.positive_ordis a b then
-    (t, a0, b0, None, Sub_Lower)
+    (t, a0, b0, Sub_Lower)
   else try try
     let rule = match (a,b) with
     | (KMRec(ptr,a), _           ) ->
@@ -181,7 +181,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
          (* this will use the uvar_state if it is not Free, we could try
             to delay this *)
          safe_set_kuvar Neg ua f osa);
-       let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+       let (_,_,_,r) = subtype ctxt t a0 b0 in r
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
@@ -230,29 +230,29 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
                  Timed.(ub.uvar_state := Free);
                  safe_set_kuvar Pos ub (bind_ordis osb k) osb);
         end;
-        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+        let (_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (KUVar(ua,os), b            ) ->
         safe_set_kuvar Neg ua (bind_ordis os b0) os;
-        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+        let (_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | (a           ,(KUVar(ub,os)))  ->
         safe_set_kuvar Pos ub (bind_ordis os a0) os;
-        let (_,_,_,_,r) = subtype ctxt t a0 b0 in r
+        let (_,_,_,r) = subtype ctxt t a0 b0 in r
 
     | _ -> raise Exit
-  in (t, a0, b0, None, rule)
+  in (t, a0, b0, rule)
   with Exit ->
   let (ind_res, ctxt) = check_rec t ctxt a b in
   match ind_res with
-  | UseInduction n -> (t, a0, b0, None, Sub_Ind n)
+  | UseInduction n -> (t, a0, b0, Sub_Ind n)
   | NewInduction ind_ref ->
-  let (ind_ref,t,a,b,a0,b0) = match ind_ref with
-    | None -> (None,t,a,b,a0,b0)
+  let (finalise_proof,t,a,b,a0,b0) = match ind_ref with
+    | None -> ((fun x -> x),t,a,b,a0,b0)
     | Some(n,a,b,tros) ->
        let a = full_repr a and b = full_repr b in
        let t1 = unbox (generic_tcnst (box a) (box b)) in
-       Some (n, t, a0, b0, tros), t1, a, b, a, b
+       ((fun x -> t,a0,b0,Sub_Gen(n, tros, x)), t1, a, b, a, b)
   in
   let rule =
     match (a,b) with
@@ -411,9 +411,9 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
     (* Subtype clash. *)
     | (_           , _           ) ->
        subtype_error "Subtyping clash (no rule apply)."
-  in (t, a0, b0, ind_ref, rule)
-  with Subtype_error e -> (t, a0, b0, None, Sub_Error e)
-         | Occur_check -> (t, a0, b0, None, Sub_Error "Occur_check")
+  in finalise_proof (t, a0, b0, rule)
+  with Subtype_error e -> (t, a0, b0, Sub_Error e)
+         | Occur_check -> (t, a0, b0, Sub_Error "Occur_check")
 
 (** A boolean test for subtyping *)
 and is_subtype ctxt t a b =

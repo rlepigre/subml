@@ -25,8 +25,6 @@ type occur =
 
 (** Ast of kinds (or types). *)
 type kind =
-  (* Main type constructors. *)
-
   | KVari of kind variable        (** Free type variable. *)
   | KFunc of kind * kind          (** Arrow type. *)
   | KProd of (string * kind) list (** Record (or product) type. *)
@@ -39,13 +37,15 @@ type kind =
   | KFixN of ordi * kkbinder      (** Greatest fixpoint with ordinal size. *)
   | KDefi of kdefi                (** User-defined type with its arguments. *)
 
-  (* Witnesses (a.k.a. epsilons) used with quantifiers over types. Note that
-     the boolean is [true] if the term is closed. *)
+  (** Witnesses (a.k.a. epsilons) used with quantifiers over types. Note that
+     the boolean is [true] if the term is closed. This is a necessary
+     optimisation to keep physical equality and therefore avoid
+     traversing witnesses in comparison tests *)
 
   | KUCst of term * kkbinder * bool (** Universal witness. *)
   | KECst of term * kkbinder * bool (** Existential witness. *)
 
-  (* Special constructors (not accessible to user). *)
+  (** Special constructors (not accessible to user). *)
 
   | KUVar of kuvar * ordi array   (** Unification variable. *)
   | KMRec of ordi set * kind      (** Ordinal conjunction. FIXME wrong name *)
@@ -227,10 +227,11 @@ and sub_rule =
   | Sub_And_r  of sub_prf
   | Sub_Or_l   of sub_prf
   | Sub_Or_r   of sub_prf
+  | Sub_Gen    of schema * (ordi * ordi) list * sub_prf
   | Sub_Ind    of Sct.index
   | Sub_Error  of string
 and sub_prf =
-  term * kind * kind * (schema * term * kind * kind * (ordi * ordi) list) option * sub_rule
+  term * kind * kind * sub_rule
   (** the integer is referenced by induction hyp ([Sub_Ind]) *)
 
 (** Typing proof *)

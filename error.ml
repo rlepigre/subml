@@ -24,7 +24,7 @@ let rec for_all f = function
   | [] -> None
   | x::l -> f x &&& for_all f l
 
-let rec check_sub_proof (t, k1, k2, _, r) =
+let rec check_sub_proof (t, k1, k2, r) =
   let res =
     match r with
     | Sub_Delay { contents = p }
@@ -43,7 +43,8 @@ let rec check_sub_proof (t, k1, k2, _, r) =
     | Sub_And_l  p
     | Sub_And_r  p
     | Sub_Or_l   p
-    | Sub_Or_r   p        -> check_sub_proof p
+    | Sub_Or_r   p
+    | Sub_Gen(_,_,p)       -> check_sub_proof p
     | Sub_Func   (p1, p2) -> check_sub_proof p1 &&& check_sub_proof p2
     | Sub_Prod   ps
     | Sub_DSum   ps       -> for_all (fun (l,p) -> check_sub_proof p) ps
