@@ -349,7 +349,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             let a = if o' = OConv then a else KFixN(o',f) in
             let p = subtype ctxt t (subst f a) b0 in
             if not (is_positive ctxt o) then raise Not_found;
-            Sub_FixM_r(p)
+            Sub_FixN_l(p)
           with Not_found -> subtype_error "Subtyping clash (no rule apply for left nu)."
         end
 
@@ -360,7 +360,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t a
             let b = if o' = OConv then b else KFixM(o',f) in
             let p = subtype ctxt t a0 (subst f b) in
             if not (is_positive ctxt o) then raise Not_found;
-            Sub_FixN_l(p)
+            Sub_FixM_r(p)
           with Not_found -> subtype_error "Subtyping clash (no rule apply for right mu)."
         end
 

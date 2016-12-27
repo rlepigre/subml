@@ -446,8 +446,9 @@ and print_term ?(in_proj=false) unfold ff t =
       fprintf ff "print(%S)" s
   | TFixY(_,_,f) ->
       let x = binder_name f in
-      let t = subst f (TVars x) in
-      fprintf ff "Y%s.%a" x print_term t
+      (*let t = subst f (TVars x) in*)
+      (*fprintf ff "Y%s.%a" x print_term t*)
+      fprintf ff "%s" x
   | TCnst(f,a,b,_) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
@@ -538,7 +539,7 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof = fun used_i
   match r with
   | Typ_Coer(p1,p2)   -> binaryT "⊆" c p1 (typ2proof p2)
   | Typ_Nope(p)       -> typ2proof p
-  | Typ_Defi(p)       -> hyp ""
+  | Typ_Defi(p)       -> unaryN "" c (sub2proof p)
   | Typ_Prnt(p)       -> unaryN "print" c (sub2proof p)
   | Typ_Cnst(p)       -> unaryN "Ax" c (sub2proof p)
   | Typ_Func_i(p1,p2) -> binaryT "→i" c p1 (typ2proof p2)
