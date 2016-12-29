@@ -97,6 +97,53 @@ let search_ordi_tbl o =
       ordi_tbl := (o,(v,false))::!ordi_tbl;
       v
 
+(** Matching kind and ordinals, used for printing only,
+    in order to factorise definittion. *)
+let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
+  = fun kuvars ouvars p k ->
+  let res = match full_repr p, full_repr k with
+  | KUVar(ua,[||]), k when List.memq ua kuvars ->
+     set_kuvar ua (constant_mbind 0 k); true
+  | KFunc(p1,p2), KFunc(k1,k2) ->
+     match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
+  | KDSum(ps1), KDSum(ps2)
+  | KProd(ps1), KProd(ps2) ->
+     List.length ps1 = List.length ps2 &&
+     let ps1 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps1 in
+     let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
+     List.for_all2 (fun (s1,p1) (s2,k1) ->
+       s1 = s2 && match_kind kuvars ouvars p1 k1) ps1 ps2
+  | KKAll(f), KKAll(g)
+  | KKExi(f), KKExi(g) ->
+     let v = new_kvari (binder_name f) in
+     match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
+  | KOAll(f), KOAll(g)
+  | KOExi(f), KOExi(g) ->
+     let v = new_ovari (binder_name f) in
+     match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
+  | KFixM(o1,f), KFixM(o2,g)
+  | KFixN(o1,f), KFixN(o2,g) ->
+     let v = new_kvari (binder_name f) in
+     match_ordi ouvars o1 o2 &&
+       match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
+  | KVari(v1), KVari(v2) -> compare_variables v1 v2 = 0
+  | p, k -> strict_eq_kind p k
+  in
+  res
+
+and match_ordi : ouvar list -> ordi -> ordi -> bool = fun ouvars p o ->
+  let orepr o =
+    let o = orepr o in
+    try fst (assoc_ordi o !ordi_tbl)
+    with Not_found -> o
+  in
+  let res = match orepr p, orepr o with
+    | OUVar(uo,_), o when List.memq uo ouvars ->
+       set_ouvar uo (constant_mbind 0 o); true
+    | OSucc(p), OSucc(o) -> match_ordi ouvars p o
+    | p, k -> strict_eq_ordi p k in
+  res
+
 (****************************************************************************)
 (*{2                        Printing of ordinals                           }*)
 (****************************************************************************)
@@ -408,34 +455,38 @@ and print_term ?(in_proj=false) unfold ff t =
      | TReco([]) -> fprintf ff "%s" c
      | _         -> fprintf ff "%s %a" c print_term t)
   | TCase(t,l,d) ->
-     let bar = ref "" in
-     let pvariant ff (c,b) =
-       match b.elt with
-       | TAbst(_,f) ->
-          let x = binder_name f in
-          begin
-            if x = "_" then
-              fprintf ff "%s%s → %a" !bar c print_term t
-            else
-              let t = subst f (free_of (new_tvari x)) in
-              fprintf ff "%s%s[%s] → %a" !bar c x print_term t;
-          end;
-          bar := "| "
-       | _          ->
-           assert false
-     in
-     let pdefault ff = function
-       | None -> ()
-       | Some({elt = TAbst(_,f)}) ->
-           let x = binder_name f in
-           let t = subst f (free_of (new_tvari x)) in
-           fprintf ff "%s%s → %a" !bar x print_term t;
-           bar := "| "
-       | Some b           -> assert false
-     in
-     fprintf ff (if !latex_mode then "\\mathrm{case} %a \\mathrm{of} %a%a"
-                                else "case %a of %a%a")
-       print_term t (print_list pvariant " ") l pdefault d
+     if List.length l = 1 && d = None && snd (List.hd l) == unbox idt then begin
+       fprintf ff "%a.%s" print_term t (fst (List.hd l))
+     end else begin
+       let bar = ref "" in
+       let pvariant ff (c,b) =
+         match b.elt with
+         | TAbst(_,f) ->
+            let x = binder_name f in
+            begin
+              if x = "_" then
+                fprintf ff "%s%s → %a" !bar c print_term t
+              else
+                let t = subst f (free_of (new_tvari x)) in
+                fprintf ff "%s%s[%s] → %a" !bar c x print_term t;
+            end;
+            bar := "| "
+         | _          ->
+            assert false
+       in
+       let pdefault ff = function
+         | None -> ()
+         | Some({elt = TAbst(_,f)}) ->
+            let x = binder_name f in
+            let t = subst f (free_of (new_tvari x)) in
+            fprintf ff "%s%s → %a" !bar x print_term t;
+            bar := "| "
+         | Some b           -> assert false
+       in
+       fprintf ff (if !latex_mode then "\\mathrm{case} %a \\mathrm{of} %a%a"
+         else "case %a of %a%a")
+         print_term t (print_list pvariant " ") l pdefault d
+     end
   | TDefi(v) ->
      if unfold then
        print_term ff v.orig_value
@@ -602,7 +653,10 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   | Sub_And_r(p)      -> unaryN "∧_r" c (sub2proof p)
   | Sub_Or_l(p)       -> unaryN "∨_l" c (sub2proof p)
   | Sub_Or_r(p)       -> unaryN "∨_r" c (sub2proof p)
-  | Sub_Ind(n)        -> axiomN (sprintf "[%s]" (Sct.strInd n)) c
+  | Sub_Ind(n)        -> hyp (sprintf
+                                (if !latex_mode then "\\left[%s\\right]_%s"
+                                 else "[%s]_%s")
+                                c (Sct.strInd n))
   | Sub_Error(msg)    -> axiomN (sprintf "ERROR(%s)" msg) c
   | Sub_Gen(schema,tros,((t0,_,_,_) as p)) ->
      if List.mem schema.sch_index used_ind then (
@@ -611,7 +665,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
          (unaryN ("G^+_i["^ Sct.strInd schema.sch_index ^"]") c0 (sub2proof p)))
      else (
          ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
-         epsilon_term_tbl := (t,(t0,"",-1)) :: !epsilon_term_tbl;
+         epsilon_term_tbl := (t0,(t,"",-1)) :: !epsilon_term_tbl;
          sub2proof p)
 
 let sub2proof p = sub2proof (sub_used_ind p) p
