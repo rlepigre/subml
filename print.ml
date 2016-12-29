@@ -386,9 +386,26 @@ and print_term ?(in_proj=false) unfold ff t =
   | TCoer(t,a) ->
      fprintf ff "(%a : %a)" print_term t pkind a
   | TMLet(b,x,bt)->
-     let (oa, ka) = mmbinder_arities bt OConv in
-     let t = mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])) in
-     fprintf ff "%a" print_term t (* FIXME *)
+     let (onames, knames) = mmbinder_names bt OConv in
+     let ovars = Array.map (fun n -> free_of (new_ovari n)) onames in
+     let kvars = Array.map (fun n -> free_of (new_kvari n)) knames in
+     let t = mmsubst bt ovars kvars in
+     let k = mmsubst b ovars kvars in
+     let print_name ff = fprintf ff "%s" in
+     let pnames = print_array print_name "," in
+     let popt ff = function
+       | None -> fprintf ff (if !latex_mode then "\\_" else "_")
+       | Some t -> print_term ff t
+     in
+     fprintf ff (if !latex_mode then
+         if !break_hint = 0 then
+           "\\LET %a \\ST %a:%a \\IN %a"
+         else
+           "\\begin{array}[t]{l}\\LET %a \\ST %a:%a \\IN\\\\ %a\\end{array}"
+       else
+         "let %a such that %a:%a in %a")
+       pnames (Array.append onames knames)
+       popt x pkind k print_term t
   | TVari(x) ->
       pp_print_string ff (name_of x)
   | TVars(s) ->
