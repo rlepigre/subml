@@ -248,6 +248,7 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
                                         kuvar_occur ~safe_ordis:o2 u2 a = Non
                                    && !(u2.uvar_state) = Free ->
        set_kuvar u2 (!fbind_ordis o2 a); eq_kind k1 k2
+    | (KPrnt s1    , KPrnt s2    ) -> s1 = s2
     | (_           , _           ) -> false
   in
   eq_kind k1 k2
@@ -276,6 +277,7 @@ and eq_term : ordi list -> term -> term -> bool = fun pos t1 t2 ->
     | (TMLet(_,_,t1)  , _              ) -> eq_term (mmsubst_dummy t1 OConv (KProd [])) t2
     | (_              , TMLet(_,_,t2)  ) -> eq_term t1 (mmsubst_dummy t2 OConv (KProd []))
     | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
+    | (TVars(s1)      , TVars(s2)      ) -> s1 = s2
     | (TAbst(_,f1)    , TAbst(_,f2)    )
     | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos f1 f2
     | (TAppl(t1,u1)   , TAppl(t2,u2)   ) -> eq_term t1 t2 && eq_term u1 u2

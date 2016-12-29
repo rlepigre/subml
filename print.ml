@@ -97,13 +97,46 @@ let search_ordi_tbl o =
       ordi_tbl := (o,(v,false))::!ordi_tbl;
       v
 
+(** A test to avoid capture in match_kind below *)
+let has_kvar : kind -> bool = fun k ->
+  let rec fn k =
+    match repr k with
+    | KFunc(a,b) -> fn a; fn b
+    | KProd(ls)
+    | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
+    | KKAll(f)
+    | KKExi(f)   -> fn (subst f (KProd []))
+    | KFixM(o,f) -> gn o; fn (subst f (KProd []))
+    | KFixN(o,f) -> gn o; fn (subst f (KProd []))
+    | KOAll(f)
+    | KOExi(f)   -> fn (subst f OConv)
+    | KUVar(u,_) -> ()
+    | KDefi(d,o,a) -> Array.iter fn a
+    | KMRec(_,k)
+    | KNRec(_,k) -> fn k
+    | KVari _    -> raise Exit
+    | KUCst(_,f,cl)
+    | KECst(_,f,cl) -> fn (subst f (KProd []))
+    | KPrnt _    -> ()
+  and gn o = match orepr o with
+    | OUVar _ -> ()
+    | OConv -> ()
+    | OSucc o -> gn o
+    | OLess(o,_) -> gn o (* TODO: look at the witness *)
+    | OVari _ -> raise Exit
+  in
+  try
+    fn k; false
+  with
+    Exit -> true
+
 (** Matching kind and ordinals, used for printing only,
     in order to factorise definittion. *)
 let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
   = fun kuvars ouvars p k ->
   let res = match full_repr p, full_repr k with
   | KUVar(ua,[||]), k when List.memq ua kuvars ->
-     set_kuvar ua (constant_mbind 0 k); true
+     set_kuvar ua (constant_mbind 0 k); not (has_kvar p) (* NOTE: to avoid capture *)
   | KFunc(p1,p2), KFunc(k1,k2) ->
      match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
   | KDSum(ps1), KDSum(ps2)
@@ -271,14 +304,14 @@ and print_kind unfold wrap ff t =
       if strict_eq_ordi o OConv then
         fprintf ff "μ%s.%a" (binder_name b) pkindw a
       else
-        fprintf ff "μ_%a%s.%a" print_index_ordi o (binder_name b) pkindw a
+        fprintf ff "μ_{%a}%s.%a" print_index_ordi o (binder_name b) pkindw a
   | KFixN(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
       if strict_eq_ordi o OConv then
         fprintf ff "ν%s.%a" (binder_name b) pkindw a
       else
-        fprintf ff "ν_%a%s.%a" print_index_ordi o (binder_name b) pkindw a
+        fprintf ff "ν_{%a}%s.%a" print_index_ordi o (binder_name b) pkindw a
   | KDefi(td,os,ks) ->
      let name = if !latex_mode then td.tdef_tex_name else td.tdef_name in
      if unfold then
@@ -382,7 +415,9 @@ and print_term ?(give_pos=false) unfold wrap ff t =
       fprintf ff "[%a]" position t.pos
   else match t.elt with
   | TCoer(t,a) ->
-     fprintf ff "(%a : %a)" pterm t pkind a
+     if wrap then fprintf ff "(";
+     fprintf ff "%a : %a" pterm t pkind a;
+     if wrap then fprintf ff ")"
   | TMLet(b,x,bt)->
      let (onames, knames) = mmbinder_names bt OConv in
      let ovars = Array.map (fun n -> free_of (new_ovari n)) onames in
