@@ -24,7 +24,7 @@ let rec for_all f = function
   | [] -> None
   | x::l -> f x &&& for_all f l
 
-let rec check_sub_proof (t, k1, k2, r) =
+let rec check_sub_proof (_, t, k1, k2, r) =
   let res =
     match r with
     | Sub_Delay { contents = p }

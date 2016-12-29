@@ -123,6 +123,7 @@ let has_kvar : kind -> bool = fun k ->
     | OConv -> ()
     | OSucc o -> gn o
     | OLess(o,_) -> gn o (* TODO: look at the witness *)
+    | OVars _ -> ()
     | OVari _ -> raise Exit
   in
   try
@@ -207,24 +208,25 @@ let rec print_ordi unfold ff o =
          (print_list print_index_ordi ", ") (Array.to_list os)
          print_upper u.uvar_state
   | OVari(x) -> fprintf ff "%s" (name_of x)
+  | OVars(s) -> fprintf ff "%s" s
   | OLess(o,w) when unfold ->
      begin
        match w with
        | In(t,a) ->
-          let ov = free_of (new_ovari "α") in
+          let ov = OVars "α" in
           fprintf ff "ε_{%a<%a}(%a∈%a)" (print_ordi false) ov (print_ordi false) o
             (print_term false false) t (print_kind false false) (subst a ov)
        | NotIn(t,a) ->
-          let ov = free_of (new_ovari "α") in
+          let ov = OVars "α" in
           fprintf ff "ε_{%a<%a}(%a∉%a)" (print_ordi false) ov (print_ordi false) o
             (print_term false false) t (print_kind false false) (subst a ov)
        | Gen(i,r,f) ->
           let os = Array.init (mbinder_arity f)
-            (fun i -> free_of (new_ovari ("α_{"^string_of_int i^"}"))) in
+            (fun i -> OVars ("α_{"^string_of_int (i+1)^"}")) in
           let (k1,k2) = msubst f os in
           let os' = Array.mapi (fun i _ -> try os.(List.assoc i r) with Not_found -> OConv) os in
           fprintf ff "ε^%d_{%a<%a}(%a ⊂ %a)"
-            i (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
+            (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
             (print_kind false false) k1 (print_kind false false) k2
      end
   | _ ->
@@ -293,11 +295,11 @@ and print_kind unfold wrap ff t =
       let x = new_prvar f in
       fprintf ff "∃%s.%a" (binder_name f) pkind (subst f x)
   | KOAll(f)  ->
-      let x = new_ovari (binder_name f) in
-      fprintf ff "∀%s.%a" (name_of x) pkind (subst f (free_of x))
+      let x = OVars (binder_name f) in
+      fprintf ff "∀%s.%a" (binder_name f) pkind (subst f x)
   | KOExi(f)  ->
-      let x = new_ovari (binder_name f) in
-      fprintf ff "∃%s.%a" (name_of x) pkind (subst f (free_of x))
+      let x = OVars (binder_name f) in
+      fprintf ff "∃%s.%a" (binder_name f) pkind (subst f x)
   | KFixM(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
@@ -576,12 +578,16 @@ let term_to_string unfold t =
   print_term unfold false str_formatter t;
   flush_str_formatter ()
 
+let ordi_to_string unfold t =
+  print_ordi unfold str_formatter t;
+  flush_str_formatter ()
+
 let kind_to_string unfold k =
   print_kind unfold false str_formatter k;
   flush_str_formatter ()
 
 
-let rec sub_used_ind (t, k1, k2, r) =
+let rec sub_used_ind (_, _, _, _, r) =
   match r with
   | Sub_Delay { contents = p }
   | Sub_KAll_r p
@@ -636,7 +642,7 @@ and typ_used_ind (t, k, r) =
   | Typ_Hole
   | Typ_Error _       -> []
 
-let is_refl : sub_prf -> bool = fun (t,a,b,r) -> strict_eq_kind a b
+let is_refl : sub_prf -> bool = fun (_,_,a,b,_) -> strict_eq_kind a b
 
 let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof = fun used_ind (t,k,r) ->
   let open Proof in
@@ -671,15 +677,16 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof = fun used_i
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
 
 and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
-  fun used_ind (t,a,b,r) ->
+  fun used_ind (os,t,a,b,r) ->
   let open Proof in
   let sub2proof = sub2proof used_ind in
   let t2s = term_to_string true and k2s = kind_to_string false in
+  let o2s = String.concat ", " (List.map (ordi_to_string false) os) in
   let mkJudgement t a b =
     if !ignore_witness then
       sprintf "%s ⊆ %s" (k2s a) (k2s b)
     else
-      sprintf "%s ∈ %s ⊆ %s" (t2s t) (k2s a) (k2s b)
+      sprintf "%s \\vdash %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b)
   in
   let mkSchema schema =
     let os = Array.init (mbinder_arity schema.sch_judge)
@@ -719,7 +726,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
                                  else "[%s]_%s")
                                 c (Sct.strInd n))
   | Sub_Error(msg)    -> axiomN (sprintf "ERROR(%s)" msg) c
-  | Sub_Gen(schema,tros,((t0,_,_,_) as p)) ->
+  | Sub_Gen(schema,tros,((os0,t0,_,_,_) as p)) ->
      if List.mem schema.sch_index used_ind then (
        let c0 = mkSchema schema in
        unaryN "G^+_e" c

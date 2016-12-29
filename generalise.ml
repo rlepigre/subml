@@ -271,5 +271,6 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | OConv      -> ()
     | OLess _    -> ()
     | OVari _    -> ()
+    | OVars _    -> assert false
   in
   fn k; !r

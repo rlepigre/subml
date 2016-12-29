@@ -88,29 +88,29 @@ let fixpoint_depth = ref 1
 (** Used when we can not apply any induction hyp, to give a descent error message *)
 exception NoProof of typ_rule
 
-let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t0 a0 b0 ->
+let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 ->
   Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
     (print_term false) t0 (print_kind false) a0 (print_kind false) b0
-    print_positives ctxt;
+    print_positives ctxt0;
   let a = full_repr a0 in
   let b = full_repr b0 in
-  if eq_kind ctxt.positive_ordis a b then
-    (t0, a0, b0, Sub_Lower)
+  if eq_kind ctxt0.positive_ordis a b then
+    (ctxt0.positive_ordis, t0, a0, b0, Sub_Lower)
   else try try
     let rule = match (a,b) with
     | (KMRec(ptr,a), _           ) ->
-       Sub_And_l(subtype ctxt t0 a b0)
+       Sub_And_l(subtype ctxt0 t0 a b0)
 
     | (_           , KNRec(ptr,b))->
-       Sub_Or_r(subtype ctxt t0 a0 b)
+       Sub_Or_r(subtype ctxt0 t0 a0 b)
 
     | (KNRec(ptr,a), KUVar _     )
-        when Subset.test (eq_ordi ctxt.positive_ordis) ptr ctxt.positive_ordis ->
-       Sub_Or_l(subtype ctxt t0 a b0)
+        when Subset.test (eq_ordi ctxt0.positive_ordis) ptr ctxt0.positive_ordis ->
+       Sub_Or_l(subtype ctxt0 t0 a b0)
 
     | (KUVar _     , KMRec(ptr,b))
-        when Subset.test (eq_ordi ctxt.positive_ordis) ptr ctxt.positive_ordis ->
-       Sub_And_r(subtype ctxt t0 a0 b)
+        when Subset.test (eq_ordi ctxt0.positive_ordis) ptr ctxt0.positive_ordis ->
+       Sub_And_r(subtype ctxt0 t0 a0 b)
 
     (* unification. (sum and product special) *)
     | (KUVar(ua,os), KProd(l))
@@ -125,13 +125,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t0 
        List.iter (fun (s,k) ->
          let t' = dummy_pos (TProj(t0,s)) in
          try
-           let prf = subtype ctxt t' (msubst (List.assoc s l0) os) k  in
+           let prf = subtype ctxt0 t' (msubst (List.assoc s l0) os) k  in
            res := (s,prf) :: !res
          with
            Not_found ->
              let f = bind_ordis os k in
              l1 := (s,f)::!l1;
-             let prf = subtype ctxt t' (msubst f os) k  in
+             let prf = subtype ctxt0 t' (msubst f os) k  in
              res := (s,prf) :: !res) l;
        Timed.(ua.uvar_state := Prod !l1);
        Sub_Prod(!res)
@@ -148,13 +148,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t0 
        List.iter (fun (s,k) ->
          let t' = unbox (tcase dummy_position (box t0) [(s, idt)] None) in
          try
-           let prf = subtype ctxt t' k (msubst (List.assoc s l0) os)  in
+           let prf = subtype ctxt0 t' k (msubst (List.assoc s l0) os)  in
            res := (s,prf) :: !res
          with
            Not_found ->
              let f = bind_ordis os k in
              l1 := (s,f)::!l1;
-             let prf = subtype ctxt t' k (msubst f os) in
+             let prf = subtype ctxt0 t' k (msubst f os) in
              res := (s,prf) :: !res) l;
        Timed.(ub.uvar_state := DSum !l1);
        Sub_DSum(!res)
@@ -181,7 +181,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t0 
          (* this will use the uvar_state if it is not Free, we could try
             to delay this *)
          safe_set_kuvar Neg ua f osa);
-       let (_,_,_,r) = subtype ctxt t0 a0 b0 in r
+       let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
@@ -230,29 +230,30 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t0 
                  Timed.(ub.uvar_state := Free);
                  safe_set_kuvar Pos ub (bind_ordis osb k) osb);
         end;
-        let (_,_,_,r) = subtype ctxt t0 a0 b0 in r
+        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | (KUVar(ua,os), b            ) ->
         safe_set_kuvar Neg ua (bind_ordis os b0) os;
-        let (_,_,_,r) = subtype ctxt t0 a0 b0 in r
+        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | (a           ,(KUVar(ub,os)))  ->
         safe_set_kuvar Pos ub (bind_ordis os a0) os;
-        let (_,_,_,r) = subtype ctxt t0 a0 b0 in r
+        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | _ -> raise Exit
-  in (t0, a0, b0, rule)
+  in (ctxt0.positive_ordis, t0, a0, b0, rule)
   with Exit ->
-  let (ind_res, ctxt) = check_rec t0 ctxt a b in
+  let (ind_res, ctxt) = check_rec t0 ctxt0 a b in
   match ind_res with
-  | UseInduction n -> (t0, a0, b0, Sub_Ind n)
+  | UseInduction n -> (ctxt.positive_ordis, t0, a0, b0, Sub_Ind n)
   | NewInduction ind_ref ->
   let (finalise_proof,t,a,b,a0,b0) = match ind_ref with
     | None -> ((fun x -> x),t0,a,b,a0,b0)
     | Some(n,a,b,tros) ->
        let a = full_repr a and b = full_repr b in
        let t1 = unbox (generic_tcnst (box a) (box b)) in
-       ((fun x -> t0,a0,b0,Sub_Gen(n, tros, x)), t1, a, b, a, b)
+       ((fun x -> ctxt0.positive_ordis,t0,a0,b0,Sub_Gen(n, tros, x)),
+        t1, a, b, a, b)
   in
   let rule =
     match (a,b) with
@@ -411,9 +412,9 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt t0 
     (* Subtype clash. *)
     | (_           , _           ) ->
        subtype_error "Subtyping clash (no rule apply)."
-  in finalise_proof (t, a0, b0, rule)
-  with Subtype_error e -> (t0, a0, b0, Sub_Error e)
-         | Occur_check -> (t0, a0, b0, Sub_Error "Occur_check")
+  in finalise_proof (ctxt.positive_ordis, t, a0, b0, rule)
+  with Subtype_error e -> (ctxt0.positive_ordis, t0, a0, b0, Sub_Error e)
+         | Occur_check -> (ctxt0.positive_ordis, t0, a0, b0, Sub_Error "Occur_check")
 
 (** A boolean test for subtyping *)
 and is_subtype ctxt t a b =

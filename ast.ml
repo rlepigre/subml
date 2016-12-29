@@ -121,6 +121,7 @@ and ordi =
   | OLess of ordi * ord_wit (** Ordinal witness. *)
 
   | OUVar of ouvar * ordi array (** Unification variables for ordinals. *)
+  | OVars of string (** for printing only *)
 
 (** Unification variable for an ordinal. *)
 and ouvar = (ordi, (ordi from_ordis) option * (ordi from_ordis) option) uvar
@@ -231,7 +232,7 @@ and sub_rule =
   | Sub_Ind    of Sct.index
   | Sub_Error  of string
 and sub_prf =
-  term * kind * kind * sub_rule
+  ordi list * term * kind * kind * sub_rule
   (** the integer is referenced by induction hyp ([Sub_Ind]) *)
 
 (** Typing proof *)
