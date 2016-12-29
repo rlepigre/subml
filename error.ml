@@ -2,7 +2,7 @@
 (**{3         Functions collecting error annotations in prooftree          }*)
 (****************************************************************************)
 
-
+open Print
 open Ast
 open Format
 
@@ -99,8 +99,10 @@ let check_typ_proof p =
   | Some l -> raise (Error l)
 
 let display_error ch = function
-  | Typ(t,k)     -> fprintf ch "TYP %a : %a\n" (!fprint_term false) t (!fprint_kind false) k
-  | Sub(t,k1,k2) -> fprintf ch "SUB %a ⊂ %a\n" (!fprint_kind false) k1 (!fprint_kind false) k2
+  | Typ(t,k)     -> fprintf ch "TYP %a : %a\n" (print_term ~give_pos:true false) t
+                                               (print_kind false) k
+  | Sub(t,k1,k2) -> fprintf ch "SUB %a ⊂ %a\n" (print_kind false) k1
+                                               (print_kind false) k2
   | Msg(m)       -> fprintf ch "MSG %s" m
 
 let display_errors ch = List.iter (display_error ch)

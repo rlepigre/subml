@@ -180,11 +180,11 @@ let rec print_ordi unfold ff o =
        | In(t,a) ->
           let ov = free_of (new_ovari "α") in
           fprintf ff "ε_{%a<%a}(%a∈%a)" (print_ordi false) ov (print_ordi false) o
-            (print_term false) t (print_kind false false) (subst a ov)
+            (print_term false false) t (print_kind false false) (subst a ov)
        | NotIn(t,a) ->
           let ov = free_of (new_ovari "α") in
           fprintf ff "ε_{%a<%a}(%a∉%a)" (print_ordi false) ov (print_ordi false) o
-            (print_term false) t (print_kind false false) (subst a ov)
+            (print_term false false) t (print_kind false false) (subst a ov)
        | Gen(i,r,f) ->
           let os = Array.init (mbinder_arity f)
             (fun i -> free_of (new_ovari ("α_{"^string_of_int i^"}"))) in
@@ -373,18 +373,16 @@ and pkind_def unfold ff kd =
   fprintf ff "File %S, line %d, characters %d-%d"
     pos.filename pos.line_start pos.col_start pos.col_end
 
-and print_term ?(in_proj=false) unfold ff t =
-  let print_term = print_term false in
+and print_term ?(give_pos=false) unfold wrap ff t =
+  let wterm = print_term ~give_pos false true in
+  let pterm = print_term ~give_pos false false in
   let pkind = print_kind false false in
-  (* TODO: temporary removed printing by position, should be optional *)
-  (*let not_def t = match t.elt with TDefi _ -> false | _ -> true in
-    if not !latex_mode && not in_proj && not unfold &&
-    t.pos <> dummy_position && not_def t then
+  if not !latex_mode && give_pos && not unfold &&
+    t.pos <> dummy_position then
       fprintf ff "[%a]" position t.pos
-    else *)
-  match t.elt with
+  else match t.elt with
   | TCoer(t,a) ->
-     fprintf ff "(%a : %a)" print_term t pkind a
+     fprintf ff "(%a : %a)" pterm t pkind a
   | TMLet(b,x,bt)->
      let (onames, knames) = mmbinder_names bt OConv in
      let ovars = Array.map (fun n -> free_of (new_ovari n)) onames in
@@ -395,7 +393,7 @@ and print_term ?(in_proj=false) unfold ff t =
      let pnames = print_array print_name "," in
      let popt ff = function
        | None -> fprintf ff (if !latex_mode then "\\_" else "_")
-       | Some t -> print_term ff t
+       | Some t -> pterm ff t
      in
      fprintf ff (if !latex_mode then
          if !break_hint = 0 then
@@ -405,38 +403,49 @@ and print_term ?(in_proj=false) unfold ff t =
        else
          "let %a such that %a:%a in %a")
        pnames (Array.append onames knames)
-       popt x pkind k print_term t
+       popt x pkind k pterm t
   | TVari(x) ->
       pp_print_string ff (name_of x)
   | TVars(s) ->
       pp_print_string ff s
   | TAbst(ao,b) ->
-     let rec fn ff t = match t.elt with
+     if wrap then fprintf ff "(";
+     let rec fn first ff t = match t.elt with
        | TAbst(ao,b) ->
           let x = binder_name b in
           let t = subst b (TVars x) in
+          let sep = if first then "" else
+                    if !latex_mode then "\\, " else " " in
           begin
             match ao with
-            | None   -> fprintf ff " %s%a" x fn t
-            | Some a -> fprintf ff " %s{:}%a%a" x pkind a fn t
+            | None   -> fprintf ff "%s%s%a" sep x (fn false) t
+            | Some a -> fprintf ff "%s%s{:}%a%a" sep x pkind a (fn false) t
           end
        | _ ->
-          fprintf ff ".%a" print_term t
+          fprintf ff ".%a" pterm t
      in
-     fprintf ff "λ%a" fn t;
+     fprintf ff "λ%a" (fn true) t;
+     if wrap then fprintf ff ")";
   | TAppl _ ->
-     let rec fn ff t = match t.elt with
+     let rec fn acc t = match t.elt with
        | TAppl(t,u) ->
-          fprintf ff "%a %a" fn t print_term u
+          fn (u::acc) t
        | _ ->
-          fprintf ff "(%a)" print_term t
-     in fn ff t
+          t::acc
+     in
+     let terms = fn [] t in
+     let sep = if !latex_mode then " \\; " else " " in
+     if wrap then
+       fprintf ff "(%a)" (print_list wterm sep) terms
+     else
+       print_list wterm sep ff terms
+
   | TReco(fs) ->
      if is_tuple fs then begin
        pp_print_string ff "(";
        for i = 1 to List.length fs do
          if i = 2 then fprintf ff ", ";
-         fprintf ff "%a" print_term (List.assoc (string_of_int i) fs)
+         fprintf ff "%a" pterm (List.assoc (string_of_int i) fs)
        done;
        pp_print_string ff ")";
      end else begin
@@ -449,7 +458,7 @@ and print_term ?(in_proj=false) unfold ff t =
          let pfield ff (l,t) =
            let t, pt = fn ":" t in
            fprintf ff (if !latex_mode then "\\mathrm{%s} %t = %a" else "%s %t = %a")
-             l pt print_term t
+             l pt pterm t
          in
          fprintf ff (if !latex_mode then "\\{%a\\}" else "{%a}")
            (print_list pfield "; ") fs
@@ -457,7 +466,7 @@ and print_term ?(in_proj=false) unfold ff t =
          decr break_hint;
          let pfield ff (l,t) =
            let t, pt = fn ":" t in
-           fprintf ff "\\mathrm{%s} %t &= %a" l pt print_term t
+           fprintf ff "\\mathrm{%s} %t &= %a" l pt pterm t
          in
          fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
          fprintf ff "\\begin{array}{ll}%a" (print_list pfield ";\\\\\n") fs;
@@ -466,14 +475,14 @@ and print_term ?(in_proj=false) unfold ff t =
        end
      end
   | TProj(t,l) ->
-      fprintf ff "%a.%s" print_term t l
+      fprintf ff "%a.%s" pterm t l
   | TCons(c,t) ->
      (match t.elt with
      | TReco([]) -> fprintf ff "%s" c
-     | _         -> fprintf ff "%s %a" c print_term t)
+     | _         -> fprintf ff "%s %a" c pterm t)
   | TCase(t,l,d) ->
      if List.length l = 1 && d = None && snd (List.hd l) == unbox idt then begin
-       fprintf ff "%a.%s" print_term t (fst (List.hd l))
+       fprintf ff "%a.%s" pterm t (fst (List.hd l))
      end else begin
        let bar = ref "" in
        let pvariant ff (c,b) =
@@ -482,10 +491,10 @@ and print_term ?(in_proj=false) unfold ff t =
             let x = binder_name f in
             begin
               if x = "_" then
-                fprintf ff "%s%s → %a" !bar c print_term t
+                fprintf ff "%s%s → %a" !bar c pterm t
               else
                 let t = subst f (free_of (new_tvari x)) in
-                fprintf ff "%s%s[%s] → %a" !bar c x print_term t;
+                fprintf ff "%s%s[%s] → %a" !bar c x pterm t;
             end;
             bar := "| "
          | _          ->
@@ -496,17 +505,17 @@ and print_term ?(in_proj=false) unfold ff t =
          | Some({elt = TAbst(_,f)}) ->
             let x = binder_name f in
             let t = subst f (free_of (new_tvari x)) in
-            fprintf ff "%s%s → %a" !bar x print_term t;
+            fprintf ff "%s%s → %a" !bar x pterm t;
             bar := "| "
          | Some b           -> assert false
        in
        fprintf ff (if !latex_mode then "\\mathrm{case} %a \\mathrm{of} %a%a"
          else "case %a of %a%a")
-         print_term t (print_list pvariant " ") l pdefault d
+         pterm t (print_list pvariant " ") l pdefault d
      end
   | TDefi(v) ->
      if unfold then
-       print_term ff v.orig_value
+       pterm ff v.orig_value
      else
        let name = if !latex_mode then v.tex_name else v.name in
        pp_print_string ff name
@@ -515,12 +524,12 @@ and print_term ?(in_proj=false) unfold ff t =
   | TFixY(_,_,f) ->
       let x = binder_name f in
       (*let t = subst f (TVars x) in*)
-      (*fprintf ff "Y%s.%a" x print_term t*)
+      (*fprintf ff "Y%s.%a" x pterm t*)
       fprintf ff "%s" x
   | TCnst(f,a,b,_) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
-       print_term ff t
+       pterm ff t
      else
        fprintf ff "%s_%d" name index
 
@@ -529,7 +538,7 @@ and print_term ?(in_proj=false) unfold ff t =
 (****************************************************************************)
 
 let term_to_string unfold t =
-  print_term unfold str_formatter t;
+  print_term unfold false str_formatter t;
   flush_str_formatter ()
 
 let kind_to_string unfold k =
@@ -695,8 +704,8 @@ let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
  *                          Interface functions                             *
  ****************************************************************************)
 
-let print_term unfold ff t =
-  print_term unfold ff t; pp_print_flush ff ()
+let print_term ?(give_pos = false) unfold ff t =
+  print_term ~give_pos unfold false ff t; pp_print_flush ff ()
 
 let print_kind unfold ff t =
   print_kind unfold false ff t; pp_print_flush ff ()
