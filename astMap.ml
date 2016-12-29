@@ -66,6 +66,7 @@ and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
   ford occ o map_kind map_ordi (
     function
     | OVari x -> box_of_var x
+    | OVars s -> box (OVars s)
     | OSucc o -> osucc (map_ordi ~occ o)
     | OLess(o,In(t,w))  -> oless_In (map_ordi ~occ o) (box t)
        (vbind mk_free_ovari (binder_name w) (fun x -> map_kind ~occ:All (subst w (OVari x))))

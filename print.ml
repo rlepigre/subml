@@ -546,8 +546,8 @@ and print_term ?(give_pos=false) unfold wrap ff t =
             bar := "| "
          | Some b           -> assert false
        in
-       fprintf ff (if !latex_mode then "\\mathrm{case} %a \\mathrm{of} %a%a"
-         else "case %a of %a%a")
+       fprintf ff (if !latex_mode then "\\case{%a}{%a%a}"
+                                  else "case %a of %a%a")
          pterm t (print_list pvariant " ") l pdefault d
      end
   | TDefi(v) ->

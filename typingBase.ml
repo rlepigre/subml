@@ -122,7 +122,7 @@ let rec opred o w =
   | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
      set_ouvar p o'; opred o w
   | OUVar _ -> subtype_error "opred fails"; (* FIXME: can we do better ? *)
-  | OVari _ -> assert false
+  | OVari _ | OVars _ -> assert false
   | OLess _ | OConv -> OLess(o, w)
 
 let find_positive ctxt o =
@@ -142,7 +142,7 @@ let find_positive ctxt o =
     | OSucc o -> if i >= 0 then true else fn (i-1) o
     | OLess(_) as o -> gn i o
     | OUVar _ -> true
-    | OVari _ -> assert false
+    | OVari _ | OVars _ -> assert false
   in
   (*  Io.log "find positive %a\n%!" (print_ordi false) o;*)
   match orepr o with
