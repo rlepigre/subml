@@ -227,9 +227,15 @@ let rec print_ordi unfold ff o =
             (fun i -> OVars ("α_{"^string_of_int (i+1)^"}")) in
           let (k1,k2) = msubst f os in
           let os' = Array.mapi (fun i _ -> try os.(List.assoc i r) with Not_found -> OConv) os in
-          fprintf ff "ε^%d_{%a<%a}(%a ⊂ %a)"
-            (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
-            (print_kind false false) k1 (print_kind false false) k2
+          match k1 with
+          | SchTerm t ->
+             fprintf ff "ε^%d_{%a<%a}(%a : %a)"
+               (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
+               (print_term false false) t (print_kind false false) k2
+          | SchKind k1 ->
+             fprintf ff "ε^%d_{%a<%a}(%a ⊂ %a)"
+               (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
+               (print_kind false false) k1 (print_kind false false) k2
      end
   | _ ->
     let o' = search_ordi_tbl o in print_ordi false ff o'
@@ -743,6 +749,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
     let osnames = String.concat "," (Array.to_list (Array.map name_of os)) in
     let os = Array.map free_of os in
     let (a,b) = msubst schema.sch_judge os in
+    let a = match a with SchTerm _ -> assert false | SchKind k -> k in
     let o2s = String.concat ", "
       (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
     sprintf "∀%s %s \\vdash %s ⊆ %s" osnames o2s (k2s a) (k2s b)

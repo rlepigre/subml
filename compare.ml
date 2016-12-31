@@ -140,7 +140,12 @@ and eq_schema pos s1 s2 =
         let os = Array.init (mbinder_arity f1) (fun _ -> free_of (new_ovari "o")) in
         let (k1,k1') = msubst f1 os in
         let (k2,k2') = msubst f2 os in
-        eq_kind pos k1 k2 && eq_kind pos k1' k2')
+        eq_term_or_kind pos k1 k2 && eq_kind pos k1' k2')
+
+and eq_term_or_kind pos x1 x2 = match (x1,x2) with
+    SchTerm t1, SchTerm t2 -> eq_term pos t1 t2
+  | SchKind k1, SchKind k2 -> eq_kind pos k1 k2
+  | _         , _          -> false
 
 and leqi_ordi pos o1 i o2 =
   Io.log_ord "%a <_%d %a %b\n%!"
@@ -408,7 +413,7 @@ and gen_occur :
           let f = s.sch_judge in
           let os = Array.make (mbinder_arity f) OConv in
           let (k1,k2) = msubst f os in
-          aux All (aux All acc k2) k1)
+          aux5 (aux All acc k2) k1)
     | OSucc o -> aux3 acc o
     | OUVar(({uvar_state = o} as v), os) ->
        if ouvar v then combine All (aux4 acc os o)
@@ -426,7 +431,9 @@ and gen_occur :
     | Some f -> aux3 acc (msubst f os)
     in
     acc
-
+  and aux5 acc = function
+    | SchTerm t -> aux2    acc t
+    | SchKind k -> aux All acc k
   in
   (fun k -> aux Pos Non k), (fun o -> aux3 Non o)
 

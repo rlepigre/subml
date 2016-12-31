@@ -51,7 +51,11 @@ let check_rec
       Io.log_sub "IND %a < %a (%a)\n%!" (print_kind false) a (print_kind false) b
         print_positives ctxt;
       let pos = ctxt.positive_ordis in
-      let (schema, os, (os0,tpos,k1,k2)) = generalise pos a b ctxt.call_graphs in
+      let (schema, os, (os0,tpos,k1,k2)) = generalise pos (SchKind a) b ctxt.call_graphs in
+      let k1 = match k1 with
+        | SchTerm _ -> assert false
+        | SchKind k -> k
+      in
       let fnum = schema.sch_index in
       add_call ctxt fnum os false;
       let ctxt = { ctxt with
@@ -63,7 +67,7 @@ let check_rec
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
-        let (ov,pos',a',b') = recompose schema' in
+        let (ov,pos',a',b') = recompose_kind schema' in
         Io.log_sub "TESTING %a = %a\n%a = %a\n\n%!"
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
@@ -598,7 +602,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         let l = if do_subsume then subsumption [] l else l in
         let l = List.map (fun (ctxt,t0,t,c,ptr,subsumed) ->
           let (schema, os,(os0, tpos, _, c0)) =
-            try generalise ctxt.positive_ordis (KProd []) c ctxt.call_graphs
+            try generalise ctxt.positive_ordis (SchTerm t0) c ctxt.call_graphs
             with FailGeneralise -> assert false
           in
           let tros = List.combine (List.map snd os) (List.map snd os0) in

@@ -19,14 +19,14 @@ exception FailGeneralise
 
 (** the type of a particular judgement, ordinal being witnesses or
     ordinal variables *)
-type particular = (int * ordi) list * ordi list * kind * kind
+type 'a particular = (int * ordi) list * ordi list * 'a * kind
 
 (** function to apply a schema. I
     - If [general = false], it replace the ordinals with appropriate
       witnesses to prove the schema (not to use it).
     - If [general = true], we want to use the schema and all ordinals
       are replaced with variables *)
-let recompose : ?general:bool -> schema -> particular =
+let recompose : ?general:bool -> schema -> term_or_kind particular =
   fun ?(general=true) ({ sch_posit = pos; sch_relat = rel; sch_judge = both } as schema) ->
     let res = ref [] in
     let forbidden = ref [] in
@@ -61,6 +61,14 @@ let recompose : ?general:bool -> schema -> particular =
 
     os, pos, k1, k2
 
+let recompose_kind : ?general:bool -> schema -> kind particular =
+  fun ?(general=true) schema ->
+    let (os,pos,k1,k2) = recompose ~general schema in
+    let k1 = match k1 with
+      | SchTerm _ -> assert false
+      | SchKind k -> k
+    in (os,pos,k1,k2)
+
 (** [generalise] create a schema from a judgement. All ordinals
     that appear in the judgement are quantified over.
     Ordinal appearing in witnesses are untouched.
@@ -79,8 +87,8 @@ let recompose : ?general:bool -> schema -> particular =
     instance of the schema with the witnesses that is needed to
     prove the schema.
  *)
-let generalise : ordi list -> kind -> kind -> Sct.call_table ->
-  schema * (int * ordi) list * particular
+let generalise : ordi list -> term_or_kind -> kind -> Sct.call_table ->
+  schema * (int * ordi) list * term_or_kind particular
   = fun pos k1 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
@@ -140,7 +148,10 @@ let generalise : ordi list -> kind -> kind -> Sct.call_table ->
     | k -> def_kind k
 
   in
-  let k1 = unbox (map_kind ~fkind ~ford ~occ:Neg k1) in
+  let k1 = match k1 with
+    | SchKind k1 -> SchKind (unbox (map_kind ~fkind ~ford ~occ:Neg k1))
+    | SchTerm _  -> k1
+  in
   let k2 = unbox (map_kind ~fkind ~ford ~occ:Pos k2) in
 
   let pos = List.map (fun o -> fst (eps_search false o)) pos in
@@ -148,7 +159,12 @@ let generalise : ordi list -> kind -> kind -> Sct.call_table ->
   let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
   let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
   Io.log_uni "bind in generalise\n%!";
-  let k1 = bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k1 in
+  let k1 = match k1 with
+    | SchKind k1 ->
+       box_apply (fun k -> SchKind k)
+         (bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k1)
+    | SchTerm _  -> box k1
+  in
   let k2 = bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k2 in
   let both = box_pair k1 k2 in
   let both = unbox (bind_mvar ovars both) in
@@ -192,7 +208,7 @@ let generalise : ordi list -> kind -> kind -> Sct.call_table ->
     }
   in
   let (os0,tpos,k1,k2) = recompose ~general:false schema in
-  let name = if strict_eq_kind k1 (KProd []) then "Y" else "S" in
+  let name = match k1 with SchKind _ -> "S" | SchTerm _ -> "Y" in
   let fnum = Sct.new_function call_table name
     (List.map Print.ordi_to_printer os0)
   in

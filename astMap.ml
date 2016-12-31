@@ -78,7 +78,10 @@ and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
        let s = box_apply f
          (mvbind mk_free_ovari (mbinder_names p) (fun xs ->
            let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in
-           box_pair (map_kind ~occ:All k1) (map_kind ~occ:All k2)))
+           box_pair (match k1 with
+           | SchTerm t -> box (SchTerm t)
+           | SchKind k -> box_apply (fun k -> SchKind k) (map_kind ~occ:All k))
+             (map_kind ~occ:All k2)))
        in
        oless_Gen (map_ordi ~occ o) i s
 
