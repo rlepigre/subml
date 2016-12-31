@@ -55,7 +55,7 @@ let list_cons _loc t l =
   in_pos _loc (PCons("Cons", Some c))
 
 let dummy_case_var _loc =
-  (in_pos _loc "_", Some(dummy_pos (PProd [])))
+  (in_pos _loc "", Some(dummy_pos (PProd [])))
 
 (* "t; u" := "(fun (_ : unit) ↦ u) t" *)
 let sequence _loc t u =

@@ -486,9 +486,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let ts = List.map (fun (l,_) -> (l, new_kuvar ())) fs in
          let c' = KProd(ts) in
          let ptr = Subset.create ctxt.positive_ordis in
-         let c' =
-           if is_normal t then KNRec(ptr,c') else c'
-         in
+         let c' =  if is_normal t then KNRec(ptr,c') else c' in
          let p1 = subtype ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let check (l,t) =
@@ -504,11 +502,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let a = new_kuvar () in
          let c' = new_kuvar ~state:(DSum [(d,constant_mbind 0 a)]) () in
          let ptr = Subset.create ctxt.positive_ordis in
-         let c' =
-           if is_normal t then
-             KNRec(ptr,c')
-           else c'
-         in
+         let c' = if is_normal t then KNRec(ptr,c') else c' in
          let p1 = subtype ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let p2 = type_check ctxt v a in
@@ -559,28 +553,30 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | Type_error msg -> Typ_Error msg
     | Occur_check    -> Typ_Error "occur_check"
     | Sys.Break      -> interrupted t.pos
-  in (t, c, r)
+  in (ctxt.positive_ordis, t, c, r)
 
 and subsumption acc = function
   | [] -> List.rev acc
-  | (ctxt,t,c,ptr,subsumed as head)::tail ->
+  | (ctxt,_,t,c,ptr,subsumed as head)::tail ->
      let forward = ref false in
      let rec gn acc' = function
        | [] -> subsumption (head::List.rev acc') tail
-       | (ctxt',t',c',ptr',subsumed' as head')::tail' ->
+       | (ctxt',_,t',c',ptr',subsumed' as head')::tail' ->
           if (List.for_all (fun o1 ->
             List.exists (strict_eq_ordi o1) ctxt.positive_ordis)
                 ctxt'.positive_ordis) && is_subtype ctxt t c' c
           then begin
             assert (not !forward);
-            subsumed' := (ptr, ctxt) :: !subsumed @ !subsumed';
+            subsumed' := ctxt :: !subsumed @ !subsumed';
+            ptr := Indirect (subtype  ctxt t c' c, ptr');
             subsumption acc tail
           end else if (List.for_all (fun o1 ->
                 List.exists (strict_eq_ordi o1) ctxt'.positive_ordis)
                   ctxt.positive_ordis) && is_subtype ctxt' t' c c'
           then begin
             forward := true;
-            subsumed := (ptr', ctxt') :: !subsumed' @ !subsumed;
+            subsumed := ctxt' :: !subsumed' @ !subsumed;
+            ptr' := Indirect (subtype  ctxt t' c c', ptr);
             gn acc' tail'
           end else
             gn (head'::acc') tail'
@@ -590,29 +586,30 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
       if depth = 0 && !remains <> [] then
          (* the fixpoint was unrolled as much as allowed, and
             no applicable induction hyp was found. *)
-        Typ_TFix(proof_ptr)
+        Typ_YGen(proof_ptr)
       else
         (* otherwise we unroll once more, and type-check *)
         let l = List.map (fun (ctxt,c,ptr) ->
-          let t =  subst f (TFixY(do_subsume,depth-1,f)) in
-          ctxt,t,c,ptr,ref []) !remains
+          let e = TFixY(do_subsume,depth-1,f) in
+          let t0 = dummy_pos e in
+          let t =  subst f e in
+          ctxt,t0,t,c,ptr,ref []) !remains
         in
         let l = if do_subsume then subsumption [] l else l in
-        let l = List.map (fun (ctxt,t,c,ptr,subsumed) ->
+        let l = List.map (fun (ctxt,t0,t,c,ptr,subsumed) ->
           let (schema, os,(os0, tpos, _, c0)) =
             try generalise ctxt.positive_ordis (KProd []) c ctxt.call_graphs
             with FailGeneralise -> assert false
           in
+          let tros = List.combine (List.map snd os) (List.map snd os0) in
           let fnum = schema.sch_index in
           Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!"
             Sct.prInd fnum (print_kind false) c (print_kind false) c0;
-          List.iter (fun (ptr', ctxt) -> add_call ctxt fnum os false;
-                                         if ptr != ptr' then ptr' := (fnum,(t,c,Typ_TFix(ptr))))
-            ((ptr,ctxt)::!subsumed);
+          List.iter (fun ctxt -> add_call ctxt fnum os false) (ctxt::!subsumed);
           if os <> [] then hyps_ptr := schema :: !hyps_ptr;
           let ctxt = { ctxt with top_induction = (fnum, os0);
                                  positive_ordis = tpos} in
-          Some (ctxt,t,c0,fnum,ptr)) l
+          Some (ctxt,t0,t,c0,schema,tros,ptr)) l
         in
         let l = List.fold_left (fun acc -> function
           | None -> acc
@@ -620,9 +617,12 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         in
         remains := [];
 
-        List.iter (fun (ctxt,t,c,fnum,ptr) -> ptr := (fnum, type_check ctxt t c)) l;
+        List.iter (fun (ctxt,t0,t,c,schema,tros,ptr) ->
+          let prf = type_check ctxt t c in
+          let prf = (ctxt.positive_ordis, t0, c, Typ_Yufl prf) in
+          ptr := Direct (schema,tros, prf)) l;
         if !remains = [] then
-          Typ_TFix(proof_ptr)
+          Typ_YGen(proof_ptr)
         else
           breadth_first proof_ptr hyps_ptr f remains do_subsume (depth-1)
 
@@ -661,11 +661,11 @@ and search_induction depth ctxt t a c0 hyps =
              Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
              print_positives { ctxt with positive_ordis = pos}
          with (Exit | Error _) as e ->
-            if e <> Exit then errProof := Typ_YH(schema.sch_index,prf);
+            if e <> Exit then errProof := Typ_YInd(schema.sch_index,prf);
            Timed.Time.rollback time;
            raise Exit);
          add_call ctxt schema.sch_index ov true;
-         Typ_YH(schema.sch_index,prf)
+         Typ_YInd(schema.sch_index,prf)
        with Exit -> fn hyps
   in
   (* HEURISTIC: try induction hypothesis with more parameters first.
@@ -706,7 +706,7 @@ and check_fix ctxt t do_subsume depth f c0 =
         fix_induction_hyp = (f,a,hyps_ptr, remains)::ctxt.fix_induction_hyp;
       }
     in
-    let proof_ptr = ref (Sct.root, dummy_proof) in
+    let proof_ptr = ref Todo in
     assert (!remains = []);
     remains := (ctxt, c0, proof_ptr) :: !remains;
     (* The main function doing the breadth-first search for the proof *)
@@ -720,10 +720,10 @@ and check_fix ctxt t do_subsume depth f c0 =
     try search_induction depth ctxt t a c0 hyps with NoProof rule ->
       (* No inductive hypothesis applies, we add a new induction hyp and
          record the unproved judgment with the other *)
-      let ptr = ref (Sct.root, (t,c0,rule)) in
+      let ptr = ref Todo in
       Io.log_typ "adding remain at %d %a\n%!" depth (print_kind false) c0;
       remains := (ctxt, c0, ptr) :: !remains;
-      Typ_TFix(ptr)
+      Typ_YGen(ptr)
 
 let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table
   = fun ?ctxt ?term a b ->

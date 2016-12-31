@@ -51,7 +51,7 @@ and fix_induction =
     * kind                    (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
     * schema list ref
-    * (subtype_ctxt * kind * (Sct.index * typ_prf) ref) list ref
+    * (subtype_ctxt * kind * typ_gen ref) list ref
       (* The use of references here is to do a breadth-first search for
          inductive proof. Depth first here is bad, using too large depth.
          The reference holds proofs yet to be done *)

@@ -56,18 +56,24 @@ let rec check_sub_proof (_, t, k1, k2, r) =
   | None -> None
   | Some l -> Some (Sub(t,k1,k2) :: l)
 
-and check_typ_proof (t, k, r) =
+and check_typ_proof (_, t, k, r) =
+  let rec fn ptr = match !ptr with
+    | Todo -> Some [ Msg "Cannot find inductive hypothesis" ]
+    | Indirect(p1,p2) -> fn p2 &&&  check_sub_proof p1
+    | Direct(_,_,p) -> check_typ_proof p
+  in
   let res =
     match r with
+    | Typ_YGen ptr -> fn ptr
     | Typ_Coer   (p2, p1)
     | Typ_Func_i (p2, p1)
     | Typ_DSum_i (p2, p1) -> check_typ_proof p1 &&& check_sub_proof p2
 
     | Typ_Nope   p
-    | Typ_TFix { contents = (_,p) }
+    | Typ_Yufl   p
     | Typ_Prod_e p        -> check_typ_proof p
 
-    | Typ_YH (_, p)
+    | Typ_YInd (_, p)
     | Typ_Defi   p
     | Typ_Prnt   p
     | Typ_Cnst   p        -> check_sub_proof p

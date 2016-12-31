@@ -53,4 +53,6 @@ let output : formatter -> string proof -> unit = fun ch p ->
                         let macro = macro_name (max 1 (List.length ps)) in
                         fprintf ch "  \\%sInfC{$%s$}\n" macro c;
   in
-  fprintf ch "\\begin{prooftree}\n%a\\end{prooftree}\n%!" output p
+  fprintf ch
+    "\\begin{prooftree}\n%a\\end{prooftree}\n%!"
+    output p

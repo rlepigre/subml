@@ -338,10 +338,16 @@ and print_kind unfold wrap ff t =
      else
        fprintf ff "?%i(%a)" u.uvar_key
          (print_list print_index_ordi ", ") (Array.to_list os)
-  | KMRec(p,a) -> fprintf ff "(%a ∧ {%a})" pkind a
-     (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
-  | KNRec(p,a) -> fprintf ff "(%a ∨ {%a})" pkind a
-     (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p)
+  | KMRec(p,a) ->
+     if wrap then pp_print_string ff "(";
+     fprintf ff "%a ∧ {%a}" pkindw a
+       (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p);
+     if wrap then pp_print_string ff ")";
+  | KNRec(p,a) ->
+     if wrap then pp_print_string ff "(";
+     fprintf ff "%a ∨ {%a}" pkindw a
+       (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p);
+     if wrap then pp_print_string ff ")";
   | KPrnt x -> match x with
   | FreeVr s -> pp_print_string ff s
   | DotPrj(x, s) -> fprintf ff "%s.%s" x s
@@ -531,7 +537,7 @@ and print_term ?(give_pos=false) unfold wrap ff t =
                 fprintf ff "%s%s → %a" !bar c pterm t
               else
                 let t = subst f (free_of (new_tvari x)) in
-                fprintf ff "%s%s[%s] → %a" !bar c x pterm t;
+                fprintf ff "%s%s %s → %a" !bar c x pterm t;
             end;
             bar := "| "
          | _          ->
@@ -614,21 +620,27 @@ let rec sub_used_ind (_, _, _, _, r) =
   | Sub_Lower
   | Sub_Error _         -> []
 
-and typ_used_ind (t, k, r) =
+and typ_used_ind (_, _, _, r) =
+  let rec fn ptr = match !ptr with
+    | Todo              -> []
+    | Direct(_,_,p)     -> typ_used_ind p
+    | Indirect(p1,p2)   -> sub_used_ind p1 @ fn p2
+  in
   match r with
+  | Typ_YGen ptr        -> fn ptr
   | Typ_Coer   (p2, p1)
   | Typ_Func_i (p2, p1)
   | Typ_DSum_i (p2, p1) -> typ_used_ind p1 @ sub_used_ind p2
 
   | Typ_Nope   p
-  | Typ_TFix { contents = (_,p) }
+  | Typ_Yufl   p
   | Typ_Prod_e p        -> typ_used_ind p
 
   | Typ_Defi   p
   | Typ_Prnt   p
   | Typ_Cnst   p        -> sub_used_ind p
 
-  | Typ_YH (n, p)       -> n :: sub_used_ind p
+  | Typ_YInd(n, p)      -> n :: sub_used_ind p
 
   | Typ_Func_e (p1, p2) -> typ_used_ind p1 @ typ_used_ind p2
 
@@ -644,37 +656,75 @@ and typ_used_ind (t, k, r) =
 
 let is_refl : sub_prf -> bool = fun (_,_,a,b,_) -> strict_eq_kind a b
 
-let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof = fun used_ind (t,k,r) ->
+let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
+  = fun used_ind (os,t,k,r) ->
   let open Proof in
   let sub2proof = sub2proof used_ind in
   let typ2proof = typ2proof used_ind in
-  let t2s = term_to_string true and k2s = kind_to_string false in
-  let c = sprintf "%s : %s" (t2s t) (k2s k) in
+  let t2s = term_to_string false and k2s = kind_to_string false in
+  let mkJudgment os t k =
+    let o2s = String.concat ", " (List.map (ordi_to_string false) os) in
+    sprintf "%s \\vdash %s : %s" o2s (t2s t) (k2s k)
+  in
+  let c = mkJudgment os t k in
   let binaryT name c p1 p2 =
     if is_refl p1 then unaryN name c p2
     else binaryN name c (sub2proof p1) p2
   in
+  let unaryT name c p1 =
+    if is_refl p1 then axiomN name c
+    else unaryN name c (sub2proof p1)
+  in
+  let mkSchema schema =
+    let os = Array.init (mbinder_arity schema.sch_judge)
+      (fun i -> new_ovari ("α_"^string_of_int i)) in
+    let osnames = String.concat "," (Array.to_list (Array.map name_of os)) in
+    let os = Array.map free_of os in
+    let (a,b) = msubst schema.sch_judge os in
+    let o2s = String.concat ", "
+      (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
+    sprintf "∀%s %s \\vdash %s : %s" osnames o2s (t2s t) (k2s b)
+  in
+  let fn ptr = match !ptr with
+  | Todo -> axiomN (sprintf "ERROR(Missing inductive proof)") c
+  | Indirect(p1,p2) -> binaryT "⊆" c p1 (typ2proof (os,t,k,Typ_YGen p2))
+  | Direct (schema,tros,p) ->
+     if List.mem schema.sch_index used_ind then (
+       let c0 = mkSchema schema in
+       unaryN "G^-_e" c
+         (unaryN ("G^-_i["^ Sct.strInd schema.sch_index ^"]") c0 (typ2proof p)))
+     else (
+         ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
+         typ2proof p)
+  in
   match r with
+  | Typ_YGen ptr      -> fn ptr
   | Typ_Coer(p1,p2)   -> binaryT "⊆" c p1 (typ2proof p2)
   | Typ_Nope(p)       -> typ2proof p
-  | Typ_Defi(p)       -> unaryN "" c (sub2proof p)
-  | Typ_Prnt(p)       -> unaryN "print" c (sub2proof p)
-  | Typ_Cnst(p)       -> unaryN "Ax" c (sub2proof p)
-  | Typ_Func_i(p1,p2) -> binaryT "→i" c p1 (typ2proof p2)
-  | Typ_Func_e(p1,p2) -> binaryN "→e" c (typ2proof p1) (typ2proof p2)
-  | Typ_Prod_i(p,ps)  -> n_aryN "×i" c (sub2proof p :: List.map typ2proof ps)
-  | Typ_Prod_e(p)     -> unaryN "×e" c (typ2proof p)
-  | Typ_DSum_i(p1,p2) -> binaryT "+i" c p1 (typ2proof p2)
-  | Typ_DSum_e(p,ps,_)-> n_aryN "+e" c (typ2proof p :: List.map typ2proof ps) (* FIXME *)
-  | Typ_YH(n,p)       ->
-     let name = sprintf "[%s]" (Sct.strInd n) in
-     unaryN name c (sub2proof p)
-  | Typ_TFix{contents=(n,p)}     ->
-     (* TODO: proof may be duplicated, print with sharing*)
-     let name = sprintf "I_%s" (Sct.strInd n) in
-     unaryN name c (typ2proof p)
+  | Typ_Defi(p)       -> unaryT "" c p
+  | Typ_Prnt(p)       -> unaryT "\\mathrm{Pr}" c p
+  | Typ_Cnst(p)       -> unaryT "\\mathrm{Ax}" c p
+  | Typ_Func_i(p1,p2) ->
+     begin
+       match t.elt with
+       (* optim for constant constructor in case *)
+       | TAbst(_,f) when binder_name f = "" -> typ2proof p2
+       | _ -> binaryT "→_i" c p1 (typ2proof p2)
+     end
+  | Typ_Func_e(p1,p2) -> binaryN "→_e" c (typ2proof p1) (typ2proof p2)
+  | Typ_Prod_i(p,ps)  -> n_aryN "×_i" c (sub2proof p :: List.map typ2proof ps)
+  | Typ_Prod_e(p)     -> unaryN "×_e" c (typ2proof p)
+  | Typ_DSum_i(p1,p2) -> binaryT "+_i" c p1 (typ2proof p2)
+  | Typ_DSum_e(p,ps,_)-> n_aryN "+_e" c (typ2proof p :: List.map typ2proof ps) (* FIXME *)
   | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
+  | Typ_Yufl p        -> unaryN "Y" c (typ2proof p)
+  | Typ_YInd(n,(os,t,a,_,_ as p))      ->
+     let c' =
+       sprintf (if !latex_mode then "\\left[%s\\right]_%s"
+                else "[%s]_%s") (mkJudgment os t a) (Sct.strInd n)
+     in
+     if is_refl p then hyp c' else binaryT "" c p (hyp c')
 
 and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   fun used_ind (os,t,a,b,r) ->
@@ -683,10 +733,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   let t2s = term_to_string true and k2s = kind_to_string false in
   let o2s = String.concat ", " (List.map (ordi_to_string false) os) in
   let mkJudgement t a b =
-    if !ignore_witness then
-      sprintf "%s ⊆ %s" (k2s a) (k2s b)
-    else
-      sprintf "%s \\vdash %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b)
+    sprintf "%s \\vdash %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b)
   in
   let mkSchema schema =
     let os = Array.init (mbinder_arity schema.sch_judge)
@@ -694,7 +741,9 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
     let osnames = String.concat "," (Array.to_list (Array.map name_of os)) in
     let os = Array.map free_of os in
     let (a,b) = msubst schema.sch_judge os in
-    sprintf "∀%s  %s ⊆ %s" osnames (k2s a) (k2s b)
+    let o2s = String.concat ", "
+      (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
+    sprintf "∀%s %s \\vdash %s ⊆ %s" osnames o2s (k2s a) (k2s b)
   in
   let c = mkJudgement t a b in
   match r with
