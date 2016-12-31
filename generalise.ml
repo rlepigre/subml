@@ -27,7 +27,7 @@ type particular = (int * ordi) list * ordi list * kind * kind
     - If [general = true], we want to use the schema and all ordinals
       are replaced with variables *)
 let recompose : ?general:bool -> schema -> particular =
-  fun ?(general=true) { sch_posit = pos; sch_relat = rel; sch_judge = both } ->
+  fun ?(general=true) ({ sch_posit = pos; sch_relat = rel; sch_judge = both } as schema) ->
     let res = ref [] in
     let forbidden = ref [] in
     let arity = mbinder_arity both in
@@ -46,7 +46,7 @@ let recompose : ?general:bool -> schema -> particular =
               new_ouvar ()
           else
              let o' = try search (List.assoc i rel) with Not_found -> OConv in
-             OLess(o',Gen(i,rel,both))
+             OLess(o',Gen(i,schema))
         in
         res := (i, o) :: !res;
         forbidden := List.tl !forbidden;

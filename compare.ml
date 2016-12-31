@@ -125,18 +125,22 @@ and eq_ordi : ordi list -> ordi -> ordi -> bool = fun pos o1 o2 ->
   | (_           , _           ) -> false
 
 and eq_ord_wit pos w1 w2 = match w1, w2 with
-  | (w1           , w2           ) when w1 == w2 -> true
-  | (In(t1,f1)    , In(t2,f2)    )
-  | (NotIn(t1,f1) , NotIn(t2,f2) ) ->
-     eq_term pos t1 t2 && eq_obinder pos f1 f2
-  | (Gen(n1,r1,f1), Gen(n2,r2,f2)) -> n1 = n2 && r1 = r2 (* FIXME: sort r1 ? *)
-     && (f1 == f2 ||
-           mbinder_arity f1 == mbinder_arity f2 &&
-           let os = Array.init (mbinder_arity f1) (fun _ -> free_of (new_ovari "o")) in
-           let (k1,k1') = msubst f1 os in
-           let (k2,k2') = msubst f2 os in
-           eq_kind pos k1 k2 && eq_kind pos k1' k2')
-  | (_           , _           ) -> false
+  | (w1           , w2          ) when w1 == w2 -> true
+  | (In(t1,f1)    , In(t2,f2)   )
+  | (NotIn(t1,f1) , NotIn(t2,f2)) -> eq_term pos t1 t2 && eq_obinder pos f1 f2
+  | (Gen(n1,s1)   , Gen(n2,s2)  ) -> n1 = n2 && eq_schema pos s1 s2
+  | (_            , _           ) -> false
+
+and eq_schema pos s1 s2 =
+  s1.sch_posit = s2.sch_posit (* FIXME: sort ? *)
+  && s1.sch_relat = s2.sch_relat
+  && (let f1 = s1.sch_judge and f2 = s2.sch_judge in
+      f1 == f2 ||
+        mbinder_arity f1 == mbinder_arity f2 &&
+        let os = Array.init (mbinder_arity f1) (fun _ -> free_of (new_ovari "o")) in
+        let (k1,k1') = msubst f1 os in
+        let (k2,k2') = msubst f2 os in
+        eq_kind pos k1 k2 && eq_kind pos k1' k2')
 
 and leqi_ordi pos o1 i o2 =
   Io.log_ord "%a <_%d %a %b\n%!"
@@ -400,7 +404,8 @@ and gen_occur :
        let acc = aux3 acc o in
        (match w with
        | In(t,f)|NotIn(t,f) -> aux All (aux2 acc t) (subst f odummy)
-       | Gen(_,_,f) ->
+       | Gen(_,s) ->
+          let f = s.sch_judge in
           let os = Array.make (mbinder_arity f) OConv in
           let (k1,k2) = msubst f os in
           aux All (aux All acc k2) k1)

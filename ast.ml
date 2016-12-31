@@ -136,11 +136,8 @@ and ord_wit =
   (** [OLess(o',NotIn(t,f))] refers to an ordinal [o] smaller than [o'] and
      such that [t] does not have type [Bindlib.subst f o]. *)
 
-  | Gen    of int * (int * int) list * (kind * kind) from_ordis
-  (** If o_i = OLess(o'_i,Gen(i,rel,(o |-> k1,k2)))
-      means o_1 < o'_1, ..., o_n < o'_n s.t.
-      - (o_i < o_j) if (i,j) in rel
-      - and k1(o_1,\dots,o_n) < k2(o_1,\dots,o_n) is false. FIXME clarify. *)
+  | Gen    of int * schema
+  (** the i-th member of a counter example to e schema *)
 
 (** Abstract syntax tree for terms, with a source code position. *)
 and term = term' position
@@ -399,7 +396,7 @@ let ouvar : ouvar -> obox array -> obox =
 
 let oless_In    = box_apply3 (fun o t k -> OLess(o, In(t,k)))
 let oless_NotIn = box_apply3 (fun o t k -> OLess(o,NotIn(t,k)))
-let oless_Gen o i rel p = box_apply2 (fun o p -> OLess(o,Gen(i,rel,p))) o p
+let oless_Gen o i s = box_apply2 (fun o s -> OLess(o,Gen(i,s))) o s
 
 (****************************************************************************)
 (** {2 Smart constructors for kinds}                                        *)

@@ -220,7 +220,9 @@ let rec print_ordi unfold ff o =
           let ov = OVars "α" in
           fprintf ff "ε_{%a<%a}(%a∉%a)" (print_ordi false) ov (print_ordi false) o
             (print_term false false) t (print_kind false false) (subst a ov)
-       | Gen(i,r,f) ->
+       | Gen(i,s) ->
+          let r = s.sch_relat in
+          let f = s.sch_judge in
           let os = Array.init (mbinder_arity f)
             (fun i -> OVars ("α_{"^string_of_int (i+1)^"}")) in
           let (k1,k2) = msubst f os in

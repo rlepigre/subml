@@ -72,10 +72,15 @@ and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
        (vbind mk_free_ovari (binder_name w) (fun x -> map_kind ~occ:All (subst w (OVari x))))
     | OLess(o,NotIn(t,w))  -> oless_NotIn (map_ordi ~occ o) (box t)
        (vbind mk_free_ovari (binder_name w) (fun x -> map_kind ~occ:All (subst w (OVari x))))
-    | OLess(o,Gen(i,r,p))  ->
-       oless_Gen (map_ordi ~occ o) i r
+    | OLess(o,Gen(i,s))  ->
+       let f p = { s with sch_judge = p } in
+       let p = s.sch_judge in
+       let s = box_apply f
          (mvbind mk_free_ovari (mbinder_names p) (fun xs ->
            let k1, k2 = msubst p (Array.map (fun x -> OVari x) xs) in
            box_pair (map_kind ~occ:All k1) (map_kind ~occ:All k2)))
+       in
+       oless_Gen (map_ordi ~occ o) i s
+
     | OUVar(u,os) -> ouvar u (Array.map (map_ordi ~occ:All) os)
     | OConv -> box o)
