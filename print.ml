@@ -432,7 +432,7 @@ and print_term ?(give_pos=false) unfold wrap ff t =
   else match t.elt with
   | TCoer(t,a) ->
      if wrap then fprintf ff "(";
-     fprintf ff "%a : %a" pterm t pkind a;
+     fprintf ff "%a : %a" (print_term ~give_pos unfold wrap) t pkind a;
      if wrap then fprintf ff ")"
   | TMLet(b,x,bt)->
      let (onames, knames) = mmbinder_names bt OConv in
@@ -566,17 +566,19 @@ and print_term ?(give_pos=false) unfold wrap ff t =
      end
   | TDefi(v) ->
      if unfold then
-       pterm ff v.orig_value
+       print_term ~give_pos true wrap ff v.orig_value
      else
        let name = if !latex_mode then v.tex_name else v.name in
        pp_print_string ff name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
   | TFixY(_,_,f) ->
-      let x = binder_name f in
-      (*let t = subst f (TVars x) in*)
-      (*fprintf ff "Y%s.%a" x pterm t*)
-      fprintf ff "%s" x
+     let x = binder_name f in
+     if unfold then
+       let t = subst f (TVars x) in
+       fprintf ff "Y%s.%a" x pterm t
+     else
+       fprintf ff (if !latex_mode then "\\mathrm{%s}" else "%s") x
   | TCnst(f,a,b,_) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
