@@ -58,16 +58,14 @@ let rec output toplevel ch =
      let kargs = mbinder_names k in
      let kparams = Array.map (fun s -> free_of (new_kvari s)) kargs in
      let k = msubst k kparams in
-     let print_array ch a =
-       if Array.length a = 0 then () else
-       fprintf ch "(%s%a)" a.(0) (fun ch a ->
-         for i = 1 to Array.length a - 1 do
-           fprintf ch ",%s" a.(i)
-         done) a
+     let fmt :('a,'b,'c,'d) format4 = match oargs, kargs with
+       [||], [||] -> "%s%a%a &= %a"
+     | [||], _    -> "%s%a(%a) &= %a"
+     |  _  , [||] -> "%s_{%a}%a &= %a"
+     |  _         -> "%s_{%a}(%a) &= %a"
      in
-     break_hint := n;
-     fprintf ch "%s%a &= %a" name
-       print_array (Array.append oargs kargs) (print_kind true) k;
+     fprintf ch fmt name
+       (print_strarray ",") oargs (print_strarray ",") kargs (print_kind true) k;
      break_hint := 0
   | Sct calls ->
       Sct.latex_print_calls ch calls

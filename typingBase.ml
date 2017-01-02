@@ -13,6 +13,7 @@ open Compare
 open Term
 open Generalise
 open Error
+open LibTools
 
 (** Raised in case of type error, not propagated because replaced by
     an error constructor in the proof *)

@@ -195,7 +195,6 @@ and schema =
   ; sch_posit : int list  (** the index of positive ordinals *)
   ; sch_relat : (int * int) list (** relation between ordinals *)
   ; sch_judge : (ordi, term_or_kind * kind) mbinder (** the kinds of the judgement *)
-
   }
 
 and term_or_kind =

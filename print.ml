@@ -19,16 +19,6 @@ let break_hint = ref 0
 (** ignore witness in subtyping proofs *)
 let ignore_witness = ref true
 
-(** list printing *)
-let rec print_list pelem sep ff = function
-  | []    -> ()
-  | [e]   -> pelem ff e
-  | e::es -> fprintf ff "%a%s%a" pelem e sep (print_list pelem sep) es
-
-(** array printing *)
-let rec print_array pelem sep ff ls =
-  print_list pelem sep ff (Array.to_list ls)
-
 (** test if a list of record fields is a tuple *)
 let is_tuple ls =
   let n = List.length ls in
@@ -229,11 +219,11 @@ let rec print_ordi unfold ff o =
           let os' = Array.mapi (fun i _ -> try os.(List.assoc i r) with Not_found -> OConv) os in
           match k1 with
           | SchTerm t ->
-             fprintf ff "ε^%d_{%a<%a}(%a : %a)"
+             fprintf ff "ε^%d_{%a<%a}(%a \\notin %a)"
                (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
                (print_term false false) t (print_kind false false) k2
           | SchKind k1 ->
-             fprintf ff "ε^%d_{%a<%a}(%a ⊂ %a)"
+             fprintf ff "ε^%d_{%a<%a}(%a \\not\\subset %a)"
                (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
                (print_kind false false) k1 (print_kind false false) k2
      end
@@ -638,6 +628,7 @@ and typ_used_ind (_, _, _, r) =
   in
   match r with
   | Typ_YGen ptr        -> fn ptr
+
   | Typ_Coer   (p2, p1)
   | Typ_Func_i (p2, p1)
   | Typ_DSum_i (p2, p1) -> typ_used_ind p1 @ sub_used_ind p2
@@ -709,7 +700,8 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   in
   match r with
   | Typ_YGen ptr      -> fn ptr
-  | Typ_Coer(p1,p2)   -> binaryT "⊆" c p1 (typ2proof p2)
+  | Typ_Coer(p1,p2)   -> if is_refl p1 then typ2proof p2
+                         else binaryT "⊆" c p1 (typ2proof p2)
   | Typ_Nope(p)       -> typ2proof p
   | Typ_Defi(p)       -> unaryT "" c p
   | Typ_Prnt(p)       -> unaryT "\\mathrm{Pr}" c p

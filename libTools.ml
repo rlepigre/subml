@@ -80,6 +80,23 @@ let mmsubst_dummy b duma dumb =
   let (aa, bb) = mmbinder_arities b duma in
   mmsubst b (Array.make aa duma) (Array.make bb dumb)
 
+(*{2 Printing }*)
+
+open Format
+
+(** list printing *)
+let rec print_list pelem sep ff = function
+  | []    -> ()
+  | [e]   -> pelem ff e
+  | e::es -> fprintf ff "%a%s%a" pelem e sep (print_list pelem sep) es
+
+(** array printing *)
+let rec print_array pelem sep ff ls =
+  print_list pelem sep ff (Array.to_list ls)
+
+let print_strlist = print_list pp_print_string
+let print_strarray = print_array pp_print_string
+
 (*{2 Miscelaneous }*)
 
 (** clear the terminal *)
