@@ -198,7 +198,7 @@ and schema =
   }
 
 and term_or_kind =
-    SchTerm of term
+  | SchTerm of term
   | SchKind of kind
 (****************************************************************************)
 (** {2 Representation of proof trees}                                       *)
