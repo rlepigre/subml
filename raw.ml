@@ -84,7 +84,11 @@ let apply_rpat x t =
      let x = from_opt x (dummy_case_var t.pos) in
      in_pos t.pos (PLAbs([x],t))
   | Record r ->
-     let name = "@x" in
+     let name = List.fold_left (fun acc (l,(x,_)) ->
+       acc ^ l ^ "=" ^ x.elt ^ ";")
+       (if !Print.latex_mode then "\\{" else "{") r ^
+       (if !Print.latex_mode then "\\}" else "}")
+     in
      let v = in_pos t.pos (PLVar name) in
      let t =
        List.fold_left (fun acc (l,x) ->

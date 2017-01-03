@@ -87,6 +87,20 @@ let search_ordi_tbl o =
       ordi_tbl := (o,(v,false))::!ordi_tbl;
       v
 
+let skip_record_sugar name t =
+  let nb =
+    let r = ref 0 in
+    String.iter (function ';' -> incr r | _ -> ()) name;
+    !r
+  in
+  let rec fn n t = match t.elt with
+    | TAppl({ elt = TAbst(_,f) },_) when n > 0 ->
+       let x = TVars (binder_name f) in
+       fn (n-1) (subst f x)
+    | t -> assert(n=0); t
+  in
+  dummy_pos (fn nb t)
+
 (** A test to avoid capture in match_kind below *)
 let has_kvar : kind -> bool = fun k ->
   let rec fn k =
@@ -518,26 +532,35 @@ and print_term ?(give_pos=false) unfold wrap ff t =
   | TProj(t,l) ->
       fprintf ff "%a.%s" pterm t l
   | TCons(c,t) ->
-     (match t.elt with
-     | TReco([]) -> fprintf ff "%s" c
+     (match c, t.elt with
+     | "Nil", TReco [] -> fprintf ff "[]"
+     | "Cons", TReco l when List.sort compare (List.map fst l) = ["hd"; "tl"] ->
+        fprintf ff "%a :: %a" pterm (List.assoc "hd" l)  pterm (List.assoc "tl" l)
+     | _, TReco([]) -> fprintf ff "%s" c
      | _         -> fprintf ff "%s %a" c pterm t)
   | TCase(t,l,d) ->
      if List.length l = 1 && d = None && snd (List.hd l) == unbox idt then begin
        fprintf ff "%a.%s" pterm t (fst (List.hd l))
      end else begin
        let bar = ref "" in
-       let pvariant ff (c,b) =
+       let pvariant fin ff (c,b) =
          match b.elt with
          | TAbst(_,f) ->
             let x = binder_name f in
             begin
-              if x = "_" then
+              if x = "" then
+                let c = if c = "Nil" then "[]" else c in
                 fprintf ff "%s%s → %a" !bar c pterm t
               else
                 let t = subst f (free_of (new_tvari x)) in
-                fprintf ff "%s%s %s → %a" !bar c x pterm t;
+                let c =
+                  if c = "Cons" && (x.[0] = '{' || x.[0] = '\\') then
+                    if !latex_mode then "\\record" else ""
+                  else c
+                in
+                fprintf ff "%s%s %s → %a" !bar c x pterm (skip_record_sugar x t);
             end;
-            bar := "| "
+            bar := if !latex_mode then (if fin = "" then "\\mid " else fin) else "| "
          | _          ->
             assert false
        in
@@ -547,12 +570,17 @@ and print_term ?(give_pos=false) unfold wrap ff t =
             let x = binder_name f in
             let t = subst f (free_of (new_tvari x)) in
             fprintf ff "%s%s → %a" !bar x pterm t;
-            bar := "| "
          | Some b           -> assert false
        in
-       fprintf ff (if !latex_mode then "\\case{%a}{%a%a}"
-                                  else "case %a of %a%a")
-         pterm t (print_list pvariant " ") l pdefault d
+       if !break_hint > 0 then begin
+         decr break_hint;
+         fprintf ff "\\casearray{%a}{\\begin{array}{l}%a%a\\end{array}}"
+           pterm t (print_list (pvariant "\\\\") " ") l pdefault d;
+         incr break_hint
+       end else
+         fprintf ff (if !latex_mode then "\\case{%a}{%a%a}"
+           else "case %a of %a%a")
+           pterm t (print_list (pvariant "") " ") l pdefault d
      end
   | TDefi(v) ->
      if unfold then

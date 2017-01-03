@@ -588,7 +588,7 @@ and kind_def_args =
 and val_def =
   | r:is_rec n:int_lit? tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
       let t =
-        if not r then t else pfixY (in_pos _loc_id id, k) _loc_t n t
+        if not r then t else pfixY (in_pos _loc_id id, None) _loc_t n t
       in ((tex,id), k, t)
 
 (****************************************************************************
