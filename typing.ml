@@ -355,6 +355,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
 
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
+       (* TODO; better to have multi valued ordinals than backtracking *)
        let rec fn = function
          | [] -> subtype_error "Subtyping clash (no rule apply for left nu)."
          | o'::l ->
@@ -372,6 +373,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
        fn (possible_positive ctxt o)
 
     | (_           , KFixM(o,f)  ) ->
+       (* TODO; better to have multi valued ordinals than backtracking *)
        let rec fn = function
          | [] -> subtype_error "Subtyping clash (no rule apply for right mu)."
          | o'::l ->

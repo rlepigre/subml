@@ -12,6 +12,12 @@ val rec f : ∀α ((FNat(α) → Nat) → Nat) → Nat =
     | Z   → (Z:Nat)
     | S p → (f (fun g → x (fun q → add q (g p)))))
 
+?val rec f : ((Nat → Nat) → Nat) → Nat =
+  fun x → x (fun n →
+    case n of
+    | Z   → (Z:Nat)
+    | S p → (f (fun g → x (fun q → add q (g p)))))
+
 val f' : ((Nat → Nat) → Nat) → Nat = f
 
 (* FIXME: ordinal indication fails for recursive function

@@ -23,7 +23,7 @@ val rec filter : ∀A UF → Stream(A) → Stream(A) =
 val consR : ∀α SF(α,∞) → SF(α,∞) = fun f _ → R f
 val consK : ∀α SF(α,∞) → SF(α+1,∞) = fun f _ → K f
 
-val rec 2 compose : UF → UF → F = fun f1 f2 _ →
+val rec compose : UF → UF → F = fun f1 f2 _ →
   (case f2 {} of
   | K f2' → (case f1 {} of
             | K f1' → K (compose f1' f2')
@@ -72,7 +72,7 @@ val rec 2 filter2 : ∀A F2 → Stream(A) → Stream(A) =
     | R f' → filter2 (fun _ → f') tl
     | K f' → fun _ → (hd, filter2 f' tl)
 
-val rec 2 compose2 : UF2 → UF2 → F2 = fun f1 f2 _ →
+val rec compose2 : UF2 → UF2 → F2 = fun f1 f2 _ →
   (case f2 {} of
   | K f2' → (case f1 {} of
             | R f1' → R (compose2 (fun _ → f1') f2' {})
@@ -122,6 +122,13 @@ val rec 2 filter3 : ∀A F3 → Stream(A) → Stream(A) =
     | K f' → fun _ → (hd, filter3 (f' {}) tl)
 
 (*The following example fails, not clear why*)
+?val rec compose3 : UF3 → UF3 → F3 = fun f1 f2 →
+  (case f2 of
+  | K f2' → (case f1 of
+            | R f1' → R (compose3 f1' (f2' {}))
+            | K f1' → K (fun _ → compose3 (f1' {}) (f2' {})))
+  | R f2' → R (compose3 f1 f2'))
+
 ?val rec 2 compose3 : UF3 → UF3 → F3 = fun f1 f2 →
   (case f2 of
   | K f2' → (case f1 of

@@ -171,6 +171,7 @@ and leqi_ordi pos o1 i o2 =
   | (OUVar(p,os)   , o2      ) when i<=0 && not !eq_strict &&
       not (ouvar_occur ~safe_ordis:os p o2) &&
       Timed.pure_test (fun () -> less_opt_ordi pos o2 (uvar_state p) os) () ->
+     (* FIXME: simplify ? *)
      let o2' = new_ouvar
        ?lower:(match fst (uvar_state p) with
            | None   -> None
@@ -184,6 +185,7 @@ and leqi_ordi pos o1 i o2 =
       Timed.pure_test (fun () ->
         let o1 = oadd o1 i in
         less_opt_ordi pos o1 (uvar_state p) os) () ->
+     (* FIXME: simplify ? *)
      let general = match orepr o1 with
          OLess(OConv,_) -> false
        | OLess(o,_) ->

@@ -133,10 +133,9 @@ let add_call ctxt fnum os is_induction_hyp =
   let call = build_call ctxt fnum os is_induction_hyp in
   Sct.new_call ctxt.call_graphs call
 
-
 (** If w = Some w': construction of an ordinal < o such that w
     If w = None: find an ordinal o' < o *)
-let rec opred o w =
+let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
   let o = orepr o in
   match o, w with
   | OSucc o', _ -> o'
@@ -148,7 +147,8 @@ let rec opred o w =
   | OConv, None -> OConv
   | (OLess _ | OUVar _) as o, None -> new_ouvar ~upper:(constant_mbind 0 o) ()
   | OUVar _, Some w ->
-     subtype_error "opred fails"; (* FIXME: can we do better ? loops is we do OLess ? *)
+     subtype_error "opred fails"; (* FIXME: can we do better ? OLess(o,w)
+     has an invariant that o is itself OLess or OConv ? *)
   | (OConv | OLess _ as o), Some w ->
      OLess(o, w)
   | (OVari _ | OVars _), _ -> assert false
@@ -160,36 +160,35 @@ let is_positive ctxt o =
   | o ->
      List.exists (fun o' -> eq_ordi ctxt.positive_ordis o' o) ctxt.positive_ordis
 
+(** give a list of positive ordinals that may be equal to o.
+    This list is of legth >= 2 only if o is an OUVar *)
 let possible_positive ctxt o =
   let pos = ctxt.positive_ordis in
   let res = match orepr o with
   | OConv -> [OConv]
   | OSucc o' -> [o]
-  | OVari _ | OVars _ -> assert false
   | OUVar(u,os) ->
-     let l = ctxt.positive_ordis in
      let l = List.filter
        (fun o ->
          Io.log_sub "testing %a\n%!" (print_ordi false) o;
-         Timed.pure_apply (less_opt_ordi pos o (uvar_state u)) os) l
+         Timed.pure_apply (less_opt_ordi pos o (uvar_state u)) os) ctxt.positive_ordis
      in
      let l =
        if l = [] then
-         let o' = new_ouvar () in
-         if Timed.pure_apply (less_opt_ordi pos OConv (uvar_state u)) os then
-           [OSucc o']
+         let o' = OSucc (new_ouvar ()) in
+         if Timed.pure_apply (less_opt_ordi pos o' (uvar_state u)) os then
+           [o']
          else []
        else l
      in
      let l =
-       if List.exists (strict_eq_ordi OConv) l then l else
-         if Timed.pure_apply (less_opt_ordi pos OConv (uvar_state u)) os then
-           l @ [OConv]
-         else l
+       if Timed.pure_apply (less_opt_ordi pos OConv (uvar_state u)) os then
+         l @ [OConv]
+       else l
      in
      l
-  | o when is_positive ctxt o -> [o]
-  | _ -> []
+  | OLess _ as o -> if is_positive ctxt o then [o] else []
+  | OVari _ | OVars _ -> assert false
   in
   Io.log_sub "possible positive: %a ==> %a\n%!" (print_ordi false) o
     (print_list (print_ordi false) ",") res
