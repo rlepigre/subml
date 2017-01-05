@@ -56,13 +56,15 @@ let mbind_assoc cst size l =
 (** function to set type variables (a more complex
     function [safe_set_kuvar] exists) *)
 let set_kuvar v k =
-  if !(v.uvar_val) = None then (
+  (* NOTE: sometimes, some treatment prior to setting the variable, may
+     set the value of the varialble ! *)
+  if is_unset v then (
     assert (mbinder_arity k = v.uvar_arity);
     Io.log_uni "set ?%d <- %a\n\n%!"
       v.uvar_key (!fprint_kind false)
       (msubst k (Array.init v.uvar_arity
                    (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
-    Timed.(v.uvar_val := Some k))
+    Timed.(v.uvar_state := Set k))
 
 (** function to set ordi variables *)
 let set_ouvar ?(msg="") v o =
@@ -70,8 +72,8 @@ let set_ouvar ?(msg="") v o =
     v.uvar_key (!fprint_ordi false)
     (msubst o (Array.init v.uvar_arity
                  (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) msg;
-  assert (!(v.uvar_val) = None);
-  Timed.(v.uvar_val := Some o)
+  assert (is_unset v);
+  Timed.(v.uvar_state := Set o)
 
 (** forward references to function binding ordis in kinds and ordinals *)
 (** TODO: reorder the definition to minimize mutual recursion *)
@@ -111,13 +113,17 @@ and eq_ordi : ordi list -> ordi -> ordi -> bool = fun pos o1 o2 ->
   | (OUVar(v1,o1), OUVar(v2,o2)) when eq_uvar v1 v2 -> eq_ordis pos o1 o2
   | (OUVar(p,os), o2         ) when not !eq_strict &&
                                     not (ouvar_occur ~safe_ordis:os p o2) &&
-      Timed.pure_test (fun () -> set_ouvar ~msg:"eq1" p
-        (!fobind_ordis os o2); less_opt_ordi pos o2 p.uvar_state os) () ->
+                                    Timed.pure_test (fun () ->
+                                      let st = uvar_state p in
+                                      set_ouvar ~msg:"eq1" p (!fobind_ordis os o2);
+                                      less_opt_ordi pos o2 st os) () ->
      (eq_ordi pos o1 o2)
   | (o1         , OUVar(p,os)   ) when not !eq_strict &&
                                        not (ouvar_occur ~safe_ordis:os p o1) &&
-      Timed.pure_test (fun () -> set_ouvar ~msg:"eq2" p
-        (!fobind_ordis os o1); less_opt_ordi pos o1 p.uvar_state os) () ->
+                                       Timed.pure_test (fun () ->
+                                         let st = uvar_state p in
+                                         set_ouvar ~msg:"eq2" p (!fobind_ordis os o1);
+                                         less_opt_ordi pos o1 st os) () ->
      (eq_ordi pos o1 o2)
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordi pos o1 o2 && eq_ord_wit pos w1 w2
@@ -156,18 +162,18 @@ and leqi_ordi pos o1 i o2 =
      leqi_ordi pos o1 (i-1) o2
   | (o1         , OSucc o2  ) -> leqi_ordi pos o1 (i-1) o2
   | (OSucc o1   ,       o2  ) -> leqi_ordi pos o1 (i+1) o2
-  | (OUVar({uvar_state = (_, Some o')},os),       o2  )
+  | (OUVar({uvar_state = {contents = Unset (_, Some o')}},os),       o2  )
        when strict (leqi_ordi pos (msubst o' os) (i-1)) o2 ->
     true
-  | (OUVar({uvar_state = (Some o',_)} as p,os),       o2  ) ->
+  | (OUVar({uvar_state = {contents = Unset (Some o',_)}} as p,os),       o2  ) ->
      set_ouvar ~msg:"leq3" p o';
      leqi_ordi pos o1 i o2
   | (OUVar(p,os)   , o2      ) when i<=0 && not !eq_strict &&
       not (ouvar_occur ~safe_ordis:os p o2) &&
-      Timed.pure_test (fun () -> less_opt_ordi pos o2 p.uvar_state os) () ->
+      Timed.pure_test (fun () -> less_opt_ordi pos o2 (uvar_state p) os) () ->
      let o2' = new_ouvar
-       ?lower:(match fst p.uvar_state with
-           | None -> None
+       ?lower:(match fst (uvar_state p) with
+           | None   -> None
            | Some f -> Some (constant_mbind 0 (msubst f os)))
        ~upper:(constant_mbind 0 o2) () in
      let f = !fobind_ordis os o2' in
@@ -177,13 +183,13 @@ and leqi_ordi pos o1 i o2 =
                                     not (ouvar_occur ~safe_ordis:os p o1) &&
       Timed.pure_test (fun () ->
         let o1 = oadd o1 i in
-        less_opt_ordi pos o1 p.uvar_state os) () ->
+        less_opt_ordi pos o1 (uvar_state p) os) () ->
      let general = match orepr o1 with
          OLess(OConv,_) -> false
        | OLess(o,_) ->
-          (match snd p.uvar_state with
-              None -> true
-            | Some f -> not (strict_eq_ordi (msubst f os) o))
+          (match snd (uvar_state p) with
+          | None   -> true
+          | Some f -> not (strict_eq_ordi (msubst f os) o))
        | _ -> false
      in
      let o1' = oadd o1 i in
@@ -191,8 +197,8 @@ and leqi_ordi pos o1 i o2 =
        if general then
          new_ouvar
            ~lower:(constant_mbind 0 o1')
-           ?upper:(match snd p.uvar_state with
-           | None -> None
+           ?upper:(match snd (uvar_state p) with
+           | None   -> None
            | Some f -> Some (constant_mbind 0 (msubst f os))) ()
        else o1'
      in
@@ -251,11 +257,11 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordis pos o1 o2
     | (KUVar(u1,o1), b           ) when not !eq_strict &&
                                         kuvar_occur ~safe_ordis:o1 u1 b = Non
-                                        && !(u1.uvar_state) = Free ->
+                                        && uvar_state u1 = Free ->
        set_kuvar u1 (!fbind_ordis o1 b); eq_kind k1 k2
     | (a           , KUVar(u2,o2)) when not !eq_strict &&
                                         kuvar_occur ~safe_ordis:o2 u2 a = Non
-                                        && !(u2.uvar_state) = Free ->
+                                        && uvar_state u2 = Free ->
        set_kuvar u2 (!fbind_ordis o2 a); eq_kind k1 k2
     | (KPrnt s1    , KPrnt s2    ) -> s1 = s2
     | (_           , _           ) -> false
@@ -417,9 +423,9 @@ and gen_occur :
           let (k1,k2) = msubst f os in
           aux5 (aux All acc k2) k1)
     | OSucc o -> aux3 acc o
-    | OUVar(({uvar_state = o} as v), os) ->
-       if ouvar v then combine All (aux4 acc os o)
-       else aux4 (Array.fold_left aux3 acc os) os o
+    | OUVar(v, os) ->
+       if ouvar v then combine All (aux4 acc os (uvar_state v))
+       else aux4 (Array.fold_left aux3 acc os) os (uvar_state v)
        (* we keep this to ensure valid proof when simplifying useless induction
          needed because has_uvar below does no check ordis *)
     | _             -> acc)
@@ -482,6 +488,9 @@ let leq_ordi : ordi list -> ordi -> ordi -> bool =
 
 let less_ordi : ordi list -> ordi -> ordi -> bool =
   fun pos t1 t2 -> Timed.pure_test (less_ordi pos t1) t2
+
+let less_opt_ordi =
+  fun pos t1 st os -> Timed.pure_test (less_opt_ordi pos t1 st) os
 
 (****************************************************************************)
 (**{2                     Searching functions                              }*)

@@ -91,12 +91,14 @@ and 'a from_kinds = (kind  , 'a) mbinder
 (** Unification variable type managed using a union-find algorithm. *)
 and ('a,'b) uvar =
   { uvar_key   : int                      (** Unique key (or UID). *)
-  ; uvar_val   : 'a from_ordis option ref (** Value of the variable. *)
-  ; uvar_state : 'b                       (** User-defined state. *)
+      (** Value of the variable, or some information *)
+  ; uvar_state   : ('a, 'b) uvar_state ref
   ; uvar_arity : int                      (** Arity of the variable. *) }
 
+and ('a, 'b) uvar_state = Set of 'a from_ordis | Unset of 'b
+
 (** Unification variable for a kind. *)
-and kuvar = (kind, kuvar_state ref) uvar
+and kuvar = (kind, kuvar_state) uvar
 
 (** State of a unification variable for kinds, useful for the inference of sum
     types and product types. *)
@@ -273,8 +275,20 @@ let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
 let contract_mu = ref true
 
 (** Main shared function *)
+let is_set : ('a,'b) uvar -> bool = fun u ->
+  match !(u.uvar_state) with
+  | Set   _ -> true
+  | Unset _ -> false
+
+let is_unset : ('a,'b) uvar -> bool = fun u -> not (is_set u)
+
+let uvar_state :  ('a,'b) uvar -> 'b = fun u ->
+   match !(u.uvar_state) with
+  | Set   _ -> assert false
+  | Unset b -> b
+
 let rec repr : bool -> kind -> kind = fun unfold -> function
-  | KUVar({uvar_val = {contents = Some k}; uvar_arity=arity}, os) ->
+  | KUVar({uvar_state = {contents = Set k}; uvar_arity=arity}, os) ->
      assert (mbinder_arity k = arity);
      assert (Array.length os = arity);
      repr unfold (msubst k os)
@@ -319,7 +333,7 @@ let      repr : kind -> kind = fun k -> repr false k
 (** Unfold ordinal variables indirections *)
 let rec orepr o =
   match o with
-  | OUVar({uvar_val = {contents = Some o}}, os) ->  orepr (msubst o os)
+  | OUVar({uvar_state = {contents = Set o}}, os) ->  orepr (msubst o os)
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
@@ -472,8 +486,7 @@ let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
   let c = ref 0 in
   let new_kuvara ?(state=Free) n : kuvar = {
     uvar_key = (incr c; !c);
-    uvar_val = ref None;
-    uvar_state = ref state;
+    uvar_state = ref (Unset state);
     uvar_arity = n
   } in
   let new_kuvar ?(state=Free) () =
@@ -482,8 +495,7 @@ let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
   let reset_all () = c := 0 in
   let new_ouvara ?lower ?upper n : ouvar = {
     uvar_key = (incr c; !c);
-    uvar_val = ref None;
-    uvar_state = (lower, upper);
+    uvar_state = ref (Unset (lower, upper));
     uvar_arity = n;
   } in
   let new_ouvar ?lower ?upper () =

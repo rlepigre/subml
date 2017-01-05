@@ -125,8 +125,8 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
 
     (* unification. (sum and product special) *)
     | (KUVar(ua,os), KProd(l))
-       when (match !(ua.uvar_state) with DSum _ -> false | _ -> true) ->
-       let l0 = match !(ua.uvar_state) with
+       when (match uvar_state ua with DSum _ -> false | _ -> true) ->
+       let l0 = match uvar_state ua with
          | Free   -> []
          | Prod l -> l
          | DSum _ -> assert false
@@ -144,12 +144,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
              l1 := (s,f)::!l1;
              let prf = subtype ctxt0 t' (msubst f os) k  in
              res := (s,prf) :: !res) l;
-       Timed.(ua.uvar_state := Prod !l1);
+       Timed.(ua.uvar_state := Unset (Prod !l1));
        Sub_Prod(!res)
 
     | (KDSum(l)   , KUVar(ub,os))
-       when (match !(ub.uvar_state) with Prod _ -> false | _ -> true) ->
-       let l0 = match !(ub.uvar_state) with
+       when (match uvar_state ub with Prod _ -> false | _ -> true) ->
+       let l0 = match uvar_state ub with
          | Free   -> []
          | DSum l -> l
          | Prod _ -> assert false
@@ -167,7 +167,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
              l1 := (s,f)::!l1;
              let prf = subtype ctxt0 t' k (msubst f os) in
              res := (s,prf) :: !res) l;
-       Timed.(ub.uvar_state := DSum !l1);
+       Timed.(ub.uvar_state := Unset (DSum !l1));
        Sub_DSum(!res)
 
     (* Handling of unification variables, same variable different
@@ -197,7 +197,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
        begin (* make the correct choice, depending if DSum or Prod *)
-          match !(ua.uvar_state), !(ub.uvar_state) with
+          match (uvar_state ua, uvar_state ub) with
           | _, DSum _ -> safe_set_kuvar sNeg ua (bind_ordis osa b) osa
           | Prod _, _ -> safe_set_kuvar sPos ub (bind_ordis osb a) osb
           | _ ->
@@ -218,7 +218,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
                let os = Array.of_list os in
                let new_len = Array.length os in
                let state =
-                 match !(ua.uvar_state), !(ub.uvar_state) with
+                 match (uvar_state ua, uvar_state ub) with
                  | Free, Free -> Free
                  | DSum l, _ ->
                     DSum (List.map (fun (s,f) ->
@@ -234,11 +234,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
                let k = KUVar(u,os) in
                (* NOTE: the call to  bind_fn above may (very rarely) instanciate
                   ua or ub, so we added a test to avoid an assert false  *)
-               if !(ua.uvar_val) = None then (
-                 Timed.(ua.uvar_state := Free);
+               if is_unset ua then (
+                 Timed.(ua.uvar_state := Unset Free);
                  safe_set_kuvar sNeg ua (bind_ordis osa k) osa);
-               if !(ub.uvar_val) = None then (
-                 Timed.(ub.uvar_state := Free);
+               if is_unset ub then (
+                 Timed.(ub.uvar_state := Unset Free);
                  safe_set_kuvar sPos ub (bind_ordis osb k) osb);
         end;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
@@ -321,7 +321,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
              let g = bind mk_free_ovari (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
              in
-             let o' = opred o (NotIn(t,unbox g)) in
+             let o' = opred o (Some (NotIn(t,unbox g))) in
              let ctxt = add_positive ctxt o in
              o', ctxt
         in
@@ -341,7 +341,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
              let g = bind mk_free_ovari (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
              in
-             let o' = opred o (In(t,unbox g)) in
+             let o' = opred o (Some (In(t,unbox g))) in
              let ctxt = add_positive ctxt o in
              o', ctxt
         in
@@ -355,26 +355,38 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
 
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
-        begin
-          try
-            let o' = find_positive ctxt.positive_ordis o in
-            let a = if o' = OConv then a else KFixN(o',f) in
-            let p = subtype ctxt t (subst f a) b0 in
-            if not (is_positive ctxt o) then raise Not_found;
-            Sub_FixN_l(p)
-          with Not_found -> subtype_error "Subtyping clash (no rule apply for left nu)."
-        end
+       let rec fn = function
+         | [] -> subtype_error "Subtyping clash (no rule apply for left nu)."
+         | o'::l ->
+            let save = Timed.Time.save () in
+            try
+              (match orepr o with OUVar(p,os) -> set_ouvar p (obind_ordis os o') | _ -> ());
+              let o'' = opred o' None in
+              let a = if o' = OConv then a else KFixN(o'',f) in
+              let p = subtype ctxt t (subst f a) b0 in
+              if not (is_positive ctxt o') then raise Not_found;
+              check_sub_proof p;
+              Sub_FixN_l(p)
+            with Not_found | Error _ -> Timed.Time.rollback save; fn l
+       in
+       fn (possible_positive ctxt o)
 
     | (_           , KFixM(o,f)  ) ->
-        begin
-          try
-            let o' = find_positive ctxt.positive_ordis o in
-            let b = if o' = OConv then b else KFixM(o',f) in
-            let p = subtype ctxt t a0 (subst f b) in
-            if not (is_positive ctxt o) then raise Not_found;
-            Sub_FixM_r(p)
-          with Not_found -> subtype_error "Subtyping clash (no rule apply for right mu)."
-        end
+       let rec fn = function
+         | [] -> subtype_error "Subtyping clash (no rule apply for right mu)."
+         | o'::l ->
+            let save = Timed.Time.save () in
+            try
+              (match orepr o with OUVar(p,os) -> set_ouvar p (obind_ordis os o') | _ -> ());
+              let o'' = opred o' None in
+              let b = if o' = OConv then b else KFixM(o'',f) in
+              let p = subtype ctxt t a0 (subst f b) in
+              if not (is_positive ctxt o') then raise Not_found;
+              check_sub_proof p;
+              Sub_FixM_r(p)
+            with Not_found | Error _ -> Timed.Time.rollback save; fn l
+       in
+       fn (possible_positive ctxt o)
 
     (* Universal quantification over kinds. *)
     | (_           , KKAll(f)    ) ->
@@ -539,7 +551,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p3 =
            match d, k with
            | None, _ -> None
-           | Some f, KUVar({ uvar_state = { contents = DSum ts }}, os)  ->
+           | Some f, KUVar({ uvar_state = { contents = Unset (DSum ts) }}, os)  ->
               let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
               let ts = List.map (fun (c,k) -> (c, msubst k os)) ts in
               Some (type_check ctxt f (KFunc(KDSum ts,c)))
@@ -778,13 +790,14 @@ let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
     in
     let fn (v, os) =
       match !(v.uvar_state) with
-      | Free   -> true
-      | DSum  l ->
+      | Set _ -> false
+      | Unset Free   -> true
+      | Unset (DSum  l) ->
          let k = mbind_assoc kdsum v.uvar_arity l in
          safe_set_kuvar All v k os; false (* FIXME: should not trust safe_set *)
-      | Prod l ->
+      | Unset (Prod l) ->
          let k = mbind_assoc kprod v.uvar_arity l in
-         safe_set_kuvar All  v k os ; false (* FIXME: should not trust safe_set *)
+         safe_set_kuvar All v k os ; false (* FIXME: should not trust safe_set *)
     in
     let ul = List.filter fn (kuvar_list k) in
     let ol = ouvar_list k in

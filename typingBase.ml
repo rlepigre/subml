@@ -134,48 +134,24 @@ let add_call ctxt fnum os is_induction_hyp =
   Sct.new_call ctxt.call_graphs call
 
 
-(** construction of an ordinal < o such that w *)
+(** If w = Some w': construction of an ordinal < o such that w
+    If w = None: find an ordinal o' < o *)
 let rec opred o w =
   let o = orepr o in
-  match o with
-  | OSucc o' -> o'
-  | OUVar({uvar_state = (None,None); uvar_arity = a} as p, os) ->
+  match o, w with
+  | OSucc o', _ -> o'
+  | OUVar({uvar_state = {contents = Unset (None,None)}; uvar_arity = a} as p, os), _ ->
      let o' = OUVar(new_ouvara a,os) in
      set_ouvar p (obind_ordis os (OSucc o')); o'
-  | OUVar({uvar_state = (Some o',None); uvar_arity = a} as p, os) ->
+  | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os), _ ->
      set_ouvar p o'; opred o w
-  | OUVar _ -> subtype_error "opred fails"; (* FIXME: can we do better ? *)
-  | OVari _ | OVars _ -> assert false
-  | OLess _ | OConv -> OLess(o, w)
-
-let find_positive pos o =
-  let rec gn i o =
-    if i <= 0 then
-      List.exists (strict_eq_ordi o) pos
-    else
-      List.exists (function
-      | OLess(o',_) as o0 when strict_eq_ordi o o' -> gn (i-1) o0
-      | _ -> raise Not_found) pos
-  in
-  let rec fn i o = match orepr o with
-    (*    | OUVar(_, os) when Array.exists (fn i) os -> true*)
-    | OUVar({ uvar_state = (_,Some f)},os) ->
-       let b = msubst f os in
-       fn (i+1) b
-    | OConv -> true
-    | OSucc o -> if i >= 0 then true else fn (i-1) o
-    | OLess(_) as o -> gn i o
-    | OUVar _ -> true
-    | OVari _ | OVars _ -> assert false
-  in
-  (*  Io.log "find positive %a\n%!" (print_ordi false) o;*)
-  match orepr o with
-  | OConv -> OConv
-  | OSucc o' -> o'
-  | OVari _ -> assert false
-  | o ->
-     if not (fn 0 o) then raise Not_found;
-     new_ouvar ~upper:(constant_mbind 0 o) ()
+  | OConv, None -> OConv
+  | (OLess _ | OUVar _) as o, None -> new_ouvar ~upper:(constant_mbind 0 o) ()
+  | OUVar _, Some w ->
+     subtype_error "opred fails"; (* FIXME: can we do better ? loops is we do OLess ? *)
+  | (OConv | OLess _ as o), Some w ->
+     OLess(o, w)
+  | (OVari _ | OVars _), _ -> assert false
 
 let is_positive ctxt o =
   match orepr o with
@@ -183,6 +159,42 @@ let is_positive ctxt o =
   | OVari _ -> assert false
   | o ->
      List.exists (fun o' -> eq_ordi ctxt.positive_ordis o' o) ctxt.positive_ordis
+
+let possible_positive ctxt o =
+  let pos = ctxt.positive_ordis in
+  let res = match orepr o with
+  | OConv -> [OConv]
+  | OSucc o' -> [o]
+  | OVari _ | OVars _ -> assert false
+  | OUVar(u,os) ->
+     let l = ctxt.positive_ordis in
+     let l = List.filter
+       (fun o ->
+         Io.log_sub "testing %a\n%!" (print_ordi false) o;
+         Timed.pure_apply (less_opt_ordi pos o (uvar_state u)) os) l
+     in
+     let l =
+       if l = [] then
+         let o' = new_ouvar () in
+         if Timed.pure_apply (less_opt_ordi pos OConv (uvar_state u)) os then
+           [OSucc o']
+         else []
+       else l
+     in
+     let l =
+       if List.exists (strict_eq_ordi OConv) l then l else
+         if Timed.pure_apply (less_opt_ordi pos OConv (uvar_state u)) os then
+           l @ [OConv]
+         else l
+     in
+     l
+  | o when is_positive ctxt o -> [o]
+  | _ -> []
+  in
+  Io.log_sub "possible positive: %a ==> %a\n%!" (print_ordi false) o
+    (print_list (print_ordi false) ",") res
+  ;
+  res
 
 let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->

@@ -633,6 +633,3 @@ let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
     false
   | Error.Error l          -> Io.err "%a\n%!" Error.display_errors l; false
   | Loop_error p           -> Io.err "Oups, loops at %a\n%!" print_position p; false
-  | e                      -> Io.err "Uncaught exception %s\n%!"
-                                (Printexc.to_string e);
-                              false

@@ -206,11 +206,11 @@ let rec print_ordi unfold ff o =
        | (Some o,_) -> fprintf ff "%a≤" (print_ordi false) (msubst o os)
      in
      if os = [||] then
-       fprintf ff "%a?%i%a" print_lower u.uvar_state u.uvar_key print_upper u.uvar_state
+       fprintf ff "%a?%i%a" print_lower (uvar_state u) u.uvar_key print_upper (uvar_state u)
      else
-       fprintf ff "%a?%i(%a)%a" print_lower u.uvar_state u.uvar_key
+       fprintf ff "%a?%i(%a)%a" print_lower (uvar_state u) u.uvar_key
          (print_list print_index_ordi ", ") (Array.to_list os)
-         print_upper u.uvar_state
+         print_upper (uvar_state u)
   | OVari(x) -> fprintf ff "%s" (name_of x)
   | OVars(s) -> fprintf ff "%s" s
   | OLess(o,w) when unfold ->

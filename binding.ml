@@ -18,7 +18,7 @@ let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
   unbox (bind mk_free_kvari "X" (fun x ->
     let fkind _ k self_kind _ def_kind =
       match repr k with
-      | KUVar(u,_) -> assert(!(u.uvar_val) = None); if eq_uvar v u then x else box k
+      | KUVar(u,_) -> assert(is_unset u); if eq_uvar v u then x else box k
       | k -> def_kind k
     in
     map_kind ~fkind k))
@@ -41,30 +41,29 @@ exception Occur_check
 *)
 let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
   fun side v k os ->
-    assert(!(v.uvar_val) = None);
-  (* side = Pos means we are checking k < KUVar(u,os)
-     side = Neg means we are chacking KUVar(u,os) < k
-     side <> Pos and Neg means we not in the previous cases *)
-  let k =
-    match !(v.uvar_state) with
-    | Free -> k
-    | DSum l -> mbind_assoc kdsum v.uvar_arity l
-    (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
-    | Prod l -> mbind_assoc kprod v.uvar_arity l
-  in
-  assert (mbinder_arity k = v.uvar_arity);
-  let k =
-    match kuvar_occur ~safe_ordis:os v (msubst k (Array.make v.uvar_arity OConv)) with
-    | Non   -> k
-    | Pos _ -> constant_mbind v.uvar_arity (
-      KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))
-    | _     ->
-       match side with
-       | Neg _ -> constant_mbind v.uvar_arity bot
-       | Pos _ -> constant_mbind v.uvar_arity top
-       | _ -> raise Occur_check
-  in
-  if !(v.uvar_val) = None then set_kuvar v k
+      (* side = Pos means we are checking k < KUVar(u,os)
+         side = Neg means we are chacking KUVar(u,os) < k
+         side <> Pos and Neg means we not in the previous cases *)
+    let k =
+      match uvar_state v with
+      | Free -> k
+      | DSum l -> mbind_assoc kdsum v.uvar_arity l
+        (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
+      | Prod l -> mbind_assoc kprod v.uvar_arity l
+    in
+    assert (mbinder_arity k = v.uvar_arity);
+    let k =
+      match kuvar_occur ~safe_ordis:os v (msubst k (Array.make v.uvar_arity OConv)) with
+      | Non   -> k
+      | Pos _ -> constant_mbind v.uvar_arity (
+        KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))
+      | _     ->
+         match side with
+         | Neg _ -> constant_mbind v.uvar_arity bot
+         | Pos _ -> constant_mbind v.uvar_arity top
+         | _ -> raise Occur_check
+    in
+    set_kuvar v k
 
 (****************************************************************************)
 (**{2               bindings of ordinals in type and ordinals              }*)
@@ -109,7 +108,7 @@ let rec bind_both ?(from_generalise=false) os x =
          (* if the variable value is recursive, we fix its value
             or produce occur_check now, otherwise it loops *)
          let is_recursive =
-           match !(u.uvar_state) with
+           match uvar_state u with
            | Free -> Non
            | DSum l | Prod l -> List.fold_left (fun acc (_,k) ->
              combine acc (kuvar_occur u (msubst k os'))) Non l
@@ -123,7 +122,7 @@ let rec bind_both ?(from_generalise=false) os x =
          let new_ords = Array.append os' os'' in
          let new_len = u.uvar_arity + Array.length os'' in
          let state =
-           match !(u.uvar_state) with
+           match uvar_state u with
            | Free -> Free
            | DSum l ->
               DSum (List.map (fun (s,f) ->
@@ -171,7 +170,8 @@ let rec bind_both ?(from_generalise=false) os x =
            let os'' = Array.of_list os'' in
            let new_os = Array.append os' os'' in
            let new_len = Array.length new_os in
-           let upper = match snd u.uvar_state with
+           assert (is_unset u);
+           let upper = match snd (uvar_state u) with
              | None -> None
              | Some o ->
                 let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
@@ -180,7 +180,8 @@ let rec bind_both ?(from_generalise=false) os x =
                 assert (is_closed f);
                 Some (unbox f)
            in
-           let lower = match fst u.uvar_state with
+           assert (is_unset u);
+           let lower = match fst (uvar_state u) with
              | None -> None
              | Some o ->
                 let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->

@@ -127,8 +127,10 @@ let generalise : ordi list -> term_or_kind -> kind -> Sct.call_table ->
     let res =
       match o with
       | OLess _ -> let (_, o) = eps_search true o in box o
-      | OUVar({uvar_state = (Some o', _)} as u, os) when occ = sPos ->
+      | OUVar({uvar_state = {contents = Unset (Some o', _)}} as u, os) when occ = sPos ->
          set_ouvar u o'; self_ord ~occ o (* NOTE: avoid looping in flot.typ/compose *)
+      | OUVar({uvar_state = {contents = Unset (_, Some o')}}, os) ->
+         ignore (self_ord (msubst o' os)); def_ord o
       | OConv when occ = sNeg ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
@@ -237,7 +239,7 @@ let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
     | KOExi(f)     -> fn (subst f OConv)
     | KUVar(u,os)  ->
        begin
-         match !(u.uvar_state) with
+         match uvar_state u with
          | Free -> ()
          | DSum l | Prod l ->
             List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) OConv))) l
