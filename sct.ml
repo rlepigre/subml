@@ -348,8 +348,6 @@ let inline : call_table -> call_table = fun ftbl ->
       in
       if !removed_one then gn calls else calls
     in
-    (* Io.log "after inlining\n";
-       List.iter (Io.log "%a\n%!" pr_call) calls;*)
     { current = ftbl.current
     ; table   = ftbl.table
     ; calls   = gn calls }

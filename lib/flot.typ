@@ -17,14 +17,16 @@ val rec 2 filter : ∀A F → Stream(A) → Stream(A) =
     | R f' → filter f' tl
     | K f' → fun _ → (hd, filter f' tl)
 
+val consR : ∀α SF(α,∞) → SF(α,∞) = fun f _ → R f
+
 val rec 3 compose : F → F → F = fun f1 f2 →
   (case f2 {} of
   | K f2' → (case f1 {} of
-            | R f1' → fun _ → R (compose f1' f2')
-            | K f1' → fun _ → K (compose f1' f2'))
-  | R f2' → fun _ → R (compose f1 f2'))
+            | K f1' → fun _ → K (compose f1' f2')
+            | R f1' → consR (compose f1' f2'))
+  | R f2' → conR (compose f1 f2'))
 
-?val rec compose : F → F → F = fun f1 f2 →
+?val rec 2 compose : F → F → F = fun f1 f2 →
   (case f2 {} of
   | K f2' → (case f1 {} of
             | R f1' → fun _ → R (compose f1' f2')

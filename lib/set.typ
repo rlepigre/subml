@@ -57,5 +57,5 @@ val ordNat : Ord(Nat) = {compare = compare}
 
 val setNat : Set(Nat) = makeSet ordNat
 
-val set012 : εS(setNat ∈ FSet(Nat,S)) =
+val set012 : setNat.S =
   setNat.add Z (setNat.add (S Z) (setNat.add (S (S Z)) setNat.empty))

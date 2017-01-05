@@ -10,7 +10,7 @@ val d2i : D → Int = fun n →
   | S →  1
   | P → n1
 
-val rec average' : ∀α Int → IS(α+1) → IS(α+1) → IS(α) = fun c a b _ →
+val rec average' : ∀α Int → IS(α+2) → IS(α+2) → IS(α+1) = fun c a b _ →
   (*let _ = print("c=");print_int c;print("\n") in*)
   let (a0,a') = a {} in
   let (b0,b') = b {} in
@@ -30,7 +30,7 @@ val rec average' : ∀α Int → IS(α+1) → IS(α+1) → IS(α) = fun c a b _ 
     let c' = sub d' (dbl (d2i e)) in
     (e, average' c' a' b')
 
-val average : ∀α IS(α+1) → IS(α+1) → IS(α) = average' Z
+val average : ∀α IS(α+2) → IS(α+2) → IS(α+1) = average' Z
 
 val oppD : D → D = fun a1 →
   case a1 of

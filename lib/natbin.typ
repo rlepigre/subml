@@ -194,7 +194,7 @@ val add_bin : Bin → Bin → Bin = add_aux Zero
 type EBin = Option(Bin)
 type EFBin(α) = Option(FBin(α))
 
-val eOne : ∀α EFBin(α) → EFBin(α+1) = map_option (fun x → One x)
+val eOne : ∀α EFBin(α) → EFBin(α+1) = fun o → map_option (fun x → One x) o
 
 val rec epred : ∀α FBin(α) → EFBin(α) =
 fun x →

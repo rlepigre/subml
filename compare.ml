@@ -56,13 +56,13 @@ let mbind_assoc cst size l =
 (** function to set type variables (a more complex
     function [safe_set_kuvar] exists) *)
 let set_kuvar v k =
-  assert (!(v.uvar_val) = None);
-  assert (mbinder_arity k = v.uvar_arity);
-  Io.log_uni "set ?%d <- %a\n\n%!"
-    v.uvar_key (!fprint_kind false)
-    (msubst k (Array.init v.uvar_arity
-                 (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
-  Timed.(v.uvar_val := Some k)
+  if !(v.uvar_val) = None then (
+    assert (mbinder_arity k = v.uvar_arity);
+    Io.log_uni "set ?%d <- %a\n\n%!"
+      v.uvar_key (!fprint_kind false)
+      (msubst k (Array.init v.uvar_arity
+                   (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
+    Timed.(v.uvar_val := Some k))
 
 (** function to set ordi variables *)
 let set_ouvar ?(msg="") v o =
@@ -251,11 +251,11 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordis pos o1 o2
     | (KUVar(u1,o1), b           ) when not !eq_strict &&
                                         kuvar_occur ~safe_ordis:o1 u1 b = Non
-                                   && !(u1.uvar_state) = Free ->
+                                        && !(u1.uvar_state) = Free ->
        set_kuvar u1 (!fbind_ordis o1 b); eq_kind k1 k2
     | (a           , KUVar(u2,o2)) when not !eq_strict &&
                                         kuvar_occur ~safe_ordis:o2 u2 a = Non
-                                   && !(u2.uvar_state) = Free ->
+                                        && !(u2.uvar_state) = Free ->
        set_kuvar u2 (!fbind_ordis o2 a); eq_kind k1 k2
     | (KPrnt s1    , KPrnt s2    ) -> s1 = s2
     | (_           , _           ) -> false
@@ -297,8 +297,7 @@ and eq_term : ordi list -> term -> term -> bool = fun pos t1 t2 ->
                                             eq_assoc eq_term l1 l2 &&
                                             eq_option eq_term d1 d2
     | (TPrnt(s1)      , TPrnt(s2)      ) -> s1 = s2
-    | (TCnst(f1,a1,b1,_)
-                    , TCnst(f2,a2,b2,_)) -> eq_tcnst pos f1 a1 b1 f2 a2 b2
+    | (TCnst(f1,a1,b1), TCnst(f2,a2,b2)) -> eq_tcnst pos f1 a1 b1 f2 a2 b2
     | (_              , _              ) -> false
   in eq_term t1 t2
 
@@ -333,6 +332,9 @@ and strict_eq_ordi : ordi -> ordi -> bool =
 
 and strict_eq_ord_wit : ord_wit -> ord_wit -> bool =
   fun t1 t2 -> strict (eq_ord_wit [] t1) t2
+
+and strict_leq_ordi : ordi -> ordi -> bool =
+  fun t1 t2 -> strict (leq_ordi [] t1) t2
 
 (****************************************************************************
  *                 Occurence test for unification variables                 *
@@ -373,8 +375,8 @@ and gen_occur :
        Array.iteri (fun i k ->
          acc := aux (compose occ d.tdef_kvariance.(i)) !acc k) a;
        !acc
-    | KUCst(t,f,cl)    (* no occurence possible in closed terms *)
-    | KECst(t,f,cl) -> if cl then acc else aux All acc (subst f kdummy)
+    | KUCst(t,f,_)
+    | KECst(t,f,_) -> aux2 (aux All acc (subst f kdummy)) t
     | KUVar(u,os) -> if kuvar u then combine acc occ else Array.fold_left aux3 acc os
     | KMRec(_,k) (* NOTE: safe to ignore ordis as they are not used in unif var *)
     | KNRec(_,k) -> aux occ acc k
@@ -383,7 +385,7 @@ and gen_occur :
     if List.memq t.elt !adone_t then acc else (
     adone_t := t.elt :: !adone_t;
     match t.elt with
-    | TCnst(t,k1,k2,cl) -> if cl then acc else aux All (aux All acc k1) k2
+    | TCnst(t,k1,k2) -> aux2 (aux All (aux All acc k1) k2) (subst t (TReco []))
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
@@ -435,7 +437,7 @@ and gen_occur :
     | SchTerm t -> aux2    acc t
     | SchKind k -> aux All acc k
   in
-  (fun k -> aux Pos Non k), (fun o -> aux3 Non o)
+  (fun k -> aux sPos Non k), (fun o -> aux3 Non o)
 
 and ouvar_occur : ?safe_ordis:ordi array -> ouvar -> ordi -> bool =
   fun ?(safe_ordis=[||]) v o ->

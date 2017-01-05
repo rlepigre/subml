@@ -11,7 +11,6 @@ open Print
 open Position
 open Compare
 open Term
-open Generalise
 open Error
 open LibTools
 
@@ -93,6 +92,25 @@ let find_indexes ftbl pos index index' a b =
     ) a) b;
   m
 
+let score_mat m =
+  let open Sct in
+  let nb_lines = Array.length m in
+  let nb_colos = if nb_lines > 0 then Array.length m.(0) else 0 in
+  let less = ref 0 in
+  let leq  = ref 0 in
+  for i = 0 to nb_lines - 1 do
+    let found_less = ref false and found_leq = ref false in
+    for j = 0 to nb_colos - 1 do
+      match m.(i).(j) with
+      | Less -> found_less := true
+      | Leq  -> found_leq := true
+      | _    -> ()
+    done;
+    if !found_less then incr less
+    else if !found_leq then incr leq
+  done;
+  (!less, !leq, -nb_colos)
+
 let consecutive =
   let rec fn n = function
     | [] -> true
@@ -100,7 +118,7 @@ let consecutive =
     | _ -> false
   in fn 0
 
-let add_call ctxt fnum os is_induction_hyp =
+let build_call ctxt fnum os is_induction_hyp =
   let open Sct in
   let pos = ctxt.positive_ordis in
   let calls = ctxt.call_graphs in
@@ -109,8 +127,12 @@ let add_call ctxt fnum os is_induction_hyp =
   assert(consecutive os0);
   Io.log_mat "adding call %a -> %a\n%!" prInd cur prInd fnum;
   let m = find_indexes calls pos fnum cur os os0 in
-  let call = (fnum, cur, m, is_induction_hyp) in
-  Sct.new_call calls call
+  fnum, cur, m, is_induction_hyp
+
+let add_call ctxt fnum os is_induction_hyp =
+  let call = build_call ctxt fnum os is_induction_hyp in
+  Sct.new_call ctxt.call_graphs call
+
 
 (** construction of an ordinal < o such that w *)
 let rec opred o w =
@@ -126,16 +148,17 @@ let rec opred o w =
   | OVari _ | OVars _ -> assert false
   | OLess _ | OConv -> OLess(o, w)
 
-let find_positive ctxt o =
+let find_positive pos o =
   let rec gn i o =
     if i <= 0 then
-      List.exists (strict_eq_ordi o) ctxt.positive_ordis
+      List.exists (strict_eq_ordi o) pos
     else
       List.exists (function
       | OLess(o',_) as o0 when strict_eq_ordi o o' -> gn (i-1) o0
-      | _ -> raise Not_found) ctxt.positive_ordis
+      | _ -> raise Not_found) pos
   in
   let rec fn i o = match orepr o with
+    (*    | OUVar(_, os) when Array.exists (fn i) os -> true*)
     | OUVar({ uvar_state = (_,Some f)},os) ->
        let b = msubst f os in
        fn (i+1) b
@@ -159,10 +182,9 @@ let is_positive ctxt o =
   | OConv | OSucc _ -> true
   | OVari _ -> assert false
   | o ->
-     List.exists (fun o' -> eq_ordi ctxt.positive_ordis o' o)
-       ctxt.positive_ordis
+     List.exists (fun o' -> eq_ordi ctxt.positive_ordis o' o) ctxt.positive_ordis
 
-   let rec dot_proj t k s = match full_repr k with
+let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->
      let c = KECst(t,f,true) in (* NOTE: used only for close term *)
      if binder_name f = s then c else dot_proj t (subst f c) s

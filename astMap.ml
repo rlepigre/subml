@@ -20,7 +20,7 @@ type map_ord   = occur -> ordi -> self_kind -> self_ord -> (ordi -> obox) -> obo
 let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
   = fun ?(fkind=fun _ k _ _ defk -> defk ( repr k))
         ?(ford =fun _ o _ _ defo -> defo (orepr o))
-        ?(occ=Pos) k ->
+        ?(occ=sPos) k ->
   let map_kind: ?occ:occur -> kind -> kbox = map_kind ~fkind ~ford in
   let map_ordi: ?occ:occur -> ordi -> obox  = map_ordi ~fkind ~ford in
   fkind occ k map_kind map_ordi (
@@ -60,7 +60,7 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
 and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
   = fun ?(fkind=fun _ k _ _ defk -> defk (repr k))
         ?(ford=fun _ o _ _ defo -> defo (orepr o))
-        ?(occ=Pos) o ->
+        ?(occ=sPos) o ->
   let map_kind = map_kind ~fkind ~ford in
   let map_ordi = map_ordi ~fkind ~ford in
   ford occ o map_kind map_ordi (

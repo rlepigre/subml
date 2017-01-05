@@ -140,7 +140,7 @@ let has_kvar : kind -> bool = fun k ->
 let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
   = fun kuvars ouvars p k ->
   let res = match full_repr p, full_repr k with
-  | KUVar(ua,[||]), k when List.memq ua kuvars ->
+    | KUVar(ua,[||]), k when List.memq ua kuvars ->
      set_kuvar ua (constant_mbind 0 k); not (has_kvar p) (* NOTE: to avoid capture *)
   | KFunc(p1,p2), KFunc(k1,k2) ->
      match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
@@ -387,11 +387,13 @@ and print_state ff s os = match !s with
       fprintf ff "[%a]" (print_list pvariant " | ") cs
 *)
 and print_occur ff = function
-  | All    -> pp_print_string ff "?"
-  | Pos    -> pp_print_string ff "+"
-  | Neg    -> pp_print_string ff "-"
-  | Non    -> pp_print_string ff "="
-  | Reg(_) -> pp_print_string ff "R"
+  | All      -> pp_print_string ff "?"
+  | Pos true -> pp_print_string ff "++"
+  | Neg true -> pp_print_string ff "--"
+  | Pos _    -> pp_print_string ff "+"
+  | Neg _    -> pp_print_string ff "-"
+  | Non      -> pp_print_string ff "="
+  | Reg(_)   -> pp_print_string ff "R"
 
 and pkind_def unfold ff kd =
   let name = if !latex_mode then kd.tdef_tex_name else kd.tdef_name in
@@ -597,7 +599,7 @@ and print_term ?(give_pos=false) unfold wrap ff t =
        fprintf ff "Y%s.%a" x pterm t
      else
        fprintf ff (if !latex_mode then "\\mathrm{%s}" else "%s") x
-  | TCnst(f,a,b,_) ->
+  | TCnst(f,a,b) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
        pterm ff t
@@ -846,7 +848,7 @@ let print_position ff o =
 let print_epsilon_tbls ff =
   list_ref_iter (fun (t,(t0,name,index)) ->
     match t.elt with
-    | TCnst(f,a,b,_) when name <> "" ->
+    | TCnst(f,a,b) when name <> "" ->
        let x = free_of (new_tvari (binder_name f)) in
        let t = subst f x in
        fprintf ff "%s_%d &= ε_{%a ∈ %a}(%a ∉ %a)\\\\\n" name index

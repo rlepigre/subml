@@ -41,23 +41,16 @@ val rec pre : Int → Int = fun n →
   | P n → P (P n)
   | S n → n
 
-(* level 3 unrolling necessary *)
-val rec 3 add : Int → Int → Int = fun n m →
-  case n of
-  | Z → m
-  | S n → (case n of Z → suc m | S n → add n (suc (suc m)))
-  | P n → (case n of Z → pre m | P n → add n (pre (pre m)))
-
-(* or simple type annotation, just forcing the type of n is enough *)
-val rec add2 : Int → Int → Int = fun n m →
+(* Type annotation needed, just forcing the type of n is enough *)
+val rec add : Int → Int → Int = fun n m →
   case n of
   | Z → m
   | S n → (case n of Z → suc m | S n →
       let α such that n:PS(α) in
-      add2 n (suc (suc m)))
+      add n (suc (suc m)))
   | P n → (case n of Z → pre m | P n →
       let α such that n:NS(α) in
-      add2 n (pre (pre m)))
+      add n (pre (pre m)))
 
 ?val rec 2 add : Int → Int → Int = fun n m →
   case n of
@@ -65,7 +58,7 @@ val rec add2 : Int → Int → Int = fun n m →
   | S n → (case n of Z → suc m | S n → add n (suc (suc m)))
   | P n → (case n of Z → pre m | P n → add n (pre (pre m)))
 
-?val rec 3 add : Int → Int → Int = fun n m →
+?val rec 2 add : Int → Int → Int = fun n m →
   case n of
   | Z → m
   | S n → add n (suc m)

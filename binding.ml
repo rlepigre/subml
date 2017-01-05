@@ -36,8 +36,8 @@ exception Occur_check
     - use the previous function 'make_safe'
     - does the occur check
     - if the kuvar_state is not Free, is uses the state and ignore the
-      arguemt. Therefore it is not safe to assume that the unification
-      variable is related to k after seting
+      argumemt. Therefore it is not safe to assume that the unification
+      variables is related to k after seting
 *)
 let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
   fun side v k os ->
@@ -55,16 +55,16 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
   assert (mbinder_arity k = v.uvar_arity);
   let k =
     match kuvar_occur ~safe_ordis:os v (msubst k (Array.make v.uvar_arity OConv)) with
-    | Non -> k
-    | Pos -> constant_mbind v.uvar_arity (
+    | Non   -> k
+    | Pos _ -> constant_mbind v.uvar_arity (
       KFixM(OConv,bind_kuvar v (msubst k (Array.make v.uvar_arity OConv))))
-    | _   ->
+    | _     ->
        match side with
-       | Neg -> constant_mbind v.uvar_arity bot
-       | Pos -> constant_mbind v.uvar_arity top
+       | Neg _ -> constant_mbind v.uvar_arity bot
+       | Pos _ -> constant_mbind v.uvar_arity top
        | _ -> raise Occur_check
   in
-  set_kuvar v k
+  if !(v.uvar_val) = None then set_kuvar v k
 
 (****************************************************************************)
 (**{2               bindings of ordinals in type and ordinals              }*)
@@ -87,13 +87,16 @@ let index os x u =
   fn 0
 
 let rec bind_both ?(from_generalise=false) os x =
+  let fresh_uvar = ref [] in
+  let fresh_ovar = ref [] in
   let fkind _ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
     let res = match repr k with
     | KMRec(_,k)
     | KNRec(_,k)   -> self_kind k
-    (* NOTE: safe, because erased in generalise with safe assertion, and
+    (* NOTE: safe, because forbidden in generalise, and
        subtyping is called later when used to instanciate unif var,
        so if unsafe, subtyping/eq_kind/leq_kind will fail *)
+    | KUVar(u,_)   when List.mem_assq u !fresh_uvar -> kuvar u (List.assq u !fresh_uvar)
     | KUVar(u,os') ->
        let os'' = List.filter (fun o ->
          not (Array.exists (strict_eq_ordi o) os') && not (kuvar_ord_occur u o))
@@ -132,6 +135,8 @@ let rec bind_both ?(from_generalise=false) os x =
                   bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
+         let new_ords = Array.map self_ord new_ords in
+         fresh_uvar := (v, new_ords) :: !fresh_uvar;
          let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
            kuvar v (Array.init new_len
                       (fun i -> if i < u.uvar_arity then x.(i) else box
@@ -141,7 +146,7 @@ let rec bind_both ?(from_generalise=false) os x =
                           | o -> o)))))
          in
          set_kuvar u k;
-         kuvar v (Array.map self_ord new_ords)
+         kuvar v new_ords
     | KUCst(t,f,cl) | KECst(t,f,cl) when from_generalise || os = [||] ->
          if cl then box k else map_kind k
     | k -> def_kind k
@@ -153,6 +158,7 @@ let rec bind_both ?(from_generalise=false) os x =
     let res =
       try  index os x o with Not_found ->
       match o with
+      | OUVar(u,_)   when List.mem_assq u !fresh_ovar -> ouvar u (List.assq u !fresh_ovar)
       | OUVar(u,os') ->
          let os'' = List.filter (fun o ->
            not (Array.exists (strict_eq_ordi o) os') &&
@@ -184,6 +190,8 @@ let rec bind_both ?(from_generalise=false) os x =
                 Some (unbox f)
            in
            let v = new_ouvara ?lower ?upper new_len in
+           let new_os = Array.map self_ord new_os in
+           fresh_ovar := (v, new_os) :: !fresh_ovar;
            let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
              ouvar v (Array.init new_len (fun i ->
                if i < u.uvar_arity then x.(i) else
@@ -194,7 +202,7 @@ let rec bind_both ?(from_generalise=false) os x =
            in
            Io.log_uni "set in bind gn\n%!";
            set_ouvar u k;
-           ouvar v (Array.map self_ord new_os)
+           ouvar v new_os
       | o -> def_ord o
       in
       if Bindlib.is_closed res then box o else res
@@ -205,13 +213,13 @@ let rec bind_both ?(from_generalise=false) os x =
     Bind an array [os] of ordinals in the kind [k]. [x] is the array
     of bindlib variables to be used *)
 and bind_fn ?(from_generalise=false) os x k =
-  (fst (bind_both ~from_generalise os x):?occ:occur -> kind -> kbox) ~occ:Pos k
+  (fst (bind_both ~from_generalise os x):?occ:occur -> kind -> kbox) ~occ:sPos k
 
 (** [bind_gn ?(from_generalise=false) len os x o]
     Bind an array [os] of ordinals in the ordinal [o]. [x] is the array
     of bindlib variables to be used *)
 and bind_gn ?(from_generalise=false) os x o =
-  (snd (bind_both ~from_generalise os x):?occ:occur -> ordi -> obox) ~occ:Pos o
+  (snd (bind_both ~from_generalise os x):?occ:occur -> ordi -> obox) ~occ:sPos o
 
 (** binding ordinals in one ordinal *)
 let obind_ordis : ordi array -> ordi -> (ordi, ordi) mbinder = fun os o ->

@@ -17,8 +17,8 @@ open LibTools
 (** Occurence markers for variables. *)
 type occur =
   | Non (** The variable does not occur. *)
-  | Pos (** The variable occurs only positively. *)
-  | Neg (** The variable occurs only negatively. *)
+  | Pos of bool (** The variable occurs only positively. *)
+  | Neg of bool (** The variable occurs only negatively. *)
   | All (** The variable occurs both positively and negatively. *)
   | Reg of int * occur array
   (** Special constructor for constructing the variance of definitions. *)
@@ -169,7 +169,7 @@ and term' =
 
   (* Special constructors (not accessible to user). *)
 
-  | TCnst of (term', term) binder * kind * kind * bool
+  | TCnst of (term', term) binder * kind * kind
   (** Witness (a.k.a. epsilon). [Cnst(f,a,b)] denotes a term [u] of type [a]
       such that [Bindlib.subst f u] does not have type [b]. *)
   | TPrnt of string
@@ -602,9 +602,8 @@ let tmlet : pos -> string array -> string array ->
 let tcnst : (term', term) binder -> kbox -> kbox -> tbox =
   (* NOTE: the term is always closed *)
   fun s a b ->
-    let cl = is_closed a && is_closed b in
-    assert cl; (* NOTE: we do not assume a b closed, but check it *)
-    box_apply dummy_pos (box_apply2 (fun a b -> TCnst(s,a,b,cl)) a b)
+    assert (is_closed a && is_closed b);
+    box_apply dummy_pos (box_apply2 (fun a b -> TCnst(s,a,b)) a b)
 
 let generic_tcnst : kbox -> kbox -> tbox =
   fun a b ->
@@ -629,9 +628,9 @@ let rec do_dot_proj t k s = match full_repr k with
 let dot_proj : tbox -> string -> kbox = fun t s ->
   let fn t = match t.elt with
     | TDefi(d) -> do_dot_proj t d.ttype s
-    | TCnst(_,a,_,_) -> do_dot_proj t a s
+    | TCnst(_,a,_) -> do_dot_proj t a s
     | TVars x -> KPrnt (DotPrj(x,s)) (** printing only *)
-    | _ -> failwith "Illegal dot projection"
+    | _ -> KProd []
   in
   box_apply fn t
 
@@ -668,10 +667,10 @@ let combine oa ob =
   | (_     , Non   ) -> oa
   | (All   , _     ) -> All
   | (_     , All   ) -> All
-  | (Neg   , Pos   ) -> All
-  | (Pos   , Neg   ) -> All
-  | (Neg   , Neg   ) -> Neg
-  | (Pos   , Pos   ) -> Pos
+  | (Neg _ , Pos _ ) -> All
+  | (Pos _ , Neg _ ) -> All
+  | (Neg s1, Neg s2) -> Neg (s1 && s2)
+  | (Pos s1, Pos s2) -> Pos (s1 && s2)
 
 let compose oa ob =
   match (oa, ob) with
@@ -681,10 +680,10 @@ let compose oa ob =
   | (_     , Non   ) -> Non
   | (All   , _     ) -> All
   | (_     , All   ) -> All
-  | (Neg   , Pos   ) -> Neg
-  | (Pos   , Neg   ) -> Neg
-  | (Neg   , Neg   ) -> Pos
-  | (Pos   , Pos   ) -> Pos
+  | (Neg s1, Pos s2) -> Neg (s1 && s2)
+  | (Pos s1, Neg s2) -> Neg (s1 && s2)
+  | (Neg _ , Neg _ ) -> Pos false
+  | (Pos s1, Pos s2) -> Pos (s1 && s2)
 
 let compose2 oa ob =
   match oa with
@@ -693,6 +692,9 @@ let compose2 oa ob =
 
 let neg = function
   | Reg(_) -> assert false
-  | Neg    -> Pos
-  | Pos    -> Neg
+  | Neg(_) -> Pos(false)
+  | Pos(b) -> Neg(b)
   | o      -> o
+
+let sPos = Pos true
+let sNeg = Neg true

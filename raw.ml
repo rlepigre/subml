@@ -85,9 +85,7 @@ let apply_rpat x t =
      in_pos t.pos (PLAbs([x],t))
   | Record r ->
      let name = List.fold_left (fun acc (l,(x,_)) ->
-       acc ^ l ^ "=" ^ x.elt ^ ";")
-       (if !Print.latex_mode then "\\{" else "{") r ^
-       (if !Print.latex_mode then "\\}" else "}")
+       acc ^ l ^ "=" ^ x.elt ^ ";") "{" r ^ "}"
      in
      let v = in_pos t.pos (PLVar name) in
      let t =
@@ -164,7 +162,7 @@ let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array 
   let oarity = Array.length os in
   try
     let (k, pos') = List.assoc s.elt env.kinds in
-    if not (List.mem (compose2 pos' pos) [Non; Pos]) then
+    if not (List.mem (compose2 pos' pos) [Non; Pos true; Pos false]) then
       let msg = Printf.sprintf "%s used in a negative position." s.elt in
       positivity_error s.pos msg
     else if oarity <> 0 then
@@ -198,14 +196,14 @@ let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array 
  *                           Desugaring functions                           *
  ****************************************************************************)
 
-and unsugar_ordinal : ?pos:occur -> env -> pordinal -> obox = fun ?(pos=Pos) env po ->
+and unsugar_ordinal : ?pos:occur -> env -> pordinal -> obox = fun ?(pos=sPos) env po ->
   match po.elt with
   | PConv   -> oconv
   | PVari s -> ordinal_variable pos env (in_pos po.pos s)
   | PSucc o -> osucc (unsugar_ordinal ~pos env o)
 
 and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
-  fun ?(pos=Pos) (env:env) pk ->
+  fun ?(pos=sPos) (env:env) pk ->
   match pk.elt with
   | PFunc(a,b)   ->
      kfunc (unsugar_kind ~pos:(neg pos) env a) (unsugar_kind ~pos env b)

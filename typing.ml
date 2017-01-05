@@ -63,7 +63,7 @@ let check_rec
         positive_ordis = tpos;
         top_induction = (fnum, os0)
       } in
-      List.iter (function schema' ->
+      let calls = List.fold_left (fun acc schema' ->
         (* hypothesis apply if same type up to the parameter and same positive ordinals.
            An inclusion beween p' and p0 should be enough, but this seems complete that
            way *)
@@ -72,13 +72,20 @@ let check_rec
           (print_kind false) k1  (print_kind false) a'
           (print_kind false) k2  (print_kind false) b';
         if eq_kind tpos k1 a' && eq_kind tpos b' k2 &&
-           List.for_all (fun o1 ->
+          List.for_all (fun o1 ->
+            match orepr o1 with OConv | OSucc _ -> true | _ ->
                List.exists (eq_ordi tpos o1) tpos) pos'
         then (
           Io.log_sub "By induction\n\n%!";
-          add_call ctxt schema'.sch_index ov true;
-          raise (Induction_hyp schema'.sch_index))
-      ) (List.tl ctxt.sub_induction_hyp);
+          build_call ctxt schema'.sch_index ov true :: acc)
+        else acc) [] (List.tl ctxt.sub_induction_hyp) in
+      let calls = List.map (fun (_,_,m1,_ as call) -> (score_mat m1, call)) calls in
+      let calls = List.sort (fun (s1,_) (s2,_) -> compare s2 s1) calls in
+      (match calls with
+      | (_,(index,_,_,_ as call))::_ ->
+         Sct.new_call ctxt.call_graphs call;
+        raise (Induction_hyp index)
+      | [] -> ());
       Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
       let tros = List.map2 (fun (_,o1) (_,o2) ->
         let o2 = match o2 with OVari _ -> OConv | _ -> o2 in
@@ -184,15 +191,15 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
          in
          (* this will use the uvar_state if it is not Free, we could try
             to delay this *)
-         safe_set_kuvar Neg ua f osa);
+         safe_set_kuvar sNeg ua f osa);
        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     (* Handling of unification variables (immitation). *)
     | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
        begin (* make the correct choice, depending if DSum or Prod *)
           match !(ua.uvar_state), !(ub.uvar_state) with
-          | _, DSum _ -> safe_set_kuvar Neg ua (bind_ordis osa b) osa
-          | Prod _, _ -> safe_set_kuvar Pos ub (bind_ordis osb a) osb
+          | _, DSum _ -> safe_set_kuvar sNeg ua (bind_ordis osa b) osa
+          | Prod _, _ -> safe_set_kuvar sPos ub (bind_ordis osb a) osb
           | _ ->
                let osal = Array.to_list osa in
                let osbl = Array.to_list osb in
@@ -229,19 +236,19 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
                   ua or ub, so we added a test to avoid an assert false  *)
                if !(ua.uvar_val) = None then (
                  Timed.(ua.uvar_state := Free);
-                 safe_set_kuvar Neg ua (bind_ordis osa k) osa);
+                 safe_set_kuvar sNeg ua (bind_ordis osa k) osa);
                if !(ub.uvar_val) = None then (
                  Timed.(ub.uvar_state := Free);
-                 safe_set_kuvar Pos ub (bind_ordis osb k) osb);
+                 safe_set_kuvar sPos ub (bind_ordis osb k) osb);
         end;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | (KUVar(ua,os), b            ) ->
-        safe_set_kuvar Neg ua (bind_ordis os b0) os;
+        safe_set_kuvar sNeg ua (bind_ordis os b0) os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | (a           ,(KUVar(ub,os)))  ->
-        safe_set_kuvar Pos ub (bind_ordis os a0) os;
+        safe_set_kuvar sPos ub (bind_ordis os a0) os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | _ -> raise Exit
@@ -350,7 +357,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
     | (KFixN(o,f)  , _           ) ->
         begin
           try
-            let o' = find_positive ctxt o in
+            let o' = find_positive ctxt.positive_ordis o in
             let a = if o' = OConv then a else KFixN(o',f) in
             let p = subtype ctxt t (subst f a) b0 in
             if not (is_positive ctxt o) then raise Not_found;
@@ -361,7 +368,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
     | (_           , KFixM(o,f)  ) ->
         begin
           try
-            let o' = find_positive ctxt o in
+            let o' = find_positive ctxt.positive_ordis o in
             let b = if o' = OConv then b else KFixM(o',f) in
             let p = subtype ctxt t a0 (subst f b) in
             if not (is_positive ctxt o) then raise Not_found;
@@ -443,7 +450,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let k = match x with
            | None -> c
            | Some t -> (match t.elt with
-                       | TCnst(_,c,_,_) -> c
+                       | TCnst(_,c,_) -> c
                        | TDefi d -> d.ttype
                        | _ -> assert false (* NOTE: Only variable allowed by parsing *))
          in
@@ -547,7 +554,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          Typ_Prnt(p)
       | TFixY(do_subsume,depth,f) ->
          check_fix ctxt t do_subsume depth f c
-      | TCnst(_,a,b,_) ->
+      | TCnst(_,a,b) ->
          let p = subtype ctxt t a c in
          Typ_Cnst(p)
       | TVari _ | TVars _ -> assert false
@@ -566,21 +573,20 @@ and subsumption acc = function
      let rec gn acc' = function
        | [] -> subsumption (head::List.rev acc') tail
        | (ctxt',_,t',c',ptr',subsumed' as head')::tail' ->
-          if (List.for_all (fun o1 ->
-            List.exists (strict_eq_ordi o1) ctxt.positive_ordis)
-                ctxt'.positive_ordis) && is_subtype ctxt t c' c
-          then begin
+          let prf = subtype ctxt t c' c in
+          if try check_sub_proof prf; true with Error _ -> false then begin
+            Io.log "#%!";
             assert (not !forward);
             subsumed' := ctxt :: !subsumed @ !subsumed';
-            ptr := Indirect (subtype  ctxt t c' c, ptr');
+            ptr := Indirect (prf,ptr');
             subsumption acc tail
-          end else if (List.for_all (fun o1 ->
-                List.exists (strict_eq_ordi o1) ctxt'.positive_ordis)
-                  ctxt.positive_ordis) && is_subtype ctxt' t' c c'
-          then begin
+          end else
+          let prf = subtype  ctxt t' c c' in
+          if try check_sub_proof prf; true with Error _ -> false then begin
+            Io.log "$%!";
             forward := true;
             subsumed := ctxt' :: !subsumed' @ !subsumed;
-            ptr' := Indirect (subtype  ctxt t' c c', ptr);
+            ptr' := Indirect (prf,ptr);
             gn acc' tail'
           end else
             gn (head'::acc') tail'
@@ -639,12 +645,8 @@ and search_induction depth ctxt t a c0 hyps =
   let _ = is_subtype ctxt t a c0 in
   let errProof = ref (Typ_Error "Can not find induction hyp") in
 
-  let rec fn = function
-    | _ when depth > 0 ->
-       (* If the depth is not zero, only apply the above heuristic, but
-          do not search really the induction hypothesis *)
-       raise (NoProof !errProof)
-    | [] -> Io.log_typ "no induction hyp found\n%!"; raise (NoProof !errProof)
+  let rec fn acc = function
+    | [] -> acc
     | schema :: hyps ->
        try
          let (ov, pos, _, a) = recompose schema in
@@ -658,6 +660,7 @@ and search_induction depth ctxt t a c0 hyps =
            check_sub_proof prf;
            Io.log_sub "eq ok\n%!";
            if not (List.for_all (fun o1 ->
+             match orepr o1 with OConv | OSucc _ -> true | _ ->
              List.exists (eq_ordi ctxt.positive_ordis o1)
                ctxt.positive_ordis) pos)
            then raise Exit;
@@ -668,15 +671,30 @@ and search_induction depth ctxt t a c0 hyps =
             if e <> Exit then errProof := Typ_YInd(schema.sch_index,prf);
            Timed.Time.rollback time;
            raise Exit);
-         add_call ctxt schema.sch_index ov true;
-         Typ_YInd(schema.sch_index,prf)
-       with Exit -> fn hyps
+         fn ((prf, build_call ctxt schema.sch_index ov true) :: acc) hyps
+       with Exit -> fn acc hyps
   in
   (* HEURISTIC: try induction hypothesis with more parameters first.
      useful for flatten2 in lib/list.typ *)
   let hyps = List.sort (fun {sch_judge = both} {sch_judge = both'} ->
     mbinder_arity both' - mbinder_arity both) hyps in
-  fn hyps
+  if depth > 0 then
+       (* If the depth is not zero, only apply the above heuristic, but
+          do not search really the induction hypothesis *)
+    raise (NoProof !errProof)
+  else (
+    let calls = fn [] hyps in
+    let calls = List.map (fun (prf,(index,_,m1,_ as call)) ->
+      let (a,b,c as s) = score_mat m1 in
+      Io.log_mat "score: (%d,%d,%d)\n%!" a b c;
+      (s, prf, call)) calls in
+    Io.log_mat "\n%!";
+    let calls = List.sort (fun (s1,_,_) (s2,_,_) -> compare s2 s1) calls in
+    match calls with
+    | (_,prf,(index,_,_,_ as call))::_ ->
+       Sct.new_call ctxt.call_graphs call;
+      Typ_YInd(index,prf)
+    | [] -> Io.log_typ "no induction hyp found\n%!"; raise (NoProof !errProof))
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
 and check_fix ctxt t do_subsume depth f c0 =

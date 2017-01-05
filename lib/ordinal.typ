@@ -17,7 +17,10 @@ val rec add : ∀X O(X) → O(X) → O(X) = fun n m →
 type Ord0 = μO [ Z | S of O | L of ∃X (X → O) ]
 
 check O(Ord) ⊂ Ord0
-!check ∀X O(X) → O(X) → O(X) ⊂ Ord0 → Ord0 → Ord0
+!check Ord0 ⊂ O(Ord)
+
+check O(Ord0) ⊂ Ord0
+!check Ord0 ⊂ O(Ord0)
 
 (* still addition works for Ord0 *)
 val rec add : Ord0 → Ord0 → Ord0 = fun n m →

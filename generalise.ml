@@ -127,9 +127,9 @@ let generalise : ordi list -> term_or_kind -> kind -> Sct.call_table ->
     let res =
       match o with
       | OLess _ -> let (_, o) = eps_search true o in box o
-      | OUVar({uvar_state = (Some o', _)} as u, os) when occ = Pos ->
+      | OUVar({uvar_state = (Some o', _)} as u, os) when occ = sPos ->
          set_ouvar u o'; self_ord ~occ o (* NOTE: avoid looping in flot.typ/compose *)
-      | OConv when occ = Neg ->
+      | OConv when occ = sNeg ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
          res := (free_of v, (n, v, ref true)) :: !res; box_of_var v
@@ -149,10 +149,10 @@ let generalise : ordi list -> term_or_kind -> kind -> Sct.call_table ->
 
   in
   let k1 = match k1 with
-    | SchKind k1 -> SchKind (unbox (map_kind ~fkind ~ford ~occ:Neg k1))
+    | SchKind k1 -> SchKind (unbox (map_kind ~fkind ~ford ~occ:sNeg k1))
     | SchTerm _  -> k1
   in
-  let k2 = unbox (map_kind ~fkind ~ford ~occ:Pos k2) in
+  let k2 = unbox (map_kind ~fkind ~ford ~occ:sPos k2) in
 
   let pos = List.map (fun o -> fst (eps_search false o)) pos in
   let res = List.filter (fun (o,(n,v,k)) -> !k) !res in
