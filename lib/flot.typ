@@ -99,6 +99,8 @@ type F3 = νX μY [ R of Y | K of {} → X ]
 type UF3 = μY [ R of Y | K of {} → F3 ]
 check F3 ⊂ UF3
 check UF3 ⊂ F3
+check F2 ⊂ {} → F3
+check {} → F3 ⊂ F2
 
 val rec filter3 : ∀A UF3 → Stream(A) → Stream(A) =
   fun f s →
@@ -121,7 +123,11 @@ val rec 2 filter3 : ∀A F3 → Stream(A) → Stream(A) =
     | R f' → filter3 f' tl
     | K f' → fun _ → (hd, filter3 (f' {}) tl)
 
-(*The following example fails, not clear why*)
+(*The following example fails, because in the
+  typing of R (compose ...), the term is not normal
+  and we therefore can not assume that the size of
+  the stream is not zero.
+*)
 ?val rec compose3 : UF3 → UF3 → F3 = fun f1 f2 →
   (case f2 of
   | K f2' → (case f1 of
@@ -135,3 +141,14 @@ val rec 2 filter3 : ∀A F3 → Stream(A) → Stream(A) =
             | R f1' → R (compose3 f1' (f2' {}))
             | K f1' → K (fun _ → compose3 (f1' {}) (f2' {})))
   | R f2' → R (compose3 f1 f2'))
+
+val compose3 : F3 → F3 → F3 = fun f1 f2 → compose2 (fun _ → f1) (fun _ → f2) {}
+
+val rec compose32 : UF3 → UF3 → F2 = fun f1 f2 _ →
+  (case f2 of
+  | K f2' → (case f1 of
+            | R f1' → R (compose32 f1' (f2' {}) {})
+            | K f1' → K (compose32 (f1' {}) (f2' {})))
+  | R f2' → R (compose32 f1 f2' {}))
+
+val compose3' : F3 → F3 → F3 = fun f1 f2 → compose32 f1 f2 {}
