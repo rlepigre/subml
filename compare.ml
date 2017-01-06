@@ -105,26 +105,27 @@ and optpr ff = function
   | None -> ()
   | Some o -> !fprint_ordi false ff o
 
+(** try to set OUVar(p,os) with o. Return true in case of success. *)
+
+and safe_set_ouvar pos p os o =
+  not !eq_strict &&
+    not (ouvar_occur ~safe_ordis:os p o) &&
+    Timed.pure_test (fun () ->
+      let st = uvar_state p in
+      set_ouvar ~msg:"eq1" p (!fobind_ordis os o);
+      less_opt_ordi pos o st os) ()
+
 and eq_ordi : ordi list -> ordi -> ordi -> bool = fun pos o1 o2 ->
   Io.log_ord "%a = %a %b\n%!"
     (!fprint_ordi false) o1 (!fprint_ordi false) o2 !eq_strict;
   match (orepr o1, orepr o2) with
   | (o1         , o2         ) when o1 == o2 -> true
-  | (OUVar(v1,o1), OUVar(v2,o2)) when eq_uvar v1 v2 -> eq_ordis pos o1 o2
-  | (OUVar(p,os), o2         ) when not !eq_strict &&
-                                    not (ouvar_occur ~safe_ordis:os p o2) &&
-                                    Timed.pure_test (fun () ->
-                                      let st = uvar_state p in
-                                      set_ouvar ~msg:"eq1" p (!fobind_ordis os o2);
-                                      less_opt_ordi pos o2 st os) () ->
-     (eq_ordi pos o1 o2)
-  | (o1         , OUVar(p,os)   ) when not !eq_strict &&
-                                       not (ouvar_occur ~safe_ordis:os p o1) &&
-                                       Timed.pure_test (fun () ->
-                                         let st = uvar_state p in
-                                         set_ouvar ~msg:"eq2" p (!fobind_ordis os o1);
-                                         less_opt_ordi pos o1 st os) () ->
-     (eq_ordi pos o1 o2)
+  | (OUVar(v1,o1), OUVar(v2,o2))
+      when eq_uvar v1 v2         -> eq_ordis pos o1 o2
+  | (OUVar(p,os), o2           )
+      when safe_set_ouvar pos p os o2 -> eq_ordi pos o1 o2
+  | (o1         , OUVar(p,os)  )
+      when safe_set_ouvar pos p os o1 -> eq_ordi pos o1 o2
   | (OConv       , OConv       ) -> true
   | (OLess(o1,w1), OLess(o2,w2)) -> eq_ordi pos o1 o2 && eq_ord_wit pos w1 w2
   | (OSucc(o1)   , OSucc(o2)   ) -> eq_ordi pos o1 o2
@@ -157,56 +158,31 @@ and leqi_ordi pos o1 i o2 =
   Io.log_ord "%a <_%d %a %b\n%!"
     (!fprint_ordi false) o1 i (!fprint_ordi false) o2 !eq_strict;
   match (orepr o1, orepr o2) with
-  | (o1         , o2      ) when i <= 0 && strict_eq_ordi o1 o2 -> true
-  | (OLess(o1,_),       o2  ) when i > 0 && List.exists (strict_eq_ordi o1) pos ->
-     leqi_ordi pos o1 (i-1) o2
+  | (o1         , o2      ) when strict_eq_ordi (oadd o1 i) o2 -> true
   | (o1         , OSucc o2  ) -> leqi_ordi pos o1 (i-1) o2
   | (OSucc o1   ,       o2  ) -> leqi_ordi pos o1 (i+1) o2
-  | (OUVar({uvar_state = {contents = Unset (_, Some o')}},os),       o2  )
-       when strict (leqi_ordi pos (msubst o' os) (i-1)) o2 ->
-    true
-  | (OUVar({uvar_state = {contents = Unset (Some o',_)}} as p,os),       o2  ) ->
-     set_ouvar ~msg:"leq3" p o';
-     leqi_ordi pos o1 i o2
-  | (OUVar(p,os)   , o2      ) when i<=0 && not !eq_strict &&
-      not (ouvar_occur ~safe_ordis:os p o2) &&
-      Timed.pure_test (fun () -> less_opt_ordi pos o2 (uvar_state p) os) () ->
-     (* FIXME: simplify ? *)
-     let o2' = new_ouvar
-       ?lower:(match fst (uvar_state p) with
-           | None   -> None
-           | Some f -> Some (constant_mbind 0 (msubst f os)))
-       ~upper:(constant_mbind 0 o2) () in
-     let f = !fobind_ordis os o2' in
-     set_ouvar ~msg:"leq1" p f;
-     leq_ordi pos (msubst f os) o2'
+  (* The OLess constraint is enough with no new instanciation *)
+  | (OLess(o1,_),       o2  ) when
+      let i = if List.exists (strict_eq_ordi o1) pos then i-1 else i in
+      strict (leqi_ordi pos o1 i) o2 -> true
+  (* the existing constraint is enough *)
+  | (OUVar({uvar_state = {contents = Unset (_, Some o')}},os), o2)
+       when strict (leqi_ordi pos (msubst o' os) (i-1)) o2 -> true
+  | (o1         , OUVar({uvar_state = {contents = Unset (Some o',_)}},os))
+       when strict (leqi_ordi pos o1 i) (msubst o' os) -> true
+  (* variable on the right, we improve the lower bound *)
   | (o1         , OUVar(p,os)) when not !eq_strict &&
-                                    not (ouvar_occur ~safe_ordis:os p o1) &&
       Timed.pure_test (fun () ->
         let o1 = oadd o1 i in
         less_opt_ordi pos o1 (uvar_state p) os) () ->
-     (* FIXME: simplify ? *)
-     let general = match orepr o1 with
-         OLess(OConv,_) -> false
-       | OLess(o,_) ->
-          (match snd (uvar_state p) with
-          | None   -> true
-          | Some f -> not (strict_eq_ordi (msubst f os) o))
-       | _ -> false
-     in
-     let o1' = oadd o1 i in
-     let o1' =
-       if general then
-         new_ouvar
-           ~lower:(constant_mbind 0 o1')
-           ?upper:(match snd (uvar_state p) with
-           | None   -> None
-           | Some f -> Some (constant_mbind 0 (msubst f os))) ()
-       else o1'
-     in
-     let f = !fobind_ordis os o1' in
-     set_ouvar ~msg:"leq2" p f;
-    leq_ordi pos o1' (msubst f os)
+     p.uvar_state := Unset(Some (!fobind_ordis os (oadd o1 i)), snd (uvar_state p));
+     leqi_ordi pos o1 i o2
+  (* setting the variable on the left with the constraint or o2 *)
+  | (OUVar({uvar_state = {contents = Unset (Some o',_)}} as p,os), o2) ->
+     set_ouvar ~msg:"leq3" p o';
+     leqi_ordi pos o1 i o2
+  | (OUVar(p,os)   , o2      ) when i<=0 && safe_set_ouvar pos p os o2 ->
+     leqi_ordi pos o1 i o2
   | (OLess(o1,_),       o2  ) ->
      let i = if List.exists (Timed.pure_test (eq_ordi pos o1)) pos then i-1 else i in
      leqi_ordi pos o1 i o2

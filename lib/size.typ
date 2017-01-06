@@ -32,32 +32,31 @@ val pred' : ∀α NS(α+2) → NS(α+1) = fun n →
   | Z   → Z
   | S n → n
 
-val rec 2 suc1 : ∀α NS(α) → NS(α+1) = fun n →
+val rec suc1 : ∀α NS(α) → NS(α+1) = fun n →
   case n of
   | Z  → S Z
   | S n → S (suc1 n)
 
-(* FIXME: probably a heuristic instantiating(or not) wrongly
-   an ordinal variable with a successor *)
-?val rec suc1' : ∀α NS(α) → NS(α+1) = fun n →
-  case n of
-  | Z  → S Z
-  | S n → S (suc1' n)
-
 val rec suc2 : ∀α NS(α) → NS(α+2) = fun n →
   case n of
   | Z  → S (S Z)
-  | S n → S (suc2 n)
+  | S n →
+    let α such that n : NS(α) in
+    S (suc2 n) : NS(α+2)
 
 val rec suc3 : ∀α NS(α) → NS(α+3) = fun n →
   case n of
   | Z  → S (S (S Z))
-  | S n → S (suc2 n)
+  | S n →
+    let α such that n : NS(α) in
+    S (suc3 n) : NS(α+3)
 
 val rec suc4 : ∀α NS(α) → NS(α+4) = fun n →
   case n of
   | Z  → S (S (S (S Z)))
-  | S n → S (suc4 n)
+  | S n →
+    let α such that n : NS(α) in
+    S (suc4 n) : NS(α+4)
 
 type G(X) = {} -> [ S of X]
 
