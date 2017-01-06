@@ -153,13 +153,6 @@ let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
      OLess(o, w)
   | (OVari _ | OVars _), _ -> assert false
 
-let is_positive ctxt o =
-  match orepr o with
-  | OConv | OSucc _ -> true
-  | OVari _ -> assert false
-  | o ->
-     List.exists (fun o' -> eq_ordi ctxt.positive_ordis o' o) ctxt.positive_ordis
-
 (** give a list of positive ordinals that may be equal to o.
     This list is of legth >= 2 only if o is an OUVar *)
 let possible_positive ctxt o =
@@ -187,7 +180,7 @@ let possible_positive ctxt o =
        else l
      in
      l
-  | OLess _ as o -> if is_positive ctxt o then [o] else []
+  | OLess _ as o -> if is_positive ctxt.positive_ordis o then [o] else []
   | OVari _ | OVars _ -> assert false
   in
   Io.log_sub "possible positive: %a ==> %a\n%!" (print_ordi false) o

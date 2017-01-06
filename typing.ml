@@ -365,7 +365,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
               let o'' = opred o' None in
               let a = if o' = OConv then a else KFixN(o'',f) in
               let p = subtype ctxt t (subst f a) b0 in
-              if not (is_positive ctxt o') then raise Not_found;
+              if not (is_positive ctxt.positive_ordis o') then raise Not_found;
               check_sub_proof p;
               Sub_FixN_l(p)
             with Not_found | Error _ -> Timed.Time.rollback save; fn l
@@ -383,7 +383,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
               let o'' = opred o' None in
               let b = if o' = OConv then b else KFixM(o'',f) in
               let p = subtype ctxt t a0 (subst f b) in
-              if not (is_positive ctxt o') then raise Not_found;
+              if not (is_positive ctxt.positive_ordis o') then raise Not_found;
               check_sub_proof p;
               Sub_FixM_r(p)
             with Not_found | Error _ -> Timed.Time.rollback save; fn l

@@ -115,6 +115,15 @@ and safe_set_ouvar pos p os o =
       set_ouvar ~msg:"eq1" p (!fobind_ordis os o);
       less_opt_ordi pos o st os) ()
 
+and is_positive pos o =
+  match orepr o with
+  | OConv | OSucc _ -> true
+  | OVari _ -> assert false
+  | o ->
+     List.exists
+       (fun o' -> Timed.pure_test (eq_ordi pos o') o)
+     pos
+
 and eq_ordi : ordi list -> ordi -> ordi -> bool = fun pos o1 o2 ->
   Io.log_ord "%a = %a %b\n%!"
     (!fprint_ordi false) o1 (!fprint_ordi false) o2 !eq_strict;
@@ -163,7 +172,7 @@ and leqi_ordi pos o1 i o2 =
   | (OSucc o1   ,       o2  ) -> leqi_ordi pos o1 (i+1) o2
   (* The OLess constraint is enough with no new instanciation *)
   | (OLess(o1,_),       o2  ) when
-      let i = if List.exists (strict_eq_ordi o1) pos then i-1 else i in
+      let i = if strict (is_positive pos) o1 then i-1 else i in
       strict (leqi_ordi pos o1 i) o2 -> true
   (* the existing constraint is enough *)
   | (OUVar({uvar_state = {contents = Unset (_, Some o')}},os), o2)
@@ -184,7 +193,7 @@ and leqi_ordi pos o1 i o2 =
   | (OUVar(p,os)   , o2      ) when i<=0 && safe_set_ouvar pos p os o2 ->
      leqi_ordi pos o1 i o2
   | (OLess(o1,_),       o2  ) ->
-     let i = if List.exists (Timed.pure_test (eq_ordi pos o1)) pos then i-1 else i in
+     let i = if is_positive pos o1 then i-1 else i in
      leqi_ordi pos o1 i o2
   | (_          , _         ) -> false
 
