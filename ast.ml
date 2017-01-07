@@ -710,3 +710,6 @@ let neg = function
 
 let sPos = Pos true
 let sNeg = Neg true
+
+let isPos = function Non | Pos _ -> true | _ -> false
+let isNeg = function Non | Neg _ -> true | _ -> false

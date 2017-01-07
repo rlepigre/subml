@@ -589,7 +589,6 @@ and subsumption acc = function
        | (ctxt',_,t',c',ptr',subsumed' as head')::tail' ->
           let prf = subtype ctxt t c' c in
           if try check_sub_proof prf; true with Error _ -> false then begin
-            Io.log "#%!";
             assert (not !forward);
             subsumed' := ctxt :: !subsumed @ !subsumed';
             ptr := Indirect (prf,ptr');
@@ -597,7 +596,6 @@ and subsumption acc = function
           end else
           let prf = subtype  ctxt t' c c' in
           if try check_sub_proof prf; true with Error _ -> false then begin
-            Io.log "$%!";
             forward := true;
             subsumed := ctxt' :: !subsumed' @ !subsumed;
             ptr' := Indirect (prf,ptr);

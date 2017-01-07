@@ -287,7 +287,7 @@ let has_uvar : kind -> bool = fun k ->
     | KFixN(o,f) -> fn (subst f (KProd []))
     | KOAll(f)
     | KOExi(f)   -> fn (subst f OConv)
-    | KUVar(u,_) -> raise Exit
+    | KUVar(_) -> raise Exit
     | KDefi(d,o,a) -> Array.iter fn a
     | KMRec(_,k)
     | KNRec(_,k) -> fn k

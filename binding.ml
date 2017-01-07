@@ -47,8 +47,8 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
     let k =
       match uvar_state v with
       | Free -> k
-      | DSum l -> mbind_assoc kdsum v.uvar_arity l
         (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
+      | DSum l -> mbind_assoc kdsum v.uvar_arity l
       | Prod l -> mbind_assoc kprod v.uvar_arity l
     in
     assert (mbinder_arity k = v.uvar_arity);
