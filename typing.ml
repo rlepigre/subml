@@ -251,6 +251,24 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
         safe_set_kuvar sPos ub (bind_ordis os a0) os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
+    (* quantification rule introducing witness before induction *)
+    | (_           , KKAll(f)    ) ->
+        let p = subtype ctxt0 t0 a0 (subst f (KUCst(t0,f,true))) in
+        Sub_KAll_r(p)
+
+    | (KKExi(f)    , _           ) ->
+        let p = subtype ctxt0 t0 (subst f (KECst(t0,f,true))) b0 in
+        Sub_KExi_l(p)
+
+    | (_           , KOAll(f)    ) ->
+        let p = subtype ctxt0 t0 a0 (subst f (OLess(OConv, NotIn(t0,f)))) in
+        Sub_OAll_r(p)
+
+    | (KOExi(f)    , _           ) ->
+        let p = subtype ctxt0 t0 (subst f (OLess(OConv, In(t0,f)))) b0 in
+        Sub_OExi_l(p)
+
+
     | _ -> raise Exit
   in (ctxt0.positive_ordis, t0, a0, b0, rule)
   with Exit ->
@@ -390,37 +408,18 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
        in
        fn (possible_positive ctxt o)
 
-    (* Universal quantification over kinds. *)
-    | (_           , KKAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (KUCst(t,f,true))) in
-        Sub_KAll_r(p)
-
+    (* quantification rule introducing unification variable last *)
     | (KKAll(f)    , _           ) ->
         let p = subtype ctxt t (subst f (new_kuvar ())) b0 in
         Sub_KAll_l(p)
-
-    (* Existantial quantification over kinds. *)
-    | (KKExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (KECst(t,f,true))) b0 in
-        Sub_KExi_l(p)
 
     | (_           , KKExi(f)    ) ->
         let p = subtype ctxt t a0 (subst f (new_kuvar ())) in
         Sub_KExi_r(p)
 
-    (* Universal quantification over ordinals. *)
-    | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (OLess(OConv, NotIn(t,f)))) in
-        Sub_OAll_r(p)
-
     | (KOAll(f)    , _           ) ->
         let p = subtype ctxt t (subst f (new_ouvar ())) b0 in
         Sub_OAll_l(p)
-
-    (* Existantial quantification over ordinals. *)
-    | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (OLess(OConv, In(t,f)))) b0 in
-        Sub_OExi_l(p)
 
     | (_           , KOExi(f)    ) ->
         let p = subtype ctxt t a0 (subst f (new_ouvar ())) in
