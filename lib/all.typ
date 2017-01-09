@@ -47,6 +47,7 @@ include "lazy_nat.typ"
 include "flot.typ"
 include "infer.typ"
 include "ordinal.typ"
+include "lambda.typ"
 
 (* Test files *)
 include "dotproj.typ"

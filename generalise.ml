@@ -87,9 +87,9 @@ let recompose_kind : ?general:bool -> schema -> kind particular =
     instance of the schema with the witnesses that is needed to
     prove the schema.
  *)
-let generalise : ordi list -> term_or_kind -> kind -> Sct.call_table ->
+let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_table ->
   schema * (int * ordi) list * term_or_kind particular
-  = fun pos k1 k2 call_table ->
+  = fun ?(manual=false) pos k1 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
      the ordinal will be ovari when it replaces an infinite ordinals (see TODO
@@ -131,7 +131,7 @@ let generalise : ordi list -> term_or_kind -> kind -> Sct.call_table ->
          set_ouvar u o'; self_ord ~occ o (* NOTE: avoid looping in flot.typ/compose *)
       | OUVar({uvar_state = {contents = Unset (_, Some o')}}, os) ->
          ignore (self_ord (msubst o' os)); def_ord o
-      | OConv when occ = sNeg ->
+      | OConv when occ = sNeg && not manual ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
          res := (free_of v, (n, v, ref true)) :: !res; box_of_var v

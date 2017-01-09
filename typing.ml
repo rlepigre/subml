@@ -37,10 +37,6 @@ let check_rec
     | _ -> ()
     end;
 
-    (* the test (has_uvar a || has_uvar b) is important to
-       - avoid occur chek for induction variable
-       - to preserve, when possible, the invariant that no ordinal <> OConv occur in
-       positive mus and negative nus *)
     try
       if (match a with KFixM _ -> false | KFixN _ -> has_leading_exists a | _ -> true) &&
          (match b with KFixN _ -> false | KFixM _ -> has_leading_forall b | _ -> true)
@@ -603,7 +599,7 @@ and subsumption acc = function
             gn (head'::acc') tail'
      in gn [] acc
 
-and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
+and breadth_first proof_ptr hyps_ptr f remains do_subsume manual depth =
       if depth = 0 && !remains <> [] then
          (* the fixpoint was unrolled as much as allowed, and
             no applicable induction hyp was found. *)
@@ -619,7 +615,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         let l = if do_subsume then subsumption [] l else l in
         let l = List.map (fun (ctxt,t0,t,c,ptr,subsumed) ->
           let (schema, os,(os0, tpos, _, c0)) =
-            try generalise ctxt.positive_ordis (SchTerm t0) c ctxt.call_graphs
+            try generalise ~manual ctxt.positive_ordis (SchTerm t0) c ctxt.call_graphs
             with FailGeneralise -> assert false
           in
           let tros = List.combine (List.map snd os) (List.map snd os0) in
@@ -645,7 +641,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume depth =
         if !remains = [] then
           Typ_YGen(proof_ptr)
         else
-          breadth_first proof_ptr hyps_ptr f remains do_subsume (depth-1)
+          breadth_first proof_ptr hyps_ptr f remains do_subsume manual (depth-1)
 
 and search_induction depth ctxt t a c0 hyps =
   (* fn search for an applicable inductive hypothesis *)
@@ -744,8 +740,9 @@ and check_fix ctxt t do_subsume depth f c0 =
     remains := (ctxt, c0, proof_ptr) :: !remains;
     (* The main function doing the breadth-first search for the proof *)
     (* n : the current depth *)
-    let depth = if has_leading_ord_quantifier c0 then depth + 1 else depth in
-    breadth_first proof_ptr hyps_ptr f remains do_subsume depth
+    let manual = has_leading_ord_quantifier c0 in
+    let depth = if manual then depth + 1 else depth in
+    breadth_first proof_ptr hyps_ptr f remains do_subsume manual depth
 
   (* we reach this point when we are call from type_check inside
      breadth_fitst above *)

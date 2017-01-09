@@ -119,10 +119,7 @@ and is_positive pos o =
   match orepr o with
   | OConv | OSucc _ -> true
   | OVari _ -> assert false
-  | o ->
-     List.exists
-       (fun o' -> Timed.pure_test (eq_ordi pos o') o)
-     pos
+  | o -> List.exists (fun o' -> Timed.pure_test (eq_ordi pos o') o) pos
 
 and eq_ordi : ordi list -> ordi -> ordi -> bool = fun pos o1 o2 ->
   Io.log_ord "%a = %a %b\n%!"
@@ -370,7 +367,9 @@ and gen_occur :
        !acc
     | KUCst(t,f,_)
     | KECst(t,f,_) -> aux2 (aux All acc (subst f kdummy)) t
-    | KUVar(u,os) -> if kuvar u then combine acc occ else Array.fold_left aux3 acc os
+    | KUVar(u,os) ->
+       let acc = Array.fold_left aux3 acc os in
+       if kuvar u then combine acc occ else acc
     | KMRec(_,k) (* NOTE: safe to ignore ordis as they are not used in unif var *)
     | KNRec(_,k) -> aux occ acc k
     | KPrnt _ -> assert false)
@@ -411,7 +410,7 @@ and gen_occur :
           aux5 (aux All acc k2) k1)
     | OSucc o -> aux3 acc o
     | OUVar(v, os) ->
-       if ouvar v then combine All (aux4 acc os (uvar_state v))
+       if ouvar v then All
        else aux4 (Array.fold_left aux3 acc os) os (uvar_state v)
        (* we keep this to ensure valid proof when simplifying useless induction
          needed because has_uvar below does no check ordis *)
