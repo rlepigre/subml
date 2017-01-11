@@ -78,14 +78,22 @@ let pappl _loc t u = match t.elt with
   | PCons(t, None) -> in_pos _loc (PCons(t, Some u))
   | _ -> in_pos _loc (PAppl(t,u))
 
-let apply_rpat x t =
+let apply_rpat c x t =
   match x with
   | Simple x ->
      let x = from_opt x (dummy_case_var t.pos) in
      in_pos t.pos (PLAbs([x],t))
   | Record r ->
-     let name = List.fold_left (fun acc (l,(x,_)) ->
-       acc ^ l ^ "=" ^ x.elt ^ ";") "{" r ^ "}"
+     let is_cons r =
+       c = "Cons" && List.length r = 2 && List.mem_assoc "hd" r && List.mem_assoc "tl" r
+     in
+     let name =
+       if is_cons r then
+         ":" ^ (fst (List.assoc "hd" r)).elt ^ "::" ^
+               (fst (List.assoc "tl" r)).elt
+       else
+         List.fold_left (fun acc (l,(x,_)) ->
+           acc ^ l ^ "=" ^ x.elt ^ ";") "{" r ^ "}"
      in
      let v = in_pos t.pos (PLVar name) in
      let t =
@@ -276,8 +284,8 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                      | Some u -> unsugar_term env u
                    in tcons pt.pos c u
   | PProj(t,l)  -> tproj pt.pos (unsugar_term env t) l
-  |PCase(t,cs,d)-> let f (c,x,t) = (c, unsugar_term env (apply_rpat x t)) in
-                   let g (x,t) = unsugar_term env (apply_rpat x t) in
+  |PCase(t,cs,d)-> let f (c,x,t) = (c, unsugar_term env (apply_rpat c x t)) in
+                   let g (x,t) = unsugar_term env (apply_rpat "_" x t) in
                    tcase pt.pos (unsugar_term env t) (List.map f cs) (map_opt g d)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)

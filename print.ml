@@ -89,9 +89,11 @@ let search_ordi_tbl o =
 
 let skip_record_sugar name t =
   let nb =
-    let r = ref 0 in
-    String.iter (function ';' -> incr r | _ -> ()) name;
-    !r
+    if String.length name > 2 && name.[0] = ':' then 2
+    else
+      let r = ref 0 in
+      String.iter (function ';' -> incr r | _ -> ()) name;
+      !r
   in
   let rec fn n t = match t.elt with
     | TAppl({ elt = TAbst(_,f) },_) when n > 0 ->
@@ -548,19 +550,23 @@ and print_term ?(give_pos=false) unfold wrap ff t =
        let pvariant fin ff (c,b) =
          match b.elt with
          | TAbst(_,f) ->
-            let x = binder_name f in
+            let x0 = binder_name f in
             begin
-              if x = "" then
+              if x0 = "" then
                 let c = if c = "Nil" then "[]" else c in
                 fprintf ff "%s%s → %a" !bar c pterm t
               else
-                let t = subst f (free_of (new_tvari x)) in
-                let c =
-                  if c = "Cons" && (x.[0] = '{' || x.[0] = '\\') then
-                    if !latex_mode then "\\record" else ""
-                  else c
+                let t = subst f (free_of (new_tvari x0)) in
+                let (c,x,prefix) =
+                  if c = "Cons" && String.length x0 > 0 && x0.[0] = ':' then
+                    ("",String.sub x0 1 (String.length x0 - 1), "")
+                  else
+                    let p = if !latex_mode && String.length x0 > 0 &&
+                        x0.[0] = '{' then "\\record" else ""
+                    in
+                    (c, x0, p)
                 in
-                fprintf ff "%s%s %s → %a" !bar c x pterm (skip_record_sugar x t);
+                fprintf ff "%s%s %s%s → %a" !bar c prefix x pterm (skip_record_sugar x0 t);
             end;
             bar := if !latex_mode then (if fin = "" then "\\mid " else fin) else "| "
          | _          ->

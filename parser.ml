@@ -325,7 +325,7 @@ and term_llet = let_kw r:is_rec n:int_lit? pat:rpat "=" t:term in_kw u:term ->
       match pat with Simple (Some id) -> pfixY id _loc_t n t
       | _ -> give_up ()
   in
-  in_pos _loc (PAppl(apply_rpat pat u, t))
+  in_pos _loc (PAppl(apply_rpat "_" pat u, t))
 
 and ords_kinds =
   | EMPTY                     -> ([], [])
