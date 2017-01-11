@@ -552,11 +552,11 @@ and print_term ?(give_pos=false) unfold wrap ff t =
          | TAbst(_,f) ->
             let x0 = binder_name f in
             begin
+              let t = subst f (free_of (new_tvari x0)) in
               if x0 = "" then
                 let c = if c = "Nil" then "[]" else c in
                 fprintf ff "%s%s → %a" !bar c pterm t
               else
-                let t = subst f (free_of (new_tvari x0)) in
                 let (c,x,prefix) =
                   if c = "Cons" && String.length x0 > 0 && x0.[0] = ':' then
                     ("",String.sub x0 1 (String.length x0 - 1), "")
