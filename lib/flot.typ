@@ -21,6 +21,14 @@ val rec filter : ∀A UF → Stream(A) → Stream(A) =
     | R f' → filter f' tl
     | K f' → fun _ → (hd, filter f' tl)
 
+val rec 2 filter : ∀A F → Stream(A) → Stream(A) =
+  fun f s →
+    let (hd, tl) = s {} in
+    case f {} of
+    | R f' → filter f' tl
+    | K f' → fun _ → (hd, filter f' tl)
+
+
 val consR : ∀α SF(α,∞) → SF(α,∞) = fun f _ → R f
 val consK : ∀α SF(α,∞) → SF(α+1,∞) = fun f _ → K f
 
