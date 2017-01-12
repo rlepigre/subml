@@ -370,8 +370,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
        (* TODO; better to have multi valued ordinals than backtracking *)
+       let some_prf = ref None in
        let rec fn = function
-         | [] -> subtype_error "Subtyping clash (no rule apply for left nu)."
+         | [] ->
+            (match !some_prf with
+            | Some p -> Sub_FixM_r(p)
+            | None   -> subtype_error "Subtyping clash (no rule apply for left nu).")
          | o'::l ->
             let save = Timed.Time.save () in
             try
@@ -380,7 +384,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
               let a = if o' = OConv then a else KFixN(o'',f) in
               let p = subtype ctxt t (subst f a) b0 in
               if not (is_positive ctxt.positive_ordis o') then raise Not_found;
-              check_sub_proof p;
+              remember_first some_prf p; check_sub_proof p;
               Sub_FixN_l(p)
             with Not_found | Error _ -> Timed.Time.rollback save; fn l
        in
@@ -388,8 +392,12 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
 
     | (_           , KFixM(o,f)  ) ->
        (* TODO; better to have multi valued ordinals than backtracking *)
+       let some_prf = ref None in
        let rec fn = function
-         | [] -> subtype_error "Subtyping clash (no rule apply for right mu)."
+         | [] ->
+            (match !some_prf with
+            | Some p -> Sub_FixM_r(p)
+            | None   -> subtype_error "Subtyping clash (no rule apply for right mu).")
          | o'::l ->
             let save = Timed.Time.save () in
             try
@@ -398,7 +406,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
               let b = if o' = OConv then b else KFixM(o'',f) in
               let p = subtype ctxt t a0 (subst f b) in
               if not (is_positive ctxt.positive_ordis o') then raise Not_found;
-              check_sub_proof p;
+              remember_first some_prf p; check_sub_proof p;
               Sub_FixM_r(p)
             with Not_found | Error _ -> Timed.Time.rollback save; fn l
        in

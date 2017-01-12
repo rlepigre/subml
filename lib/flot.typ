@@ -1,8 +1,9 @@
 type Stream(A) = νX {} → A × X
 
-type SF(α,β) = να X μβ Y {} → [ R of Y | K of X ]
+type RK(Y,X) = [ R of Y | K of X ]
+type SF(α,β) = να X μβ Y {} → RK(Y,X)
 type F = SF(∞,∞)
-type UF = μ Y {} → [ R of Y | K of F ]
+type UF = μ Y {} → RK(Y,F)
 check F ⊂ UF
 check UF ⊂ F
 

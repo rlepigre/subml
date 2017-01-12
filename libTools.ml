@@ -15,6 +15,11 @@ let from_opt : 'a option -> 'a -> 'a = fun o d ->
 let from_opt' : 'a option -> (unit -> 'a) -> 'a = fun o f ->
   match o with None -> f () | Some e -> e
 
+let remember_first : 'a option ref -> 'a -> unit = fun ptr p ->
+  match !ptr with
+  | None -> ptr := Some p
+  | Some _ -> ()
+
 (*{2 functions related to ['a list] }*)
 
 let map_snd : ('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list = fun f l ->
