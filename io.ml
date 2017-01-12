@@ -48,6 +48,9 @@ let ((fmt_of_file : string -> formatter), (close_files : unit -> unit)) =
   in
   (fmt_of_file, close_files)
 
+let set_tex_file : string -> unit =
+  fun fn -> fmts.tex <- fmt_of_file fn
+
 let debug = ref ""
 let debug_sct = 'y'
 let debug_uni = 'u'

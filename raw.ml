@@ -7,15 +7,15 @@ open Pos
 open Binding
 open LibTools
 
-type pordinal = pordinal' loc
-and pordinal' =
+type pordi = pordi' loc
+and pordi' =
   | PConv
-  | PSucc of pordinal
+  | PSucc of pordi
   | PVari of string
 
 type pkind = pkind' loc
 and pkind' =
-  | PTVar of string * pordinal list * pkind list
+  | PTVar of string * pordi list * pkind list
   | PFunc of pkind * pkind
   | PProd of (string * pkind) list
   | PDSum of (string * pkind option) list
@@ -23,8 +23,8 @@ and pkind' =
   | PKExi of string * pkind
   | POAll of string * pkind
   | POExi of string * pkind
-  | PFixM of pordinal * string * pkind
-  | PFixN of pordinal * string * pkind
+  | PFixM of pordi * string * pkind
+  | PFixN of pordi * string * pkind
   | PWith of pkind * string * pkind
   | PDPrj of strloc * string
   | PUCst of pterm * string * pkind
@@ -166,7 +166,7 @@ let ordinal_variable : occur -> env -> strloc -> obox = fun pos env s ->
 
 (* Lookup a kind variable in the environment. If it does not appear, look for
    the name in the list of type definitions. *)
-let rec kind_variable : occur -> env -> strloc -> pordinal array -> pkind array -> kbox =
+let rec kind_variable : occur -> env -> strloc -> pordi array -> pkind array -> kbox =
  fun pos env s os ks ->
   let karity = Array.length ks in
   let oarity = Array.length os in
@@ -206,7 +206,7 @@ let rec kind_variable : occur -> env -> strloc -> pordinal array -> pkind array 
  *                           Desugaring functions                           *
  ****************************************************************************)
 
-and unsugar_ordinal : ?pos:occur -> env -> pordinal -> obox = fun ?(pos=sPos) env po ->
+and unsugar_ordinal : ?pos:occur -> env -> pordi -> obox = fun ?(pos=sPos) env po ->
   match po.elt with
   | PConv   -> oconv
   | PVari s -> ordinal_variable pos env (build_pos po.pos s)

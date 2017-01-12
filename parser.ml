@@ -127,7 +127,7 @@ let letter      = Charset.union lowercase uppercase
 let identany    = Charset.union letter (Charset.union digit underscore)
 let lidentfirst = Charset.union lowercase (Charset.union digit underscore)
 
-let string_lit =
+let str_lit =
   let normal = in_charset
     (List.fold_left Charset.del Charset.full ['\\'; '"'; '\r'])
   in
@@ -153,6 +153,7 @@ let ident first =
 let parser lident = s:(ident lidentfirst) -> if s = "_" then give_up (); s
 let uident = ident uppercase
 let parser loptident = lident | "_" -> ""
+let parser llident = id:lident -> in_pos _loc id
 
 let parser lgident =
   | "α" -> "α"
@@ -207,8 +208,10 @@ let parser comma  : unit grammar = ","
 let parser subset : unit grammar = "⊂" | "⊆" | "<"
 let parser infty  : unit grammar = "∞"
 let parser eps    : unit grammar = "ε"
-let parser mem    : unit grammar = "∈"
-let parser notmem : unit grammar = "∉"
+
+let parser mem    : bool grammar =
+  | "∈" -> true
+  | "∉" -> false
 
 let parser is_rec =
   | EMPTY  -> false
@@ -223,10 +226,10 @@ let parser enables =
  ****************************************************************************)
 
 (* Entry point for ordinals. *)
-let parser ordinal : pordinal grammar =
-  | infty?                  -> in_pos _loc PConv
-  | s:lgident               -> in_pos _loc (PVari s)
-  | o:ordinal '+' n:int_lit -> padd _loc o n
+let parser ordi =
+  | infty?               -> in_pos _loc PConv
+  | s:lgident            -> in_pos _loc (PVari s)
+  | o:ordi '+' n:int_lit -> padd _loc o n
 
 (* Entry point for kinds. *)
 let parser kind : pkind grammar = (pkind `Fun)
@@ -235,32 +238,32 @@ and kind_atm = (pkind `Atm)
 and kind_prd = (pkind `Prd)
 
 and pkind (p : [`Atm | `Prd | `Fun]) =
-  | a:kind_prd arrow b:kind       when p = `Fun -> in_pos _loc (PFunc(a,b))
-  | id:uident (o,k):kind_args$    when p = `Atm -> in_pos _loc (PTVar(id,o,k))
-  | forall id:uident a:kind       when p = `Fun -> in_pos _loc (PKAll(id,a))
-  | exists id:uident a:kind       when p = `Fun -> in_pos _loc (PKExi(id,a))
-  | forall id:lgident a:kind      when p = `Fun -> in_pos _loc (POAll(id,a))
-  | exists id:lgident a:kind      when p = `Fun -> in_pos _loc (POExi(id,a))
-  | mu o:ordinal id:uident a:kind when p = `Fun -> in_pos _loc (PFixM(o,id,a))
-  | nu o:ordinal id:uident a:kind when p = `Fun -> in_pos _loc (PFixN(o,id,a))
-  | "{" fs:kind_reco "}"          when p = `Atm -> in_pos _loc (PProd(fs))
-  | fs:kind_prod                  when p = `Prd -> in_pos _loc (PProd(fs))
-  | "[" fs:kind_dsum "]"          when p = `Atm -> in_pos _loc (PDSum(fs))
-  | a:kind_atm (s,b):with_eq      when p = `Atm -> in_pos _loc (PWith(a,s,b))
-  | id:lident '.' s:uident        when p = `Atm -> in_pos _loc (PDPrj(in_pos _loc_id id,s))
+  | a:kind_prd arrow b:kind    when p = `Fun -> in_pos _loc (PFunc(a,b))
+  | id:uident (o,k):kind_args$ when p = `Atm -> in_pos _loc (PTVar(id,o,k))
+  | forall id:uident a:kind    when p = `Fun -> in_pos _loc (PKAll(id,a))
+  | exists id:uident a:kind    when p = `Fun -> in_pos _loc (PKExi(id,a))
+  | forall id:lgident a:kind   when p = `Fun -> in_pos _loc (POAll(id,a))
+  | exists id:lgident a:kind   when p = `Fun -> in_pos _loc (POExi(id,a))
+  | mu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixM(o,id,a))
+  | nu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixN(o,id,a))
+  | "{" fs:kind_reco "}"       when p = `Atm -> in_pos _loc (PProd(fs))
+  | fs:kind_prod               when p = `Prd -> in_pos _loc (PProd(fs))
+  | "[" fs:kind_dsum "]"       when p = `Atm -> in_pos _loc (PDSum(fs))
+  | a:kind_atm (s,b):with_eq   when p = `Atm -> in_pos _loc (PWith(a,s,b))
+  | id:llident '.' s:uident    when p = `Atm -> in_pos _loc (PDPrj(id,s))
   (* Parenthesis and coercions. *)
-  | "(" kind ")"                  when p = `Atm
-  | kind_atm                      when p = `Prd
-  | kind_prd                      when p = `Fun
-  | eps id:uident '(' t:term mem    a:kind ')'
-                                  when p = `Atm -> in_pos _loc (PECst(t,id,a))
-  | eps id:uident '(' t:term notmem a:kind ')'
-                                  when p = `Atm -> in_pos _loc (PUCst(t,id,a))
+  | "(" kind ")"               when p = `Atm
+  | kind_atm                   when p = `Prd
+  | kind_prd                   when p = `Fun
+  | eps w:epsilon              when p = `Atm -> in_pos _loc w
+
+and epsilon = id:uident '(' t:term m:mem a:kind ')' ->
+  if m then PECst(t,id,a) else PUCst(t,id,a)
 
 and kind_args =
   | EMPTY                           -> ([], [])
   | "(" ks:(list_sep' kind ",") ")" -> ([], ks)
-  | "(" os:(list_sep' ordinal ",") ks:{"," ks:(list_sep kind ",")}?[[]] ")"
+  | "(" os:(list_sep' ordi ",") ks:{"," ks:(list_sep kind ",")}?[[]] ")"
 
 and kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
 and kind_dsum = (list_sep (parser uident a:{_:of_kw kind}?) "|")
@@ -284,7 +287,7 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | fun_kw xs:var+ arrow t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
   | t:tapp u:tcol                 when p = `App -> pappl _loc t u
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
-  | "print(" - s:string_lit - ")" when p = `Atm -> in_pos _loc (PPrnt(s))
+  | "print(" - s:str_lit - ")"    when p = `Atm -> in_pos _loc (PPrnt(s))
   | c:uident                      when p = `Atm -> in_pos _loc (PCons(c,None))
   | t:tatm "." l:lident           when p = `Atm -> in_pos _loc (PProj(t,l))
   | case_kw t:term of_kw ps:pats d:default? $
@@ -506,13 +509,13 @@ let check pos flag f a =
   ); res
 
 (* New value definition. *)
-let new_val : flag -> name -> pkind option -> pterm -> unit = fun flag nm k t ->
+let new_val : flag -> name -> pkind option -> pterm -> unit = fun fg nm k t ->
   let (tex_name, name) = nm in
   let tex_name = from_opt tex_name ("\\mathrm{" ^ name ^ "}") in
   let t = unbox (unsugar_term empty_env t) in
   let k = map_opt (fun k -> unbox (unsugar_kind empty_env k)) k in
   try
-    let (k, proof, calls_graph) = check t.pos flag (type_check t) k in
+    let (k, proof, calls_graph) = check t.pos fg (type_check t) k in
     if !verbose then Io.out "val %s : %a\n%!" name (print_kind false) k;
     Hashtbl.add val_env name
       { name ; tex_name ; value = eval t ; orig_value = t
@@ -565,17 +568,17 @@ let parser flag =
   | '?'   -> CanFail
 
 let parser command top =
-  | type_kw (tn,n,args,k):kind_def$               -> new_type (tn,n) args k
-  | eval_kw t:term$                               -> eval_term t
-  | f:flag val_kw (n,k,t):val_def$                -> new_val f n k t
-  | f:flag check_kw a:kind$ _:subset b:kind$      -> check_sub (Some _loc) f a b
-  | _:include_kw fn:string_lit$                   -> include_file fn
-  | _:graphml_kw id:lident$                       -> output_graphml (in_pos _loc_id id)
-  | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t
-  | _:set_kw "verbose" b:enables                  -> verbose := b
-  | _:set_kw "texfile" fn:string_lit when not top -> Io.(fmts.tex <- fmt_of_file fn)
-  | _:clear_kw                       when top     -> LibTools.clear ()
-  | {quit_kw | exit_kw}              when top     -> raise End_of_file
+  | type_kw (tn,n,args,k):kind_def$            -> new_type (tn,n) args k
+  | eval_kw t:term$                            -> eval_term t
+  | f:flag val_kw (n,k,t):val_def$             -> new_val f n k t
+  | f:flag check_kw a:kind$ _:subset b:kind$   -> check_sub (Some _loc) f a b
+  | _:include_kw fn:str_lit$                   -> include_file fn
+  | _:graphml_kw id:llident$                   -> output_graphml id
+  | latex_kw t:tex_text$          when not top -> Io.tex "%a%!" Latex.output t
+  | _:set_kw "verbose" b:enables               -> verbose := b
+  | _:set_kw "texfile" fn:str_lit when not top -> Io.set_tex_file fn
+  | _:clear_kw                    when top     -> LibTools.clear ()
+  | {quit_kw | exit_kw}           when top     -> raise End_of_file
 
 and kind_def = tex_name? uident kind_def_args "=" kind
 
@@ -613,25 +616,19 @@ let eval_file =
 
 let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
   let pp = print_position in
-  try fn v; true with
-  | End_of_file            -> raise End_of_file
-  | Sys.Break              -> Io.err "\n[Interrupted]\n%!";
-                              false
-  | Interrupted(p)         -> Io.err "\n[Interrupted at %a]\n%!" pp p;
-                              false
-  | Arity_error(p,m)       -> Io.err "%a: %s\n%!" pp p m;
-                              false
-  | Positivity_error(p,m)  -> Io.err "%a: %s\n%!" pp p m;
-                              false
-  | Parse_error(buf,pos,_) -> let p = Pos.locate buf pos buf (pos+1) in
-                              Io.err "%a: syntax error.\n%!" pp (Some p);
-                              false
-  | Unclosed(b,p)          -> let s = if b then "string in a " else "" in
-                              Io.err "%a: unclosed %scomment.\n%!" pp p s;
-                              false
-  | Unbound(s,p)           -> Io.err "%a: unbound variable %s.\n%!" pp p s;
-                              false
-  | Error.Error l          -> Io.err "%a error:\n%!" Error.display_errors l;
-                              false
-  | Loop_error(p)          -> Io.err "%a: loops...\n%!" pp p;
-                              false
+  let ok = ref false in
+  begin
+    try fn v; ok := true with
+    | End_of_file            -> raise End_of_file
+    | Sys.Break              -> Io.err "\n[Interrupted]\n%!"
+    | Interrupted(p)         -> Io.err "\n[Interrupted at %a]\n%!" pp p
+    | Arity_error(p,m)       -> Io.err "%a: %s\n%!" pp p m
+    | Positivity_error(p,m)  -> Io.err "%a: %s\n%!" pp p m
+    | Parse_error(buf,pos,_) -> Io.err "%a: syntax error.\n%!" pp
+                                  (Some (Pos.locate buf pos buf (pos+1)))
+    | Unclosed(b,p)          -> Io.err "%a: unclosed %scomment.\n%!" pp p
+                                  (if b then "string in a " else "")
+    | Unbound(s,p)           -> Io.err "%a: unbound variable %s.\n%!" pp p s
+    | Error.Error l          -> Io.err "%a: error:\n%!" Error.display_errors l
+    | Loop_error(p)          -> Io.err "%a: loops...\n%!" pp p
+  end; !ok
