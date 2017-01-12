@@ -136,8 +136,8 @@ let add_ordis : string array -> ovar array -> env -> env = fun osn os env ->
   snd (Array.fold_left fn (0,env) os)
 
 
-exception Unbound of strloc
-let unbound s = raise (Unbound(s))
+exception Unbound of string * popt
+let unbound {elt;pos} = raise (Unbound(elt, pos))
 
 exception Arity_error of popt * string
 let arity_error : popt -> string -> 'a =

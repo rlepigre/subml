@@ -22,10 +22,10 @@ open LibTools
 
 (* Exception raised when EOF is reached while parsing a comment. The boolean
    is set to true when EOF is reached while parsing a string. *)
-exception Unclosed_comment of bool * Input.buffer * int
-
+exception Unclosed of bool * popt
 let unclosed_comment in_string (buf,pos) =
-  raise (Unclosed_comment (in_string, buf, pos))
+  let p = Pos.locate buf pos buf (pos+2) in
+  raise (Unclosed (in_string, Some p))
 
 (* Blank function for basic blank characters (' ', '\t', '\r' and '\n') and
    comments delimited with "(*" and "*)". Nested comments (i.e. comments in
@@ -612,23 +612,26 @@ let eval_file =
   read_file := eval_file; eval_file
 
 let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
-  let pos1 = print_position in
-  let pos2 ff (buf,pos) =
-    let open Input in
-    fprintf ff "File %S, line %d, characters %d" (filename buf) (line_num buf)
-      (utf8_col_num buf pos)
-  in
+  let pp = print_position in
   try fn v; true with
   | End_of_file            -> raise End_of_file
-  | Sys.Break              -> Io.err "\n[Interrupted]\n%!"; false
-  | Interrupted(p)         -> Io.err "\n[Interrupted at %a]\n%!" pos1 p; false
-  | Arity_error(p,m)       -> Io.err "%a:\n%s\n%!" pos1 p m; false
-  | Positivity_error(p,m)  -> Io.err "%a:\n%s\n%!" pos1 p m; false
-  | Parse_error(buf,pos,_) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
+  | Sys.Break              -> Io.err "\n[Interrupted]\n%!";
                               false
-  | Unclosed_comment(_,buf,pos) -> Io.err "%a:\nSyntax error\n%!" pos2 (buf,pos);
+  | Interrupted(p)         -> Io.err "\n[Interrupted at %a]\n%!" pp p;
                               false
-  | Unbound(s)             -> Io.err "%a:\nUnbound: %s\n%!" pos1 s.pos s.elt;
-    false
-  | Error.Error l          -> Io.err "%a\n%!" Error.display_errors l; false
-  | Loop_error p           -> Io.err "Oups, loops at %a\n%!" print_position p; false
+  | Arity_error(p,m)       -> Io.err "%a: %s\n%!" pp p m;
+                              false
+  | Positivity_error(p,m)  -> Io.err "%a: %s\n%!" pp p m;
+                              false
+  | Parse_error(buf,pos,_) -> let p = Pos.locate buf pos buf (pos+1) in
+                              Io.err "%a: syntax error.\n%!" pp (Some p);
+                              false
+  | Unclosed(b,p)          -> let s = if b then "string in a " else "" in
+                              Io.err "%a: unclosed %scomment.\n%!" pp p s;
+                              false
+  | Unbound(s,p)           -> Io.err "%a: unbound variable %s.\n%!" pp p s;
+                              false
+  | Error.Error l          -> Io.err "%a error:\n%!" Error.display_errors l;
+                              false
+  | Loop_error(p)          -> Io.err "%a: loops...\n%!" pp p;
+                              false

@@ -65,7 +65,10 @@ let _ =
   let ok = List.for_all eval files in
 
   (* Run the toplevel. *)
-  let handle_line () = Parser.toplevel_of_string (read_line ()) in
+  let handle_line () =
+    let line = read_line () in
+    if String.trim line <> "" then Parser.toplevel_of_string line
+  in
   if not !quit && ok then
     begin try while true do
       Printf.printf ">> %!";

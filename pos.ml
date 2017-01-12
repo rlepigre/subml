@@ -6,11 +6,11 @@
 (** Type of a position corresponding to a continuous range of characters in
     a (utf8 encoded) source file. *)
 type pos =
-  { fname      : string (** File name associated to the position.       *)
-  ; start_line : int    (** Line number of the starting point.          *)
-  ; start_col  : int    (** Column number (utf8) of the starting point. *)
-  ; end_line   : int    (** Line number of the ending point.            *)
-  ; end_col    : int    (** Column number (utf8) of the ending point.   *)
+  { fname      : string option (** File name associated to the position. *)
+  ; start_line : int    (** Line number of the starting point.           *)
+  ; start_col  : int    (** Column number (utf8) of the starting point.  *)
+  ; end_line   : int    (** Line number of the ending point.             *)
+  ; end_col    : int    (** Column number (utf8) of the ending point.    *)
   }
 
 (** Convenient short name for an optional position. *)
@@ -59,7 +59,12 @@ let union : popt -> popt -> popt = fun p1 p2 ->
     the position of elements during parsing.
     @see <http://lama.univ-savoie.fr/decap/> DeCap *)
 let locate buf1 pos1 buf2 pos2 =
-  { fname      = Input.filename buf1
+  let fname =
+    match Input.filename buf1 with
+    | ""    -> None
+    | fname -> Some fname
+  in
+  { fname
   ; start_line = Input.line_num buf1
   ; start_col  = (Input.utf8_col_num buf1 pos1) + 1
   ; end_line   = Input.line_num buf2
@@ -70,15 +75,20 @@ let locate buf1 pos1 buf2 pos2 =
     format. *)
 let pos_to_string : pos -> string =
   fun p ->
+    let fname =
+      match p.fname with
+      | None       -> ""
+      | Some fname -> Printf.sprintf "file <%s>, " fname
+    in
     if p.start_line <> p.end_line then
-      Printf.sprintf "file <%s>, position %d:%d to %d:%d"
-        p.fname p.start_line p.start_col p.end_line p.end_col
+      Printf.sprintf "%sposition %d:%d to %d:%d"
+        fname p.start_line p.start_col p.end_line p.end_col
     else if p.start_col = p.end_col then
-      Printf.sprintf "file <%s>, line %d, character %d"
-        p.fname p.start_line p.start_col
+      Printf.sprintf "%sline %d, character %d"
+        fname p.start_line p.start_col
     else
-      Printf.sprintf "file <%s>, line %d, characters %d to %d"
-        p.fname p.start_line p.start_col p.end_col
+      Printf.sprintf "%sline %d, characters %d to %d"
+        fname p.start_line p.start_col p.end_col
 
 (** [print_pos oc pos] prints the position [pos] to the channel [oc]. *)
 let print_pos : out_channel -> pos -> unit =
@@ -88,8 +98,16 @@ let print_pos : out_channel -> pos -> unit =
     a shorter format. *)
 let short_pos_to_string : pos -> string =
   fun p ->
-    Printf.sprintf "%s, %d:%d-%d:%d"
-      p.fname p.start_line p.start_col p.end_line p.end_col
+    let fname =
+      match p.fname with
+      | None       -> ""
+      | Some fname -> Printf.sprintf "%s, " fname
+    in
+    if p.start_line = p.end_line && p.start_col = p.end_col then
+      Printf.sprintf "%s%d:%d" fname p.start_line p.start_col
+    else
+      Printf.sprintf "%s%d:%d-%d:%d" fname
+        p.start_line p.start_col p.end_line p.end_col
 
 (** [print_short_pos oc pos] prints the position [pos] to the channel [oc]
     using a shorter format that [print_pos oc pos]. *)
