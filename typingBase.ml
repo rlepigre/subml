@@ -109,7 +109,7 @@ let score_mat m =
     if !found_less then incr less
     else if !found_leq then incr leq
   done;
-  (!less, !leq, -nb_colos)
+  (float !less /. float nb_colos, float !leq /. float nb_colos)
 
 let consecutive =
   let rec fn n = function

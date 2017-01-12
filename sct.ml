@@ -44,7 +44,7 @@ type call = index * index * cmp array array * bool
 type calls = call list
 
 
-(** We giev a printing function for the parameter names *)
+(** We give a printing function for the parameter names *)
 type printer = formatter -> unit
 
 (** This stores the function table, giving name, arity and the
@@ -135,23 +135,15 @@ let print_calls : formatter -> call_table -> unit = fun ff tbl ->
 let latex_print_calls ff tbl =
   let arities = tbl.table in
   let calls = tbl.calls in
-  let prCmp ff c =
-    match c with
-    | Unknown -> fprintf ff "?"
-    | Less    -> fprintf ff "<"
-    | Leq     -> fprintf ff "="
-  in
   fprintf ff "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
-  let print_args ff j =
-    let (_, aj, prj) =
-      try List.assoc j arities with Not_found -> assert false
-    in
-    for j = 0 to aj - 1 do
-      fprintf ff "%s%t" (if j = 0 then "" else ",") prj.(j)
-    done
+  let arities = List.filter (fun (j,_) ->
+    List.exists (fun (i1,i2,_,_) -> j = i1 || j = i2) calls)
+    (List.rev arities)
   in
-  let f (j,_) =
-    fprintf ff "    N%d [ label = \"I_%d(%a)\" ];\n" j j print_args j
+  let numbering = List.mapi (fun i (j,_) -> (j,i)) arities in
+  let index j = List.assoc j numbering in
+  let f (j,(name,_,_)) =
+    fprintf ff "    N%d [ label = \"%s_{%d}\" ];\n" (index j) name (index j)
   in
   List.iter f (List.filter (fun (i,_) ->
     List.exists (fun (j,k,_,_) -> i = j || i =k) calls) arities);
@@ -162,20 +154,22 @@ let latex_print_calls ff tbl =
     let (namei, ai, pri) =
       try List.assoc i arities with Not_found -> assert false
     in
-    fprintf ff "    N%d -> N%d [label = \"(" j i;
+    fprintf ff "    N%d -> N%d [label = \"\\left(\\begin{smallmatrix}"
+      (index j) (index i);
     for i = 0 to ai - 1 do
-      if i > 0 then fprintf ff ",";
-      let some = ref false in
+      if i > 0 then fprintf ff "\\cr\n";
       for j = 0 to aj - 1 do
-        let c = m.(j).(i) in
-        if c <> Unknown then (
-          let sep = if !some then " " else "" in
-          fprintf ff "%s%a%t" sep prCmp c prj.(j);
-          some := true)
+        if j > 0 then fprintf ff "&";
+        let c =
+          match m.(j).(i) with
+          | Unknown -> "\\infty"
+          | Leq -> "0"
+          | Less -> "-1"
+        in
+        fprintf ff "%s" c
       done;
-      if not !some then fprintf ff "?";
     done;
-    fprintf ff ")\"]\n%!"
+    fprintf ff "\\end{smallmatrix}\\right)\"]\n%!"
   in
   List.iter (print_call arities) calls;
   fprintf ff "  }\n\\end{dot2tex}\n"

@@ -692,8 +692,8 @@ and search_induction depth ctxt t a c0 hyps =
   else (
     let calls = fn [] hyps in
     let calls = List.map (fun (prf,(index,_,m1,_ as call)) ->
-      let (a,b,c as s) = score_mat m1 in
-      Io.log_mat "score: (%d,%d,%d)\n%!" a b c;
+      let (a,b as s) = score_mat m1 in
+      Io.log_mat "score: (%f,%f)\n%!" a b;
       (s, prf, call)) calls in
     Io.log_mat "\n%!";
     let calls = List.sort (fun (s1,_,_) (s2,_,_) -> compare s2 s1) calls in
