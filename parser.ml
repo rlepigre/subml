@@ -24,7 +24,7 @@ open LibTools
    is set to true when EOF is reached while parsing a string. *)
 exception Unclosed of bool * popt
 let unclosed_comment in_string (buf,pos) =
-  let p = Pos.locate buf pos buf (pos+2) in
+  let p = Pos.locate buf pos buf (pos + if in_string then 1 else 2) in
   raise (Unclosed (in_string, Some p))
 
 (* Blank function for basic blank characters (' ', '\t', '\r' and '\n') and
