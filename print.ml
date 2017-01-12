@@ -4,7 +4,7 @@
 open Bindlib
 open Format
 open Ast
-open Position
+open Pos
 open Compare
 open LibTools
 
@@ -73,7 +73,7 @@ let search_term_tbl (t:term) f =
     let max = List.fold_left fn (-1) !epsilon_term_tbl in
     let index = max + 1 in
     let name = "base_{" ^ string_of_int index ^ "}" in
-    let t0 = dummy_pos (TVars name) in
+    let t0 = Pos.none (TVars name) in
     epsilon_term_tbl := (t,(t0,base,index)) :: !epsilon_term_tbl;
     (t0,base,index)
 
@@ -101,7 +101,7 @@ let skip_record_sugar name t =
        fn (n-1) (subst f x)
     | t -> assert(n=0); t
   in
-  dummy_pos (fn nb t)
+  Pos.none (fn nb t)
 
 (** A test to avoid capture in match_kind below *)
 let has_kvar : kind -> bool = fun k ->
@@ -425,18 +425,14 @@ and pkind_def unfold ff kd =
 (****************************************************************************)
 (*{2                         Printing of a term                            }*)
 (****************************************************************************)
- and position ff pos =
-  let open Position in
-  fprintf ff "File %S, line %d, characters %d-%d"
-    pos.filename pos.line_start pos.col_start pos.col_end
 
 and print_term ?(give_pos=false) unfold wrap ff t =
   let wterm = print_term ~give_pos false true in
   let pterm = print_term ~give_pos false false in
   let pkind = print_kind false false in
-  if not !latex_mode && give_pos && not unfold &&
-    t.pos <> dummy_position then
-      fprintf ff "[%a]" position t.pos
+  if not !latex_mode && give_pos && not unfold && t.pos <> None then
+    let pos = from_opt (map_opt short_pos_to_string t.pos) "..." in
+    fprintf ff "[%s]" pos
   else match t.elt with
   | TCoer(t,a) ->
      if wrap then fprintf ff "(";
@@ -848,8 +844,9 @@ let print_kind_def unfold ff kd =
 let print_ordi unfold ff o =
   print_ordi unfold ff o; pp_print_flush ff ()
 
-let print_position ff o =
-  position ff o; pp_print_flush ff ()
+let print_position ff pos =
+  let pos = from_opt (map_opt short_pos_to_string pos) "..." in
+  fprintf ff "[%s]" pos; pp_print_flush ff ()
 
 let print_epsilon_tbls ff =
   list_ref_iter (fun (t,(t0,name,index)) ->
@@ -858,7 +855,7 @@ let print_epsilon_tbls ff =
        let x = free_of (new_tvari (binder_name f)) in
        let t = subst f x in
        fprintf ff "%s_%d &= ε_{%a ∈ %a}(%a ∉ %a)\\\\\n" name index
-         (print_term false) (dummy_pos x)
+         (print_term false) (Pos.none x)
          (print_kind false) a (print_term false) t (print_kind false) b
     | _ when name = "" ->
        ()

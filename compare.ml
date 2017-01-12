@@ -4,7 +4,7 @@
 
 open Ast
 open Bindlib
-open Position
+open Pos
 open Term
 open LibTools
 

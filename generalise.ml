@@ -4,7 +4,7 @@
 
 open Ast
 open Compare
-open Position
+open Pos
 open Bindlib
 open Format
 open Term

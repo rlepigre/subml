@@ -7,7 +7,6 @@
 open Bindlib
 open Subset
 open Format
-open Position
 open LibTools
 
 (****************************************************************************)
@@ -142,7 +141,7 @@ and ord_wit =
   (** the i-th member of a counter example to e schema *)
 
 (** Abstract syntax tree for terms, with a source code position. *)
-and term = term' position
+and term = term' Pos.loc
 
 (** Abstract syntax tree for terms. *)
 and term' =
@@ -265,7 +264,7 @@ let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
 (** Equality on variables *)
 
 (** Used as initial value *)
-let dummy_proof = (dummy_pos (TReco []), KProd [], Typ_Hole)
+let dummy_proof = (Pos.none (TReco []), KProd [], Typ_Hole)
 
 (**{2 Unfolding unification variables indirections and definitions.
       Also perform mu/nu contractions} *)
@@ -517,90 +516,90 @@ let top : kind =
 (** {2 Functional constructors with position for terms}                     *)
 (****************************************************************************)
 
-let tcoer_p : pos -> term -> kind -> term =
-  fun p t k -> in_pos p (TCoer(t,k))
+let tcoer_p : Pos.popt -> term -> kind -> term =
+  fun p t k -> Pos.build_pos p (TCoer(t,k))
 
-let tvari_p : pos -> term' variable -> term =
-  fun p x -> in_pos p (TVari(x))
+let tvari_p : Pos.popt -> term' variable -> term =
+  fun p x -> Pos.build_pos p (TVari(x))
 
-let tabst_p : pos -> kind option -> (term', term) binder -> term =
-  fun p ko b -> in_pos p (TAbst(ko,b))
+let tabst_p : Pos.popt -> kind option -> (term', term) binder -> term =
+  fun p ko b -> Pos.build_pos p (TAbst(ko,b))
 
-let tappl_p : pos -> term -> term -> term =
-  fun p t u -> in_pos p (TAppl(t,u))
+let tappl_p : Pos.popt -> term -> term -> term =
+  fun p t u -> Pos.build_pos p (TAppl(t,u))
 
-let treco_p : pos -> (string * term) list -> term =
-  fun p fs -> in_pos p (TReco(fs))
+let treco_p : Pos.popt -> (string * term) list -> term =
+  fun p fs -> Pos.build_pos p (TReco(fs))
 
-let tproj_p : pos -> term -> string -> term =
-  fun p t l -> in_pos p (TProj(t,l))
+let tproj_p : Pos.popt -> term -> string -> term =
+  fun p t l -> Pos.build_pos p (TProj(t,l))
 
-let tcons_p : pos -> string -> term -> term =
-  fun p c t -> in_pos p (TCons(c,t))
+let tcons_p : Pos.popt -> string -> term -> term =
+  fun p c t -> Pos.build_pos p (TCons(c,t))
 
-let tcase_p : pos -> term -> (string * term) list -> term option -> term =
-  fun p t cs cd -> in_pos p (TCase(t,cs,cd))
+let tcase_p : Pos.popt -> term -> (string * term) list -> term option -> term =
+  fun p t cs cd -> Pos.build_pos p (TCase(t,cs,cd))
 
-let tdefi_p : pos -> tdef -> term =
-  fun p v -> in_pos p (TDefi(v))
+let tdefi_p : Pos.popt -> tdef -> term =
+  fun p v -> Pos.build_pos p (TDefi(v))
 
-let tprnt_p : pos -> string -> term =
-  fun p s -> in_pos p (TPrnt(s))
+let tprnt_p : Pos.popt -> string -> term =
+  fun p s -> Pos.build_pos p (TPrnt(s))
 
-let tfixy_p : pos -> bool -> int -> (term', term) binder -> term =
-  fun p b n t -> in_pos p (TFixY(b,n,t))
+let tfixy_p : Pos.popt -> bool -> int -> (term', term) binder -> term =
+  fun p b n t -> Pos.build_pos p (TFixY(b,n,t))
 
-let tmlet_p : pos -> okmkbinder -> term option -> okmtbinder -> term =
-  fun p b x t -> in_pos p (TMLet(b,x,t))
+let tmlet_p : Pos.popt -> okmkbinder -> term option -> okmtbinder -> term =
+  fun p b x t -> Pos.build_pos p (TMLet(b,x,t))
 
 (****************************************************************************)
 (** {2 Smart constructors for terms}                                        *)
 (****************************************************************************)
 
-let tcoer : pos -> tbox -> kbox -> tbox =
+let tcoer : Pos.popt -> tbox -> kbox -> tbox =
   fun p -> box_apply2 (tcoer_p p)
 
-let tvari : pos -> term' variable -> tbox =
-  fun p x -> box_apply (in_pos p) (box_of_var x)
+let tvari : Pos.popt -> term' variable -> tbox =
+  fun p x -> box_apply (Pos.build_pos p) (box_of_var x)
 
-let tabst : pos -> kbox option -> strpos -> (tvar -> tbox) -> tbox =
+let tabst : Pos.popt -> kbox option -> Pos.strloc -> (tvar -> tbox) -> tbox =
   fun p ko x f ->
-    box_apply2 (tabst_p p) (box_opt ko) (vbind mk_free_tvari x.elt f)
+    box_apply2 (tabst_p p) (box_opt ko) (vbind mk_free_tvari Pos.(x.elt) f)
 
 let idt : tbox =
-  let fn x = box_apply dummy_pos (box_of_var x) in
-  tabst dummy_position None (dummy_pos "x") fn
+  let fn x = box_apply Pos.none (box_of_var x) in
+  tabst None None (Pos.none "x") fn
 
-let tappl : pos -> tbox -> tbox -> tbox =
+let tappl : Pos.popt -> tbox -> tbox -> tbox =
   fun p -> box_apply2 (tappl_p p)
 
-let treco : pos -> (string * tbox) list -> tbox =
+let treco : Pos.popt -> (string * tbox) list -> tbox =
   fun p fs ->
     let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
     box_apply (fun fs -> treco_p p fs) (box_list fs)
 
-let tproj : pos -> tbox -> string -> tbox =
+let tproj : Pos.popt -> tbox -> string -> tbox =
   fun p t l -> box_apply (fun t -> tproj_p p t l) t
 
-let tcase : pos -> tbox -> (string * tbox) list -> tbox option -> tbox =
+let tcase : Pos.popt -> tbox -> (string * tbox) list -> tbox option -> tbox =
   fun p t cs cd ->
     let aux (c,t) = box_apply (fun t -> (c,t)) t in
     box_apply3 (tcase_p p) t (box_list (List.map aux cs)) (box_opt cd)
 
-let tcons : pos -> string -> tbox -> tbox =
+let tcons : Pos.popt -> string -> tbox -> tbox =
   fun p c t -> box_apply (fun t -> tcons_p p c t) t
 
-let tdefi : pos -> tdef -> tbox =
+let tdefi : Pos.popt -> tdef -> tbox =
   fun p vd -> box (tdefi_p p vd)
 
-let tprnt : pos -> string -> tbox =
+let tprnt : Pos.popt -> string -> tbox =
   fun p s -> box (tprnt_p p s)
 
-let tfixy : pos -> bool -> int -> strpos -> (tvar -> tbox) -> tbox =
-  fun p b n x f -> box_apply (tfixy_p p b n)
-                    (vbind mk_free_tvari x.elt f)
+let tfixy : Pos.popt -> bool -> int -> Pos.strloc -> (tvar -> tbox) -> tbox =
+  fun p b n x f ->
+    box_apply (tfixy_p p b n) (vbind mk_free_tvari Pos.(x.elt) f)
 
-let tmlet : pos -> string array -> string array ->
+let tmlet : Pos.popt -> string array -> string array ->
             (ovar array -> kvar array -> kbox) -> tbox option ->
             (ovar array -> kvar array -> tbox) -> tbox =
   fun p os ks f x tf -> box_apply3 (tmlet_p p)
@@ -615,11 +614,11 @@ let tcnst : (term', term) binder -> kbox -> kbox -> tbox =
   (* NOTE: the term is always closed *)
   fun s a b ->
     assert (is_closed a && is_closed b);
-    box_apply dummy_pos (box_apply2 (fun a b -> TCnst(s,a,b)) a b)
+    box_apply Pos.none (box_apply2 (fun a b -> TCnst(s,a,b)) a b)
 
 let generic_tcnst : kbox -> kbox -> tbox =
   fun a b ->
-    let f = bind mk_free_tvari "x" (fun x -> box_apply dummy_pos x) in
+    let f = bind mk_free_tvari "x" (fun x -> box_apply Pos.none x) in
     tcnst (unbox f) a b
 
 (****************************************************************************)
@@ -638,7 +637,7 @@ let rec do_dot_proj t k s = match full_repr k with
     if t is an epsilon or a definition.
     We also deal with a special case for printing !) *)
 let dot_proj : tbox -> string -> kbox = fun t s ->
-  let fn t = match t.elt with
+  let fn t = match Pos.(t.elt) with
     | TDefi(d) -> do_dot_proj t d.ttype s
     | TCnst(_,a,_) -> do_dot_proj t a s
     | TVars x -> KPrnt (DotPrj(x,s)) (** printing only *)

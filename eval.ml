@@ -2,7 +2,7 @@
 (**{3                       Call by value evaluation                        }*)
 (*****************************************************************************)
 
-open Position
+open Pos
 open Bindlib
 open Ast
 open LibTools
@@ -58,11 +58,11 @@ let rec eval : term -> term = fun t0 ->
         match t.elt with
         | TCons(c,v) ->
             begin
-              try eval (tappl_p dummy_position (List.assoc c l) v)
+              try eval (tappl_p None (List.assoc c l) v)
               with Not_found ->
                 match d with
                 | None   -> assert false
-                | Some d -> eval (tappl_p dummy_position d t)
+                | Some d -> eval (tappl_p None d t)
             end
         | _          -> assert false
       end

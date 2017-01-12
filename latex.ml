@@ -5,7 +5,7 @@ open Bindlib
 open Format
 open Ast
 open Print
-open Position
+open Pos
 open Compare
 open LibTools
 

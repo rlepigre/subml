@@ -3,7 +3,7 @@
 (****************************************************************************)
 
 open Ast
-open Position
+open Pos
 open Bindlib
 open Term
 open Compare

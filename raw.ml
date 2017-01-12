@@ -3,17 +3,17 @@
 (****************************************************************************)
 open Ast
 open Bindlib
-open Position
+open Pos
 open Binding
 open LibTools
 
-type pordinal = pordinal' position
+type pordinal = pordinal' loc
 and pordinal' =
   | PConv
   | PSucc of pordinal
   | PVari of string
 
-type pkind = pkind' position
+type pkind = pkind' loc
 and pkind' =
   | PTVar of string * pordinal list * pkind list
   | PFunc of pkind * pkind
@@ -26,26 +26,26 @@ and pkind' =
   | PFixM of pordinal * string * pkind
   | PFixN of pordinal * string * pkind
   | PWith of pkind * string * pkind
-  | PDPrj of strpos * string
+  | PDPrj of strloc * string
   | PUCst of pterm * string * pkind
   | PECst of pterm * string * pkind
 
-and pterm  = pterm' position
+and pterm  = pterm' loc
 and pterm' =
   | PCoer of pterm * pkind
   | PMLet of string list * string list * pkind * string * pterm
   | PLVar of string
-  | PLAbs of (strpos * pkind option) list * pterm
+  | PLAbs of (strloc * pkind option) list * pterm
   | PAppl of pterm * pterm
   | PReco of (string * pterm) list
   | PProj of pterm * string
   | PCons of string * pterm option
   | PCase of pterm * (string * ppat * pterm) list * (ppat * pterm) option
   | PPrnt of string
-  | PFixY of strpos * bool * int * pterm
+  | PFixY of strloc * bool * int * pterm
 and ppat =
-  | Simple of (strpos * pkind option) option
-  | Record of (string * (strpos * pkind option)) list
+  | Simple of (strloc * pkind option) option
+  | Record of (string * (strloc * pkind option)) list
 
 let list_nil _loc =
   in_pos _loc (PCons("Nil" , None))
@@ -55,7 +55,7 @@ let list_cons _loc t l =
   in_pos _loc (PCons("Cons", Some c))
 
 let dummy_case_var _loc =
-  (in_pos _loc "", Some(dummy_pos (PProd [])))
+  (build_pos _loc "", Some(Pos.none (PProd [])))
 
 (* "t; u" := "(fun (_ : unit) ↦ u) t" *)
 let sequence _loc t u =
@@ -82,7 +82,7 @@ let apply_rpat c x t =
   match x with
   | Simple x ->
      let x = from_opt x (dummy_case_var t.pos) in
-     in_pos t.pos (PLAbs([x],t))
+     Pos.build_pos t.pos (PLAbs([x],t))
   | Record r ->
      let is_cons r =
        c = "Cons" && List.length r = 2 && List.mem_assoc "hd" r && List.mem_assoc "tl" r
@@ -95,13 +95,13 @@ let apply_rpat c x t =
          List.fold_left (fun acc (l,(x,_)) ->
            acc ^ l ^ "=" ^ x.elt ^ ";") "{" r ^ "}"
      in
-     let v = in_pos t.pos (PLVar name) in
+     let v = Pos.build_pos t.pos (PLVar name) in
      let t =
        List.fold_left (fun acc (l,x) ->
-         (in_pos t.pos (PAppl(in_pos t.pos (PLAbs([x],acc)),
-                              in_pos t.pos (PProj(v, l)))))) t r
+         (build_pos t.pos (PAppl(build_pos t.pos (PLAbs([x],acc)),
+                              build_pos t.pos (PProj(v, l)))))) t r
      in
-     in_pos t.pos (PLAbs([in_pos t.pos name, None],t))
+     build_pos t.pos (PLAbs([build_pos t.pos name, None],t))
 
 let pcond _loc c t e =
   let l = [("Tru", Simple None, t); ("Fls", Simple None, e)] in
@@ -136,18 +136,20 @@ let add_ordis : string array -> ovar array -> env -> env = fun osn os env ->
   snd (Array.fold_left fn (0,env) os)
 
 
-exception Unbound of strpos
+exception Unbound of strloc
 let unbound s = raise (Unbound(s))
 
-exception Arity_error of pos * string
-let arity_error loc s = raise (Arity_error (loc,s))
+exception Arity_error of popt * string
+let arity_error : popt -> string -> 'a =
+  fun loc s -> raise (Arity_error (loc,s))
 
-exception Positivity_error of pos * string
-let positivity_error loc s = raise (Positivity_error (loc,s))
+exception Positivity_error of popt * string
+let positivity_error : popt -> string -> 'a =
+  fun loc s -> raise (Positivity_error (loc,s))
 
 (* Lookup a term variable in the environment. If it does not appear, look for
    the name in the list of term definitions. *)
-let term_variable : env -> strpos -> tbox = fun env s ->
+let term_variable : env -> strloc -> tbox = fun env s ->
   try tvari s.pos (List.assoc s.elt env.terms) with Not_found ->
   try
     let vd = Hashtbl.find val_env s.elt in
@@ -155,7 +157,7 @@ let term_variable : env -> strpos -> tbox = fun env s ->
   with Not_found -> unbound s
 
 (* Lookup an ordinal variable in the environment. *)
-let ordinal_variable : occur -> env -> strpos -> obox = fun pos env s ->
+let ordinal_variable : occur -> env -> strloc -> obox = fun pos env s ->
   try
     let (o, pos') = List.assoc s.elt env.ordinals in
     let _ = compose2 pos' pos in
@@ -164,7 +166,7 @@ let ordinal_variable : occur -> env -> strpos -> obox = fun pos env s ->
 
 (* Lookup a kind variable in the environment. If it does not appear, look for
    the name in the list of type definitions. *)
-let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array -> kbox =
+let rec kind_variable : occur -> env -> strloc -> pordinal array -> pkind array -> kbox =
  fun pos env s os ks ->
   let karity = Array.length ks in
   let oarity = Array.length os in
@@ -207,7 +209,7 @@ let rec kind_variable : occur -> env -> strpos -> pordinal array -> pkind array 
 and unsugar_ordinal : ?pos:occur -> env -> pordinal -> obox = fun ?(pos=sPos) env po ->
   match po.elt with
   | PConv   -> oconv
-  | PVari s -> ordinal_variable pos env (in_pos po.pos s)
+  | PVari s -> ordinal_variable pos env (build_pos po.pos s)
   | PSucc o -> osucc (unsugar_ordinal ~pos env o)
 
 and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
@@ -216,7 +218,8 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   | PFunc(a,b)   ->
      kfunc (unsugar_kind ~pos:(neg pos) env a) (unsugar_kind ~pos env b)
   | PTVar(s,os,ks) ->
-     kind_variable pos env (in_pos pk.pos s) (Array.of_list os) (Array.of_list ks)
+     kind_variable pos env (build_pos pk.pos s)
+       (Array.of_list os) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =
                       unsugar_kind ~pos (add_kind x xk Non env) k
                     in kkall x f
@@ -261,9 +264,10 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                          let f xt = aux false (add_term x.elt xt env) xs in
                          let pos =
                            if first then pt.pos else
-                           let open Position in
+                             (*
                            { pt.pos with line_start = x.pos.line_start
                            ; col_start = x.pos.col_start }
+                           *) pt.pos (* FIXME *)
                          in
                          tabst pos ko x f
                    in aux true env vs
@@ -272,11 +276,15 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
      let osn = Array.of_list osn and ksn = Array.of_list ksn in
      let mkenv os ks = add_ordis osn os (add_kinds ksn ks env) in
      let bk os ks = unsugar_kind (mkenv os ks) k in
-     let x = match x with "" -> None | x -> Some (term_variable env (in_pos pt.pos x)) in
+     let x =
+       match x with
+       | "" -> None
+       | x  -> Some (term_variable env (build_pos pt.pos x))
+     in
      let bt os ks = unsugar_term (mkenv os ks) t in
      tmlet pt.pos osn ksn bk x bt
   | PAppl(t,u)  -> tappl pt.pos (unsugar_term env t) (unsugar_term env u)
-  | PLVar(x)    -> term_variable env (in_pos pt.pos x)
+  | PLVar(x)    -> term_variable env (build_pos pt.pos x)
   | PPrnt(s)    -> tprnt pt.pos s
   | PCons(c,uo) -> let u =
                      match uo with

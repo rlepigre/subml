@@ -5,7 +5,7 @@ open Bindlib
 open Ast
 open Binding
 open Print
-open Position
+open Pos
 open Compare
 open Term
 open Generalise
@@ -130,7 +130,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
        let l1 = ref l0 in
        let res = ref [] in
        List.iter (fun (s,k) ->
-         let t' = dummy_pos (TProj(t0,s)) in
+         let t' = Pos.none (TProj(t0,s)) in
          try
            let prf = subtype ctxt0 t' (msubst (List.assoc s l0) os) k  in
            res := (s,prf) :: !res
@@ -153,7 +153,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
        let l1 = ref l0 in
        let res = ref [] in
        List.iter (fun (s,k) ->
-         let t' = unbox (tcase dummy_position (box t0) [(s, idt)] None) in
+         let t' = unbox (tcase None (box t0) [(s, idt)] None) in
          try
            let prf = subtype ctxt0 t' k (msubst (List.assoc s l0) os)  in
            res := (s,prf) :: !res
@@ -285,20 +285,26 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
     (* Arrow type. *)
     | (KFunc(a1,b1), KFunc(a2,b2)) ->
        let wit =
-         let f x = tappl dummy_position (box t) (box_apply dummy_pos x) in
+         let f x = tappl None (box t) (box_apply Pos.none x) in
          let bnd = unbox (bind mk_free_tvari "x" f) in
          unbox (tcnst bnd (box a2) (box b2))
        in
         (* NOTE: the heuristic below works well for Church like encoding *)
        if has_uvar b1 then
-         let wit = if strict_eq_kind a2 (KProd []) then dummy_pos (TReco []) else wit in
-         let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
+         let wit =
+           if strict_eq_kind a2 (KProd []) then Pos.none (TReco [])
+           else wit
+         in
+         let p2 = subtype ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
          let p1 = subtype ctxt wit a2 a1 in
          Sub_Func(p1, p2)
        else
          let p1 = subtype ctxt wit a2 a1 in
-         let wit = if strict_eq_kind a2 (KProd []) then dummy_pos (TReco []) else wit in
-         let p2 = subtype ctxt (dummy_pos (TAppl(t, wit))) b1 b2 in
+         let wit =
+           if strict_eq_kind a2 (KProd []) then Pos.none (TReco [])
+           else wit
+         in
+         let p2 = subtype ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
          Sub_Func(p1, p2)
 
     (* Product type. *)
@@ -308,7 +314,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
             try List.assoc l fsa
             with Not_found -> subtype_error ("Product fields clash: " ^ l)
           in
-          (l, subtype ctxt (dummy_pos (TProj(t,l))) a b)
+          (l, subtype ctxt (Pos.none (TProj(t,l))) a b)
         in
         let ps = List.map check_field fsb in
         Sub_Prod(ps)
@@ -316,7 +322,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
     (* Sum type. *)
     | (KDSum(csa)  , KDSum(csb)  ) ->
         let check_variant (c,a) =
-          let t = unbox (tcase dummy_position (box t) [(c, idt)] None) in
+          let t = unbox (tcase None (box t) [(c, idt)] None) in
           let b =
             try List.assoc c csb
             with Not_found -> subtype_error ("Constructor clash: " ^ c)
@@ -495,7 +501,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          Typ_Func_i(p1, p2)
       | TAppl(t,u) when is_neutral t && not (is_neutral u)->
          let a =
-           if strict_eq_term u (dummy_pos (TReco []))
+           if strict_eq_term u (Pos.none (TReco []))
            then KProd [] else new_kuvar () in
          let ptr = Subset.create ctxt.positive_ordis
          in
@@ -504,7 +510,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p1 = type_check ctxt u a in
          Typ_Func_e(p1, p2)
       | TAppl(t,u) ->
-         let a = if strict_eq_term u (dummy_pos (TReco []))
+         let a = if strict_eq_term u (Pos.none (TReco []))
            then KProd [] else new_kuvar ()
          in
          let p1 = type_check ctxt u a in
@@ -616,7 +622,7 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume manual depth =
         (* otherwise we unroll once more, and type-check *)
         let l = List.map (fun (ctxt,c,ptr) ->
           let e = TFixY(do_subsume,depth-1,f) in
-          let t0 = dummy_pos e in
+          let t0 = Pos.none e in
           let t =  subst f e in
           ctxt,t0,t,c,ptr,ref []) !remains
         in
@@ -774,7 +780,7 @@ let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.
     in
     let p = subtype ctxt term a b in
     let call_graphs = Sct.inline ctxt.call_graphs in
-    if not (Sct.sct call_graphs) then loop_error dummy_position;
+    if not (Sct.sct call_graphs) then loop_error None;
     check_sub_proof p;
     (p, call_graphs)
 

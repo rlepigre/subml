@@ -4,14 +4,13 @@
 open Earley
 open Bindlib
 open Ast
-open Position
+open Pos
 open Print
 open Eval
 open TypingBase
 open Typing
 open Raw
 open Format
-open Position
 open LibTools
 
 (* Definition of a "location" function for DeCaP. *)
@@ -499,12 +498,12 @@ let check pos flag f a =
         Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
         raise e
   in
-  if flag = CanFail then Io.out "A NEW TEST PASSED at %a.\n%!" print_position pos;
+  if flag = CanFail then
+    Io.out "A NEW TEST PASSED at %a.\n%!" print_position pos;
   if flag = MustFail then (
     Io.err "A WRONG TEST PASSED at %a\n%!" print_position pos;
     exit 1;
-  );
-  res
+  ); res
 
 (* New value definition. *)
 let new_val : flag -> name -> pkind option -> pterm -> unit = fun flag nm k t ->
@@ -521,7 +520,7 @@ let new_val : flag -> name -> pkind option -> pterm -> unit = fun flag nm k t ->
   with OK -> ()
 
 (* Check a subtyping relation. *)
-let check_sub : pos -> flag -> pkind -> pkind -> unit = fun pos flag a b ->
+let check_sub : popt -> flag -> pkind -> pkind -> unit = fun pos flag a b ->
   let a = unbox (unsugar_kind empty_env a) in
   let b = unbox (unsugar_kind empty_env b) in
   (try ignore (check pos flag (subtype a) b) with OK -> ());
@@ -550,7 +549,7 @@ let include_file : string -> unit = fun fn ->
     raise e
 
 
-let output_graphml : strpos -> unit = fun id ->
+let output_graphml : strloc -> unit = fun id ->
   try
     let prf = (Hashtbl.find val_env id.elt).proof in
     Graph.output_graphml Io.(fmts.htm) (Print.typ2proof prf)
@@ -569,7 +568,7 @@ let parser command top =
   | type_kw (tn,n,args,k):kind_def$               -> new_type (tn,n) args k
   | eval_kw t:term$                               -> eval_term t
   | f:flag val_kw (n,k,t):val_def$                -> new_val f n k t
-  | f:flag check_kw a:kind$ _:subset b:kind$      -> check_sub _loc f a b
+  | f:flag check_kw a:kind$ _:subset b:kind$      -> check_sub (Some _loc) f a b
   | _:include_kw fn:string_lit$                   -> include_file fn
   | _:graphml_kw id:lident$                       -> output_graphml (in_pos _loc_id id)
   | latex_kw t:tex_text$             when not top -> Io.tex "%a%!" Latex.output t

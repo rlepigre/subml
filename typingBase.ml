@@ -8,7 +8,7 @@ open Bindlib
 open Ast
 open Binding
 open Print
-open Position
+open Pos
 open Compare
 open Term
 open Error
@@ -29,12 +29,12 @@ let subtype_error : string -> 'a =
     raise (Subtype_error msg)
 
 (** Raised when the termination checkers fails, propagated *)
-exception Loop_error of pos
-let loop_error : pos -> 'a =
+exception Loop_error of popt
+let loop_error : popt -> 'a =
   fun p -> raise (Loop_error p)
 
-exception Interrupted of pos
-let interrupted : pos -> 'a =
+exception Interrupted of popt
+let interrupted : popt -> 'a =
   fun p -> raise (Interrupted p)
 
 type induction_node = Sct.index * (int * ordi) list
