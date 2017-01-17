@@ -20,16 +20,4 @@ val id2a = id2 A
 val g = fun x →
   case id2 x of
   | A → B
-  | _ → x
-
-(* The following needs to pass to obtain most general types. *)
-?val test : [A | B] → [B] = fun x →
-  case x of
-  | A → B
-  | _ → x
-
-(* On possible fix is to add a syntactic sugar doing the following. *)
-val test : [A | B] → [B] = fun x →
-  case x of
-  | A → let x = A in B
-  | _ → let x = B in x
+  | x → x
