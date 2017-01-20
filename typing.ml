@@ -28,7 +28,7 @@ let check_rec
     begin match full_repr a, full_repr b with
     | KFixM(o,_), KFixM(o',_)
     | KFixN(o',_), KFixN(o,_) ->
-       (* HEURISTIC THAT AVOID LOOPS, by comparing ordinals
+       (* TODO: HEURISTIC THAT AVOID LOOPS, by comparing ordinals
           it forces some unification of ordinal variables.
           If we keep ordinal variables, it may loops on
           useful examples.
@@ -38,55 +38,38 @@ let check_rec
     end;
 
     try
+      (* TODO Another HEURISTIC ... obtained by try and fail ... is is selected by
+         our example, or is there somethin to undertand *)
       if (match a with KFixM _ -> false | KFixN _ -> has_leading_exists a | _ -> true) &&
          (match b with KFixN _ -> false | KFixM _ -> has_leading_forall b | _ -> true)
       then raise Exit;
-      (match full_repr a with KMRec _ | KNRec _ -> raise Exit | _ -> ());
-      (match full_repr b with KMRec _ | KNRec _ -> raise Exit | _ -> ());
-      (* Search for the inductive hypothesis *)
       Io.log_sub "IND %a < %a (%a)\n%!" (print_kind false) a (print_kind false) b
         print_positives ctxt;
       let pos = ctxt.positive_ordis in
-      let (schema, os, (os0,tpos,k1,k2)) = generalise pos (SchKind a) b ctxt.call_graphs in
-      let k1 = match k1 with
-        | SchTerm _ -> assert false
-        | SchKind k -> k
-      in
-      let fnum = schema.sch_index in
-      add_call ctxt fnum os false;
-      let ctxt = { ctxt with
-        sub_induction_hyp = schema::ctxt.sub_induction_hyp;
-        positive_ordis = tpos;
-        top_induction = (fnum, os0)
-      } in
-      let calls = List.fold_left (fun acc schema' ->
-        (* hypothesis apply if same type up to the parameter and same positive ordinals.
-           An inclusion beween p' and p0 should be enough, but this seems complete that
-           way *)
-        let (ov,pos',a',b') = recompose_kind schema' in
-        Io.log_sub "TESTING %a = %a\n%a = %a\n\n%!"
-          (print_kind false) k1  (print_kind false) a'
-          (print_kind false) k2  (print_kind false) b';
-        if eq_kind tpos k1 a' && eq_kind tpos b' k2 &&
-          List.for_all (fun o1 ->
-            match orepr o1 with OConv | OSucc _ -> true | _ ->
-               List.exists (eq_ordi tpos o1) tpos) pos'
-        then (
-          Io.log_sub "By induction\n\n%!";
-          build_call ctxt schema'.sch_index ov true :: acc)
-        else acc) [] (List.tl ctxt.sub_induction_hyp) in
-      let calls = List.map (fun (_,_,m1,_ as call) -> (score_mat m1, call)) calls in
-      let calls = List.sort (fun (s1,_) (s2,_) -> compare s2 s1) calls in
-      (match calls with
-      | (_,(index,_,_,_ as call))::_ ->
-         Sct.new_call ctxt.call_graphs call;
+      let (schema, os) = generalise pos (SchKind a) b ctxt.call_graphs in
+      (* hypothesis apply if is the same schema was already created *)
+      try
+        let schema' = List.find (eq_schema pos schema) ctxt.sub_induction_hyp in
+        let index = schema'.sch_index in
+        let call = build_call ctxt index os true in
+        Sct.new_call ctxt.call_graphs call;
         raise (Induction_hyp index)
-      | [] -> ());
-      Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
-      let tros = List.map2 (fun (_,o1) (_,o2) ->
-        let o2 = match o2 with OVari _ -> OConv | _ -> o2 in
-        (o1,o2)) os0 os in
-      (NewInduction (Some (schema, k1, k2, tros)), ctxt)
+      with Not_found ->
+        (* induction does not apply, we generate whats needed to prove the schema *)
+        let fnum = schema.sch_index in
+        add_call ctxt fnum os false;
+        let (os0,tpos,k1,k2) = recompose_kind ~general:false schema in
+        let ctxt = { ctxt with
+          sub_induction_hyp = schema::ctxt.sub_induction_hyp;
+          positive_ordis = tpos;
+          top_induction = (fnum, os0)
+        } in
+        Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
+        (* need the map table between the new and old ordinals, see below *)
+        let tros = List.map2 (fun (_,o1) (_,o2) ->
+          let o2 = match o2 with OVari _ -> OConv | _ -> o2 in
+          (o1,o2)) os0 os in
+        (NewInduction (Some (schema, k1, k2, tros)), ctxt)
     with Exit | FailGeneralise -> (NewInduction None, ctxt)
        | Induction_hyp n -> (UseInduction n, ctxt)
 
@@ -628,10 +611,11 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume manual depth =
         in
         let l = if do_subsume then subsumption [] l else l in
         let l = List.map (fun (ctxt,t0,t,c,ptr,subsumed) ->
-          let (schema, os,(os0, tpos, _, c0)) =
+          let (schema, os) =
             try generalise ~manual ctxt.positive_ordis (SchTerm t0) c ctxt.call_graphs
             with FailGeneralise -> assert false
           in
+          let (os0, tpos, _, c0) = recompose_term ~general:false schema in
           let tros = List.combine (List.map snd os) (List.map snd os0) in
           let fnum = schema.sch_index in
           Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!"

@@ -44,12 +44,9 @@ type call = index * index * cmp array array * bool
 type calls = call list
 
 
-(** We give a printing function for the parameter names *)
-type printer = formatter -> unit
-
 (** This stores the function table, giving name, arity and the
     way to print the function for debugging *)
-type arities = (int * (string * int * printer array)) list
+type arities = (int * (string * int * string array)) list
 type call_table =
   { mutable current : int;
     mutable table : arities;
@@ -67,7 +64,7 @@ let init_table () =
 let root = -1
 
 (** Creation of a new function, return the function index in the table *)
-let new_function : call_table -> string -> printer list -> index =
+let new_function : call_table -> string -> string list -> index =
   fun ftbl name args ->
     let args = Array.of_list args in
     let arity = Array.length args in
@@ -110,7 +107,7 @@ let print_call ff tbl (i,j,m,_) =
   let (_, ai, _) = try List.assoc i tbl with Not_found -> assert false in
   let print_args ff =
     for j = 0 to aj - 1 do
-      fprintf ff "%s%t" (if j = 0 then "" else ",") prj.(j)
+      fprintf ff "%s%s" (if j = 0 then "" else ",") prj.(j)
     done
   in
   let (namei, _, _) = try List.assoc i tbl with Not_found -> assert false in
@@ -123,7 +120,7 @@ let print_call ff tbl (i,j,m,_) =
       let c = m.(j).(i) in
       if c <> Unknown then (
       let sep = if !some then " " else "" in
-      fprintf ff "%s%a%t" sep prCmp c prj.(j);
+      fprintf ff "%s%a%s" sep prCmp c prj.(j);
       some := true)
     done
   done;

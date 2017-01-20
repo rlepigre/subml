@@ -61,6 +61,7 @@ let recompose : ?general:bool -> schema -> term_or_kind particular =
 
     os, pos, k1, k2
 
+(** recompose for subtyping *)
 let recompose_kind : ?general:bool -> schema -> kind particular =
   fun ?(general=true) schema ->
     let (os,pos,k1,k2) = recompose ~general schema in
@@ -68,6 +69,15 @@ let recompose_kind : ?general:bool -> schema -> kind particular =
       | SchTerm _ -> assert false
       | SchKind k -> k
     in (os,pos,k1,k2)
+
+(** recompose for typing *)
+let recompose_term : ?general:bool -> schema -> term particular =
+  fun ?(general=true) schema ->
+    let (os,pos,t,k2) = recompose ~general schema in
+    let t = match t with
+      | SchTerm t -> t
+      | SchKind _ -> assert false
+    in (os,pos,t,k2)
 
 (** [generalise] create a schema from a judgement. All ordinals
     that appear in the judgement are quantified over.
@@ -88,8 +98,8 @@ let recompose_kind : ?general:bool -> schema -> kind particular =
     prove the schema.
  *)
 let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_table ->
-  schema * (int * ordi) list * term_or_kind particular
-  = fun ?(manual=false) pos k1 k2 call_table ->
+  schema * (int * ordi) list
+  = fun ?(manual=false) pos k10 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
      the ordinal will be ovari when it replaces an infinite ordinals (see TODO
@@ -150,9 +160,9 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_t
     | k -> def_kind k
 
   in
-  let k1 = match k1 with
+  let k1 = match k10 with
     | SchKind k1 -> SchKind (unbox (map_kind ~fkind ~ford ~occ:sNeg k1))
-    | SchTerm _  -> k1
+    | SchTerm _  -> k10
   in
   let k2 = unbox (map_kind ~fkind ~ford ~occ:sPos k2) in
 
@@ -209,13 +219,11 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_t
     ; sch_judge = both
     }
   in
-  let (os0,tpos,k1,k2) = recompose ~general:false schema in
-  let name = match k1 with SchKind _ -> "S" | SchTerm _ -> "Y" in
-  let fnum = Sct.new_function call_table name
-    (List.map Print.ordi_to_printer os0)
+  let name = match k10 with SchKind _ -> "S" | SchTerm _ -> "Y" in
+  let fnum = Sct.new_function call_table name (Array.to_list (Bindlib.mbinder_names both))
   in
   let schema = { schema with sch_index = fnum } in
-  (schema, os, (os0,tpos,k1,k2))
+  (schema, os)
 
 (** Returns the list of unification variables.
     When a variable has arguments, they should be identical

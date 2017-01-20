@@ -36,14 +36,11 @@ type call_table
 val init_table : unit -> call_table
 val copy : call_table -> call_table
 
-(** We giev a printing function for the parameter names *)
-type printer = formatter -> unit
-
 (** the index of the main function *)
 val root : index
 
 (** Creation of a new function, return the function index in the table *)
-val new_function : call_table -> string -> printer list -> index
+val new_function : call_table -> string -> string list -> index
 
 (** Creation of a new call *)
 val new_call : call_table -> call -> unit
