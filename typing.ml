@@ -19,59 +19,68 @@ type induction =
   | UseInduction of Sct.index
   | NewInduction of (schema * kind * kind * (ordi * ordi) list) option
 
-(* check is a subtyping can be deduced from an induction hypothesis,
-   if this is not possible, the subtyping may be added as induction
-   hypothesis that we can use later *)
-let check_rec
-    : term -> subtype_ctxt -> kind -> kind -> induction * subtype_ctxt
-  = fun t ctxt a b ->
-    begin match full_repr a, full_repr b with
-    | KFixM(o,_), KFixM(o',_)
-    | KFixN(o',_), KFixN(o,_) ->
-       (* TODO: HEURISTIC THAT AVOID LOOPS, by comparing ordinals
-          it forces some unification of ordinal variables.
-          If we keep ordinal variables, it may loops on
-          useful examples.
-          IMPROVE: can we do better ?*)
-       ignore (eq_ordi ctxt.positive_ordis o o')
-    | _ -> ()
-    end;
-
+(** [check_rec t ctxt a b] checks whether a given pointed subtyping relation
+    can be derived in the current context using an induction hypothesis. If
+    it cannot, the current schema is registered as an induction hypothesis
+    to be used in a later call to [check_rec]. *)
+let check_rec : term -> subtype_ctxt -> kind -> kind
+                -> induction * subtype_ctxt = fun t ctxt a b ->
+  begin
+    (* HEURISTIC to avoid loops. By comparing ordinals we force unifications
+       of ordinal variables. If ordinal variables are kept, it may loops on
+       useful examples. TODO Can we do better ? *)
+    match (full_repr a, full_repr b) with
+    | KFixM(o ,_), KFixM(o',_)
+    | KFixN(o',_), KFixN(o ,_) -> ignore (eq_ordi ctxt.positive_ordis o o')
+    | _                        -> ()
+  end;
+  try
+    (* HEURISTIC obtained by trial and error. TODO Understand it. *)
+    let testa =
+      match a with
+      | KFixM _ -> false
+      | KFixN _ -> has_leading_exists a
+      | _       -> true
+    in
+    let testb =
+      match b with
+      | KFixM _ -> has_leading_forall b
+      | KFixN _ -> false
+      | _       -> true
+    in
+    if testa && testb then raise Exit;
+    (* Actual start of the function. *)
+    Io.log_sub "IND %a < %a (%a)\n%!" (print_kind false) a
+      (print_kind false) b print_positives ctxt;
+    let pos = ctxt.positive_ordis in
+    let (schema, os) = generalise pos (SchKind a) b ctxt.call_graphs in
     try
-      (* TODO Another HEURISTIC ... obtained by try and fail ... is is selected by
-         our example, or is there somethin to undertand *)
-      if (match a with KFixM _ -> false | KFixN _ -> has_leading_exists a | _ -> true) &&
-         (match b with KFixN _ -> false | KFixM _ -> has_leading_forall b | _ -> true)
-      then raise Exit;
-      Io.log_sub "IND %a < %a (%a)\n%!" (print_kind false) a (print_kind false) b
-        print_positives ctxt;
-      let pos = ctxt.positive_ordis in
-      let (schema, os) = generalise pos (SchKind a) b ctxt.call_graphs in
-      (* hypothesis apply if is the same schema was already created *)
-      try
-        let schema' = List.find (eq_schema pos schema) ctxt.sub_induction_hyp in
-        let index = schema'.sch_index in
-        let call = build_call ctxt index os true in
-        Sct.new_call ctxt.call_graphs call;
-        raise (Induction_hyp index)
-      with Not_found ->
-        (* induction does not apply, we generate whats needed to prove the schema *)
-        let fnum = schema.sch_index in
-        add_call ctxt fnum os false;
-        let (os0,tpos,k1,k2) = recompose_kind ~general:false schema in
-        let ctxt = { ctxt with
-          sub_induction_hyp = schema::ctxt.sub_induction_hyp;
-          positive_ordis = tpos;
-          top_induction = (fnum, os0)
-        } in
-        Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1 (print_kind false) k2;
-        (* need the map table between the new and old ordinals, see below *)
-        let tros = List.map2 (fun (_,o1) (_,o2) ->
-          let o2 = match o2 with OVari _ -> OConv | _ -> o2 in
-          (o1,o2)) os0 os in
-        (NewInduction (Some (schema, k1, k2, tros)), ctxt)
-    with Exit | FailGeneralise -> (NewInduction None, ctxt)
-       | Induction_hyp n -> (UseInduction n, ctxt)
+      (* Try to apply the induction hypothesis. Only possible if the same
+         schema was previously encountered. *)
+      let schema' = List.find (eq_schema pos schema) ctxt.sub_induction_hyp in
+      let index = schema'.sch_index in
+      let call = build_call ctxt index os true in
+      Sct.new_call ctxt.call_graphs call;
+      raise (Induction_hyp index)
+    with Not_found ->
+      (* We cannot apply the induction hypothesis. Register the schema. *)
+      add_call ctxt schema.sch_index os false;
+      let (os0,tpos,k1,k2) = recompose_kind ~general:false schema in
+      let ctxt =
+        { ctxt with sub_induction_hyp = schema::ctxt.sub_induction_hyp
+        ; positive_ordis = tpos
+        ; top_induction = (schema.sch_index, os0) }
+      in
+      Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1
+        (print_kind false) k2;
+      (* Need the map table between the new and old ordinals, see below *)
+      let fn (_,o1) (_,o2) = (o1, match o2 with OVari _ -> OConv | _ -> o2) in
+      let tros = List.map2 fn os0 os in
+      (NewInduction (Some (schema, k1, k2, tros)), ctxt)
+  with
+  | Exit
+  | FailGeneralise  -> (NewInduction None, ctxt)
+  | Induction_hyp n -> (UseInduction n   , ctxt)
 
 let fixpoint_depth = ref 1
 
