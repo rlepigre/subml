@@ -61,22 +61,24 @@ let recompose : ?general:bool -> schema -> term_or_kind particular =
 
     os, pos, k1, k2
 
+exception NotKindSchema
 (** recompose for subtyping *)
 let recompose_kind : ?general:bool -> schema -> kind particular =
   fun ?(general=true) schema ->
     let (os,pos,k1,k2) = recompose ~general schema in
     let k1 = match k1 with
-      | SchTerm _ -> assert false
+      | SchTerm _ -> raise NotKindSchema
       | SchKind k -> k
     in (os,pos,k1,k2)
 
+exception NotTermSchema
 (** recompose for typing *)
 let recompose_term : ?general:bool -> schema -> term particular =
   fun ?(general=true) schema ->
     let (os,pos,t,k2) = recompose ~general schema in
     let t = match t with
       | SchTerm t -> t
-      | SchKind _ -> assert false
+      | SchKind _ -> raise NotTermSchema
     in (os,pos,t,k2)
 
 (** [generalise] create a schema from a judgement. All ordinals
@@ -157,6 +159,18 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_t
       (* TODO: should not open definition if the definition has no mu/nu *)
     | KUCst(t,f,cl) | KECst(t,f,cl) ->
        if cl then box k else map_kind k (* NOTE: no generalization in witness *)
+    | KUVar(v,os) as k -> (* FIXME: duplicated code in type_infer *)
+       (match !(v.uvar_state) with
+       | Set _ -> def_kind k
+       | Unset Free   -> def_kind k
+       | Unset (DSum  l) ->
+          let fk = mbind_assoc kdsum v.uvar_arity l in
+          safe_set_kuvar All v fk os; self_kind k
+          (* FIXME: should not trust safe_set *)
+       | Unset (Prod l) ->
+          let fk = mbind_assoc kprod v.uvar_arity l in
+          safe_set_kuvar All v fk os ; self_kind k
+          (* FIXME: should not trust safe_set *))
     | k -> def_kind k
 
   in

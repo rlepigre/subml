@@ -57,7 +57,7 @@ let check_rec : term -> subtype_ctxt -> kind -> kind
     try
       (* Try to apply the induction hypothesis. Only possible if the same
          schema was previously encountered. *)
-      let schema' = List.find (eq_schema pos schema) ctxt.sub_induction_hyp in
+      let schema' = List.find (eq_schema schema) ctxt.sub_induction_hyp in
       let index = schema'.sch_index in
       let call = build_call ctxt index os true in
       Sct.new_call ctxt.call_graphs call;
@@ -65,7 +65,10 @@ let check_rec : term -> subtype_ctxt -> kind -> kind
     with Not_found ->
       (* We cannot apply the induction hypothesis. Register the schema. *)
       add_call ctxt schema.sch_index os false;
-      let (os0,tpos,k1,k2) = recompose_kind ~general:false schema in
+      let (os0,tpos,k1,k2) =
+        try recompose_kind ~general:false schema
+        with NotKindSchema -> assert false
+      in
       let ctxt =
         { ctxt with sub_induction_hyp = schema::ctxt.sub_induction_hyp
         ; positive_ordis = tpos
@@ -624,7 +627,10 @@ and breadth_first proof_ptr hyps_ptr f remains do_subsume manual depth =
             try generalise ~manual ctxt.positive_ordis (SchTerm t0) c ctxt.call_graphs
             with FailGeneralise -> assert false
           in
-          let (os0, tpos, _, c0) = recompose_term ~general:false schema in
+          let (os0, tpos, _, c0) =
+            try recompose_term ~general:false schema
+            with NotTermSchema -> assert false
+          in
           let tros = List.combine (List.map snd os) (List.map snd os0) in
           let fnum = schema.sch_index in
           Io.log_typ "Adding induction hyp (1) %a:\n  %a => %a\n%!"
@@ -663,7 +669,7 @@ and search_induction depth ctxt t a c0 hyps =
     | [] -> acc
     | schema :: hyps ->
        try
-         let (ov, pos, _, a) = recompose schema in
+         let (ov, pos, _, a) = try recompose schema with NotTermSchema -> assert false in
          Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
            Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
            print_positives { ctxt with positive_ordis = pos};

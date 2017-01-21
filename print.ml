@@ -689,6 +689,27 @@ and typ_used_ind (_, _, _, r) =
 
 let is_refl : sub_prf -> bool = fun (_,_,a,b,_) -> strict_eq_kind a b
 
+let mkSchema schema =
+  let os = Array.init (mbinder_arity schema.sch_judge)
+    (fun i -> new_ovari ("α_"^string_of_int i)) in
+  let osnames = String.concat "," (Array.to_list (Array.map name_of os)) in
+  let os = Array.map free_of os in
+  let (a,b) = msubst schema.sch_judge os in
+  let s = match a with
+    | SchKind k -> kind_to_string false k
+    | SchTerm t -> term_to_string false t
+  in
+  let o2s = String.concat ", "
+    (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
+  let r2s = String.concat "& "
+    (List.map (fun (i,j) ->  "α_"^string_of_int i^"<"^ "α_"^string_of_int j) schema.sch_relat)
+  in
+  let these = if !latex_mode then "\\vdash" else "|-" in
+  sprintf "∀%s %s (%s)%s %s : %s" osnames o2s r2s these s (kind_to_string false b)
+
+let print_schema ch schema =
+  fprintf ch "%s" (mkSchema schema)
+
 let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   = fun used_ind (os,t,k,r) ->
   let open Proof in
@@ -707,16 +728,6 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   let unaryT name c p1 =
     if is_refl p1 then axiomN name c
     else unaryN name c (sub2proof p1)
-  in
-  let mkSchema schema =
-    let os = Array.init (mbinder_arity schema.sch_judge)
-      (fun i -> new_ovari ("α_"^string_of_int i)) in
-    let osnames = String.concat "," (Array.to_list (Array.map name_of os)) in
-    let os = Array.map free_of os in
-    let (a,b) = msubst schema.sch_judge os in
-    let o2s = String.concat ", "
-      (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
-    sprintf "∀%s %s \\vdash %s : %s" osnames o2s (t2s t) (k2s b)
   in
   let fn ptr = match !ptr with
   | Todo -> axiomN (sprintf "ERROR(Missing inductive proof)") c

@@ -141,10 +141,10 @@ and eq_ord_wit pos w1 w2 = match w1, w2 with
   | (w1           , w2          ) when w1 == w2 -> true
   | (In(t1,f1)    , In(t2,f2)   )
   | (NotIn(t1,f1) , NotIn(t2,f2)) -> eq_term pos t1 t2 && eq_obinder pos f1 f2
-  | (Gen(n1,s1)   , Gen(n2,s2)  ) -> n1 = n2 && eq_schema pos s1 s2
+  | (Gen(n1,s1)   , Gen(n2,s2)  ) -> n1 = n2 && eq_schema s1 s2
   | (_            , _           ) -> false
 
-and eq_schema pos s1 s2 =
+and eq_schema s1 s2 =
   s1.sch_posit = s2.sch_posit (* FIXME: sort ? *)
   && s1.sch_relat = s2.sch_relat
   && (let f1 = s1.sch_judge and f2 = s2.sch_judge in
@@ -153,6 +153,7 @@ and eq_schema pos s1 s2 =
         let os = Array.init (mbinder_arity f1) (fun _ -> free_of (new_ovari "o")) in
         let (k1,k1') = msubst f1 os in
         let (k2,k2') = msubst f2 os in
+        let pos = List.map (fun i -> os.(i)) s1.sch_posit  in
         eq_term_or_kind pos k1 k2 && eq_kind pos k1' k2')
 
 and eq_term_or_kind pos x1 x2 = match (x1,x2) with
