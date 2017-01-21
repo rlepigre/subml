@@ -35,19 +35,15 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
   in
 
   (* HEURISTIC obtained by trial and error. *)
-  let testa =
-    match a with
-    | KFixM _ -> false
-    | KFixN _ -> has_leading_exists a
-    | _       -> true
-  in
-  let testb =
-    match b with
-    | KFixM _ -> has_leading_forall b
-    | KFixN _ -> false
-    | _       -> true
-  in
-  if testa && testb then (New None, ctxt) else
+  if (match a with
+      | KFixM _ -> false
+      | KFixN _ -> has_leading_exists a
+      | _       -> true)
+  && (match b with
+      | KFixM _ -> has_leading_forall b
+      | KFixN _ -> false
+      | _       -> true)
+  then (New None, ctxt) else
 
   (* Actual start of the function. *)
   let _ = Io.log_ind "Adding IH %a < %a\n%!" Print.kind a Print.kind b in
@@ -64,13 +60,14 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
         (Use old_sch.sch_index, ctxt)
       with Not_found ->
         (* We cannot apply the induction hypothesis. However, we register
-           our new schema as an induction hypothesis for later. *)
+           our new schema as an induction hypothesis for later and
+           build the new subtyping judgement we need to prove *)
         add_call ctxt new_sch.sch_index new_os false;
         let (os, non_zero, a, b) = recompose_kind ~general:false new_sch in
         let sub_ihs = new_sch :: ctxt.sub_ihs in
         let top_induction = (new_sch.sch_index, os) in
         let ctxt = { ctxt with sub_ihs ; non_zero ; top_induction } in
-        Io.log_sub "NEW %a < %a\n%!" Print.kind a Print.kind b;
+        Io.log_ind "Proving schema %a < %a\n%!" Print.kind a Print.kind b;
         (* Need the map table between the new and old ordinals, see below *)
         let fn (_,o1) (_,o2) =
           (o1, match o2 with OVari _ -> OConv | _ -> o2)
@@ -80,40 +77,34 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
 
 let search_induction subtype prfPtr depth ctxt t c0 hyps =
   (* fn search for an applicable inductive hypothesis *)
-  Io.log_typ "searching IH (1):\n  %a %a\n%!" Print.kind c0 print_nz ctxt;
-
-  let rec fn acc = function
-    | [] -> acc
-    | schema :: hyps ->
-       let time = Timed.Time.save () in
-       try
-         let (ov, pos, _, a) = recompose schema in
-         Io.log_typ "searching IH (2) with %a %a ~ %a <- %a:\n%!"
-           Sct.prInd schema.sch_index Print.kind a Print.kind c0
-           print_nz {ctxt with non_zero = pos};
-           (* need full subtype to rollback unification if it fails *)
-         let prf = subtype ctxt t a c0 in
-         if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
-         check_sub_proof prf;
-         if not (List.for_all (fun o1 ->
-           match orepr o1 with OConv | OSucc _ -> true | _ ->
-             List.exists (eq_ordi ctxt.non_zero o1)
-               ctxt.non_zero) pos)
-         then raise Exit;
-         Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-           Sct.prInd schema.sch_index Print.kind a Print.kind c0
-           print_nz { ctxt with non_zero = pos};
-         fn ((schema,prf, build_call ctxt schema.sch_index ov true) :: acc) hyps
-       with Exit | Error _ ->
-         Timed.Time.rollback time;
-         fn acc hyps
-  in
   if depth > 0 then
-       (* If the depth is not zero, only apply the above heuristic, but
-          do not search really the induction hypothesis *)
+    (* If the depth is not zero, do not search really the induction hypothesis *)
     raise Not_found
   else
+    let rec fn acc = function
+      | [] -> acc
+      | schema :: hyps ->
+         let time = Timed.Time.save () in
+         try
+           let (ov, pos, _, a) = recompose schema in
+           Io.log_ind "searching IH (2) with %a ~ %a <- %a:\n%!"
+             Sct.prInd schema.sch_index Print.kind a Print.kind c0;
+           (* need full subtype to rollback unification if it fails *)
+           let prf = subtype ctxt t a c0 in
+           if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
+           check_sub_proof prf;
+           if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
+           Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
+             Sct.prInd schema.sch_index Print.kind a Print.kind c0
+             print_nz { ctxt with non_zero = pos};
+           fn ((schema,prf, build_call ctxt schema.sch_index ov true)::acc) hyps
+         with Exit | Error _ ->
+           Timed.Time.rollback time;
+           fn acc hyps
+    in
+    Io.log_typ "searching IH (1):\n  %a %a\n%!" Print.kind c0 print_nz ctxt;
     let calls = fn [] hyps in
+    (* HEURISTIC: we select the best induction hypothesis *)
     let calls = List.map (fun (schema,prf,(index,_,m1,_ as call)) ->
       let (a,b as s) = score_mat m1 in
       Io.log_mat "score: (%f,%f)\n%!" a b;
@@ -123,8 +114,8 @@ let search_induction subtype prfPtr depth ctxt t c0 hyps =
     match calls with
     | (_,prf,(index,_,_,_ as call))::_ ->
        Sct.new_call ctxt.call_graphs call;
-      prfPtr := Induction(index,prf)
-    | [] -> Io.log_typ "no induction hyp found\n%!"; raise Not_found
+       prfPtr := Induction(index,prf)
+    | [] -> Io.log_ind "no induction hyp found\n%!"; raise Not_found
 
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
@@ -136,11 +127,7 @@ let check_fix type_check subtype prfPtr ctxt t depth f c0 =
     | [(_,l)] -> ctxt, l
     | [] ->
        let hyps = ref [] in
-       let ctxt =
-         { ctxt with
-           fix_ihs = (f,hyps)::ctxt.fix_ihs;
-         }
-       in
+       let ctxt = { ctxt with fix_ihs = (f,hyps)::ctxt.fix_ihs; } in
        ctxt, hyps
     | _ -> assert false
   in
