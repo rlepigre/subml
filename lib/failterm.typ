@@ -38,7 +38,7 @@ type T = μX [ L | N of X * X ]
 
 (* NOTE: kept because was looping in the previous version of subml *)
 
-!val rec 3 peigne : T → T = fun t →
+!val rec 3 peigne : T → T = fun t → (* still loops with 4 !*)
   case t of
   | L → L
   | N(l,r) →
