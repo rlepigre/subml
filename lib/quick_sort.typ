@@ -11,9 +11,11 @@ val rec partition : ∀A ∀α (A → Bool) → (μα X F(A,X)) → (μα X F(A,
   fun test l →
     case l of
     | []   → ([], [])
-    | x::l → let c = partition test l in
-             if test x then ((x::c.1), c.2)
-             else (c.2,(x::c.1))
+    | x::l →
+      let α,A such that l : μα X F(A,X) in (* does not guess the size for c *)
+      let c : (μα X F(A,X)) × (μα X F(A,X)) = partition test l in
+      if test x then ((x::c.1) , c.2)
+      else (c.2,(x::c.1))
 
 val partition' : ∀A (A → Bool) → List(A) → List(A) × List(A) = partition
 

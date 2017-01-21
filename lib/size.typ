@@ -147,9 +147,11 @@ val rec filter : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) =
 
 val rec partition : ∀A ∀B (A → Bool) → ∀α L(α,A) → L(α,A) × L(α,A) =
   fun f l → case l of
-    [] → ([], [])
-  | x::l → let (l1, l2) = partition f l in
-           if f x then (x::l1 , l2) else (l1, x::l2)
+  | [] → ([], [])
+  | x::l →
+      let α,A such that l : L(α,A) in (* does not guess the size for c *)
+      let ((l1 : L(α,A)), (l2 : L(α,A))) = partition f l in
+      if f x then (x::l1 , l2) else (l1, x::l2)
 
 type L(A) = μ X [Nil | Cons of { hd : A; tl : X}]
 

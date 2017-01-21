@@ -655,8 +655,8 @@ let rec sub_used_ind (_, _, _, _, r) =
 and typ_used_ind (_, _, _, r) =
   let rec fn ptr = match !ptr with
     | Todo              -> []
-    | Direct(_,_,p)     -> typ_used_ind p
-    | Indirect(p1,p2)   -> sub_used_ind p1 @ fn p2
+    | Unroll(_,_,p)     -> typ_used_ind p
+    | Induction(n,p)    -> n :: sub_used_ind p
   in
   match r with
   | Typ_YGen ptr        -> fn ptr
@@ -672,8 +672,6 @@ and typ_used_ind (_, _, _, r) =
   | Typ_Defi   p
   | Typ_Prnt   p
   | Typ_Cnst   p        -> sub_used_ind p
-
-  | Typ_YInd(n, p)      -> n :: sub_used_ind p
 
   | Typ_Func_e (p1, p2) -> typ_used_ind p1 @ typ_used_ind p2
 
@@ -731,8 +729,13 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   in
   let fn ptr = match !ptr with
   | Todo -> axiomN (sprintf "ERROR(Missing inductive proof)") c
-  | Indirect(p1,p2) -> binaryT "⊆" c p1 (typ2proof (os,t,k,Typ_YGen p2))
-  | Direct (schema,tros,p) ->
+  | Induction(n,(os,t,a,_,_ as p))  ->
+     let c' =
+       sprintf (if !latex_mode then "\\left[%s\\right]_%s"
+                else "[%s]_%s") (mkJudgment os t a) (Sct.strInd n)
+     in
+     if is_refl p then hyp c' else binaryT "" c p (hyp c')
+  | Unroll(schema,tros,p) ->
      if List.mem schema.sch_index used_ind then (
        let c0 = mkSchema schema in
        unaryN "G^-_e" c
@@ -764,12 +767,6 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
   | Typ_Yufl p        -> unaryN "Y" c (typ2proof p)
-  | Typ_YInd(n,(os,t,a,_,_ as p))      ->
-     let c' =
-       sprintf (if !latex_mode then "\\left[%s\\right]_%s"
-                else "[%s]_%s") (mkJudgment os t a) (Sct.strInd n)
-     in
-     if is_refl p then hyp c' else binaryT "" c p (hyp c')
 
 and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   fun used_ind (os,t,a,b,r) ->
@@ -854,6 +851,8 @@ let print_kind_def unfold ff kd =
 
 let print_ordi unfold ff o =
   print_ordi unfold ff o; pp_print_flush ff ()
+
+let print_ordis = print_list (print_ordi false) ","
 
 let print_position ff pos =
   let pos = from_opt (map_opt short_pos_to_string pos) "..." in

@@ -41,9 +41,10 @@ type induction_node = Sct.index * (int * ordi) list
 type subtype_ctxt =
   { sub_induction_hyp : schema list
   ; fix_induction_hyp : fix_induction list
+  ; fix_todo          : (unit -> unit) list ref
   ; top_induction     : induction_node
   ; call_graphs       : Sct.call_table
-  ; positive_ordis : ordi list }
+  ; positive_ordis    : ordi list }
 
 (** induction hypothesis for typing recursive programs *)
 and fix_induction =
@@ -51,18 +52,15 @@ and fix_induction =
     * kind                    (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
     * schema list ref
-    * (subtype_ctxt * kind * typ_gen ref) list ref
-      (* The use of references here is to do a breadth-first search for
-         inductive proof. Depth first here is bad, using too large depth.
-         The reference holds proofs yet to be done *)
 
 (** the initial empty context *)
 let empty_ctxt () =
   { sub_induction_hyp = []
   ; fix_induction_hyp = []
-  ; top_induction = (Sct.root, [])
-  ; call_graphs = Sct.init_table ()
-  ; positive_ordis = [] }
+  ; fix_todo          = ref []
+  ; top_induction     = (Sct.root, [])
+  ; call_graphs       = Sct.init_table ()
+  ; positive_ordis    = [] }
 
 
 (****************************************************************************

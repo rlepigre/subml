@@ -7,8 +7,8 @@ open Ast
 open Format
 
 type error =
-  | Typ of term * kind
-  | Sub of term * kind * kind
+  | Typ of ordi list * term * kind
+  | Sub of ordi list * term * kind * kind
   | Msg of string
 
 type errors = error list
@@ -24,7 +24,7 @@ let rec for_all f = function
   | [] -> None
   | x::l -> f x &&& for_all f l
 
-let rec check_sub_proof (_, t, k1, k2, r) =
+let rec check_sub_proof (p, t, k1, k2, r) =
   let res =
     match r with
     | Sub_Delay { contents = p }
@@ -54,13 +54,13 @@ let rec check_sub_proof (_, t, k1, k2, r) =
   in
   match res with
   | None -> None
-  | Some l -> Some (Sub(t,k1,k2) :: l)
+  | Some l -> Some (Sub(p,t,k1,k2) :: l)
 
-and check_typ_proof (_, t, k, r) =
+and check_typ_proof (p, t, k, r) =
   let rec fn ptr = match !ptr with
     | Todo -> Some [ Msg "Cannot find inductive hypothesis" ]
-    | Indirect(p1,p2) -> fn p2 &&&  check_sub_proof p1
-    | Direct(_,_,p) -> check_typ_proof p
+    | Induction(_,p) -> check_sub_proof p
+    | Unroll(_,_,p) -> check_typ_proof p
   in
   let res =
     match r with
@@ -73,7 +73,6 @@ and check_typ_proof (_, t, k, r) =
     | Typ_Yufl   p
     | Typ_Prod_e p        -> check_typ_proof p
 
-    | Typ_YInd (_, p)
     | Typ_Defi   p
     | Typ_Prnt   p
     | Typ_Cnst   p        -> check_sub_proof p
@@ -92,7 +91,7 @@ and check_typ_proof (_, t, k, r) =
   in
   match res with
   | None -> None
-  | Some l -> Some (Typ(t,k) :: l)
+  | Some l -> Some (Typ(p,t,k) :: l)
 
 let check_sub_proof p =
   match check_sub_proof p with
@@ -105,9 +104,12 @@ let check_typ_proof p =
   | Some l -> raise (Error l)
 
 let display_error ch = function
-  | Typ(t,k)     -> fprintf ch "TYP %a : %a\n" (print_term ~give_pos:true false) t
+  | Typ(p,t,k)     -> fprintf ch "TYP %a |- %a : %a\n" (print_term ~give_pos:true false) t
+                                               print_ordis p
                                                (print_kind false) k
-  | Sub(t,k1,k2) -> fprintf ch "SUB %a ⊂ %a\n" (print_kind false) k1
+  | Sub(p,t,k1,k2) -> fprintf ch "SUB %a |- %a ⊂ %a\n"
+                                               print_ordis p
+                                               (print_kind false) k1
                                                (print_kind false) k2
   | Msg(m)       -> fprintf ch "MSG %s" m
 

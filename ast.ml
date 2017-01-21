@@ -249,7 +249,6 @@ and typ_rule =
   | Typ_DSum_i of sub_prf * typ_prf
   | Typ_DSum_e of typ_prf * typ_prf list * typ_prf option
   | Typ_YGen   of typ_gen ref
-  | Typ_YInd   of Sct.index * sub_prf
   | Typ_Yufl   of typ_prf
   | Typ_Hole   (* used by dummy_proof below *)
   | Typ_Error  of string
@@ -257,8 +256,8 @@ and typ_prf =
   ordi list * term * kind * typ_rule
 and typ_gen =
   | Todo
-  | Indirect of sub_prf * typ_gen ref
-  | Direct of schema * (ordi * ordi) list * typ_prf
+  | Induction of Sct.index * sub_prf
+  | Unroll of schema * (ordi * ordi) list * typ_prf
 
 let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
 (** Equality on variables *)
