@@ -346,9 +346,6 @@ let fprint_kind : (bool -> formatter -> kind -> unit) ref =
 let fprint_ordi : (bool -> formatter -> ordi -> unit) ref =
   ref (fun _ -> assert false)
 
-let ftry_fold_def : (kind -> kind) ref =
-  ref (fun _ -> assert false)
-
 (****************************************************************************)
 (** {2 Frequently used types and functions}                                 *)
 (****************************************************************************)

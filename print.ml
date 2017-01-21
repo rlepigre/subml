@@ -184,6 +184,41 @@ and match_ordi : ouvar list -> ordi -> ordi -> bool = fun ouvars p o ->
     | p, k -> strict_eq_ordi p k in
   res
 
+let try_fold_def : kind -> kind = fun k ->
+  let save_debug = !Io.debug in
+  Io.debug := "";
+  let match_def k def = (* TODO: share code with TMLet *)
+    let kargs = Array.init def.tdef_karity (fun n -> new_kuvar ()) in
+    let oargs = Array.init def.tdef_oarity (fun n -> new_ouvar ()) in
+    let lkargs = List.map (function KUVar(u,_) -> u | _ -> assert false)
+      (Array.to_list kargs) in
+    let loargs = List.map (function OUVar(u,_) -> u | _ -> assert false)
+      (Array.to_list oargs) in
+    let k' = KDefi(def,oargs,kargs) in
+    if match_kind lkargs loargs k' k then k' else raise Not_found;
+  in
+  let res =
+    match repr k with
+    | KDefi _ -> k
+    | _ ->
+       let defs = Hashtbl.fold (fun _ a l -> a::l) typ_env [] in
+       let defs = List.sort
+         (fun d1 d2 -> compare (d1.tdef_karity + d1.tdef_oarity)
+                               (d2.tdef_karity + d2.tdef_oarity)) defs
+       in
+       let rec fn = function
+         | [] -> k
+         | def::l ->
+            try
+              match_def k def
+            with
+              Not_found -> fn l
+       in
+       fn defs
+  in
+  Io.debug := save_debug;
+  res
+
 (****************************************************************************)
 (*{2                        Printing of ordinals                           }*)
 (****************************************************************************)
@@ -260,7 +295,7 @@ and print_kind unfold wrap ff t =
   let pkind = print_kind false false in
   let pordi = print_ordi false in
   let pkindw = print_kind false true in
-  let t = (if unfold then fun x -> x else !ftry_fold_def) (repr t) in
+  let t = (if unfold then fun x -> x else try_fold_def) (repr t) in
   match t with
   | KVari(x) ->
       pp_print_string ff (name_of x)

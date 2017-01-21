@@ -78,6 +78,99 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
         let tros = List.map2 fn os new_os in
         (New (Some (new_sch, a, b, tros)), ctxt)
 
+let search_induction subtype prfPtr depth ctxt t c0 hyps =
+  (* fn search for an applicable inductive hypothesis *)
+  Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
+    (print_kind false) c0 print_positives ctxt;
+
+  let rec fn acc = function
+    | [] -> acc
+    | schema :: hyps ->
+       let time = Timed.Time.save () in
+       try
+         let (ov, pos, _, a) = recompose schema in
+         Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
+           Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
+           print_positives { ctxt with non_zero = pos};
+           (* need full subtype to rollback unification of variables if it fails *)
+         let prf = subtype ctxt t a c0 in
+         if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
+         check_sub_proof prf;
+         if not (List.for_all (fun o1 ->
+           match orepr o1 with OConv | OSucc _ -> true | _ ->
+             List.exists (eq_ordi ctxt.non_zero o1)
+               ctxt.non_zero) pos)
+         then raise Exit;
+         Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
+           Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
+           print_positives { ctxt with non_zero = pos};
+         fn ((schema,prf, build_call ctxt schema.sch_index ov true) :: acc) hyps
+       with Exit | Error _ ->
+         Timed.Time.rollback time;
+         fn acc hyps
+  in
+  if depth > 0 then
+       (* If the depth is not zero, only apply the above heuristic, but
+          do not search really the induction hypothesis *)
+    raise Not_found
+  else
+    let calls = fn [] hyps in
+    let calls = List.map (fun (schema,prf,(index,_,m1,_ as call)) ->
+      let (a,b as s) = score_mat m1 in
+      Io.log_mat "score: (%f,%f)\n%!" a b;
+      (s, prf, call)) calls in
+    Io.log_mat "\n%!";
+    let calls = List.sort (fun (s1,_,_) (s2,_,_) -> compare s2 s1) calls in
+    match calls with
+    | (_,prf,(index,_,_,_ as call))::_ ->
+       Sct.new_call ctxt.call_graphs call;
+      prfPtr := Induction(index,prf)
+    | [] -> Io.log_typ "no induction hyp found\n%!"; raise Not_found
+
+
+(* Check if the typing of a fixpoint comes from an induction hypothesis *)
+let check_fix type_check subtype prfPtr ctxt t depth f c0 =
+  if depth < 0 then () else
+  (* filter the relevant hypothesis *)
+  let hyps = List.filter (function (f',_) -> f' == f) ctxt.fix_ihs in
+  let ctxt,hyps = match hyps with
+    | [(_,l)] -> ctxt, l
+    | [] ->
+       let hyps = ref [] in
+       let ctxt =
+         { ctxt with
+           fix_ihs = (f,hyps)::ctxt.fix_ihs;
+         }
+       in
+       ctxt, hyps
+    | _ -> assert false
+  in
+  try
+    search_induction subtype prfPtr depth ctxt t c0 !hyps
+  with Not_found ->
+    let manual = has_leading_ord_quantifier c0 in
+    let depth = if manual then depth + 1 else depth in
+    (* otherwise we unroll once more, and type-check *)
+    let e = TFixY(true,depth-1,f) in
+    let t0 = Pos.none e in
+    let t =  subst f e in
+    let (schema, os) =
+      match generalise ~manual ctxt.non_zero (SchTerm t0) c0 ctxt.call_graphs with
+      | None   -> assert false
+      | Some r -> r
+    in
+    if os <> [] then hyps := schema :: !hyps;
+    let (os0, tpos, _, c) = recompose_term ~general:false schema in
+    let tros = List.combine (List.map snd os) (List.map snd os0) in
+    let fnum = schema.sch_index in
+    Io.log_ind "Adding induction hyp (1) %a:\n  %a => %a\n%!"
+      Sct.prInd fnum (print_kind false) c0 (print_kind false) c;
+    add_call ctxt fnum os false;
+    let ctxt = { ctxt with top_induction = (fnum, os0); non_zero = tpos} in
+    let prf = type_check ctxt t c in
+    let prf = (ctxt.non_zero, t0, c, Typ_Yufl prf) in
+    prfPtr := Unroll(schema,tros, prf)
+
 
 let fixpoint_depth = ref 1 (* TODO move *)
 
@@ -567,7 +660,7 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TFixY(do_subsume,depth,f) ->
          let prf = ref Todo in
          ctxt.fix_todo := (fun () ->
-           check_fix prf ctxt t depth f c) :: !(ctxt.fix_todo);
+           check_fix type_check subtype prf ctxt t depth f c) :: !(ctxt.fix_todo);
          Typ_YGen prf
       | TCnst(_,a,b) ->
          let p = subtype ctxt t a c in
@@ -580,98 +673,6 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | Occur_check    -> Typ_Error "occur_check"
     | Sys.Break      -> interrupted t.pos
   in (ctxt.non_zero, t, c, r)
-
-and search_induction prfPtr depth ctxt t c0 hyps =
-  (* fn search for an applicable inductive hypothesis *)
-  Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
-    (print_kind false) c0 print_positives ctxt;
-
-  let rec fn acc = function
-    | [] -> acc
-    | schema :: hyps ->
-       let time = Timed.Time.save () in
-       try
-         let (ov, pos, _, a) = recompose schema in
-         Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
-           Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-           print_positives { ctxt with non_zero = pos};
-           (* need full subtype to rollback unification of variables if it fails *)
-         let prf = subtype ctxt t a c0 in
-         if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
-         check_sub_proof prf;
-         if not (List.for_all (fun o1 ->
-           match orepr o1 with OConv | OSucc _ -> true | _ ->
-             List.exists (eq_ordi ctxt.non_zero o1)
-               ctxt.non_zero) pos)
-         then raise Exit;
-         Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-           Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-           print_positives { ctxt with non_zero = pos};
-         fn ((schema,prf, build_call ctxt schema.sch_index ov true) :: acc) hyps
-       with Exit | Error _ ->
-         Timed.Time.rollback time;
-         fn acc hyps
-  in
-  if depth > 0 then
-       (* If the depth is not zero, only apply the above heuristic, but
-          do not search really the induction hypothesis *)
-    raise Not_found
-  else
-    let calls = fn [] hyps in
-    let calls = List.map (fun (schema,prf,(index,_,m1,_ as call)) ->
-      let (a,b as s) = score_mat m1 in
-      Io.log_mat "score: (%f,%f)\n%!" a b;
-      (s, prf, call)) calls in
-    Io.log_mat "\n%!";
-    let calls = List.sort (fun (s1,_,_) (s2,_,_) -> compare s2 s1) calls in
-    match calls with
-    | (_,prf,(index,_,_,_ as call))::_ ->
-       Sct.new_call ctxt.call_graphs call;
-      prfPtr := Induction(index,prf)
-    | [] -> Io.log_typ "no induction hyp found\n%!"; raise Not_found
-
-(* Check if the typing of a fixpoint comes from an induction hypothesis *)
-and check_fix prfPtr ctxt t depth f c0 =
-  if depth < 0 then () else
-  (* filter the relevant hypothesis *)
-  let hyps = List.filter (function (f',_) -> f' == f) ctxt.fix_ihs in
-  let ctxt,hyps = match hyps with
-    | [(_,l)] -> ctxt, l
-    | [] ->
-       let hyps = ref [] in
-       let ctxt =
-         { ctxt with
-           fix_ihs = (f,hyps)::ctxt.fix_ihs;
-         }
-       in
-       ctxt, hyps
-    | _ -> assert false
-  in
-  try
-    search_induction prfPtr depth ctxt t c0 !hyps
-  with Not_found ->
-    let manual = has_leading_ord_quantifier c0 in
-    let depth = if manual then depth + 1 else depth in
-    (* otherwise we unroll once more, and type-check *)
-    let e = TFixY(true,depth-1,f) in
-    let t0 = Pos.none e in
-    let t =  subst f e in
-    let (schema, os) =
-      match generalise ~manual ctxt.non_zero (SchTerm t0) c0 ctxt.call_graphs with
-      | None   -> assert false
-      | Some r -> r
-    in
-    if os <> [] then hyps := schema :: !hyps;
-    let (os0, tpos, _, c) = recompose_term ~general:false schema in
-    let tros = List.combine (List.map snd os) (List.map snd os0) in
-    let fnum = schema.sch_index in
-    Io.log_ind "Adding induction hyp (1) %a:\n  %a => %a\n%!"
-      Sct.prInd fnum (print_kind false) c0 (print_kind false) c;
-    add_call ctxt fnum os false;
-    let ctxt = { ctxt with top_induction = (fnum, os0); non_zero = tpos} in
-    let prf = type_check ctxt t c in
-    let prf = (ctxt.non_zero, t0, c, Typ_Yufl prf) in
-    prfPtr := Unroll(schema,tros, prf)
 
 let subtype : ?ctxt:ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table
   = fun ?ctxt ?term a b ->
@@ -713,40 +714,3 @@ let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
     let k = List.fold_left (fun acc (v,_) -> KKAll (bind_kuvar v acc)) k ul in
     let k = List.fold_left (fun acc v -> KOAll (bind_ouvar v acc)) k ol in
     (k, prf, calls)
-
-let try_fold_def : kind -> kind = fun k ->
-  let save_debug = !Io.debug in
-  Io.debug := "";
-  let match_def k def = (* TODO: share code with TMLet *)
-    let kargs = Array.init def.tdef_karity (fun n -> new_kuvar ()) in
-    let oargs = Array.init def.tdef_oarity (fun n -> new_ouvar ()) in
-    let lkargs = List.map (function KUVar(u,_) -> u | _ -> assert false)
-      (Array.to_list kargs) in
-    let loargs = List.map (function OUVar(u,_) -> u | _ -> assert false)
-      (Array.to_list oargs) in
-    let k' = KDefi(def,oargs,kargs) in
-    if match_kind lkargs loargs k' k then k' else raise Not_found;
-  in
-  let res =
-    match repr k with
-    | KDefi _ -> k
-    | _ ->
-       let defs = Hashtbl.fold (fun _ a l -> a::l) typ_env [] in
-       let defs = List.sort
-         (fun d1 d2 -> compare (d1.tdef_karity + d1.tdef_oarity)
-                               (d2.tdef_karity + d2.tdef_oarity)) defs
-       in
-       let rec fn = function
-         | [] -> k
-         | def::l ->
-            try
-              match_def k def
-            with
-              Not_found -> fn l
-       in
-       fn defs
-  in
-  Io.debug := save_debug;
-  res
-
-let _ = Ast.ftry_fold_def := try_fold_def
