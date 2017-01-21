@@ -80,8 +80,7 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
 
 let search_induction subtype prfPtr depth ctxt t c0 hyps =
   (* fn search for an applicable inductive hypothesis *)
-  Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
-    (print_kind false) c0 print_positives ctxt;
+  Io.log_typ "searching IH (1):\n  %a %a\n%!" Print.kind c0 print_nz ctxt;
 
   let rec fn acc = function
     | [] -> acc
@@ -91,7 +90,7 @@ let search_induction subtype prfPtr depth ctxt t c0 hyps =
          let (ov, pos, _, a) = recompose schema in
          Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
            Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-           print_positives { ctxt with non_zero = pos};
+           print_nz { ctxt with non_zero = pos};
            (* need full subtype to rollback unification of variables if it fails *)
          let prf = subtype ctxt t a c0 in
          if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
@@ -103,7 +102,7 @@ let search_induction subtype prfPtr depth ctxt t c0 hyps =
          then raise Exit;
          Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
            Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-           print_positives { ctxt with non_zero = pos};
+           print_nz { ctxt with non_zero = pos};
          fn ((schema,prf, build_call ctxt schema.sch_index ov true) :: acc) hyps
        with Exit | Error _ ->
          Timed.Time.rollback time;
@@ -177,7 +176,7 @@ let fixpoint_depth = ref 1 (* TODO move *)
 let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 ->
   Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
     (print_term false) t0 (print_kind false) a0 (print_kind false) b0
-    print_positives ctxt0;
+    print_nz ctxt0;
   let a = full_repr a0 in
   let b = full_repr b0 in
   if eq_kind ctxt0.non_zero a b then
@@ -542,8 +541,7 @@ and is_subtype ctxt t a b =
 
 and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
-  Io.log_typ "%a :\n  %a\n  %a\n\n%!"
-    (print_term false) t (print_kind false) c print_positives ctxt;
+  Io.log_typ "%a :\n  %a\n  %a\n\n%!" Print.term t Print.kind c print_nz ctxt;
   let r =
     try
       match t.elt with
@@ -674,43 +672,44 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | Sys.Break      -> interrupted t.pos
   in (ctxt.non_zero, t, c, r)
 
-let subtype : ?ctxt:ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table
-  = fun ?ctxt ?term a b ->
-    let term = unbox (generic_tcnst (box a) (box b)) in
-    let ctxt =
-      {  (empty_ctxt ()) with
-          call_graphs = Sct.init_table ()
-        ; top_induction = (Sct.root, [])
-      }
-    in
-    let p = subtype ctxt term a b in
+(** [subtype t a b] checks the pointed subtyping relation "t ∈ A ⊂ B". Since
+    the term [t] is optional, a generic witness is used when [t = None]. The
+    function returns a subtyping proof together with the successful instance
+    of the SCT. *)
+let subtype : term option -> kind -> kind -> sub_prf * Sct.t = fun t a b ->
+  let t = from_opt t (unbox (generic_tcnst (box a) (box b))) in
+  let ctxt = empty_ctxt () in
+  try
+    let p = subtype ctxt t a b in
     let call_graphs = Sct.inline ctxt.call_graphs in
     if not (Sct.sct call_graphs) then loop_error None;
     check_sub_proof p;
+    reset_all ();
     (p, call_graphs)
+  with e -> reset_all (); raise e
 
-let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
-  fun t k ->
-    let k = from_opt' k new_kuvar in
-    let ctxt = empty_ctxt () in
-    let (prf, calls) =
-      try
-        let p = type_check ctxt t k in
-        while !(ctxt.fix_todo) != [] do
-          let l = !(ctxt.fix_todo) in
-          ctxt.fix_todo := [];
-          List.iter (fun f -> f ()) l
-        done;
-        check_typ_proof p;
-    let call_graphs = Sct.inline ctxt.call_graphs in
-        if not (Sct.sct call_graphs) then loop_error t.pos;
-        reset_all ();
-        (p, call_graphs)
-      with e -> reset_all (); raise e
-    in
-    let fn (v, os) = is_unset v && not (uvar_use_state v os) in
-    let ul = List.filter fn (kuvar_list k) in
-    let ol = ouvar_list k in
-    let k = List.fold_left (fun acc (v,_) -> KKAll (bind_kuvar v acc)) k ul in
-    let k = List.fold_left (fun acc v -> KOAll (bind_ouvar v acc)) k ol in
-    (k, prf, calls)
+(** [type_check t ko] type-checks the term [t] against the optional type [k]
+    (or a unification variable). The function returns a type for [t] and the
+    corresponding typing proof and successful instance of the SCT. When the
+    function is called with [ko = Some k], the returned type is [k]. *)
+let type_check : term -> kind option -> kind * typ_prf * Sct.t = fun t k ->
+  let k = from_opt' k new_kuvar in
+  let ctxt = empty_ctxt () in
+  let (prf, calls) =
+    try
+      let p = type_check ctxt t k in
+      run_fix_todo ctxt;
+      check_typ_proof p;
+      let call_graphs = Sct.inline ctxt.call_graphs in
+      if not (Sct.sct call_graphs) then loop_error t.pos;
+      reset_all ();
+      (p, call_graphs)
+    with e -> reset_all (); raise e
+  in
+  (* Generalisation. *)
+  let fn (v, os) = is_unset v && not (uvar_use_state v os) in
+  let kvs = List.filter fn (kuvar_list k) in
+  let ovs = ouvar_list k in
+  let kfn acc v = KKAll (bind_kuvar (fst v) acc) in
+  let ofn acc v = KOAll (bind_ouvar v acc) in
+  (List.fold_left ofn (List.fold_left kfn k kvs) ovs, prf, calls)

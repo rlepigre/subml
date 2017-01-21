@@ -60,6 +60,13 @@ let empty_ctxt () =
   ; call_graphs   = Sct.init_table ()
   ; non_zero      = [] }
 
+(** run the registered functions. *)
+let rec run_fix_todo : ctxt -> unit = fun ctxt ->
+  match !(ctxt.fix_todo) with
+  | [] -> ()
+  | ls -> ctxt.fix_todo := [];
+          List.iter (fun f -> f ()) ls;
+          run_fix_todo ctxt
 
 (****************************************************************************
  *                               SCT functions                              *
@@ -192,7 +199,7 @@ let rec dot_proj t k s = match full_repr k with
      raise Not_found
 (* FIXME: end of the function which certainly miss cases *)
 
-let print_positives ff ctxt =
+let print_nz ff ctxt =
   let p_aux = print_ordi false in
   match ctxt.non_zero with
       | [] -> ()

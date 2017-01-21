@@ -32,6 +32,7 @@ type call = index * index * cmp array array * bool
 
 (** A list of calls to be constructed then checked *)
 type call_table
+type t = call_table
 
 val init_table : unit -> call_table
 val copy : call_table -> call_table

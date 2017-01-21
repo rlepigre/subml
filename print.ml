@@ -880,6 +880,7 @@ let print_kind unfold ff t =
   print_kind unfold false ff t; pp_print_flush ff ()
 
 let kind ff k = print_kind false ff k
+let term ff t = print_term false ff t
 
 let _ = fprint_kind := print_kind; fprint_term := print_term
 

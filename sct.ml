@@ -53,6 +53,8 @@ type call_table =
     mutable calls : calls
   }
 
+type t = call_table
+
 (** Initialisation of a new function table *)
 let init_table () =
   { current = 0

@@ -408,7 +408,7 @@ and latex_atom =
   | hash "check" (a,b):sub "#" ->
       let a = unbox (unsugar_kind empty_env a) in
       let b = unbox (unsugar_kind empty_env b) in
-      let (prf, cg) = subtype a b in
+      let (prf, cg) = subtype None a b in
       Latex.SProof (prf, cg)
   | hash br:int_lit?[0] ":" id:lident "#" ->
       Latex.Kind (br, false, (Hashtbl.find val_env id).ttype)
@@ -527,7 +527,7 @@ let new_val : flag -> name -> pkind option -> pterm -> unit = fun fg nm k t ->
 let check_sub : popt -> flag -> pkind -> pkind -> unit = fun pos flag a b ->
   let a = unbox (unsugar_kind empty_env a) in
   let b = unbox (unsugar_kind empty_env b) in
-  (try ignore (check pos flag (subtype a) b) with OK -> ());
+  (try ignore (check pos flag (subtype None a) b) with OK -> ());
   reset_epsilon_tbls ()
 
 (* Evaluate a term. *)
