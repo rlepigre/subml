@@ -532,14 +532,14 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
          | Occur_check -> (ctxt0.non_zero, t0, a0, b0, Sub_Error "Occur_check")
 
 (** A boolean test for subtyping *)
-and is_subtype ctxt t a b =
+let is_subtype ctxt t a b =
   Timed.pure_test (fun () ->
     (** protect the call graph *)
     let ctxt = { ctxt with call_graphs = Sct.copy ctxt.call_graphs} in
     let prf = subtype ctxt t a b in
     try check_sub_proof prf; true with Error _ -> false) ()
 
-and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
+let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
   Io.log_typ "%a :\n  %a\n  %a\n\n%!" Print.term t Print.kind c print_nz ctxt;
   let r =
@@ -549,8 +549,8 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p1 = subtype ctxt t a c in
          let p2 = type_check ctxt t a in
          Typ_Coer(p1, p2)
-      | TMLet(b,x,bt) ->
-         let k =
+      | TMLet(bk,x,bt) ->
+         let kx =
            match x with
            | None                       -> c
            | Some({elt = TCnst(_,c,_)}) -> c
@@ -558,13 +558,15 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
            (* NOTE other cases not allowed by parser *)
            | Some(_)                    -> assert false
          in
-         let oargs = Array.init (mbinder_arity b) (fun _ -> new_ouvar ()) in
-         let b = msubst b oargs in
-         let kargs = Array.init (mbinder_arity b) (fun _ -> new_kuvar ()) in
-         let k' = msubst b kargs in
+         let (oa, ka) = mmbinder_arities bk OConv in
+         assert((oa, ka) = mmbinder_arities bt OConv);
+         let oargs = Array.init oa (fun _ -> new_ouvar ()) in
+         let kargs = Array.init ka (fun _ -> new_kuvar ()) in
+         let k = mmsubst bk oargs kargs in
          let t = mmsubst bt oargs kargs in
-         if is_subtype ctxt (from_opt x t) k k' then
-           Typ_Nope(type_check ctxt t c)
+         if is_subtype ctxt (from_opt x t) kx k then
+           let p = type_check ctxt t c in
+           Typ_Nope(p)
          else
            type_error "Type matching failed"
       | TAbst(ao,f) ->
