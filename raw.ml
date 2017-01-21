@@ -42,7 +42,7 @@ and pterm' =
   | PCons of string * pterm option
   | PCase of pterm * (string * ppat * pterm) list * (ppat * pterm) option
   | PPrnt of string
-  | PFixY of strloc * bool * int * pterm
+  | PFixY of strloc * int * pterm
 and ppat =
   | Simple of (strloc * pkind option) option
   | Record of (string * (strloc * pkind option)) list
@@ -55,7 +55,7 @@ let list_cons _loc t l =
   in_pos _loc (PCons("Cons", Some c))
 
 let dummy_case_var _loc =
-  (build_pos _loc "", Some(Pos.none (PProd [])))
+  (Pos.make _loc "", Some(Pos.none (PProd [])))
 
 (* "t; u" := "(fun (_ : unit) ↦ u) t" *)
 let sequence _loc t u =
@@ -68,8 +68,8 @@ let pfixY (id, ko) _loc n t =
     | Some n -> n
   in
   match ko with
-  | None   -> in_pos _loc (PFixY(id, n >= 0, abs n, t))
-  | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, n >= 0, abs n, t)), k))
+  | None   -> in_pos _loc (PFixY(id, abs n, t))
+  | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, abs n, t)), k))
 
 let rec padd _loc o n =
   if n <= 0 then o else in_pos _loc (PSucc(padd _loc o (n-1)))
@@ -82,7 +82,7 @@ let apply_rpat c x t =
   match x with
   | Simple x ->
      let x = from_opt x (dummy_case_var t.pos) in
-     Pos.build_pos t.pos (PLAbs([x],t))
+     Pos.make t.pos (PLAbs([x],t))
   | Record r ->
      let is_cons r =
        c = "Cons" && List.length r = 2 && List.mem_assoc "hd" r && List.mem_assoc "tl" r
@@ -95,13 +95,13 @@ let apply_rpat c x t =
          List.fold_left (fun acc (l,(x,_)) ->
            acc ^ l ^ "=" ^ x.elt ^ ";") "{" r ^ "}"
      in
-     let v = Pos.build_pos t.pos (PLVar name) in
+     let v = Pos.make t.pos (PLVar name) in
      let t =
        List.fold_left (fun acc (l,x) ->
-         (build_pos t.pos (PAppl(build_pos t.pos (PLAbs([x],acc)),
-                              build_pos t.pos (PProj(v, l)))))) t r
+         (Pos.make t.pos (PAppl(Pos.make t.pos (PLAbs([x],acc)),
+                              Pos.make t.pos (PProj(v, l)))))) t r
      in
-     build_pos t.pos (PLAbs([build_pos t.pos name, None],t))
+     Pos.make t.pos (PLAbs([Pos.make t.pos name, None],t))
 
 let pcond _loc c t e =
   let l = [("Tru", Simple None, t); ("Fls", Simple None, e)] in
@@ -209,7 +209,7 @@ let rec kind_variable : occur -> env -> strloc -> pordi array -> pkind array -> 
 and unsugar_ordinal : ?pos:occur -> env -> pordi -> obox = fun ?(pos=sPos) env po ->
   match po.elt with
   | PConv   -> oconv
-  | PVari s -> ordinal_variable pos env (build_pos po.pos s)
+  | PVari s -> ordinal_variable pos env (Pos.make po.pos s)
   | PSucc o -> osucc (unsugar_ordinal ~pos env o)
 
 and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
@@ -218,7 +218,7 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   | PFunc(a,b)   ->
      kfunc (unsugar_kind ~pos:(neg pos) env a) (unsugar_kind ~pos env b)
   | PTVar(s,os,ks) ->
-     kind_variable pos env (build_pos pk.pos s)
+     kind_variable pos env (Pos.make pk.pos s)
        (Array.of_list os) (Array.of_list ks)
   | PKAll(x,k)   -> let f xk =
                       unsugar_kind ~pos (add_kind x xk Non env) k
@@ -279,12 +279,12 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
      let x =
        match x with
        | "" -> None
-       | x  -> Some (term_variable env (build_pos pt.pos x))
+       | x  -> Some (term_variable env (Pos.make pt.pos x))
      in
      let bt os ks = unsugar_term (mkenv os ks) t in
      tmlet pt.pos osn ksn bk x bt
   | PAppl(t,u)  -> tappl pt.pos (unsugar_term env t) (unsugar_term env u)
-  | PLVar(x)    -> term_variable env (build_pos pt.pos x)
+  | PLVar(x)    -> term_variable env (Pos.make pt.pos x)
   | PPrnt(s)    -> tprnt pt.pos s
   | PCons(c,uo) -> let u =
                      match uo with
@@ -297,5 +297,5 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    tcase pt.pos (unsugar_term env t) (List.map f cs) (map_opt g d)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
-  | PFixY(x,b,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in
-                   tfixy pt.pos b n x f
+  | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in
+                   tfixy pt.pos n x f

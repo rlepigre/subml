@@ -26,8 +26,8 @@ type 'a loc =
 (** Localised string type (widely used). *)
 type strloc = string loc
 
-(** [build_pos pos elt] associates the position [pos] to [elt]. *)
-let build_pos : popt -> 'a -> 'a loc =
+(** [make pos elt] associates the position [pos] to [elt]. *)
+let make : popt -> 'a -> 'a loc =
   fun pos elt -> { elt ; pos }
 
 (** [in_pos pos elt] associates the position [pos] to [elt]. *)

@@ -437,10 +437,10 @@ and pkind_def unfold ff kd =
   fprintf ff "type %s" name;
   let pkind = print_kind unfold false in
   let onames = mbinder_names kd.tdef_value in
-  let os = new_mvar mk_free_ovari onames in
+  let os = new_mvar mk_free_o onames in
   let k = msubst kd.tdef_value (Array.map free_of os) in
   let knames = mbinder_names k in
-  let ks = new_mvar mk_free_kvari knames in
+  let ks = new_mvar mk_free_k knames in
   let k = msubst k (Array.map free_of ks) in
   assert(Array.length knames = Array.length kd.tdef_kvariance);
   assert(Array.length onames = Array.length kd.tdef_ovariance);
@@ -629,7 +629,7 @@ and print_term ?(give_pos=false) unfold wrap ff t =
        pp_print_string ff name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
-  | TFixY(_,_,f) ->
+  | TFixY(_,f) ->
      let x = binder_name f in
      if unfold then
        let t = subst f (TVars x) in

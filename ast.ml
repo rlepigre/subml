@@ -155,11 +155,10 @@ and term' =
   | TCons of string * term                             (** Variant. *)
   | TCase of term * (string * term) list * term option (** Case analysis. *)
   | TDefi of tdef                                      (** Defined term. *)
-  | TFixY of bool * int * (term', term) binder
-  (** Fixpoint combinator. the boolean and integer are indications for the
-      termination checker. The former enables subsumption of induction
-      hypothesis and the latter indicates the number of unrolling to build
-      the induction hypothesis. *)
+  | TFixY of int * (term', term) binder
+  (** Fixpoint combinator. the integer is an indications for the termination
+      checker. It indicates the number of unrolling to build the induction
+      hypothesis. *)
 
   (* Type annotations. They are not part of the semantics, and they are only
      used to guide the type-checking algorithm. *)
@@ -195,8 +194,7 @@ and schema =
   { sch_index : Sct.index (** index of the schema in the sct call graph *)
   ; sch_posit : int list  (** the index of positive ordinals *)
   ; sch_relat : (int * int) list (** relation between ordinals *)
-  ; sch_judge : (ordi, term_or_kind * kind) mbinder (** the kinds of the judgement *)
-  }
+  ; sch_judge : (ordi, term_or_kind * kind) mbinder (** judgement *) }
 
 and term_or_kind =
   | SchTerm of term
@@ -372,11 +370,11 @@ type ovar = ordi variable
 type obox = ordi bindbox
 
 (** Kind variable management. *)
-let mk_free_kvari : kind variable -> kind =
+let mk_free_k : kind variable -> kind =
   fun x -> KVari(x)
 
 let new_kvari : string -> kind variable =
-  new_var mk_free_kvari
+  new_var mk_free_k
 
 (** Term variable management. *)
 let mk_free_tvari : term' variable -> term' =
@@ -386,11 +384,11 @@ let new_tvari : string -> term' variable =
   new_var mk_free_tvari
 
 (** Ordinal variable management. *)
-let mk_free_ovari : ovar -> ordi =
+let mk_free_o : ovar -> ordi =
   fun o -> OVari(o)
 
 let new_ovari : string -> ovar =
-  new_var mk_free_ovari
+  new_var mk_free_o
 
 (****************************************************************************)
 (** {2 Smart constructors for ordinals}                                     *)
@@ -431,19 +429,19 @@ let kdsum : (string * kbox) list -> kbox =
 
 let kkall : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KKAll(b)) (vbind mk_free_kvari x f)
+    box_apply (fun b -> KKAll(b)) (vbind mk_free_k x f)
 
 let kkexi : string -> (kvar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KKExi(b)) (vbind mk_free_kvari x f)
+    box_apply (fun b -> KKExi(b)) (vbind mk_free_k x f)
 
 let koall : string -> (ovar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KOAll(b)) (vbind mk_free_ovari x f)
+    box_apply (fun b -> KOAll(b)) (vbind mk_free_o x f)
 
 let koexi : string -> (ovar -> kbox) -> kbox =
   fun x f ->
-    box_apply (fun b -> KOExi(b)) (vbind mk_free_ovari x f)
+    box_apply (fun b -> KOExi(b)) (vbind mk_free_o x f)
 
 let kdefi : kdef -> obox array -> kbox array -> kbox =
   fun td os ks ->
@@ -452,12 +450,12 @@ let kdefi : kdef -> obox array -> kbox array -> kbox =
 
 let kfixn : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
-    let b = vbind mk_free_kvari x f in
+    let b = vbind mk_free_k x f in
     box_apply2 (fun o b -> KFixN(o,b)) o b
 
 let kfixm : string -> obox -> (kvar -> kbox) -> kbox =
   fun x o f ->
-    let b = vbind mk_free_kvari x f in
+    let b = vbind mk_free_k x f in
     box_apply2 (fun o b -> KFixM(o,b)) o b
 
 let kuvar : kuvar -> obox array -> kbox =
@@ -466,13 +464,13 @@ let kuvar : kuvar -> obox array -> kbox =
 
 let kucst : string -> tbox -> (kvar -> kbox) -> kbox =
   fun x t f ->
-    let b = vbind mk_free_kvari x f in
+    let b = vbind mk_free_k x f in
     let cl = is_closed t && is_closed b in
     box_apply2 (fun t b -> KUCst(t,b,cl)) t b
 
 let kecst : string -> tbox -> (kvar -> kbox) -> kbox =
   fun x t f ->
-    let b = vbind mk_free_kvari x f in
+    let b = vbind mk_free_k x f in
     let cl = is_closed t && is_closed b in
     box_apply2 (fun t b -> KECst(t,b,cl)) t b
 
@@ -499,7 +497,74 @@ let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
   (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar)
 
 (****************************************************************************)
-(** {2 Definition of widely used types}                                     *)
+(** {2 Smart constructors for terms}                                        *)
+(****************************************************************************)
+
+let tcoer : Pos.popt -> tbox -> kbox -> tbox =
+  fun p ->
+    box_apply2 (fun t k -> Pos.make p (TCoer(t,k)))
+
+let tvari : Pos.popt -> term' variable -> tbox =
+  fun p x ->
+    box_apply (Pos.make p) (box_of_var x)
+
+let tabst : Pos.popt -> kbox option -> Pos.strloc -> (tvar -> tbox) -> tbox =
+  fun p ko x f ->
+    let b = vbind mk_free_tvari Pos.(x.elt) f in
+    box_apply2 (fun ko b -> Pos.make p (TAbst(ko,b))) (box_opt ko) b
+
+let tappl : Pos.popt -> tbox -> tbox -> tbox =
+  fun p ->
+    box_apply2 (fun t u -> Pos.make p (TAppl(t,u)))
+
+let treco : Pos.popt -> (string * tbox) list -> tbox =
+  fun p fs ->
+    let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
+    box_apply (fun fs -> Pos.make p (TReco(fs))) (box_list fs)
+
+let tproj : Pos.popt -> tbox -> string -> tbox =
+  fun p t l ->
+    box_apply (fun t -> Pos.make p (TProj(t,l))) t
+
+let tcase : Pos.popt -> tbox -> (string * tbox) list -> tbox option -> tbox =
+  fun p t cs cd ->
+    let fn (c,t) = box_apply (fun t -> (c,t)) t in
+    let cs = box_list (List.map fn cs) in
+    box_apply3 (fun t cs cd -> Pos.make p (TCase(t,cs,cd))) t cs (box_opt cd)
+
+let tcons : Pos.popt -> string -> tbox -> tbox =
+  fun p c t ->
+    box_apply (fun t -> Pos.make p (TCons(c,t))) t
+
+let tdefi : Pos.popt -> tdef -> tbox =
+  fun p vd ->
+    box (Pos.make p (TDefi(vd)))
+
+let tprnt : Pos.popt -> string -> tbox =
+  fun p s ->
+    box (Pos.make p (TPrnt(s)))
+
+let tfixy : Pos.popt -> int -> Pos.strloc -> (tvar -> tbox) -> tbox =
+  fun p n x f ->
+    let b = vbind mk_free_tvari Pos.(x.elt) f in
+    box_apply (fun b -> Pos.make p (TFixY(n,b))) b
+
+let tmlet : Pos.popt -> string array -> string array ->
+            (ovar array -> kvar array -> kbox) -> tbox option ->
+            (ovar array -> kvar array -> tbox) -> tbox =
+  fun p os ks kf x tf ->
+    let k = mvbind mk_free_o os (fun x -> mvbind mk_free_k ks (kf x)) in
+    let o = mvbind mk_free_o os (fun x -> mvbind mk_free_k ks (tf x)) in
+    box_apply3 (fun b x t -> Pos.make p (TMLet(b,x,t))) k (box_opt x) o
+
+let tcnst : (term', term) binder -> kbox -> kbox -> tbox =
+  (* NOTE a term witness needs to be closed. *)
+  fun s a b ->
+    assert (is_closed a && is_closed b);
+    box_apply Pos.none (box_apply2 (fun a b -> TCnst(s,a,b)) a b)
+
+(****************************************************************************)
+(** {2 Definition of common types and terms}                                *)
 (****************************************************************************)
 
 let bot : kind =
@@ -508,109 +573,9 @@ let bot : kind =
 let top : kind =
   unbox (kkexi "X" (fun x -> box_of_var x))
 
-(****************************************************************************)
-(** {2 Functional constructors with position for terms}                     *)
-(****************************************************************************)
-
-let tcoer_p : Pos.popt -> term -> kind -> term =
-  fun p t k -> Pos.build_pos p (TCoer(t,k))
-
-let tvari_p : Pos.popt -> term' variable -> term =
-  fun p x -> Pos.build_pos p (TVari(x))
-
-let tabst_p : Pos.popt -> kind option -> (term', term) binder -> term =
-  fun p ko b -> Pos.build_pos p (TAbst(ko,b))
-
-let tappl_p : Pos.popt -> term -> term -> term =
-  fun p t u -> Pos.build_pos p (TAppl(t,u))
-
-let treco_p : Pos.popt -> (string * term) list -> term =
-  fun p fs -> Pos.build_pos p (TReco(fs))
-
-let tproj_p : Pos.popt -> term -> string -> term =
-  fun p t l -> Pos.build_pos p (TProj(t,l))
-
-let tcons_p : Pos.popt -> string -> term -> term =
-  fun p c t -> Pos.build_pos p (TCons(c,t))
-
-let tcase_p : Pos.popt -> term -> (string * term) list -> term option -> term =
-  fun p t cs cd -> Pos.build_pos p (TCase(t,cs,cd))
-
-let tdefi_p : Pos.popt -> tdef -> term =
-  fun p v -> Pos.build_pos p (TDefi(v))
-
-let tprnt_p : Pos.popt -> string -> term =
-  fun p s -> Pos.build_pos p (TPrnt(s))
-
-let tfixy_p : Pos.popt -> bool -> int -> (term', term) binder -> term =
-  fun p b n t -> Pos.build_pos p (TFixY(b,n,t))
-
-let tmlet_p : Pos.popt -> okmkbinder -> term option -> okmtbinder -> term =
-  fun p b x t -> Pos.build_pos p (TMLet(b,x,t))
-
-(****************************************************************************)
-(** {2 Smart constructors for terms}                                        *)
-(****************************************************************************)
-
-let tcoer : Pos.popt -> tbox -> kbox -> tbox =
-  fun p -> box_apply2 (tcoer_p p)
-
-let tvari : Pos.popt -> term' variable -> tbox =
-  fun p x -> box_apply (Pos.build_pos p) (box_of_var x)
-
-let tabst : Pos.popt -> kbox option -> Pos.strloc -> (tvar -> tbox) -> tbox =
-  fun p ko x f ->
-    box_apply2 (tabst_p p) (box_opt ko) (vbind mk_free_tvari Pos.(x.elt) f)
-
 let idt : tbox =
   let fn x = box_apply Pos.none (box_of_var x) in
   tabst None None (Pos.none "x") fn
-
-let tappl : Pos.popt -> tbox -> tbox -> tbox =
-  fun p -> box_apply2 (tappl_p p)
-
-let treco : Pos.popt -> (string * tbox) list -> tbox =
-  fun p fs ->
-    let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
-    box_apply (fun fs -> treco_p p fs) (box_list fs)
-
-let tproj : Pos.popt -> tbox -> string -> tbox =
-  fun p t l -> box_apply (fun t -> tproj_p p t l) t
-
-let tcase : Pos.popt -> tbox -> (string * tbox) list -> tbox option -> tbox =
-  fun p t cs cd ->
-    let aux (c,t) = box_apply (fun t -> (c,t)) t in
-    box_apply3 (tcase_p p) t (box_list (List.map aux cs)) (box_opt cd)
-
-let tcons : Pos.popt -> string -> tbox -> tbox =
-  fun p c t -> box_apply (fun t -> tcons_p p c t) t
-
-let tdefi : Pos.popt -> tdef -> tbox =
-  fun p vd -> box (tdefi_p p vd)
-
-let tprnt : Pos.popt -> string -> tbox =
-  fun p s -> box (tprnt_p p s)
-
-let tfixy : Pos.popt -> bool -> int -> Pos.strloc -> (tvar -> tbox) -> tbox =
-  fun p b n x f ->
-    box_apply (tfixy_p p b n) (vbind mk_free_tvari Pos.(x.elt) f)
-
-let tmlet : Pos.popt -> string array -> string array ->
-            (ovar array -> kvar array -> kbox) -> tbox option ->
-            (ovar array -> kvar array -> tbox) -> tbox =
-  fun p os ks f x tf -> box_apply3 (tmlet_p p)
-    (mvbind mk_free_ovari os
-       (fun x -> mvbind mk_free_kvari ks (f x)))
-    (box_opt x)
-    (mvbind mk_free_ovari os
-       (fun x -> mvbind mk_free_kvari ks (tf x)))
-
-(* Build a constant. Useful during typing. *)
-let tcnst : (term', term) binder -> kbox -> kbox -> tbox =
-  (* NOTE: the term is always closed *)
-  fun s a b ->
-    assert (is_closed a && is_closed b);
-    box_apply Pos.none (box_apply2 (fun a b -> TCnst(s,a,b)) a b)
 
 let generic_tcnst : kbox -> kbox -> tbox =
   fun a b ->

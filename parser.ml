@@ -463,9 +463,9 @@ let new_type : name -> (string list * string list) -> pkind -> unit =
         Array.iteri f oargs;
         unsugar_kind {empty_env with kinds = !kinds ; ordinals = !ordis} k
       in
-      mbind mk_free_kvari karg_names gn
+      mbind mk_free_k karg_names gn
     in
-    let b = mbind mk_free_ovari oarg_names fn in
+    let b = mbind mk_free_o oarg_names fn in
 
     let tdef_value = unbox b in
     let td =

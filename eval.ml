@@ -21,10 +21,10 @@ let rec eval : term -> term = fun t0 ->
   | TAbst(_,_)   -> t0
   | TFixY(_)     -> t0
   (* Evaluate under products and constructors. *)
-  | TReco(l)     -> treco_p t0.pos (map_snd eval l)
-  | TCons(s,t)   -> tcons_p t0.pos s (eval t)
+  | TReco(l)     -> Pos.make t0.pos (TReco(map_snd eval l))
+  | TCons(c,t)   -> Pos.make t0.pos (TCons(c, eval t))
   (* Print instruction. *)
-  | TPrnt(s)     -> Io.out "%s%!" s; treco_p t0.pos []
+  | TPrnt(s)     -> Io.out "%s%!" s; Pos.make t0.pos (TReco([]))
   (* Constructors that should never appear in evaluation. *)
   | TCnst(_)     -> assert false
   (* Call-by-value application (λ-abstraction and fixpoint). *)
@@ -34,9 +34,9 @@ let rec eval : term -> term = fun t0 ->
         let rec fn t =
           let t = eval t in
           match t.elt with
-          | TAbst(_,b)   -> eval (subst b u.elt)
-          | TFixY(_,_,f) -> fn (subst f t.elt)
-          | _            -> assert false
+          | TAbst(_,b) -> eval (subst b u.elt)
+          | TFixY(_,f) -> fn (subst f t.elt)
+          | _          -> assert false
         in fn t
       end
   (* Record projection. *)
@@ -58,11 +58,11 @@ let rec eval : term -> term = fun t0 ->
         match t.elt with
         | TCons(c,v) ->
             begin
-              try eval (tappl_p None (List.assoc c l) v)
+              try eval (Pos.none (TAppl(List.assoc c l, v)))
               with Not_found ->
                 match d with
                 | None   -> assert false
-                | Some d -> eval (tappl_p None d t)
+                | Some d -> eval (Pos.none (TAppl(d,t)))
             end
         | _          -> assert false
       end

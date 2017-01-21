@@ -15,7 +15,7 @@ open AstMap
 
 (** binding a unification variable in a kind *)
 let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
-  unbox (bind mk_free_kvari "X" (fun x ->
+  unbox (bind mk_free_k "X" (fun x ->
     let fkind _ k self_kind _ def_kind =
       match repr k with
       | KUVar(u,_) -> assert(is_unset u); if eq_uvar v u then x else box k
@@ -149,17 +149,17 @@ let rec bind_both ?(from_generalise=false) os x =
            | Free -> Free
            | DSum l ->
               DSum (List.map (fun (s,f) ->
-                (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
                   bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
            | Prod l ->
               Prod (List.map (fun (s,f) ->
-                (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
                   bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
          let new_ords = Array.map self_ord new_ords in
          fresh_uvar := (v, new_ords) :: !fresh_uvar;
-         let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
+         let k = unbox (mbind mk_free_o (Array.make u.uvar_arity "α") (fun x ->
            kuvar v (Array.init new_len
                       (fun i -> if i < u.uvar_arity then x.(i) else box
                           (match os''.(i - u.uvar_arity) with
@@ -197,7 +197,7 @@ let rec bind_both ?(from_generalise=false) os x =
            let upper = match snd (uvar_state u) with
              | None -> None
              | Some o ->
-                let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                let f = mbind mk_free_o (Array.make new_len "α") (fun x ->
                   bind_gn ~from_generalise new_os x (msubst o os'))
                 in
                 assert (is_closed f);
@@ -207,7 +207,7 @@ let rec bind_both ?(from_generalise=false) os x =
            let lower = match fst (uvar_state u) with
              | None -> None
              | Some o ->
-                let f = mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                let f = mbind mk_free_o (Array.make new_len "α") (fun x ->
                   bind_gn ~from_generalise new_os x (msubst o os'))
                 in
                 assert (is_closed f);
@@ -216,7 +216,7 @@ let rec bind_both ?(from_generalise=false) os x =
            let v = new_ouvara ?lower ?upper new_len in
            let new_os = Array.map self_ord new_os in
            fresh_ovar := (v, new_os) :: !fresh_ovar;
-           let k = unbox (mbind mk_free_ovari (Array.make u.uvar_arity "α") (fun x ->
+           let k = unbox (mbind mk_free_o (Array.make u.uvar_arity "α") (fun x ->
              ouvar v (Array.init new_len (fun i ->
                if i < u.uvar_arity then x.(i) else
                  box (match os''.(i - u.uvar_arity) with
@@ -248,17 +248,17 @@ and bind_gn ?(from_generalise=false) os x o =
 (** binding ordinals in one ordinal *)
 let obind_ordis : ordi array -> ordi -> (ordi, ordi) mbinder = fun os o ->
   let len = Array.length os in
-  unbox (mbind mk_free_ovari (Array.make len "α") (fun x ->
+  unbox (mbind mk_free_o (Array.make len "α") (fun x ->
     bind_gn os x o))
 
 (** binding ordinals in one kind *)
 let bind_ordis : ordi array -> kind -> (ordi, kind) mbinder = fun os k ->
   let len = Array.length os in
-  unbox (mbind mk_free_ovari (Array.make len "α") (fun x -> bind_fn os x k))
+  unbox (mbind mk_free_o (Array.make len "α") (fun x -> bind_fn os x k))
 
 (** binding of one ordinal in one kind *)
 let bind_ouvar : ouvar -> kind -> (ordi, kind) binder = fun v k ->
-  unbox (bind mk_free_ovari "α" (fun x ->
+  unbox (bind mk_free_o "α" (fun x ->
     bind_fn [|OUVar(v,[||])|] [|x|] k))
 
 (** [bind_ordinals] and [obind_ordinals] are needed in compare,

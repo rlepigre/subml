@@ -88,10 +88,10 @@ let search_induction subtype prfPtr depth ctxt t c0 hyps =
        let time = Timed.Time.save () in
        try
          let (ov, pos, _, a) = recompose schema in
-         Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
-           Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-           print_nz { ctxt with non_zero = pos};
-           (* need full subtype to rollback unification of variables if it fails *)
+         Io.log_typ "searching IH (2) with %a %a ~ %a <- %a:\n%!"
+           Sct.prInd schema.sch_index Print.kind a Print.kind c0
+           print_nz {ctxt with non_zero = pos};
+           (* need full subtype to rollback unification if it fails *)
          let prf = subtype ctxt t a c0 in
          if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
          check_sub_proof prf;
@@ -101,7 +101,7 @@ let search_induction subtype prfPtr depth ctxt t c0 hyps =
                ctxt.non_zero) pos)
          then raise Exit;
          Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-           Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
+           Sct.prInd schema.sch_index Print.kind a Print.kind c0
            print_nz { ctxt with non_zero = pos};
          fn ((schema,prf, build_call ctxt schema.sch_index ov true) :: acc) hyps
        with Exit | Error _ ->
@@ -150,7 +150,7 @@ let check_fix type_check subtype prfPtr ctxt t depth f c0 =
     let manual = has_leading_ord_quantifier c0 in
     let depth = if manual then depth + 1 else depth in
     (* otherwise we unroll once more, and type-check *)
-    let e = TFixY(true,depth-1,f) in
+    let e = TFixY(depth-1,f) in
     let t0 = Pos.none e in
     let t =  subst f e in
     let (schema, os) =
@@ -163,7 +163,7 @@ let check_fix type_check subtype prfPtr ctxt t depth f c0 =
     let tros = List.combine (List.map snd os) (List.map snd os0) in
     let fnum = schema.sch_index in
     Io.log_ind "Adding induction hyp (1) %a:\n  %a => %a\n%!"
-      Sct.prInd fnum (print_kind false) c0 (print_kind false) c;
+      Sct.prInd fnum Print.kind c0 Print.kind c;
     add_call ctxt fnum os false;
     let ctxt = { ctxt with top_induction = (fnum, os0); non_zero = tpos} in
     let prf = type_check ctxt t c in
@@ -174,9 +174,8 @@ let check_fix type_check subtype prfPtr ctxt t depth f c0 =
 let fixpoint_depth = ref 1 (* TODO move *)
 
 let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 ->
-  Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
-    (print_term false) t0 (print_kind false) a0 (print_kind false) b0
-    print_nz ctxt0;
+  Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!" Print.term t0 Print.kind a0
+    Print.kind b0 print_nz ctxt0;
   let a = full_repr a0 in
   let b = full_repr b0 in
   if eq_kind ctxt0.non_zero a b then
@@ -259,7 +258,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
        let new_len = Array.length os in
        if new_len <> ua.uvar_arity then (
          let u = new_kuvara new_len in
-         let f = unbox (mbind mk_free_ovari (Array.make ua.uvar_arity "α") (fun x ->
+         let f = unbox (mbind mk_free_o (Array.make ua.uvar_arity "α") (fun x ->
            box_apply (fun os -> KUVar(u,os)) (box_array (Array.init new_len (fun i ->
              x.(os.(i)))))))
          in
@@ -296,11 +295,11 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
                  | Free, Free -> Free
                  | DSum l, _ ->
                     DSum (List.map (fun (s,f) ->
-                      (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                      (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
                         bind_fn os x (msubst f osa))))) l)
                  | _, Prod l ->
                     Prod (List.map (fun (s,f) ->
-                      (s, unbox (mbind mk_free_ovari (Array.make new_len "α") (fun x ->
+                      (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
                         bind_fn os x (msubst f osb))))) l)
                  | _ -> assert false
                in
@@ -418,7 +417,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
           match orepr o with
           | OSucc o' -> o', ctxt
           | o ->
-             let g = bind mk_free_ovari (binder_name f) (fun o ->
+             let g = bind mk_free_o (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
              in
              let o' = opred o (Some (NotIn(t,unbox g))) in
@@ -438,7 +437,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
           match orepr o with
           | OSucc o' -> o', ctxt
           | o ->
-             let g = bind mk_free_ovari (binder_name f) (fun o ->
+             let g = bind mk_free_o (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
              in
              let o' = opred o (Some (In(t,unbox g))) in
@@ -527,9 +526,11 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
     (* Subtype clash. *)
     | (_           , _           ) ->
        subtype_error "Subtyping clash (no rule apply)."
-  in finalise_proof (ctxt.non_zero, t, a0, b0, rule)
-  with Subtype_error e -> (ctxt0.non_zero, t0, a0, b0, Sub_Error e)
-         | Occur_check -> (ctxt0.non_zero, t0, a0, b0, Sub_Error "Occur_check")
+  in
+  finalise_proof (ctxt.non_zero, t, a0, b0, rule)
+  with
+  | Subtype_error e -> (ctxt0.non_zero, t0, a0, b0, Sub_Error e)
+  | Occur_check     -> (ctxt0.non_zero, t0, a0, b0, Sub_Error "Occur_check")
 
 (** A boolean test for subtyping *)
 let is_subtype ctxt t a b =
@@ -651,7 +652,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TPrnt(_) ->
          let p = subtype ctxt t (KProd []) c in
          Typ_Prnt(p)
-      | TFixY(do_subsume,depth,f) ->
+      | TFixY(depth,f) ->
          let prf = ref Todo in
          ctxt.fix_todo := (fun () ->
            check_fix type_check subtype prf ctxt t depth f c) :: !(ctxt.fix_todo);

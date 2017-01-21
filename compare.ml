@@ -42,10 +42,10 @@ let strict f a =
   res
 
 let constant_mbind size k =
-  unbox (mbind mk_free_ovari (Array.make size "_") (fun x -> box k))
+  unbox (mbind mk_free_o (Array.make size "_") (fun x -> box k))
 
 let mbind_assoc cst size l =
-  unbox (mbind mk_free_ovari (Array.make size "α")
+  unbox (mbind mk_free_o (Array.make size "α")
            (fun v -> cst (List.map (fun (s,k) ->
              (s, mbind_apply (box k) (box_array v))) l)))
 
@@ -279,7 +279,7 @@ and eq_term : ordi list -> term -> term -> bool = fun pos t1 t2 ->
     | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
     | (TVars(s1)      , TVars(s2)      ) -> s1 = s2
     | (TAbst(_,f1)    , TAbst(_,f2)    )
-    | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos f1 f2
+    | (TFixY(_,f1)    , TFixY(_,f2)    ) -> eq_tbinder pos f1 f2
     | (TAppl(t1,u1)   , TAppl(t2,u2)   ) -> eq_term t1 t2 && eq_term u1 u2
     | (TReco(fs1)     , TReco(fs2)     ) -> eq_assoc eq_term fs1 fs2
     | (TProj(t1,l1)   , TProj(t2,l2)   ) -> l1 = l2 && eq_term t1 t2
@@ -383,7 +383,7 @@ and gen_occur :
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
     | TMLet(b,x,bt)  -> aux2 acc (mmsubst_dummy bt OConv (KProd []))
-    | TFixY(_,_,f)
+    | TFixY(_,f)
     | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
