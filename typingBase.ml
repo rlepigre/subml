@@ -49,7 +49,6 @@ type subtype_ctxt =
 (** induction hypothesis for typing recursive programs *)
 and fix_induction =
       (term',term) binder     (* the argument of the fixpoint combinator *)
-    * kind                    (* the initial type, if no initial ordinal params *)
               (* the induction hypothesis collected so far for this fixpoint *)
     * schema list ref
 

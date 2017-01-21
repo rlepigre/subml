@@ -642,17 +642,17 @@ and search_induction prfPtr depth ctxt t c0 hyps =
 and check_fix prfPtr ctxt t depth f c0 =
   if depth < 0 then () else
   (* filter the relevant hypothesis *)
-  let hyps = List.filter (function (f',_,_) -> f' == f) ctxt.fix_induction_hyp in
-  let ctxt,a,hyps = match hyps with
-    | [(_,a,l)] -> ctxt, a, l
+  let hyps = List.filter (function (f',_) -> f' == f) ctxt.fix_induction_hyp in
+  let ctxt,hyps = match hyps with
+    | [(_,l)] -> ctxt, l
     | [] ->
        let hyps = ref [] in
        let ctxt =
          { ctxt with
-           fix_induction_hyp = (f,c0,hyps)::ctxt.fix_induction_hyp;
+           fix_induction_hyp = (f,hyps)::ctxt.fix_induction_hyp;
          }
        in
-       ctxt, c0, hyps
+       ctxt, hyps
     | _ -> assert false
   in
   try
