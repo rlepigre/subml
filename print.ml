@@ -844,6 +844,8 @@ let print_term ?(give_pos = false) unfold ff t =
 let print_kind unfold ff t =
   print_kind unfold false ff t; pp_print_flush ff ()
 
+let kind ff k = print_kind false ff k
+
 let _ = fprint_kind := print_kind; fprint_term := print_term
 
 let print_kind_def unfold ff kd =

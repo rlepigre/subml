@@ -61,24 +61,22 @@ let recompose : ?general:bool -> schema -> term_or_kind particular =
 
     os, pos, k1, k2
 
-exception NotKindSchema
 (** recompose for subtyping *)
 let recompose_kind : ?general:bool -> schema -> kind particular =
   fun ?(general=true) schema ->
     let (os,pos,k1,k2) = recompose ~general schema in
     let k1 = match k1 with
-      | SchTerm _ -> raise NotKindSchema
+      | SchTerm _ -> assert false (* Should not happen. *)
       | SchKind k -> k
     in (os,pos,k1,k2)
 
-exception NotTermSchema
 (** recompose for typing *)
 let recompose_term : ?general:bool -> schema -> term particular =
   fun ?(general=true) schema ->
     let (os,pos,t,k2) = recompose ~general schema in
     let t = match t with
       | SchTerm t -> t
-      | SchKind _ -> raise NotTermSchema
+      | SchKind _ -> assert false (* Should not happen. *)
     in (os,pos,t,k2)
 
 (** [generalise] create a schema from a judgement. All ordinals
@@ -99,9 +97,9 @@ let recompose_term : ?general:bool -> schema -> term particular =
     instance of the schema with the witnesses that is needed to
     prove the schema.
  *)
-let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_table ->
-  schema * (int * ordi) list
-  = fun ?(manual=false) pos k10 k2 call_table ->
+let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
+                 -> Sct.call_table -> schema * (int * ordi) list =
+  fun ?(manual=false) pos k10 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
      the ordinal will be ovari when it replaces an infinite ordinals (see TODO
@@ -234,6 +232,14 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_t
   in
   let schema = { schema with sch_index = fnum } in
   (schema, os)
+
+let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
+                 -> Sct.call_table -> (schema * (int * ordi) list) option =
+  fun ?manual pos k10 k2 call_table ->
+    try Some(generalise ?manual pos k10 k2 call_table)
+    with FailGeneralise -> None
+
+
 
 (** Returns the list of unification variables.
     When a variable has arguments, they should be identical

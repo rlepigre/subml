@@ -13,90 +13,82 @@ open TypingBase
 open Error
 open LibTools
 
-exception Induction_hyp of Sct.index
+(** Result type of [check_rec]. *)
+type ind =
+  | Use of Sct.index
+  (** The given induction hypothesis applies. *)
+  | New of (schema * kind * kind * (ordi * ordi) list) option
+  (** The given induction hypothesis has been registered. *)
 
-type induction =
-  | UseInduction of Sct.index
-  | NewInduction of (schema * kind * kind * (ordi * ordi) list) option
-
-(** [check_rec t ctxt a b] checks whether a given pointed subtyping relation
+(** [check_rec ctxt t a b] checks whether a given pointed subtyping relation
     can be derived in the current context using an induction hypothesis. If
-    it cannot, the current schema is registered as an induction hypothesis
-    to be used in a later call to [check_rec]. *)
-let check_rec : term -> subtype_ctxt -> kind -> kind
-                -> induction * subtype_ctxt = fun t ctxt a b ->
-  begin
-    (* HEURISTIC to avoid loops. By comparing ordinals we force unifications
-       of ordinal variables. If ordinal variables are kept, it may loops on
-       useful examples. TODO Can we do better ? *)
+    not, the current schema is registered as an induction hypothesis so that
+    it can be used in a later call to [check_rec]. *)
+let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
+  (* HEURISTIC avoiding loops by unifying ordinal variables. When variables
+     are kept, the program loops on useful examples. *)
+  let _ =
     match (full_repr a, full_repr b) with
     | KFixM(o ,_), KFixM(o',_)
-    | KFixN(o',_), KFixN(o ,_) -> ignore (eq_ordi ctxt.positive_ordis o o')
+    | KFixN(o',_), KFixN(o ,_) -> ignore (eq_ordi ctxt.non_zero o o')
     | _                        -> ()
-  end;
-  try
-    (* HEURISTIC obtained by trial and error. TODO Understand it. *)
-    let testa =
-      match a with
-      | KFixM _ -> false
-      | KFixN _ -> has_leading_exists a
-      | _       -> true
-    in
-    let testb =
-      match b with
-      | KFixM _ -> has_leading_forall b
-      | KFixN _ -> false
-      | _       -> true
-    in
-    if testa && testb then raise Exit;
-    (* Actual start of the function. *)
-    let pos = ctxt.positive_ordis in
-    Io.log_ind "Adding induction hyp %a < %a\n%!"
-       (print_kind false) a (print_kind false) b;
-    let (schema, os) = generalise pos (SchKind a) b ctxt.call_graphs in
-    Io.log_ind "SUB IND SEARCH  %a\n%!" print_schema schema;
-    try
-      (* Try to apply the induction hypothesis. Only possible if the same
-         schema was previously encountered. *)
-      let schema' = List.find (eq_schema schema) ctxt.sub_induction_hyp in
-      Io.log_ind "SUB IND FOUND %a\n%!" print_schema schema';
-      let index = schema'.sch_index in
-      let call = build_call ctxt index os true in
-      Sct.new_call ctxt.call_graphs call;
-      raise (Induction_hyp index)
-    with Not_found ->
-      (* We cannot apply the induction hypothesis. Register the schema. *)
-      add_call ctxt schema.sch_index os false;
-      let (os0,tpos,k1,k2) =
-        try recompose_kind ~general:false schema
-        with NotKindSchema -> assert false
-      in
-      let ctxt =
-        { ctxt with sub_induction_hyp = schema::ctxt.sub_induction_hyp
-        ; positive_ordis = tpos
-        ; top_induction = (schema.sch_index, os0) }
-      in
-      Io.log_sub "NEW %a < %a\n%!" (print_kind false) k1
-        (print_kind false) k2;
-      (* Need the map table between the new and old ordinals, see below *)
-      let fn (_,o1) (_,o2) = (o1, match o2 with OVari _ -> OConv | _ -> o2) in
-      let tros = List.map2 fn os0 os in
-      (NewInduction (Some (schema, k1, k2, tros)), ctxt)
-  with
-  | Exit
-  | FailGeneralise  -> (NewInduction None, ctxt)
-  | Induction_hyp n -> (UseInduction n   , ctxt)
+  in
 
-let fixpoint_depth = ref 1
+  (* HEURISTIC obtained by trial and error. *)
+  let testa =
+    match a with
+    | KFixM _ -> false
+    | KFixN _ -> has_leading_exists a
+    | _       -> true
+  in
+  let testb =
+    match b with
+    | KFixM _ -> has_leading_forall b
+    | KFixN _ -> false
+    | _       -> true
+  in
+  if testa && testb then (New None, ctxt) else
 
-let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 ->
+  (* Actual start of the function. *)
+  let _ = Io.log_ind "Adding IH %a < %a\n%!" Print.kind a Print.kind b in
+  match generalise ctxt.non_zero (SchKind a) b ctxt.call_graphs with
+  | None                  -> (New None, ctxt)
+  | Some(new_sch, new_os) ->
+      try
+        (* Try to apply the induction hypothesis (need to find a previously
+           encountered schema. *)
+        Io.log_ind "Searching schema %a\n%!" print_schema new_sch;
+        let old_sch = List.find (eq_schema new_sch) ctxt.sub_ihs in
+        Io.log_ind "Found schema     %a\n%!" print_schema old_sch;
+        add_call ctxt old_sch.sch_index new_os true;
+        (Use old_sch.sch_index, ctxt)
+      with Not_found ->
+        (* We cannot apply the induction hypothesis. However, we register
+           our new schema as an induction hypothesis for later. *)
+        add_call ctxt new_sch.sch_index new_os false;
+        let (os, non_zero, a, b) = recompose_kind ~general:false new_sch in
+        let sub_ihs = new_sch :: ctxt.sub_ihs in
+        let top_induction = (new_sch.sch_index, os) in
+        let ctxt = { ctxt with sub_ihs ; non_zero ; top_induction } in
+        Io.log_sub "NEW %a < %a\n%!" Print.kind a Print.kind b;
+        (* Need the map table between the new and old ordinals, see below *)
+        let fn (_,o1) (_,o2) =
+          (o1, match o2 with OVari _ -> OConv | _ -> o2)
+        in
+        let tros = List.map2 fn os new_os in
+        (New (Some (new_sch, a, b, tros)), ctxt)
+
+
+let fixpoint_depth = ref 1 (* TODO move *)
+
+let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 ->
   Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!"
     (print_term false) t0 (print_kind false) a0 (print_kind false) b0
     print_positives ctxt0;
   let a = full_repr a0 in
   let b = full_repr b0 in
-  if eq_kind ctxt0.positive_ordis a b then
-    (ctxt0.positive_ordis, t0, a0, b0, Sub_Lower)
+  if eq_kind ctxt0.non_zero a b then
+    (ctxt0.non_zero, t0, a0, b0, Sub_Lower)
   else try try
     let rule = match (a, b) with
     | (KMRec(ptr,a), _           ) ->
@@ -106,11 +98,11 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
        Sub_Or_r(subtype ctxt0 t0 a0 b)
 
     | (KNRec(ptr,a), KUVar _     )
-        when Subset.test (eq_ordi ctxt0.positive_ordis) ptr ctxt0.positive_ordis ->
+        when Subset.test (eq_ordi ctxt0.non_zero) ptr ctxt0.non_zero ->
        Sub_Or_l(subtype ctxt0 t0 a b0)
 
     | (KUVar _     , KMRec(ptr,b))
-        when Subset.test (eq_ordi ctxt0.positive_ordis) ptr ctxt0.positive_ordis ->
+        when Subset.test (eq_ordi ctxt0.non_zero) ptr ctxt0.non_zero ->
        Sub_And_r(subtype ctxt0 t0 a0 b)
 
     (* unification. (sum and product special) *)
@@ -262,18 +254,18 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
 
 
     | _ -> raise Exit
-  in (ctxt0.positive_ordis, t0, a0, b0, rule)
+  in (ctxt0.non_zero, t0, a0, b0, rule)
   with Exit ->
-  let (ind_res, ctxt) = check_rec t0 ctxt0 a b in
+  let (ind_res, ctxt) = check_rec ctxt0 t0 a b in
   match ind_res with
-  | UseInduction n -> (ctxt.positive_ordis, t0, a0, b0, Sub_Ind n)
-  | NewInduction ind_ref ->
+  | Use n       -> (ctxt.non_zero, t0, a0, b0, Sub_Ind n)
+  | New ind_ref ->
   let (finalise_proof,t,a,b,a0,b0) = match ind_ref with
     | None -> ((fun x -> x),t0,a,b,a0,b0)
     | Some(n,a,b,tros) ->
        let a = full_repr a and b = full_repr b in
        let t1 = unbox (generic_tcnst (box a) (box b)) in
-       ((fun x -> ctxt0.positive_ordis,t0,a0,b0,Sub_Gen(n, tros, x)),
+       ((fun x -> ctxt0.non_zero,t0,a0,b0,Sub_Gen(n, tros, x)),
         t1, a, b, a, b)
   in
   let rule =
@@ -379,7 +371,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
             | Some p -> Sub_FixM_r(p)
             | None   -> subtype_error "Subtyping clash (no rule apply for left nu).")
          | o'::l ->
-            assert (is_positive ctxt.positive_ordis o');
+            assert (is_positive ctxt.non_zero o');
             let save = Timed.Time.save () in
             try
               (match orepr o with OUVar(p,os) -> set_ouvar p (obind_ordis os o') | _ -> ());
@@ -401,7 +393,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
             | Some p -> Sub_FixM_r(p)
             | None   -> subtype_error "Subtyping clash (no rule apply for right mu).")
          | o'::l ->
-            assert (is_positive ctxt.positive_ordis o');
+            assert (is_positive ctxt.non_zero o');
             let save = Timed.Time.save () in
             try
               (match orepr o with OUVar(p,os) -> set_ouvar p (obind_ordis os o') | _ -> ());
@@ -433,19 +425,19 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
         Sub_OExi_r(p)
 
     | (KNRec(ptr, a), _          )
-        when Subset.test (eq_ordi ctxt.positive_ordis) ptr ctxt.positive_ordis ->
+        when Subset.test (eq_ordi ctxt.non_zero) ptr ctxt.non_zero ->
        Sub_And_l(subtype ctxt t a b0)
 
     | (_           , KMRec(ptr, b))
-        when Subset.test (eq_ordi ctxt.positive_ordis) ptr ctxt.positive_ordis ->
+        when Subset.test (eq_ordi ctxt.non_zero) ptr ctxt.non_zero ->
        Sub_Or_r(subtype ctxt t a0 b)
 
     (* Subtype clash. *)
     | (_           , _           ) ->
        subtype_error "Subtyping clash (no rule apply)."
-  in finalise_proof (ctxt.positive_ordis, t, a0, b0, rule)
-  with Subtype_error e -> (ctxt0.positive_ordis, t0, a0, b0, Sub_Error e)
-         | Occur_check -> (ctxt0.positive_ordis, t0, a0, b0, Sub_Error "Occur_check")
+  in finalise_proof (ctxt.non_zero, t, a0, b0, rule)
+  with Subtype_error e -> (ctxt0.non_zero, t0, a0, b0, Sub_Error e)
+         | Occur_check -> (ctxt0.non_zero, t0, a0, b0, Sub_Error "Occur_check")
 
 (** A boolean test for subtyping *)
 and is_subtype ctxt t a b =
@@ -455,7 +447,7 @@ and is_subtype ctxt t a b =
     let prf = subtype ctxt t a b in
     try check_sub_proof prf; true with Error _ -> false) ()
 
-and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
+and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
   let c = repr c in
   Io.log_typ "%a :\n  %a\n  %a\n\n%!"
     (print_term false) t (print_kind false) c print_positives ctxt;
@@ -489,7 +481,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TAbst(ao,f) ->
          let a = match ao with None -> new_kuvar () | Some a -> a in
          let b = new_kuvar () in
-         let ptr = Subset.create ctxt.positive_ordis in
+         let ptr = Subset.create ctxt.non_zero in
          let c' = KNRec(ptr,KFunc(a,b)) in
          let p1 = subtype ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
@@ -500,7 +492,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let a =
            if strict_eq_term u (Pos.none (TReco []))
            then KProd [] else new_kuvar () in
-         let ptr = Subset.create ctxt.positive_ordis
+         let ptr = Subset.create ctxt.non_zero
          in
          let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
          let ctxt = add_positives ctxt (Subset.get ptr) in
@@ -516,7 +508,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TReco(fs) ->
          let ts = List.map (fun (l,_) -> (l, new_kuvar ())) fs in
          let c' = KProd(ts) in
-         let ptr = Subset.create ctxt.positive_ordis in
+         let ptr = Subset.create ctxt.non_zero in
          let c' =  if is_normal t then KNRec(ptr,c') else c' in
          let p1 = subtype ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
@@ -532,7 +524,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TCons(d,v) ->
          let a = new_kuvar () in
          let c' = new_kuvar ~state:(DSum [(d,constant_mbind 0 a)]) () in
-         let ptr = Subset.create ctxt.positive_ordis in
+         let ptr = Subset.create ctxt.non_zero in
          let c' = if is_normal t then KNRec(ptr,c') else c' in
          let p1 = subtype ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
@@ -548,7 +540,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
               let ts = List.map (fun (c,_) -> (c, constant_mbind 0 (List.assoc c ts))) l in
               new_kuvar ~state:(DSum ts) ()
          in
-         let ptr = Subset.create ctxt.positive_ordis in
+         let ptr = Subset.create ctxt.non_zero in
          let p1 = type_check ctxt t (KMRec(ptr,k)) in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let check (d,f) =
@@ -587,7 +579,7 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | Type_error msg -> Typ_Error msg
     | Occur_check    -> Typ_Error "occur_check"
     | Sys.Break      -> interrupted t.pos
-  in (ctxt.positive_ordis, t, c, r)
+  in (ctxt.non_zero, t, c, r)
 
 and search_induction prfPtr depth ctxt t c0 hyps =
   (* fn search for an applicable inductive hypothesis *)
@@ -599,22 +591,22 @@ and search_induction prfPtr depth ctxt t c0 hyps =
     | schema :: hyps ->
        let time = Timed.Time.save () in
        try
-         let (ov, pos, _, a) = try recompose schema with NotTermSchema -> assert false in
+         let (ov, pos, _, a) = recompose schema in
          Io.log_typ "searching induction hyp (2) with %a %a ~ %a <- %a:\n%!"
            Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-           print_positives { ctxt with positive_ordis = pos};
+           print_positives { ctxt with non_zero = pos};
            (* need full subtype to rollback unification of variables if it fails *)
          let prf = subtype ctxt t a c0 in
          if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
          check_sub_proof prf;
          if not (List.for_all (fun o1 ->
            match orepr o1 with OConv | OSucc _ -> true | _ ->
-             List.exists (eq_ordi ctxt.positive_ordis o1)
-               ctxt.positive_ordis) pos)
+             List.exists (eq_ordi ctxt.non_zero o1)
+               ctxt.non_zero) pos)
          then raise Exit;
          Io.log_typ "induction hyp applies with %a %a ~ %a <- %a:\n%!"
            Sct.prInd schema.sch_index (print_kind false) a (print_kind false) c0
-           print_positives { ctxt with positive_ordis = pos};
+           print_positives { ctxt with non_zero = pos};
          fn ((schema,prf, build_call ctxt schema.sch_index ov true) :: acc) hyps
        with Exit | Error _ ->
          Timed.Time.rollback time;
@@ -642,14 +634,14 @@ and search_induction prfPtr depth ctxt t c0 hyps =
 and check_fix prfPtr ctxt t depth f c0 =
   if depth < 0 then () else
   (* filter the relevant hypothesis *)
-  let hyps = List.filter (function (f',_) -> f' == f) ctxt.fix_induction_hyp in
+  let hyps = List.filter (function (f',_) -> f' == f) ctxt.fix_ihs in
   let ctxt,hyps = match hyps with
     | [(_,l)] -> ctxt, l
     | [] ->
        let hyps = ref [] in
        let ctxt =
          { ctxt with
-           fix_induction_hyp = (f,hyps)::ctxt.fix_induction_hyp;
+           fix_ihs = (f,hyps)::ctxt.fix_ihs;
          }
        in
        ctxt, hyps
@@ -665,26 +657,23 @@ and check_fix prfPtr ctxt t depth f c0 =
     let t0 = Pos.none e in
     let t =  subst f e in
     let (schema, os) =
-      try generalise ~manual ctxt.positive_ordis (SchTerm t0) c0 ctxt.call_graphs
-      with FailGeneralise -> assert false
+      match generalise ~manual ctxt.non_zero (SchTerm t0) c0 ctxt.call_graphs with
+      | None   -> assert false
+      | Some r -> r
     in
     if os <> [] then hyps := schema :: !hyps;
-    let (os0, tpos, _, c) =
-      try recompose_term ~general:false schema
-      with NotTermSchema -> assert false
-    in
+    let (os0, tpos, _, c) = recompose_term ~general:false schema in
     let tros = List.combine (List.map snd os) (List.map snd os0) in
     let fnum = schema.sch_index in
     Io.log_ind "Adding induction hyp (1) %a:\n  %a => %a\n%!"
       Sct.prInd fnum (print_kind false) c0 (print_kind false) c;
     add_call ctxt fnum os false;
-    let ctxt = { ctxt with top_induction = (fnum, os0);
-      positive_ordis = tpos} in
+    let ctxt = { ctxt with top_induction = (fnum, os0); non_zero = tpos} in
     let prf = type_check ctxt t c in
-    let prf = (ctxt.positive_ordis, t0, c, Typ_Yufl prf) in
+    let prf = (ctxt.non_zero, t0, c, Typ_Yufl prf) in
     prfPtr := Unroll(schema,tros, prf)
 
-let subtype : ?ctxt:subtype_ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table
+let subtype : ?ctxt:ctxt -> ?term:term -> kind -> kind -> sub_prf * Sct.call_table
   = fun ?ctxt ?term a b ->
     let term = unbox (generic_tcnst (box a) (box b)) in
     let ctxt =

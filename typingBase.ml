@@ -38,28 +38,27 @@ let interrupted : popt -> 'a =
   fun p -> raise (Interrupted p)
 
 type induction_node = Sct.index * (int * ordi) list
-type subtype_ctxt =
-  { sub_induction_hyp : schema list
-  ; fix_induction_hyp : fix_induction list
-  ; fix_todo          : (unit -> unit) list ref
-  ; top_induction     : induction_node
-  ; call_graphs       : Sct.call_table
-  ; positive_ordis    : ordi list }
+type ctxt =
+  { sub_ihs       : schema list
+  ; fix_ihs       : fix_induction list
+  ; fix_todo      : (unit -> unit) list ref
+  ; top_induction : induction_node
+  ; call_graphs   : Sct.call_table
+  ; non_zero      : ordi list }
 
 (** induction hypothesis for typing recursive programs *)
-and fix_induction =
-      (term',term) binder     (* the argument of the fixpoint combinator *)
-              (* the induction hypothesis collected so far for this fixpoint *)
-    * schema list ref
+and fix_induction = (term',term) binder * schema list ref
+(* Contains the the argument of the fixpoint combinator and the induction
+   hypotheses collected so far for this fixpoint. *)
 
 (** the initial empty context *)
 let empty_ctxt () =
-  { sub_induction_hyp = []
-  ; fix_induction_hyp = []
-  ; fix_todo          = ref []
-  ; top_induction     = (Sct.root, [])
-  ; call_graphs       = Sct.init_table ()
-  ; positive_ordis    = [] }
+  { sub_ihs       = []
+  ; fix_ihs       = []
+  ; fix_todo      = ref []
+  ; top_induction = (Sct.root, [])
+  ; call_graphs   = Sct.init_table ()
+  ; non_zero      = [] }
 
 
 (****************************************************************************
@@ -117,7 +116,7 @@ let consecutive =
 
 let build_call ctxt fnum os is_induction_hyp =
   let open Sct in
-  let pos = ctxt.positive_ordis in
+  let pos = ctxt.non_zero in
   let calls = ctxt.call_graphs in
   let cur, os0 = ctxt.top_induction in
   assert(consecutive os);
@@ -153,7 +152,7 @@ let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
 (** give a list of positive ordinals that may be equal to o.
     This list is of legth >= 2 only if o is an OUVar *)
 let possible_positive ctxt o =
-  let pos = ctxt.positive_ordis in
+  let pos = ctxt.non_zero in
   let res = match orepr o with
   | OConv -> [OConv]
   | OSucc o' -> [o]
@@ -161,7 +160,7 @@ let possible_positive ctxt o =
      let l = List.filter
        (fun o ->
          Io.log_sub "testing %a\n%!" (print_ordi false) o;
-         Timed.pure_apply (less_opt_ordi pos o (uvar_state u)) os) ctxt.positive_ordis
+         Timed.pure_apply (less_opt_ordi pos o (uvar_state u)) os) ctxt.non_zero
      in
      let l =
        if l = [] then
@@ -177,7 +176,7 @@ let possible_positive ctxt o =
        else l
      in
      l
-  | OLess _ as o -> if is_positive ctxt.positive_ordis o then [o] else []
+  | OLess _ as o -> if is_positive ctxt.non_zero o then [o] else []
   | OVari _ | OVars _ -> assert false
   in
   Io.log_sub "possible positive: %a ==> %a\n%!" (print_ordi false) o
@@ -195,7 +194,7 @@ let rec dot_proj t k s = match full_repr k with
 
 let print_positives ff ctxt =
   let p_aux = print_ordi false in
-  match ctxt.positive_ordis with
+  match ctxt.non_zero with
       | [] -> ()
       | l -> Io.log "  (%a)\n\n%!" (print_list p_aux ", ") l
 
@@ -208,13 +207,13 @@ let rec add_pos positives o =
      then positives else o :: positives
 
 let add_positive ctxt o =
-  { ctxt with positive_ordis = add_pos ctxt.positive_ordis o }
+  { ctxt with non_zero = add_pos ctxt.non_zero o }
 
 let add_positives ctxt gamma =
-  let positive_ordis =
-    List.fold_left add_pos ctxt.positive_ordis gamma
+  let non_zero =
+    List.fold_left add_pos ctxt.non_zero gamma
   in
-  { ctxt with positive_ordis }
+  { ctxt with non_zero }
 
 (* These three functions are only used for heuristics *)
 let has_leading_ord_quantifier : kind -> bool = fun k ->
