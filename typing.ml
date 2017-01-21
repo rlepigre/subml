@@ -550,27 +550,25 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p2 = type_check ctxt t a in
          Typ_Coer(p1, p2)
       | TMLet(b,x,bt) ->
-         let k = match x with
-           | None -> c
-           | Some t -> (match t.elt with
-                       | TCnst(_,c,_) -> c
-                       | TDefi d -> d.ttype
-                       | _ -> assert false (* NOTE: Only variable allowed by parsing *))
+         let k =
+           match x with
+           | None                       -> c
+           | Some({elt = TCnst(_,c,_)}) -> c
+           | Some({elt = TDefi(d)})     -> d.ttype
+           (* NOTE other cases not allowed by parser *)
+           | Some(_)                    -> assert false
          in
-         let oargs = Array.init (mbinder_arity b) (fun n -> new_ouvar ()) in
+         let oargs = Array.init (mbinder_arity b) (fun _ -> new_ouvar ()) in
          let b = msubst b oargs in
-         let kargs = Array.init (mbinder_arity b) (fun n -> new_kuvar ()) in
+         let kargs = Array.init (mbinder_arity b) (fun _ -> new_kuvar ()) in
          let k' = msubst b kargs in
          let t = mmsubst bt oargs kargs in
-         let x = from_opt x t in
-         if is_subtype ctxt x k k' then
-           let p = type_check ctxt t c in
-           Typ_Nope(p)
+         if is_subtype ctxt (from_opt x t) k k' then
+           Typ_Nope(type_check ctxt t c)
          else
            type_error "Type matching failed"
-
       | TAbst(ao,f) ->
-         let a = match ao with None -> new_kuvar () | Some a -> a in
+         let a = from_opt' ao new_kuvar in
          let b = new_kuvar () in
          let ptr = Subset.create ctxt.non_zero in
          let c' = KNRec(ptr,KFunc(a,b)) in
@@ -583,15 +581,15 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let a =
            if strict_eq_term u (Pos.none (TReco []))
            then KProd [] else new_kuvar () in
-         let ptr = Subset.create ctxt.non_zero
-         in
+         let ptr = Subset.create ctxt.non_zero in
          let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let p1 = type_check ctxt u a in
          Typ_Func_e(p1, p2)
       | TAppl(t,u) ->
-         let a = if strict_eq_term u (Pos.none (TReco []))
-           then KProd [] else new_kuvar ()
+         let a =
+           if strict_eq_term u (Pos.none (TReco [])) then KProd []
+           else new_kuvar ()
          in
          let p1 = type_check ctxt u a in
          let p2 = type_check ctxt t (KFunc(a,c)) in
@@ -603,9 +601,7 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let c' =  if is_normal t then KNRec(ptr,c') else c' in
          let p1 = subtype ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
-         let check (l,t) =
-           let cl = List.assoc l ts in type_check ctxt t cl
-         in
+         let check (l,t) = type_check ctxt t (List.assoc l ts) in
          let p2s = List.map check fs in
          Typ_Prod_i(p1, p2s)
       | TProj(t,l) ->
@@ -625,11 +621,9 @@ and type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let ts = List.map (fun (c,_) -> (c, new_kuvar ())) l in
          let k =
            match d with
-             None ->
-               KDSum ts
-           | _    ->
-              let ts = List.map (fun (c,_) -> (c, constant_mbind 0 (List.assoc c ts))) l in
-              new_kuvar ~state:(DSum ts) ()
+           | None -> KDSum ts
+           | _    -> let fn (c,_) = (c, constant_mbind 0 (List.assoc c ts)) in
+                     new_kuvar ~state:(DSum (List.map fn l)) ()
          in
          let ptr = Subset.create ctxt.non_zero in
          let p1 = type_check ctxt t (KMRec(ptr,k)) in
