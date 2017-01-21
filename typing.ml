@@ -98,7 +98,7 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
   if eq_kind ctxt0.positive_ordis a b then
     (ctxt0.positive_ordis, t0, a0, b0, Sub_Lower)
   else try try
-    let rule = match (a,b) with
+    let rule = match (a, b) with
     | (KMRec(ptr,a), _           ) ->
        Sub_And_l(subtype ctxt0 t0 a b0)
 
@@ -234,11 +234,13 @@ let rec subtype : subtype_ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | (KUVar(ua,os), b            ) ->
-        safe_set_kuvar sNeg ua (bind_ordis os b0) os;
+        let bb = bind_ordis os b0 in (* NOTE: may instanciate ua *)
+        if is_unset ua then safe_set_kuvar sNeg ua bb os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | (a           ,(KUVar(ub,os)))  ->
-        safe_set_kuvar sPos ub (bind_ordis os a0) os;
+        let aa = bind_ordis os a0 in (* NOTE: may instanciate ub *)
+        if is_unset ub then safe_set_kuvar sPos ub aa os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     (* quantification rule introducing witness before induction *)
@@ -587,13 +589,10 @@ and type_check : subtype_ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     | Sys.Break      -> interrupted t.pos
   in (ctxt.positive_ordis, t, c, r)
 
-and search_induction prfPtr depth ctxt t a c0 hyps =
+and search_induction prfPtr depth ctxt t c0 hyps =
   (* fn search for an applicable inductive hypothesis *)
   Io.log_typ "searching induction hyp (1):\n  %a %a\n%!"
     (print_kind false) c0 print_positives ctxt;
-  (* NOTE: HEURISTIC THAT AVOID SOME FAILURE, BY FORCING SOME UNIFICATIONS,
-     can we do better ? *)
-  let _ = is_subtype ctxt t a c0 in
 
   let rec fn acc = function
     | [] -> acc
@@ -657,7 +656,7 @@ and check_fix prfPtr ctxt t depth f c0 =
     | _ -> assert false
   in
   try
-    search_induction prfPtr depth ctxt t a c0 !hyps
+    search_induction prfPtr depth ctxt t c0 !hyps
   with Not_found ->
     let manual = has_leading_ord_quantifier c0 in
     let depth = if manual then depth + 1 else depth in
@@ -719,17 +718,7 @@ let type_check : term -> kind option -> kind * typ_prf * Sct.call_table =
         (p, call_graphs)
       with e -> reset_all (); raise e
     in
-    let fn (v, os) =
-      match !(v.uvar_state) with
-      | Set _ -> false
-      | Unset Free   -> true
-      | Unset (DSum  l) ->
-         let k = mbind_assoc kdsum v.uvar_arity l in
-         safe_set_kuvar All v k os; false (* FIXME: should not trust safe_set *)
-      | Unset (Prod l) ->
-         let k = mbind_assoc kprod v.uvar_arity l in
-         safe_set_kuvar All v k os ; false (* FIXME: should not trust safe_set *)
-    in
+    let fn (v, os) = is_unset v && not (uvar_use_state v os) in
     let ul = List.filter fn (kuvar_list k) in
     let ol = ouvar_list k in
     let k = List.fold_left (fun acc (v,_) -> KKAll (bind_kuvar v acc)) k ul in

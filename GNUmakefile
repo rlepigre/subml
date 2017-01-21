@@ -33,7 +33,7 @@ subml.p.native: $(MLFILES) subml.ml
 	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
 
 subml.byte: $(MLFILES) subml.ml
-	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
+	ocamlbuild -use-ocamlfind -cflags -g,-w,-3-30 $@
 
 config.ml: config.tmpl
 	sed -e 's!_PATH_!\"$(LIBDIR)\"!' $< > $@

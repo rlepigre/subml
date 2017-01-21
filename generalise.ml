@@ -118,7 +118,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_t
   let relation : (int * int) list ref = ref [] in
 
   let rec eps_search keep o =
-    match o with
+    match orepr o with
     | OLess(o',w) ->
        (try
           let (n,v,k) = assoc_ordi o !res in
@@ -166,17 +166,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind -> Sct.call_t
     | KUCst(t,f,cl) | KECst(t,f,cl) ->
        if cl then box k else map_kind k (* NOTE: no generalization in witness *)
     | KUVar(v,os) as k -> (* FIXME: duplicated code in type_infer *)
-       (match !(v.uvar_state) with
-       | Set _ -> def_kind k
-       | Unset Free   -> def_kind k
-       | Unset (DSum  l) ->
-          let fk = mbind_assoc kdsum v.uvar_arity l in
-          safe_set_kuvar All v fk os; self_kind k
-          (* FIXME: should not trust safe_set *)
-       | Unset (Prod l) ->
-          let fk = mbind_assoc kprod v.uvar_arity l in
-          safe_set_kuvar All v fk os ; self_kind k
-          (* FIXME: should not trust safe_set *))
+       if uvar_use_state v os then self_kind k else def_kind k
     | k -> def_kind k
 
   in

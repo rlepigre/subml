@@ -498,8 +498,9 @@ let check pos flag f a =
         end
     | Sys.Break | Interrupted _ as e -> raise e
     | e               ->
-        Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
-        raise e
+       Printexc.print_backtrace stderr;
+       Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
+       exit 1
   in
   if flag = CanFail then
     Io.out "A NEW TEST PASSED at %a.\n%!" print_position pos;

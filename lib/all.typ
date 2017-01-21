@@ -45,7 +45,7 @@ include "size.typ"
 include "hard.typ"
 include "lazy_nat.typ"
 include "flot.typ"
-include "infer.typ"
+(*include "infer.typ"*)
 include "ordinal.typ"
 include "lambda.typ"
 

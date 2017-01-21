@@ -41,6 +41,7 @@ exception Occur_check
 *)
 let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
   fun side v k os ->
+    assert(is_unset v);
       (* side = Pos means we are checking k < KUVar(u,os)
          side = Neg means we are chacking KUVar(u,os) < k
          side <> Pos and Neg means we not in the previous cases *)
@@ -64,6 +65,28 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
          | _ -> raise Occur_check
     in
     set_kuvar v k
+
+(** force a unification variable to use its state. Return true if
+    the variable is changed *)
+let uvar_use_state : kuvar -> ordi array -> bool = fun v os ->
+  (* FIXME: should not trust safe_set *)
+  try
+    match !(v.uvar_state) with
+    | Set _ -> false
+    | Unset Free   -> false
+    | Unset (DSum  l) ->
+       let fk = mbind_assoc kdsum v.uvar_arity l in
+       if is_unset v then (
+         Timed.(v.uvar_state := Unset Free);
+         safe_set_kuvar All v fk os);
+       true
+    | Unset (Prod l) ->
+       let fk = mbind_assoc kprod v.uvar_arity l in
+       if is_unset v then (
+         Timed.(v.uvar_state := Unset Free);
+         safe_set_kuvar All v fk os);
+       true
+  with Occur_check -> false
 
 (****************************************************************************)
 (**{2               bindings of ordinals in type and ordinals              }*)
