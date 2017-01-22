@@ -87,7 +87,7 @@ let search_induction subtype prfptr depth ctxt t c hyps =
       let (ov, pos, _, a) = recompose sch in
       Io.log_ind "searching IH (2) with %a ~ %a <- %a:\n%!"
         Sct.prInd sch.sch_index Print.kind a Print.kind c;
-      (* We need to call [subtype] to rollback unification if it fails *)
+      (* We need to call [subtype] to rollback unification if it fails. *)
       let prf = subtype ctxt t a c in
       if !prfptr = Todo then prfptr := Induction(sch.sch_index,prf);
       check_sub_proof prf;
@@ -97,21 +97,23 @@ let search_induction subtype prfptr depth ctxt t c hyps =
         print_nz { ctxt with non_zero = pos};
       Some(sch, prf, build_call ctxt sch.sch_index ov true)
     with Exit | Error _ -> Timed.Time.rollback time; None
+    (* FIXME what if there is a Subtype_error ? *)
   in
   let calls = gather_some (List.map may_apply hyps) in
-  (* HEURISTIC: we select the best induction hypothesis *)
-  let calls = List.map (fun (schema,prf,(index,_,m1,_ as call)) ->
-    let (a,b as s) = score_mat m1 in
+  (* HEURISTIC to select the best induction hypothesis. *)
+  let fn (_, prf, ((_, _, m, _) as call)) =
+    let ((a,b) as s) = score_mat m in
     Io.log_mat "score: (%f,%f)\n%!" a b;
-    (s, prf, call)) calls in
+    (s, prf, call)
+  in
+  let cmp (s1, _, _) (s2, _, _) = compare s2 s1 in
+  let calls = List.sort cmp (List.map fn calls) in
   Io.log_mat "\n%!";
-  let calls = List.sort (fun (s1,_,_) (s2,_,_) -> compare s2 s1) calls in
   match calls with
-  | (_,prf,(index,_,_,_ as call))::_ ->
-     Sct.new_call ctxt.call_graphs call;
-     prfptr := Induction(index,prf)
-  | [] -> Io.log_ind "no induction hyp found\n%!"; raise Not_found
-
+  | []                  -> Io.log_ind "no induction hyp found\n%!";
+                           raise Not_found
+  | (_, prf, call) :: _ -> Sct.new_call ctxt.call_graphs call;
+                           prfptr := Induction(Sct.call_index call, prf)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
 let check_fix type_check subtype prfPtr ctxt t depth f c0 =

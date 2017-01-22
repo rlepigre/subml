@@ -30,6 +30,8 @@ type cmp =
 type index
 type call = index * index * cmp array array * bool
 
+val call_index : call -> index
+
 (** A list of calls to be constructed then checked *)
 type call_table
 type t = call_table

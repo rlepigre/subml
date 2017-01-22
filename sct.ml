@@ -43,6 +43,8 @@ type index = int (** index of a function *)
 type call = index * index * cmp array array * bool
 type calls = call list
 
+let call_index : call -> index =
+  fun (i, _, _, _) -> i
 
 (** This stores the function table, giving name, arity and the
     way to print the function for debugging *)
