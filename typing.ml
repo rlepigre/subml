@@ -75,47 +75,42 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
         let tros = List.map2 fn os new_os in
         (New (Some (new_sch, a, b, tros)), ctxt)
 
-let search_induction subtype prfPtr depth ctxt t c0 hyps =
-  (* fn search for an applicable inductive hypothesis *)
-  if depth > 0 then
-    (* If the depth is not zero, do not search really the induction hypothesis *)
-    raise Not_found
-  else
-    let rec fn acc = function
-      | [] -> acc
-      | schema :: hyps ->
-         let time = Timed.Time.save () in
-         try
-           let (ov, pos, _, a) = recompose schema in
-           Io.log_ind "searching IH (2) with %a ~ %a <- %a:\n%!"
-             Sct.prInd schema.sch_index Print.kind a Print.kind c0;
-           (* need full subtype to rollback unification if it fails *)
-           let prf = subtype ctxt t a c0 in
-           if !prfPtr = Todo then prfPtr := Induction(schema.sch_index,prf);
-           check_sub_proof prf;
-           if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
-           Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-             Sct.prInd schema.sch_index Print.kind a Print.kind c0
-             print_nz { ctxt with non_zero = pos};
-           fn ((schema,prf, build_call ctxt schema.sch_index ov true)::acc) hyps
-         with Exit | Error _ ->
-           Timed.Time.rollback time;
-           fn acc hyps
-    in
-    Io.log_typ "searching IH (1):\n  %a %a\n%!" Print.kind c0 print_nz ctxt;
-    let calls = fn [] hyps in
-    (* HEURISTIC: we select the best induction hypothesis *)
-    let calls = List.map (fun (schema,prf,(index,_,m1,_ as call)) ->
-      let (a,b as s) = score_mat m1 in
-      Io.log_mat "score: (%f,%f)\n%!" a b;
-      (s, prf, call)) calls in
-    Io.log_mat "\n%!";
-    let calls = List.sort (fun (s1,_,_) (s2,_,_) -> compare s2 s1) calls in
-    match calls with
-    | (_,prf,(index,_,_,_ as call))::_ ->
-       Sct.new_call ctxt.call_graphs call;
-       prfPtr := Induction(index,prf)
-    | [] -> Io.log_ind "no induction hyp found\n%!"; raise Not_found
+let search_induction subtype prfptr depth ctxt t c hyps =
+  assert(not (depth < 0));
+  (* If depth is not zero, do not search really the induction hypothesis *)
+  if depth <> 0 then raise Not_found;
+  (* Search for all the induction hypotheses that can be applied. *)
+  Io.log_typ "searching IH (1):\n  %a %a\n%!" Print.kind c print_nz ctxt;
+  let may_apply sch =
+    let time = Timed.Time.save () in
+    try
+      let (ov, pos, _, a) = recompose sch in
+      Io.log_ind "searching IH (2) with %a ~ %a <- %a:\n%!"
+        Sct.prInd sch.sch_index Print.kind a Print.kind c;
+      (* We need to call [subtype] to rollback unification if it fails *)
+      let prf = subtype ctxt t a c in
+      if !prfptr = Todo then prfptr := Induction(sch.sch_index,prf);
+      check_sub_proof prf;
+      if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
+      Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
+      Sct.prInd sch.sch_index Print.kind a Print.kind c
+        print_nz { ctxt with non_zero = pos};
+      Some(sch, prf, build_call ctxt sch.sch_index ov true)
+    with Exit | Error _ -> Timed.Time.rollback time; None
+  in
+  let calls = gather_some (List.map may_apply hyps) in
+  (* HEURISTIC: we select the best induction hypothesis *)
+  let calls = List.map (fun (schema,prf,(index,_,m1,_ as call)) ->
+    let (a,b as s) = score_mat m1 in
+    Io.log_mat "score: (%f,%f)\n%!" a b;
+    (s, prf, call)) calls in
+  Io.log_mat "\n%!";
+  let calls = List.sort (fun (s1,_,_) (s2,_,_) -> compare s2 s1) calls in
+  match calls with
+  | (_,prf,(index,_,_,_ as call))::_ ->
+     Sct.new_call ctxt.call_graphs call;
+     prfptr := Induction(index,prf)
+  | [] -> Io.log_ind "no induction hyp found\n%!"; raise Not_found
 
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
