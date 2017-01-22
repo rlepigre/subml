@@ -116,43 +116,35 @@ let search_induction subtype prfptr depth ctxt t c hyps =
                            prfptr := Induction(Sct.call_index call, prf)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
-let check_fix type_check subtype prfPtr ctxt t depth f c0 =
+let check_fix type_check subtype prfptr ctxt t depth f c =
+  (* Stop if maximum depth has been reached. *)
   if depth < 0 then () else
-  (* filter the relevant hypothesis *)
-  let hyps = List.filter (function (f',_) -> f' == f) ctxt.fix_ihs in
-  let ctxt,hyps = match hyps with
-    | [(_,l)] -> ctxt, l
-    | [] ->
-       let hyps = ref [] in
-       let ctxt = { ctxt with fix_ihs = (f,hyps)::ctxt.fix_ihs; } in
-       ctxt, hyps
-    | _ -> assert false
+  (* Obtain the relevant hypotheses (those which binder is the same). *)
+  let (ctxt, hyps) =
+    try (ctxt, List.assq f ctxt.fix_ihs) with Not_found ->
+    let hyps = ref [] in
+    let fix_ihs = (f, hyps) :: ctxt.fix_ihs in
+    ({ctxt with fix_ihs}, hyps)
   in
-  try
-    search_induction subtype prfPtr depth ctxt t c0 !hyps
-  with Not_found ->
-    let manual = has_leading_ord_quantifier c0 in
-    let depth = if manual then depth + 1 else depth in
-    (* otherwise we unroll once more, and type-check *)
-    let e = TFixY(depth-1,f) in
-    let t0 = Pos.none e in
-    let t =  subst f e in
-    let (schema, os) =
-      match generalise ~manual ctxt.non_zero (SchTerm t0) c0 ctxt.call_graphs with
-      | None   -> assert false
-      | Some r -> r
-    in
-    if os <> [] then hyps := schema :: !hyps;
-    let (os0, tpos, _, c) = recompose_term ~general:false schema in
-    let tros = List.combine (List.map snd os) (List.map snd os0) in
-    let fnum = schema.sch_index in
-    Io.log_ind "Adding induction hyp (1) %a:\n  %a => %a\n%!"
-      Sct.prInd fnum Print.kind c0 Print.kind c;
-    add_call ctxt fnum os false;
-    let ctxt = { ctxt with top_induction = (fnum, os0); non_zero = tpos} in
-    let prf = type_check ctxt t c in
-    let prf = (ctxt.non_zero, t0, c, Typ_Yufl prf) in
-    prfPtr := Unroll(schema,tros, prf)
+  (* Search an induction hypothesis that can be applied. *)
+  try search_induction subtype prfptr depth ctxt t c !hyps with Not_found ->
+  (* There were no such induction hypothesis so we unroll the fixpoint. *)
+  let manual = has_leading_ord_quantifier c in
+  let depth = depth + (if manual then 1 else 0) in
+  let e = Pos.none (TFixY(depth - 1, f)) in
+  match generalise ~manual ctxt.non_zero (SchTerm e) c ctxt.call_graphs with
+  | None          -> assert false (* FIXME why cannot fail ? *)
+  | Some(sch, os) ->
+      if os <> [] then hyps := sch :: !hyps;
+      let (os0, non_zero, _, a) = recompose_term ~general:false sch in
+      let tros = List.combine (List.map snd os) (List.map snd os0) in
+      Io.log_ind "Adding IH (1) %a:\n  %a => %a\n%!" Sct.prInd sch.sch_index
+        Print.kind c Print.kind a;
+      add_call ctxt sch.sch_index os false;
+      let ctxt = {ctxt with top_induction = (sch.sch_index, os0); non_zero} in
+      let prf = type_check ctxt (subst f e.elt) a in
+      let prf = (ctxt.non_zero, e, a, Typ_Yufl prf) in
+      prfptr := Unroll(sch,tros, prf)
 
 
 let fixpoint_depth = ref 1 (* TODO move *)
@@ -638,8 +630,8 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          Typ_Prnt(p)
       | TFixY(depth,f) ->
          let prf = ref Todo in
-         ctxt.fix_todo := (fun () ->
-           check_fix type_check subtype prf ctxt t depth f c) :: !(ctxt.fix_todo);
+         let check () = check_fix type_check subtype prf ctxt t depth f c in
+         ctxt.fix_todo := check :: !(ctxt.fix_todo);
          Typ_YGen prf
       | TCnst(_,a,b) ->
          let p = subtype ctxt t a c in
