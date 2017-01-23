@@ -75,10 +75,7 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
         let tros = List.map2 fn os new_os in
         (New (Some (new_sch, a, b, tros)), ctxt)
 
-let search_induction subtype prfptr depth ctxt t c hyps =
-  assert(not (depth < 0));
-  (* If depth is not zero, do not search really the induction hypothesis *)
-  if depth <> 0 then raise Not_found;
+let search_induction subtype prfptr ctxt t c hyps =
   (* Search for all the induction hypotheses that can be applied. *)
   Io.log_typ "searching IH (1):\n  %a %a\n%!" Print.kind c print_nz ctxt;
   let may_apply sch =
@@ -127,7 +124,7 @@ let check_fix type_check subtype prfptr ctxt t depth f c =
     ({ctxt with fix_ihs}, hyps)
   in
   (* Search an induction hypothesis that can be applied. *)
-  try search_induction subtype prfptr depth ctxt t c !hyps with Not_found ->
+  try search_induction subtype prfptr ctxt t c !hyps with Not_found ->
   (* There were no such induction hypothesis so we unroll the fixpoint. *)
   let manual = has_leading_ord_quantifier c in
   let depth = depth + (if manual then 1 else 0) in
