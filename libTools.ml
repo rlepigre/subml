@@ -20,13 +20,6 @@ let remember_first : 'a option ref -> 'a -> unit = fun ptr p ->
   | None -> ptr := Some p
   | Some _ -> ()
 
-let gather_some : 'a option list -> 'a list = fun ls ->
-  let rec gather acc = function
-    | []           -> acc
-    | None   :: ls -> gather acc ls
-    | Some v :: ls -> gather (v::acc) ls
-  in gather [] ls
-
 (*{2 functions related to ['a list] }*)
 
 let map_snd : ('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list = fun f l ->

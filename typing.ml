@@ -78,39 +78,30 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
 let search_induction subtype prfptr ctxt t c hyps =
   (* Search for all the induction hypotheses that can be applied. *)
   Io.log_typ "searching IH (1):\n  %a %a\n%!" Print.kind c print_nz ctxt;
-  let may_apply sch =
-    let time = Timed.Time.save () in
-    try
-      let (ov, pos, _, a) = recompose sch in
-      Io.log_ind "searching IH (2) with %a ~ %a <- %a:\n%!"
-        Sct.prInd sch.sch_index Print.kind a Print.kind c;
-      (* We need to call [subtype] to rollback unification if it fails. *)
-      let prf = subtype ctxt t a c in
-      if !prfptr = Todo then prfptr := Induction(sch.sch_index,prf);
-      check_sub_proof prf;
-      if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
-      Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-      Sct.prInd sch.sch_index Print.kind a Print.kind c
-        print_nz { ctxt with non_zero = pos};
-      Some(sch, prf, build_call ctxt sch.sch_index ov true)
-    with Exit | Error _ -> Timed.Time.rollback time; None
-    (* FIXME what if there is a Subtype_error ? *)
+  let rec find_good_call = function
+    | [] -> Io.log_ind "no induction hyp found\n%!";
+            raise Not_found
+    | sch::hyps ->
+       let time = Timed.Time.save () in
+       try
+         let (ov, pos, _, a) = recompose sch in
+         Io.log_ind "searching IH (2) with %a ~ %a <- %a:\n%!"
+                    Sct.prInd sch.sch_index Print.kind a Print.kind c;
+         (* We need to call [subtype] to rollback unification if it fails. *)
+         let prf = subtype ctxt t a c in
+         if !prfptr = Todo then prfptr := Induction(sch.sch_index,prf);
+         check_sub_proof prf; (* NOTE: check for subtype error *)
+         if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
+         Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
+                    Sct.prInd sch.sch_index Print.kind a Print.kind c
+                    print_nz { ctxt with non_zero = pos};
+         (prf, build_call ctxt sch.sch_index ov true)
+       with Exit | Error _ -> Timed.Time.rollback time;
+                              find_good_call hyps
   in
-  let calls = gather_some (List.map may_apply hyps) in
-  (* HEURISTIC to select the best induction hypothesis. *)
-  let fn (_, prf, ((_, _, m, _) as call)) =
-    let ((a,b) as s) = score_mat m in
-    Io.log_mat "score: (%f,%f)\n%!" a b;
-    (s, prf, call)
-  in
-  let cmp (s1, _, _) (s2, _, _) = compare s2 s1 in
-  let calls = List.sort cmp (List.map fn calls) in
-  Io.log_mat "\n%!";
-  match calls with
-  | []                  -> Io.log_ind "no induction hyp found\n%!";
-                           raise Not_found
-  | (_, prf, call) :: _ -> Sct.new_call ctxt.call_graphs call;
-                           prfptr := Induction(Sct.call_index call, prf)
+  let (prf,call) = find_good_call hyps in
+  Sct.new_call ctxt.call_graphs call;
+  prfptr := Induction(Sct.call_index call, prf)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
 let check_fix type_check subtype prfptr ctxt t depth f c =

@@ -95,25 +95,6 @@ let find_indexes ftbl pos index index' a b =
     ) a) b;
   m
 
-let score_mat m =
-  let open Sct in
-  let nb_lines = Array.length m in
-  let nb_colos = if nb_lines > 0 then Array.length m.(0) else 0 in
-  let less = ref 0 in
-  let leq  = ref 0 in
-  for i = 0 to nb_lines - 1 do
-    let found_less = ref false and found_leq = ref false in
-    for j = 0 to nb_colos - 1 do
-      match m.(i).(j) with
-      | Less -> found_less := true
-      | Leq  -> found_leq := true
-      | _    -> ()
-    done;
-    if !found_less then incr less
-    else if !found_leq then incr leq
-  done;
-  (float !less /. float nb_colos, float !leq /. float nb_colos)
-
 let consecutive =
   let rec fn n = function
     | [] -> true
