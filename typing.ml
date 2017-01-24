@@ -89,14 +89,15 @@ let search_induction subtype prfptr ctxt t c hyps =
                     Sct.prInd sch.sch_index Print.kind a Print.kind c;
          (* We need to call [subtype] to rollback unification if it fails. *)
          let prf = subtype ctxt t a c in
-         if !prfptr = Todo then prfptr := Induction(sch,prf);
+         (* Change the proof even if wrong to have a good error message *)
+         if !prfptr = Todo then Timed.(prfptr := Induction(sch,prf));
          check_sub_proof prf; (* NOTE: check for subtype error *)
          if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
          Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
                     Sct.prInd sch.sch_index Print.kind a Print.kind c
                     print_nz { ctxt with non_zero = pos};
          Sct.new_call ctxt.call_graphs (build_call ctxt sch.sch_index ov true);
-         prfptr := Induction(sch, prf)
+         Timed.(prfptr := Induction(sch, prf))
        with Exit | Error _ -> Timed.Time.rollback time;
                               find_good_call hyps
   in
@@ -122,7 +123,7 @@ let check_fix type_check subtype prfptr ctxt t depth f c =
   match generalise ~manual ctxt.non_zero (SchTerm e) c ctxt.call_graphs with
   | None          -> assert false (* FIXME why cannot fail ? *)
   | Some(sch, os) ->
-      if os <> [] then hyps := sch :: !hyps;
+      if os <> [] then Timed.(hyps := sch :: !hyps);
       let (os0, non_zero, _, a) = recompose_term ~general:false sch in
       let tros = List.combine (List.map snd os) (List.map snd os0) in
       Io.log_ind "Adding IH (1) %a:\n  %a => %a\n%!" Sct.prInd sch.sch_index
@@ -131,7 +132,7 @@ let check_fix type_check subtype prfptr ctxt t depth f c =
       let ctxt = {ctxt with top_induction = (sch.sch_index, os0); non_zero} in
       let prf = type_check ctxt (subst f e.elt) a in
       let prf = (ctxt.non_zero, e, a, Typ_Yufl prf) in
-      prfptr := Unroll(sch,tros, prf)
+      Timed.(prfptr := Unroll(sch,tros, prf))
 
 
 let fixpoint_depth = ref 1 (* TODO move *)
@@ -312,7 +313,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
   with Exit ->
   let (ind_res, ctxt) = check_rec ctxt0 t0 a b in
   match ind_res with
-  | Use schema       -> (ctxt.non_zero, t0, a0, b0, Sub_Ind schema)
+  | Use schema  -> (ctxt.non_zero, t0, a0, b0, Sub_Ind schema)
   | New ind_ref ->
   let (finalise_proof,t,a,b,a0,b0) = match ind_ref with
     | None -> ((fun x -> x),t0,a,b,a0,b0)
@@ -618,7 +619,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TFixY(depth,f) ->
          let prf = ref Todo in
          let check () = check_fix type_check subtype prf ctxt t depth f c in
-         ctxt.fix_todo := check :: !(ctxt.fix_todo);
+         Timed.(ctxt.fix_todo := check :: !(ctxt.fix_todo));
          Typ_YGen prf
       | TCnst(_,a,b) ->
          let p = subtype ctxt t a c in

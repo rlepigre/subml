@@ -50,19 +50,17 @@ let call_index : call -> index =
     way to print the function for debugging *)
 type arities = (int * (string * int * string array)) list
 type call_table =
-  { mutable current : int;
-    mutable table : arities;
-    mutable calls : calls
-  }
+  { current : int ref
+  ; table   : arities ref
+  ; calls   : calls ref }
 
 type t = call_table
 
 (** Initialisation of a new function table *)
 let init_table () =
-  { current = 0
-  ; table = [(-1, ("R", 0, [||]))] (* the root call is predefined *)
-  ; calls = []
-  }
+  { current = ref 0
+  ; table   = ref [(-1, ("R", 0, [||]))] (* the root call is predefined *)
+  ; calls   = ref [] }
 
 (** the root index *)
 let root = -1
@@ -72,22 +70,25 @@ let new_function : call_table -> string -> string list -> index =
   fun ftbl name args ->
     let args = Array.of_list args in
     let arity = Array.length args in
-    let n = ftbl.current in
-    ftbl.current <- n + 1;
-    ftbl.table <- (n, (name, arity, args))::ftbl.table;
+    let n = !(ftbl.current) in
+    let open Timed in
+    ftbl.current := n + 1;
+    ftbl.table   := (n, (name, arity, args))::!(ftbl.table);
     n
 
 let new_call : call_table -> call -> unit = fun tbl call ->
-  tbl.calls <- call::tbl.calls
+  Timed.(tbl.calls := call::!(tbl.calls))
 
 (** Gives the arity of a given function *)
 let arity : int -> call_table -> int = fun i ftbl ->
-  try let (_,a,_) = List.assoc i ftbl.table in a
+  try let (_,a,_) = List.assoc i !(ftbl.table) in a
   with Not_found -> assert false
 
-let copy t = { current = t.current; table = t.table; calls = t.calls }
+let copy t = { current = ref !(t.current)
+             ; table   = ref !(t.table)
+             ; calls   = ref !(t.calls) }
 
-let is_empty tbl = tbl.calls = []
+let is_empty tbl = !(tbl.calls) = []
 
 (*****************************************************************************)
 (**{2               Printing functions for debugging                        }*)
@@ -131,11 +132,11 @@ let print_call ff tbl (i,j,m,_) =
   fprintf ff ")%!"
 
 let print_calls : formatter -> call_table -> unit = fun ff tbl ->
-  List.iter (print_call ff tbl.table) tbl.calls
+  List.iter (print_call ff !(tbl.table)) !(tbl.calls)
 
 let latex_print_calls ff tbl =
-  let arities = tbl.table in
-  let calls = tbl.calls in
+  let arities = !(tbl.table) in
+  let calls = !(tbl.calls) in
   fprintf ff "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
   let arities = List.filter (fun (j,_) ->
     List.exists (fun (i1,i2,_,_) -> j = i1 || j = i2) calls)
@@ -224,8 +225,8 @@ let subsume m1 m2 =
 (** the main function, checking if calls are well-founded *)
 let sct_only : call_table -> bool = fun ftbl ->
   Io.log_sct "SCT starts...\n%!";
-  let num_fun = ftbl.current in
-  let arities = ftbl.table in
+  let num_fun = !(ftbl.current) in
+  let arities = !(ftbl.table) in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun []) in
   let print_call ff = print_call ff arities in
   (* counters to count added and composed edges *)
@@ -251,8 +252,8 @@ let sct_only : call_table -> bool = fun ftbl ->
   (* adding initial edges *)
   try
     Io.log_sct "initial edges to be added:\n%!";
-    List.iter (fun c -> Io.log_sct "\t%a\n%!" print_call c) ftbl.calls;
-    let new_edges = ref ftbl.calls in
+    List.iter (fun c -> Io.log_sct "\t%a\n%!" print_call c) !(ftbl.calls);
+    let new_edges = ref !(ftbl.calls) in
     (* compute the transitive closure of the call graph *)
     Io.log_sct "start completion\n%!";
     let rec fn () =
@@ -307,7 +308,7 @@ let add_call rec_call n call =
 (* TODO: inline function that are called at most once *)
 let inline : call_table -> call_table = fun ftbl ->
   if not !do_inline then ftbl else
-    let calls = ftbl.calls in
+    let calls = !(ftbl.calls) in
       (* Io.log "before inlining\n";
          List.iter (Io.log "%a\n%!" pr_call) calls; *)
     let tbl = Hashtbl.create 31 in
@@ -345,6 +346,6 @@ let inline : call_table -> call_table = fun ftbl ->
     in
     { current = ftbl.current
     ; table   = ftbl.table
-    ; calls   = gn calls }
+    ; calls   = ref (gn calls) }
 
 let sct : call_table -> bool = fun tbl -> sct_only (inline tbl)
