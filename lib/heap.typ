@@ -36,24 +36,3 @@ val rec sort : ∀A (A → A → Bool) → List(A) → List(A) =
                        let l1 = sort cmp (x::m1) in
                        let l2 = sort cmp (y::m2) in
                        merge cmp l1 l2)
-
-
-(*
-latex {
-\documentclass{article}
-
-\setlength{\pdfpagewidth}{2000mm}
-\setlength{\paperwidth}{2000mm}
-
-\usepackage{bussproofs}
-\include{macros}
-\begin{document}
-\begin{center}
-\tiny
-\begin{prooftree}
-##split2#
-\end{prooftree}
-\end{center}
-\end{document}
-}
-*)

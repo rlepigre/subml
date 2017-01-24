@@ -380,7 +380,7 @@ and print_kind unfold wrap ff t =
   | KECst(u,f,_) ->
      let is_exists = match t with KECst(_) -> true | _ -> false in
      let name, index =search_type_tbl u f is_exists in
-     fprintf ff "%s_%d" name index
+     fprintf ff "%s_{%d}" name index
   | KUVar(u,os) ->
      if os = [||] then
        fprintf ff "?%i" u.uvar_key
@@ -641,7 +641,7 @@ and print_term ?(give_pos=false) unfold wrap ff t =
      if name = "" then
        pterm ff t
      else
-       fprintf ff "%s_%d" name index
+       fprintf ff "%s_{%d}" name index
 
 (****************************************************************************)
 (*{2                           Proof to text                               }*)
@@ -683,7 +683,7 @@ let rec sub_used_ind (_, _, _, _, r) =
   | Sub_Func   (p1, p2) -> sub_used_ind p1 @ sub_used_ind p2
   | Sub_Prod   ps
   | Sub_DSum   ps       -> List.fold_left (fun acc (l,p) -> acc @ sub_used_ind p) [] ps
-  | Sub_Ind n           -> [n]
+  | Sub_Ind sch         -> [sch.sch_index]
   | Sub_Lower
   | Sub_Error _         -> []
 
@@ -691,7 +691,7 @@ and typ_used_ind (_, _, _, r) =
   let rec fn ptr = match !ptr with
     | Todo              -> []
     | Unroll(_,_,p)     -> typ_used_ind p
-    | Induction(n,p)    -> n :: sub_used_ind p
+    | Induction(s,p)    -> s.sch_index :: sub_used_ind p
   in
   match r with
   | Typ_YGen ptr        -> fn ptr
@@ -723,10 +723,11 @@ and typ_used_ind (_, _, _, r) =
 let is_refl : sub_prf -> bool = fun (_,_,a,b,_) -> strict_eq_kind a b
 
 let mkSchema schema =
-  let os = Array.init (mbinder_arity schema.sch_judge)
-    (fun i -> new_ovari ("α_"^string_of_int i)) in
-  let osnames = String.concat "," (Array.to_list (Array.map name_of os)) in
-  let os = Array.map free_of os in
+  let osnames = Array.init (mbinder_arity schema.sch_judge)
+                           (fun i -> "α_"^string_of_int i) in
+  let os = Array.map (fun s -> OVars s) osnames in
+  let osnames = String.concat "," (Array.to_list osnames) in
+
   let (a,b) = msubst schema.sch_judge os in
   let s = match a with
     | SchKind k -> kind_to_string false k
@@ -734,11 +735,18 @@ let mkSchema schema =
   in
   let o2s = String.concat ", "
     (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
-  let r2s = String.concat "& "
-    (List.map (fun (i,j) ->  "α_"^string_of_int i^"<"^ "α_"^string_of_int j) schema.sch_relat)
+  let r2s =
+    if schema.sch_relat = [] then "" else
+      "(" ^
+        String.concat "& "
+          (List.map (fun (i,j) ->  "α_"^string_of_int i^"<"^ "α_"^string_of_int j)
+                    schema.sch_relat)
+        ^ ")"
+
   in
+
   let these = if !latex_mode then "\\vdash" else "|-" in
-  sprintf "∀%s %s (%s)%s %s : %s" osnames o2s r2s these s (kind_to_string false b)
+  sprintf "∀%s %s %s %s %s : %s" osnames o2s r2s these s (kind_to_string false b)
 
 let print_schema ch schema =
   fprintf ch "%s" (mkSchema schema)
@@ -764,17 +772,18 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   in
   let fn ptr = match !ptr with
   | Todo -> axiomN (sprintf "ERROR(Missing inductive proof)") c
-  | Induction(n,(os,t,a,_,_ as p))  ->
+  | Induction(schema,(os,t,a,_,_ as p))  ->
      let c' =
-       sprintf (if !latex_mode then "\\left[%s\\right]_%s"
-                else "[%s]_%s") (mkJudgment os t a) (Sct.strInd n)
+       sprintf (if !latex_mode then "\\H{%s}{%s}"
+                else "[%s]_{%s}") (mkSchema schema) (Sct.strInd schema.sch_index)
      in
-     if is_refl p then hyp c' else binaryT "" c p (hyp c')
+     let p' = unaryN "\\G" (mkJudgment os t a) (hyp c') in
+     if is_refl p then p' else binaryT "" c p p'
   | Unroll(schema,tros,p) ->
      if List.mem schema.sch_index used_ind then (
        let c0 = mkSchema schema in
-       unaryN "G^-_e" c
-         (unaryN ("G^-_i["^ Sct.strInd schema.sch_index ^"]") c0 (typ2proof p)))
+       unaryN "\\G" c
+         (unaryN ("\\I{"^ Sct.strInd schema.sch_index ^"}") c0 (typ2proof p)))
      else (
          ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
          typ2proof p)
@@ -809,21 +818,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   let sub2proof = sub2proof used_ind in
   let t2s = term_to_string true and k2s = kind_to_string false in
   let o2s = String.concat ", " (List.map (ordi_to_string false) os) in
-  let mkJudgement t a b =
-    sprintf "%s \\vdash %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b)
-  in
-  let mkSchema schema =
-    let os = Array.init (mbinder_arity schema.sch_judge)
-      (fun i -> new_ovari ("α_"^string_of_int i)) in
-    let osnames = String.concat "," (Array.to_list (Array.map name_of os)) in
-    let os = Array.map free_of os in
-    let (a,b) = msubst schema.sch_judge os in
-    let a = match a with SchTerm _ -> assert false | SchKind k -> k in
-    let o2s = String.concat ", "
-      (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
-    sprintf "∀%s %s \\vdash %s ⊆ %s" osnames o2s (k2s a) (k2s b)
-  in
-  let c = mkJudgement t a b in
+  let c = sprintf "%s \\vdash %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b) in
   match r with
   | _ when strict_eq_kind a b
                       -> axiomN "$=$" c (* usefull because of unification *)
@@ -848,16 +843,18 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   | Sub_And_r(p)      -> unaryN "∧_r" c (sub2proof p)
   | Sub_Or_l(p)       -> unaryN "∨_l" c (sub2proof p)
   | Sub_Or_r(p)       -> unaryN "∨_r" c (sub2proof p)
-  | Sub_Ind(n)        -> hyp (sprintf
-                                (if !latex_mode then "\\left[%s\\right]_%s"
-                                 else "[%s]_%s")
-                                c (Sct.strInd n))
+  | Sub_Ind(sch)      -> let p0 = sprintf
+                                (if !latex_mode then "\\H{%s}{%s}"
+                                 else "[%s]_{%s}")
+                                (mkSchema sch) (Sct.strInd sch.sch_index)
+                         in
+                         unaryN "\\GP" c (hyp p0)
   | Sub_Error(msg)    -> axiomN (sprintf "ERROR(%s)" msg) c
   | Sub_Gen(schema,tros,((os0,t0,_,_,_) as p)) ->
      if List.mem schema.sch_index used_ind then (
        let c0 = mkSchema schema in
-       unaryN "G^+_e" c
-         (unaryN ("G^+_i["^ Sct.strInd schema.sch_index ^"]") c0 (sub2proof p)))
+       unaryN "\\GP" c
+         (unaryN ("\\IP{"^ Sct.strInd schema.sch_index ^"}") c0 (sub2proof p)))
      else (
          ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
          epsilon_term_tbl := (t0,(t,"",-1)) :: !epsilon_term_tbl;
@@ -902,7 +899,7 @@ let print_epsilon_tbls ff =
     | TCnst(f,a,b) when name <> "" ->
        let x = free_of (new_tvari (binder_name f)) in
        let t = subst f x in
-       fprintf ff "%s_%d &= ε_{%a ∈ %a}(%a ∉ %a)\\\\\n" name index
+       fprintf ff "%s_{%d} &= ε_{%a ∈ %a}(%a ∉ %a)\\\\\n" name index
          (print_term false) (Pos.none x)
          (print_kind false) a (print_term false) t (print_kind false) b
     | _ when name = "" ->
@@ -913,7 +910,7 @@ let print_epsilon_tbls ff =
     let x = new_prvar f in
     let k = subst f x in
     let symbol = if is_exists then "∈" else "∉" in
-      fprintf ff "%s_%d &= ε_%s(%a %s %a)\\\\\n" name index
+      fprintf ff "%s_{%d} &= ε_{%s}(%a %s %a)\\\\\n" name index
       (binder_name f) (print_term false) u symbol (print_kind false) k) epsilon_type_tbl;
   list_ref_iter (fun (o,(n,defi)) ->
     if not defi then

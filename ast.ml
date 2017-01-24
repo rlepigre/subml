@@ -228,7 +228,7 @@ and sub_rule =
   | Sub_Or_l   of sub_prf
   | Sub_Or_r   of sub_prf
   | Sub_Gen    of schema * (ordi * ordi) list * sub_prf
-  | Sub_Ind    of Sct.index
+  | Sub_Ind    of schema
   | Sub_Error  of string
 and sub_prf =
   ordi list * term * kind * kind * sub_rule
@@ -255,7 +255,7 @@ and typ_prf =
   ordi list * term * kind * typ_rule
 and typ_gen =
   | Todo
-  | Induction of Sct.index * sub_prf
+  | Induction of schema * sub_prf
   | Unroll of schema * (ordi * ordi) list * typ_prf
 
 let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key

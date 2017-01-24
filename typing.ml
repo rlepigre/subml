@@ -15,7 +15,7 @@ open LibTools
 
 (** Result type of [check_rec]. *)
 type ind =
-  | Use of Sct.index
+  | Use of schema
   (** The given induction hypothesis applies. *)
   | New of (schema * kind * kind * (ordi * ordi) list) option
   (** The given induction hypothesis has been registered. *)
@@ -57,7 +57,7 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
         let old_sch = List.find (eq_schema new_sch) ctxt.sub_ihs in
         Io.log_ind "Found schema     %a\n%!" print_schema old_sch;
         add_call ctxt old_sch.sch_index new_os true;
-        (Use old_sch.sch_index, ctxt)
+        (Use old_sch, ctxt)
       with Not_found ->
         (* We cannot apply the induction hypothesis. However, we register
            our new schema as an induction hypothesis for later and
@@ -89,19 +89,18 @@ let search_induction subtype prfptr ctxt t c hyps =
                     Sct.prInd sch.sch_index Print.kind a Print.kind c;
          (* We need to call [subtype] to rollback unification if it fails. *)
          let prf = subtype ctxt t a c in
-         if !prfptr = Todo then prfptr := Induction(sch.sch_index,prf);
+         if !prfptr = Todo then prfptr := Induction(sch,prf);
          check_sub_proof prf; (* NOTE: check for subtype error *)
          if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
          Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
                     Sct.prInd sch.sch_index Print.kind a Print.kind c
                     print_nz { ctxt with non_zero = pos};
-         (prf, build_call ctxt sch.sch_index ov true)
+         Sct.new_call ctxt.call_graphs (build_call ctxt sch.sch_index ov true);
+         prfptr := Induction(sch, prf)
        with Exit | Error _ -> Timed.Time.rollback time;
                               find_good_call hyps
   in
-  let (prf,call) = find_good_call hyps in
-  Sct.new_call ctxt.call_graphs call;
-  prfptr := Induction(Sct.call_index call, prf)
+  find_good_call hyps
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
 let check_fix type_check subtype prfptr ctxt t depth f c =
@@ -313,7 +312,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
   with Exit ->
   let (ind_res, ctxt) = check_rec ctxt0 t0 a b in
   match ind_res with
-  | Use n       -> (ctxt.non_zero, t0, a0, b0, Sub_Ind n)
+  | Use schema       -> (ctxt.non_zero, t0, a0, b0, Sub_Ind schema)
   | New ind_ref ->
   let (finalise_proof,t,a,b,a0,b0) = match ind_ref with
     | None -> ((fun x -> x),t0,a,b,a0,b0)
