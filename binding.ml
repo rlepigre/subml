@@ -120,6 +120,8 @@ let rec bind_both ?(from_generalise=false) os x =
        so if unsafe, subtyping/eq_kind/leq_kind will fail *)
     | KUVar(u,_)   when List.mem_assq u !fresh_uvar -> kuvar u (List.assq u !fresh_uvar)
     | KUVar(u,os') ->
+       (* os'' is the list of ordinals which are to be bound but are not
+          parameter of u *)
        let os'' = List.filter (fun o ->
          not (Array.exists (strict_eq_ordi o) os') && not (kuvar_ord_occur u o))
          (Array.to_list os)
@@ -140,30 +142,33 @@ let rec bind_both ?(from_generalise=false) os x =
            (safe_set_kuvar Non u (constant_mbind 0 (KProd [] (*ignored anyway*))) os';
             self_kind k)
        else
-         (* general case *)
+         (* general case, we extend the list of parameters and set the
+            value of u with v applied to more parameters. *)
          let os'' = Array.of_list os'' in
          let new_ords = Array.append os' os'' in
          let new_len = u.uvar_arity + Array.length os'' in
          let state =
            match uvar_state u with
            | Free -> Free
-           | DSum l ->
+           | DSum l -> assert (not from_generalise);
               DSum (List.map (fun (s,f) ->
                 (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
                   bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
-           | Prod l ->
+           | Prod l -> assert (not from_generalise);
               Prod (List.map (fun (s,f) ->
                 (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
                   bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
          let new_ords = Array.map self_ord new_ords in
+         (** avoid seting v with a third variable w ...
+             TODO: check why this is necessary *)
          fresh_uvar := (v, new_ords) :: !fresh_uvar;
          let k = unbox (mbind mk_free_o (Array.make u.uvar_arity "α") (fun x ->
            kuvar v (Array.init new_len
                       (fun i -> if i < u.uvar_arity then x.(i) else box
                           (match os''.(i - u.uvar_arity) with
-                          | OVari _ -> OConv
+                          | OVari _ -> assert from_generalise; OConv
                           (* TODO: not clean: OVari represents OConv in generalise *)
                           | o -> o)))))
          in
@@ -182,6 +187,7 @@ let rec bind_both ?(from_generalise=false) os x =
       match o with
       | OUVar(u,_)   when List.mem_assq u !fresh_ovar -> ouvar u (List.assq u !fresh_ovar)
       | OUVar(u,os') ->
+         (** Similar to KUVar above *)
          let os'' = List.filter (fun o ->
            not (Array.exists (strict_eq_ordi o) os') &&
              (not (ouvar_occur u o)))
