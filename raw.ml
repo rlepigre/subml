@@ -89,7 +89,7 @@ let apply_rpat c x t =
      in
      let name =
        if is_cons r then
-         ":" ^ (fst (List.assoc "hd" r)).elt ^ "::" ^
+         ":" ^ (fst (List.assoc "hd" r)).elt ^ "{::}" ^
                (fst (List.assoc "tl" r)).elt
        else
          List.fold_left (fun acc (l,(x,_)) ->

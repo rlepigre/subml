@@ -461,7 +461,8 @@ and pkind_def unfold ff kd =
 (*{2                         Printing of a term                            }*)
 (****************************************************************************)
 
-and print_term ?(give_pos=false) unfold wrap ff t =
+and print_term ?(give_pos=false) unfold wrap ff =
+  let unfolded_Y = ref [] in fun t ->
   let wterm = print_term ~give_pos false true in
   let pterm = print_term ~give_pos false false in
   let pkind = print_kind false false in
@@ -515,20 +516,20 @@ and print_term ?(give_pos=false) unfold wrap ff t =
           fprintf ff ".%a" pterm t
      in
      fprintf ff "λ%a" (fn true) t;
-     if wrap then fprintf ff ")";
+     if wrap then fprintf ff ")"
+
   | TAppl _ ->
-     let rec fn acc t = match t.elt with
+    if wrap then fprintf ff "(";
+    let rec fn acc t = match t.elt with
        | TAppl(t,u) ->
           fn (u::acc) t
        | _ ->
           t::acc
      in
      let terms = fn [] t in
-     let sep = if !latex_mode then " \\; " else " " in
-     if wrap then
-       fprintf ff "(%a)" (print_list wterm sep) terms
-     else
-       print_list wterm sep ff terms
+     let sep = if !latex_mode then " \\, " else " " in
+     print_list wterm sep ff terms;
+     if wrap then fprintf ff ")"
 
   | TReco(fs) ->
      if is_tuple fs then begin
@@ -567,12 +568,14 @@ and print_term ?(give_pos=false) unfold wrap ff t =
   | TProj(t,l) ->
       fprintf ff "%a.%s" pterm t l
   | TCons(c,t) ->
+     if wrap then fprintf ff "(";
      (match c, t.elt with
      | "Nil", TReco [] -> fprintf ff "[]"
      | "Cons", TReco l when List.sort compare (List.map fst l) = ["hd"; "tl"] ->
-        fprintf ff "%a :: %a" pterm (List.assoc "hd" l)  pterm (List.assoc "tl" l)
+        fprintf ff "%a{::}%a" pterm (List.assoc "hd" l)  pterm (List.assoc "tl" l)
      | _, TReco([]) -> fprintf ff "%s" c
-     | _         -> fprintf ff "%s %a" c pterm t)
+     | _         -> fprintf ff "%s %a" c pterm t);
+       if wrap then fprintf ff ")";
   | TCase(t,l,d) ->
      if List.length l = 1 && d = None && snd (List.hd l) == unbox idt then begin
        fprintf ff "%a.%s" pterm t (fst (List.hd l))
@@ -631,9 +634,12 @@ and print_term ?(give_pos=false) unfold wrap ff t =
       fprintf ff "print(%S)" s
   | TFixY(_,f) ->
      let x = binder_name f in
-     if unfold then
-       let t = subst f (TVars x) in
-       fprintf ff "Y%s.%a" x pterm t
+     if not (List.memq f !unfolded_Y) then
+       begin
+         unfolded_Y := f :: !unfolded_Y;
+         let t = subst f (TVars x) in
+         fprintf ff "Y%s.%a" x pterm t
+       end
      else
        fprintf ff (if !latex_mode then "\\mathrm{%s}" else "%s") x
   | TCnst(f,a,b) ->
