@@ -197,7 +197,7 @@ and schema =
   ; sch_judge : (ordi, term_or_kind * kind) mbinder (** judgement *) }
 
 and term_or_kind =
-  | SchTerm of term
+  | SchTerm of (term', term) binder
   | SchKind of kind
 
 (****************************************************************************)

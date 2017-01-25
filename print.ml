@@ -272,7 +272,7 @@ let rec print_ordi unfold ff o =
           | SchTerm t ->
              fprintf ff "ε^%d_{%a<%a}(%a \\notin %a)"
                (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
-               (print_term false false) t (print_kind false false) k2
+               (print_term false false) (Pos.none (TFixY(0,t))) (print_kind false false) k2
           | SchKind k1 ->
              fprintf ff "ε^%d_{%a<%a}(%a \\not\\subset %a)"
                (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
@@ -737,7 +737,7 @@ let mkSchema schema =
   let (a,b) = msubst schema.sch_judge os in
   let s = match a with
     | SchKind k -> kind_to_string false k
-    | SchTerm t -> term_to_string false t
+    | SchTerm t -> term_to_string false (Pos.none (TFixY(0,t)))
   in
   let o2s = String.concat ", "
     (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in

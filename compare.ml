@@ -157,7 +157,7 @@ and eq_schema s1 s2 =
         eq_term_or_kind pos k1 k2 && eq_kind pos k1' k2')
 
 and eq_term_or_kind pos x1 x2 = match (x1,x2) with
-    SchTerm t1, SchTerm t2 -> eq_term pos t1 t2
+    SchTerm t1, SchTerm t2 -> eq_tbinder pos t1 t2
   | SchKind k1, SchKind k2 -> eq_kind pos k1 k2
   | _         , _          -> false
 
@@ -427,7 +427,7 @@ and gen_occur :
     in
     acc
   and aux5 acc = function
-    | SchTerm t -> aux2    acc t
+    | SchTerm t -> aux2    acc (subst t (TReco []))
     | SchKind k -> aux All acc k
   in
   (fun k -> aux sPos Non k), (fun o -> aux3 Non o)
@@ -460,6 +460,9 @@ let eq_kbinder : ordi list -> (kind, kind) binder -> (kind, kind) binder -> bool
 
 let eq_tkbinder : ordi list -> (term', kind) binder -> (term', kind) binder -> bool =
   fun pos f1 f2 -> Timed.pure_test (eq_tkbinder pos f1) f2
+
+let eq_tbinder : ordi list -> (term', term) binder -> (term', term) binder -> bool =
+  fun pos f1 f2 -> Timed.pure_test (eq_tbinder pos f1) f2
 
 let eq_term : ordi list -> term -> term -> bool =
   fun pos t1 t2 -> Timed.pure_test (eq_term pos t1) t2

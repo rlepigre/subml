@@ -120,7 +120,7 @@ let check_fix type_check subtype prfptr ctxt t depth f c =
   let manual = has_leading_ord_quantifier c in
   let depth = depth + (if manual then 1 else 0) in
   let e = Pos.none (TFixY(depth - 1, f)) in
-  match generalise ~manual ctxt.non_zero (SchTerm e) c ctxt.call_graphs with
+  match generalise ~manual ctxt.non_zero (SchTerm f) c ctxt.call_graphs with
   | None          -> assert false (* FIXME why cannot fail ? *)
   | Some(sch, os) ->
       if os <> [] then Timed.(hyps := sch :: !hyps);

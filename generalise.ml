@@ -71,11 +71,11 @@ let recompose_kind : ?general:bool -> schema -> kind particular =
     in (os,pos,k1,k2)
 
 (** recompose for typing *)
-let recompose_term : ?general:bool -> schema -> term particular =
+let recompose_term : ?general:bool -> schema -> unit particular =
   fun ?(general=true) schema ->
     let (os,pos,t,k2) = recompose ~general schema in
     let t = match t with
-      | SchTerm t -> t
+      | SchTerm t -> ()
       | SchKind _ -> assert false (* Should not happen. *)
     in (os,pos,t,k2)
 
@@ -99,22 +99,30 @@ let recompose_term : ?general:bool -> schema -> term particular =
  *)
 let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
                  -> Sct.call_table -> schema * (int * ordi) list =
-  fun ?(manual=false) pos k10 k2 call_table ->
+  fun ?(manual=false) pos k1 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
-     the ordinal will be ovari when it replaces an infinite ordinals (see TODO
-     in bind_fn and bind_gn.
+     the ordinal will be ovari when it replaces an infinite ordinals
+     (see TODO in bind_fn and bind_gn.
 
-     The integer, is a temporary index,
-     The variable is the future variable to be bound using bind_fn
-     The boolean ref is to know if the variable occurs in the formula *)
+     The integer, is a temporary index, The variable is the future
+     variable to be bound using bind_fn The boolean ref is to know if
+     the variable occurs in the formula *)
 
   let res : (ordi * (int * ovar * bool ref)) list ref = ref [] in
-  (* ocunter for the index above *)
+  (* counter for the index above *)
   let i = ref 0 in
   (* This table will keep the relation (o, o') when o = OLess(o',_) *)
   let relation : (int * int) list ref = ref [] in
+  (* a name for the Sct do distinguish subtyping and typing schema *)
+  let name = match k1 with SchKind _ -> "S" | SchTerm f -> binder_name f in
 
+  (* function to add an OLess ordinal in the table of all ordinal res
+     We also keep in relation, the relation between OLess ordinal
+
+     The references k in res are set to true as soon as we have an
+     occurrence of the ordinal not inside a witness.
+   *)
   let rec eps_search keep o =
     match orepr o with
     | OLess(o',w) ->
@@ -134,7 +142,24 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
     | o ->
        Io.err "==> %a <==\n%!" (print_ordi true) o;
        assert false
-  and ford occ o (self_kind:self_kind) (self_ord:self_ord) def_ord =
+  in
+
+  (* function to map type and ordinals, at this stage, we register all
+     ordinals with eps_search, except ordinals in witnesses.  If
+     manual = false, we also replace negative OConv with fresh ordinal
+     variables to produce a more general schema.
+
+     We can not immediatly replace OLess by variables, because
+     ordinals that appears only in witnesses must not be replaced, but
+     ordinals that appears both in witnesses and outside must be
+     replaced everywhere. Therefore two descents in the trees are
+     necessary.
+
+     We also fix the value of unification variables when they have
+     constraints because schema with unification variables are
+     problematic.
+  *)
+  let ford occ o (self_kind:self_kind) (self_ord:self_ord) def_ord =
     let o = orepr o in
     let res =
       match o with
@@ -154,7 +179,8 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
       | o -> def_ord o
     in
     res
-  and fkind occ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
+  in
+  let fkind occ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
     match full_repr k with
     | KMRec(_,k)
     | KNRec(_,k) -> raise FailGeneralise
@@ -168,17 +194,25 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
     | k -> def_kind k
 
   in
-  let k1 = match k10 with
+  (* we now map k1 and k2 *)
+  let k1 = match k1 with
     | SchKind k1 -> SchKind (unbox (map_kind ~fkind ~ford ~occ:sNeg k1))
-    | SchTerm _  -> k10
+    | SchTerm _  -> k1
   in
   let k2 = unbox (map_kind ~fkind ~ford ~occ:sPos k2) in
 
+  (* we also collect information about positive ordinals *)
   let pos = List.map (fun o -> fst (eps_search false o)) pos in
+
+  (* we keep only the ordinals that are not under witnesses *)
   let res = List.filter (fun (o,(n,v,k)) -> !k) !res in
+
+  (* we collect the corresponding variables and ordinals *)
   let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
   let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
   Io.log_uni "bind in generalise\n%!";
+
+  (* and now we really bind the generaliszed ordinals *)
   let k1 = match k1 with
     | SchKind k1 ->
        box_apply (fun k -> SchKind k)
@@ -188,27 +222,44 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
   let k2 = bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k2 in
   let both = box_pair k1 k2 in
   let both = unbox (bind_mvar ovars both) in
-  let tbl = List.mapi (fun i (o,(n,v,k)) -> (n,i)) res in
-  let os = List.map (fun (o,(n,v,_)) -> (List.assoc n tbl, o)) res in
 
+  (* in the schema, the positibe ordinals and relation are given by integer,
+     so we build a table giving the position of each bound ordinals in
+     the schema *)
+  let tbl = List.mapi (fun i (o,(n,v,k)) -> (n,i)) res in
+  (* we also build the list of ordinals by index, as it is needed to
+     build the call matrix for the sct *)
+  let os = List.mapi (fun i (o,_) -> (i, o)) res in
+
+  (* this function apply trasitivity in the relation to ignore intermediate
+     ordinals that are not bound *)
   let rec next start n =
     if List.exists (fun (q,_) -> n = q) tbl then n else
       try
-        assert (List.length (List.find_all (fun (n',_) -> n = n') !relation) <= 1);
-        let n = List.assoc n !relation in
+        let l = List.find_all (fun (n',_) -> n = n') !relation in
+        assert (List.length l <= 1);
+        let n = List.assoc n l in
         next false n
       with Not_found -> n
   in
 
+  (* we now build the list of positive ordinals for the schema,
+     first we apply next (because o1 < o2 and o1 positive
+     imply o2 positibe *)
   let pos = List.map (next true) pos in
-  let pos = List.sort_uniq (-) pos in
+  (* we keep only the bound ordinals *)
   let pos = List.filter (fun n -> List.exists (fun (q,_) -> n = q) tbl) pos in
+  (* we replace the ordinals initial index by their final index *)
   let pos = List.map (fun n -> List.assoc n tbl) pos in
+  (* we sort for easier equality test on schema *)
+  let pos = List.sort_uniq (-) pos in
 
+  (* we do the same for relation *)
   let rel = List.map (fun (n,p) -> (n, next true p)) !relation in
   let rel = List.filter (fun (n,p) ->
     List.exists (fun (q,_) -> n = q) tbl && List.exists (fun (q,_) -> p = q) tbl) rel in
   let rel = List.map (fun (n,p) -> List.assoc n tbl, List.assoc p tbl) rel in
+  let rel = List.sort_uniq (fun (x,y) (x',y') -> x - x') rel in
 
   Io.log_sub "generalise pos: %a\n%!"
     (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
@@ -218,25 +269,24 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
   Io.log_sub "generalise os : %a\n%!" (fun ff l -> List.iter (fun (n,o) ->
     Format.fprintf ff "(%d,%a) "n (print_ordi false) o) l) os;
 
-  assert(mbinder_arity both = List.length os);
-  (* "Y" for typing, "S" for subtyping *)
+  (* we ask a new function index to the sct module *)
+  let fnum = Sct.new_function call_table name
+                              (Array.to_list (Bindlib.mbinder_names both))
+  in
+  (* we can now build the final schema *)
   let schema =
-    { sch_index = Sct.root
+    { sch_index = fnum
     ; sch_posit = pos
     ; sch_relat = rel
     ; sch_judge = both
     }
   in
-  let name = match k10 with SchKind _ -> "S" | SchTerm _ -> "Y" in
-  let fnum = Sct.new_function call_table name (Array.to_list (Bindlib.mbinder_names both))
-  in
-  let schema = { schema with sch_index = fnum } in
   (schema, os)
 
 let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
                  -> Sct.call_table -> (schema * (int * ordi) list) option =
-  fun ?manual pos k10 k2 call_table ->
-    try Some(generalise ?manual pos k10 k2 call_table)
+  fun ?manual pos k1 k2 call_table ->
+    try Some(generalise ?manual pos k1 k2 call_table)
     with FailGeneralise -> None
 
 
