@@ -155,11 +155,15 @@ let uident = ident uppercase
 let parser loptident = lident | "_" -> ""
 let parser llident = id:lident -> in_pos _loc id
 
-let parser lgident =
+let parser greekletter =
   | "α" -> "α"
   | "β" -> "β"
   | "γ" -> "γ"
   | "δ" -> "δ"
+
+let parser lgident =
+  g:greekletter l:{i:'_' s:(in_charset digit)+ -> i::s}?[[]] ->
+                  g ^ string_of_chars l
 
 let build_prod l = List.mapi (fun i x -> (string_of_int (i+1), x)) l
 
