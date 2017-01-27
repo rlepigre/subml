@@ -21,8 +21,52 @@ type latex_output =
   | List    of latex_output list
   | SProof  of sub_prf * Sct.call_table
   | TProof  of typ_prf
+  | Sch     of schema
   | Sct     of Sct.call_table
   | Witnesses
+
+let rec search_schemas name p =
+  let res = ref [] in
+
+  let rec fn ptr = match !ptr with
+    | Unroll(sch,_,p) ->
+       (try
+         let osnames = Array.init (mbinder_arity sch.sch_judge)
+                           (fun i -> "α_"^string_of_int i) in
+         let os = Array.map (fun s -> OVars s) osnames in
+         let (a,b) = msubst sch.sch_judge os in
+         match a with
+         | SchTerm f when binder_name f = name -> res := sch :: !res
+         | _ -> raise Not_found
+        with Not_found -> ());
+        gn p
+    | _ -> ()
+
+  and gn (p, t, k, r) =
+    match r with
+    | Typ_YGen ptr -> fn ptr
+    | Typ_Coer   (_, p)
+    | Typ_Func_i (_, p)
+    | Typ_DSum_i (_, p)
+    | Typ_Nope   p
+    | Typ_Yufl   p
+    | Typ_Prod_e p        -> gn p
+
+    | Typ_Func_e (p1, p2) -> gn p1; gn p2
+
+    | Typ_Prod_i (_, ps)  -> List.iter gn ps
+    | Typ_DSum_e (p, ps, None)
+                          -> gn p; List.iter gn ps
+    | Typ_DSum_e (p, ps, Some po)
+                          -> gn p; List.iter gn ps; gn po
+
+    | Typ_Defi  _
+    | Typ_Prnt  _
+    | Typ_Cnst  _
+    | Typ_Hole
+    | Typ_Error _  -> ()
+  in
+  gn p; !res
 
 let rec to_string = function
   | Text(t) -> t
@@ -68,7 +112,8 @@ let rec output toplevel ch =
        (print_strarray ",") oargs (print_strarray ",") kargs (print_kind true) k;
      break_hint := 0
   | Sct calls ->
-      Sct.latex_print_calls ch calls
+     Sct.latex_print_calls ch calls
+  | Sch sch   -> print_schema ch sch
 
 let output ff tex =
   let save_mode = !latex_mode in

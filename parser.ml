@@ -420,8 +420,12 @@ and latex_atom =
       Latex.KindDef (br, Hashtbl.find typ_env id)
   | "##" id:lident "#" ->
       Latex.TProof (Hashtbl.find val_env id).proof
-  | "#!" id:lident "#" ->
+  | hash "!" id:lident "#" ->
       Latex.Sct (Hashtbl.find val_env id).calls_graph
+  | hash "?" id:lident "." name:lident i:{"." int_lit}?[0] "#" ->
+      let prf =  (Hashtbl.find val_env id).proof in
+      let schemas = Latex.search_schemas name prf in
+      Latex.Sch (List.nth schemas i);
 
 and sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
 

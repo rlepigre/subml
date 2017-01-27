@@ -225,7 +225,7 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
     Io.log_ord "%a = %a %b\n%!"
       (!fprint_kind false) k1 (!fprint_kind false) k2 !eq_strict;
     k1 == k2 || match (full_repr k1, full_repr k2) with
-    | (KVari(x1)   , KVari(x2)   ) -> eq_variables x1 x2
+    | (KVari(x1)   , KVari(x2)   ) -> eq_vars x1 x2
     | (KFunc(a1,b1), KFunc(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
     | (KProd(fs1)  , KProd(fs2)  ) -> eq_assoc eq_kind fs1 fs2
     | (KDSum(cs1)  , KDSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
@@ -276,7 +276,7 @@ and eq_term : ordi list -> term -> term -> bool = fun pos t1 t2 ->
     | (_              , TDefi(d2)      ) -> eq_term t1 d2.value
     | (TMLet(_,_,t1)  , _              ) -> eq_term (mmsubst_dummy t1 OConv (KProd [])) t2
     | (_              , TMLet(_,_,t2)  ) -> eq_term t1 (mmsubst_dummy t2 OConv (KProd []))
-    | (TVari(x1)      , TVari(x2)      ) -> eq_variables x1 x2
+    | (TVari(x1)      , TVari(x2)      ) -> eq_vars x1 x2
     | (TVars(s1)      , TVars(s2)      ) -> s1 = s2
     | (TAbst(_,f1)    , TAbst(_,f2)    )
     | (TFixY(_,f1)    , TFixY(_,f2)    ) -> eq_tbinder pos f1 f2

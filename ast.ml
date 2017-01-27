@@ -24,7 +24,7 @@ type occur =
 
 (** Ast of kinds (or types). *)
 type kind =
-  | KVari of kind variable        (** Free type variable. *)
+  | KVari of kind var             (** Free type variable. *)
   | KFunc of kind * kind          (** Arrow type. *)
   | KProd of (string * kind) list (** Record (or product) type. *)
   | KDSum of (string * kind) list (** Sum (of Variant) type. *)
@@ -110,9 +110,9 @@ and kuvar_state =
 and ordi =
   (* Main type constructors. *)
 
-  | OVari of ordi variable  (** Free ordinal variable. *)
-  | OConv                   (** Biggest ordinal (makes fixpoints converge). *)
-  | OSucc of ordi           (** Succesor of an ordinal. *)
+  | OVari of ordi var (** Free ordinal variable. *)
+  | OConv             (** Biggest ordinal (makes fixpoints converge). *)
+  | OSucc of ordi     (** Succesor of an ordinal. *)
 
   (* Witnesses (a.k.a. epsilons) used in the μl and νr rules. [OLess(o,w)] is
      an ordinal (strictly) smaller that [o] such that [w] holds, or zero if no
@@ -147,7 +147,7 @@ and term = term' Pos.loc
 and term' =
   (* Main term constructors. *)
 
-  | TVari of term' variable                            (** Free λ-variable. *)
+  | TVari of term' var                                 (** Free λ-variable. *)
   | TAbst of kind option * (term', term) binder        (** λ-abstraction. *)
   | TAppl of term * term                               (** Application. *)
   | TReco of (string * term) list                      (** Record. *)
@@ -361,27 +361,27 @@ let verbose : bool ref = ref false
 (** {2 Bindbox type shortcuts}                                              *)
 (****************************************************************************)
 
-type tvar = term' variable
+type tvar = term' var
 type tbox = term bindbox
 
-type kvar = kind variable
+type kvar = kind var
 type kbox = kind bindbox
 
-type ovar = ordi variable
+type ovar = ordi var
 type obox = ordi bindbox
 
 (** Kind variable management. *)
-let mk_free_k : kind variable -> kind =
+let mk_free_k : kind var -> kind =
   fun x -> KVari(x)
 
-let new_kvari : string -> kind variable =
+let new_kvari : string -> kind var =
   new_var mk_free_k
 
 (** Term variable management. *)
-let mk_free_tvari : term' variable -> term' =
+let mk_free_tvari : term' var -> term' =
   fun x -> TVari(x)
 
-let new_tvari : string -> term' variable =
+let new_tvari : string -> term' var =
   new_var mk_free_tvari
 
 (** Ordinal variable management. *)
@@ -505,7 +505,7 @@ let tcoer : Pos.popt -> tbox -> kbox -> tbox =
   fun p ->
     box_apply2 (fun t k -> Pos.make p (TCoer(t,k)))
 
-let tvari : Pos.popt -> term' variable -> tbox =
+let tvari : Pos.popt -> term' var -> tbox =
   fun p x ->
     box_apply (Pos.make p) (box_of_var x)
 

@@ -166,7 +166,7 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
      let v = new_kvari (binder_name f) in
      match_ordi ouvars o1 o2 &&
        match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
-  | KVari(v1), KVari(v2) -> compare_variables v1 v2 = 0
+  | KVari(v1), KVari(v2) -> compare_vars v1 v2 = 0
   | p, k -> strict_eq_kind p k
   in
   res
@@ -223,27 +223,31 @@ let try_fold_def : kind -> kind = fun k ->
 (*{2                        Printing of ordinals                           }*)
 (****************************************************************************)
 
-let rec print_ordi unfold ff o =
+let rec print_ordi unfold unfolded_Y ff o =
   let o = orepr o in
+  let pordi = print_ordi false unfolded_Y in
+  let pterm = print_term false false unfolded_Y in
+  let pkind = print_kind false false unfolded_Y in
   match o with
   | OConv   -> pp_print_string ff "∞"
   | OSucc(o) ->
      let rec fn i o =
        match orepr o with
          OSucc(o) -> fn (i+1) o
-       | o -> fprintf ff "%a+%d" (print_ordi false) o i
+       | o -> fprintf ff "%a+%d" pordi o i
      in fn 1 o
   | OUVar(u,os) ->
      let print_upper ff = function
        | (_,None) -> ()
-       | (_,Some o) -> fprintf ff "<%a" (print_ordi false) (msubst o os)
+       | (_,Some o) -> fprintf ff "<%a" pordi (msubst o os)
      in
      let print_lower ff = function
        | (None,_) -> ()
-       | (Some o,_) -> fprintf ff "%a≤" (print_ordi false) (msubst o os)
+       | (Some o,_) -> fprintf ff "%a≤" pordi (msubst o os)
      in
      if os = [||] then
-       fprintf ff "%a?%i%a" print_lower (uvar_state u) u.uvar_key print_upper (uvar_state u)
+       fprintf ff "%a?%i%a" print_lower (uvar_state u)
+               u.uvar_key print_upper (uvar_state u)
      else
        fprintf ff "%a?%i(%a)%a" print_lower (uvar_state u) u.uvar_key
          (print_list print_index_ordi ", ") (Array.to_list os)
@@ -255,35 +259,36 @@ let rec print_ordi unfold ff o =
        match w with
        | In(t,a) ->
           let ov = OVars "α" in
-          fprintf ff "ε_{%a<%a}(%a∈%a)" (print_ordi false) ov (print_ordi false) o
-            (print_term false false) t (print_kind false false) (subst a ov)
+          fprintf ff "ε_{%a<%a}(%a∈%a)" pordi ov pordi o
+            (print_term false false unfolded_Y) t pkind (subst a ov)
        | NotIn(t,a) ->
           let ov = OVars "α" in
-          fprintf ff "ε_{%a<%a}(%a∉%a)" (print_ordi false) ov (print_ordi false) o
-            (print_term false false) t (print_kind false false) (subst a ov)
+          fprintf ff "ε_{%a<%a}(%a∉%a)" pordi ov pordi o
+            (print_term false false unfolded_Y) t pkind (subst a ov)
        | Gen(i,s) ->
           let r = s.sch_relat in
           let f = s.sch_judge in
           let os = Array.init (mbinder_arity f)
             (fun i -> OVars ("α_{"^string_of_int (i+1)^"}")) in
           let (k1,k2) = msubst f os in
-          let os' = Array.mapi (fun i _ -> try os.(List.assoc i r) with Not_found -> OConv) os in
+          let os' = Array.mapi (fun i _ -> try os.(List.assoc i r)
+                                           with Not_found -> OConv) os in
           match k1 with
           | SchTerm t ->
              fprintf ff "ε^%d_{%a<%a}(%a \\notin %a)"
-               (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
-               (print_term false false) (Pos.none (TFixY(0,t))) (print_kind false false) k2
+               (i+1) (print_array pordi ",") os (print_array pordi ",") os'
+               pterm (Pos.none (TFixY(0,t))) pkind k2
           | SchKind k1 ->
              fprintf ff "ε^%d_{%a<%a}(%a \\not\\subset %a)"
-               (i+1) (print_array (print_ordi false) ",") os (print_array (print_ordi false) ",") os'
-               (print_kind false false) k1 (print_kind false false) k2
+               (i+1) (print_array pordi ",") os (print_array pordi ",") os'
+               pkind k1 pkind k2
      end
   | _ ->
-    let o' = search_ordi_tbl o in print_ordi false ff o'
+    let o' = search_ordi_tbl o in pordi ff o'
 
 and print_index_ordi ff = function
   | OConv -> fprintf ff "∞"
-  | o -> fprintf ff "%a" (print_ordi false) o
+  | o -> fprintf ff "%a" (print_ordi false None) o
 
 (****************************************************************************)
 (*{2                         Printing of a type                            }*)
@@ -291,10 +296,10 @@ and print_index_ordi ff = function
 
 and new_prvar f = KPrnt(FreeVr(binder_name f))
 
-and print_kind unfold wrap ff t =
-  let pkind = print_kind false false in
-  let pordi = print_ordi false in
-  let pkindw = print_kind false true in
+and print_kind unfold wrap unfolded_Y ff t =
+  let pkind = print_kind false false unfolded_Y in
+  let pordi = print_ordi false unfolded_Y in
+  let pkindw = print_kind false true unfolded_Y in
   let t = (if unfold then fun x -> x else try_fold_def) (repr t) in
   match t with
   | KVari(x) ->
@@ -366,7 +371,7 @@ and print_kind unfold wrap ff t =
   | KDefi(td,os,ks) ->
      let name = if !latex_mode then td.tdef_tex_name else td.tdef_name in
      if unfold then
-       print_kind unfold wrap ff (msubst (msubst td.tdef_value os) ks)
+       pkind ff (msubst (msubst td.tdef_value os) ks)
      else if Array.length ks = 0 && Array.length os = 0 then
        pp_print_string ff name
      else if Array.length os = 0 then
@@ -435,7 +440,7 @@ and print_occur ff = function
 and pkind_def unfold ff kd =
   let name = if !latex_mode then kd.tdef_tex_name else kd.tdef_name in
   fprintf ff "type %s" name;
-  let pkind = print_kind unfold false in
+  let pkind = print_kind unfold false None in
   let onames = mbinder_names kd.tdef_value in
   let os = new_mvar mk_free_o onames in
   let k = msubst kd.tdef_value (Array.map free_of os) in
@@ -461,18 +466,17 @@ and pkind_def unfold ff kd =
 (*{2                         Printing of a term                            }*)
 (****************************************************************************)
 
-and print_term ?(give_pos=false) unfold wrap ff =
-  let unfolded_Y = ref [] in fun t ->
-  let wterm = print_term ~give_pos false true in
-  let pterm = print_term ~give_pos false false in
-  let pkind = print_kind false false in
+and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
+  let wterm = print_term ~give_pos false true unfolded_Y in
+  let pterm = print_term ~give_pos false false unfolded_Y in
+  let pkind = print_kind false false unfolded_Y in
   if not !latex_mode && give_pos && not unfold && t.pos <> None then
     let pos = from_opt (map_opt short_pos_to_string t.pos) "..." in
     fprintf ff "[%s]" pos
   else match t.elt with
   | TCoer(t,a) ->
      if wrap then fprintf ff "(";
-     fprintf ff "%a : %a" (print_term ~give_pos unfold wrap) t pkind a;
+     fprintf ff "%a : %a" (print_term ~give_pos unfold wrap unfolded_Y) t pkind a;
      if wrap then fprintf ff ")"
   | TMLet(b,x,bt)->
      let (onames, knames) = mmbinder_names bt OConv in
@@ -626,7 +630,7 @@ and print_term ?(give_pos=false) unfold wrap ff =
      end
   | TDefi(v) ->
      if unfold then
-       print_term ~give_pos true wrap ff v.orig_value
+       print_term ~give_pos true wrap unfolded_Y ff v.orig_value
      else
        let name = if !latex_mode then v.tex_name else v.name in
        pp_print_string ff name
@@ -634,14 +638,13 @@ and print_term ?(give_pos=false) unfold wrap ff =
       fprintf ff "print(%S)" s
   | TFixY(_,f) ->
      let x = binder_name f in
-     if not (List.memq f !unfolded_Y) then
-       begin
-         unfolded_Y := f :: !unfolded_Y;
-         let t = subst f (TVars x) in
-         fprintf ff "Y%s.%a" x pterm t
-       end
-     else
-       fprintf ff (if !latex_mode then "\\mathrm{%s}" else "%s") x
+     (match unfolded_Y with
+     | Some l when not (List.memq f l) ->
+        let unfolded_Y = Some (f :: l) in
+        let t = subst f (TVars x) in
+        fprintf ff "Y%s.%a" x (print_term ~give_pos false false unfolded_Y) t
+     | _ ->
+        fprintf ff (if !latex_mode then "\\mathrm{%s}" else "%s") x)
   | TCnst(f,a,b) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
@@ -654,15 +657,15 @@ and print_term ?(give_pos=false) unfold wrap ff =
 (****************************************************************************)
 
 let term_to_string unfold t =
-  print_term unfold false str_formatter t;
+  print_term unfold false None str_formatter t;
   flush_str_formatter ()
 
 let ordi_to_string unfold t =
-  print_ordi unfold str_formatter t;
+  print_ordi unfold None str_formatter t;
   flush_str_formatter ()
 
 let kind_to_string unfold k =
-  print_kind unfold false str_formatter k;
+  print_kind unfold false None str_formatter k;
   flush_str_formatter ()
 
 
@@ -740,19 +743,18 @@ let mkSchema schema =
     | SchTerm t -> term_to_string false (Pos.none (TFixY(0,t)))
   in
   let o2s = String.concat ", "
-    (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
+                          (List.map (fun i -> "α_"^string_of_int i) schema.sch_posit) in
+  let arrow = if !latex_mode then "\\Rightarrow" else "=>" in
   let r2s =
     if schema.sch_relat = [] then "" else
-      "(" ^
         String.concat "& "
           (List.map (fun (i,j) ->  "α_"^string_of_int i^"<"^ "α_"^string_of_int j)
                     schema.sch_relat)
-        ^ ")"
-
+        ^ arrow
   in
 
   let these = if !latex_mode then "\\vdash" else "|-" in
-  sprintf "∀%s %s %s %s %s : %s" osnames o2s r2s these s (kind_to_string false b)
+  sprintf "∀%s (%s %s %s %s : %s)" osnames o2s these r2s s (kind_to_string false b)
 
 let print_schema ch schema =
   fprintf ch "%s" (mkSchema schema)
@@ -876,11 +878,11 @@ let print_subtyping_proof ch p = Proof.output ch (sub2proof p)
  *                          Interface functions                             *
  ****************************************************************************)
 
-let print_term ?(give_pos = false) unfold ff t =
-  print_term ~give_pos unfold false ff t; pp_print_flush ff ()
+let print_term ?(unfolded_Y=Some[]) ?(give_pos = false) unfold ff t =
+  print_term ~give_pos unfold false unfolded_Y ff t; pp_print_flush ff ()
 
 let print_kind unfold ff t =
-  print_kind unfold false ff t; pp_print_flush ff ()
+  print_kind unfold false None ff t; pp_print_flush ff ()
 
 let kind ff k = print_kind false ff k
 let term ff t = print_term false ff t
@@ -891,7 +893,7 @@ let print_kind_def unfold ff kd =
   pkind_def unfold ff kd; pp_print_flush ff ()
 
 let print_ordi unfold ff o =
-  print_ordi unfold ff o; pp_print_flush ff ()
+  print_ordi unfold None ff o; pp_print_flush ff ()
 
 let print_ordis = print_list (print_ordi false) ","
 

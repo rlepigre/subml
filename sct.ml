@@ -144,8 +144,15 @@ let latex_print_calls ff tbl =
   in
   let numbering = List.mapi (fun i (j,_) -> (j,i)) arities in
   let index j = List.assoc j numbering in
+  let not_unique name =
+    List.fold_left (fun acc (_,(n,_,_)) -> if n = name then acc+1 else acc) 0 arities
+                   >= 2
+  in
   let f (j,(name,_,_)) =
-    fprintf ff "    N%d [ label = \"%s_{%d}\" ];\n" (index j) name (index j)
+    if not_unique name then
+      fprintf ff "    N%d [ label = \"%s_{%d}\" ];\n" (index j) name (index j)
+    else
+      fprintf ff "    N%d [ label = \"%s\" ];\n" (index j) name
   in
   List.iter f (List.filter (fun (i,_) ->
     List.exists (fun (j,k,_,_) -> i = j || i =k) calls) arities);
