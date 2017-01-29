@@ -422,10 +422,10 @@ and latex_atom =
       Latex.TProof (Hashtbl.find val_env id).proof
   | hash "!" id:lident "#" ->
       Latex.Sct (Hashtbl.find val_env id).calls_graph
-  | hash "?" id:lident "." name:lident i:{"." int_lit}?[0] "#" ->
+  | hash "?" id:lident "." name:lident i:{"." int_lit}?[0] ordname:{"~" lgident}?["α"]  "#" ->
       let prf =  (Hashtbl.find val_env id).proof in
       let schemas = Latex.search_schemas name prf in
-      Latex.Sch (List.nth schemas i);
+      Latex.Sch (List.nth schemas i, ordname);
 
 and sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
 

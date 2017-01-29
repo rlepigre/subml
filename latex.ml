@@ -21,7 +21,7 @@ type latex_output =
   | List    of latex_output list
   | SProof  of sub_prf * Sct.call_table
   | TProof  of typ_prf
-  | Sch     of schema
+  | Sch     of schema * string
   | Sct     of Sct.call_table
   | Witnesses
 
@@ -113,7 +113,7 @@ let rec output toplevel ch =
      break_hint := 0
   | Sct calls ->
      Sct.latex_print_calls ch calls
-  | Sch sch   -> print_schema ch sch
+  | Sch (sch,ord_name) -> print_schema ~ord_name ch sch
 
 let output ff tex =
   let save_mode = !latex_mode in

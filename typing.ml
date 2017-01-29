@@ -53,9 +53,9 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
       try
         (* Try to apply the induction hypothesis (need to find a previously
            encountered schema. *)
-        Io.log_ind "Searching schema %a\n%!" print_schema new_sch;
+        Io.log_ind "Searching schema %a\n%!" (print_schema ~ord_name:"α") new_sch;
         let old_sch = List.find (eq_schema new_sch) ctxt.sub_ihs in
-        Io.log_ind "Found schema     %a\n%!" print_schema old_sch;
+        Io.log_ind "Found schema     %a\n%!" (print_schema ~ord_name:"α") old_sch;
         add_call ctxt old_sch.sch_index new_os true;
         (Use old_sch, ctxt)
       with Not_found ->
