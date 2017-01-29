@@ -1,4 +1,5 @@
 type Stream(A) = νX {} → A × X
+type S(α,A) = να X {} → A × X
 
 type RK(Y,X) = [ R of Y | K of X ]
 type SF(α,β) = να X μβ Y {} → RK(Y,X)
@@ -59,6 +60,7 @@ type F2 = νX {} → μY [ R of Y | K of X ]
 type UF2 = {} → μY [ R of Y | K of F2 ]
 check F2 ⊂ UF2
 check UF2 ⊂ F2
+type SF2(α,β) = να X {} → μβ Y RK(Y,X)
 
 val rec filter2 : ∀A UF2 → Stream(A) → Stream(A) =
   fun f s →
@@ -161,3 +163,59 @@ val rec compose32 : UF3 → UF3 → F2 = fun f1 f2 _ →
   | R f2' → R (compose32 f1 f2' {}))
 
 val compose3' : F3 → F3 → F3 = fun f1 f2 → compose32 f1 f2 {}
+
+include "lib/nat.typ"
+
+val rec filter_to_nat : UF → Stream(Nat) = fun s _ →
+  (case s {} of
+  | R s →
+    let (n, r) = filter_to_nat s {} in (S n, r)
+  | K s → (0, filter_to_nat s))
+
+val rec 2 filter_to_nat : ∀α SF(α,∞) → S(α,Nat) = fun s _ →
+  (case s {} of
+  | R s →
+    let (n, r) = filter_to_nat s {} in (S n, r)
+  | K s → (0, filter_to_nat s))
+
+val rec nat_to_filter : Stream(Nat) → F = fun s _ →
+  let (n, s) = s {} in
+  let rec fn = fun n _ → case n of
+  | Z → K (nat_to_filter s)
+  | S p → R (fn p)
+  in fn n {}
+
+type UFS(α) = μ Y {} → RK(Y,SF(α,∞))
+
+?val rec nat_to_filter : ∀α S(α,Nat) → SF(α,∞) = fun s _ →
+  let (n, s) = s {} in
+  let rec fn = fun n _ → case n of
+  | Z → K (nat_to_filter s)
+  | S p → R (fn p)
+  in fn n {}
+
+val rec filter2_to_nat : UF2 → Stream(Nat) = fun s _ →
+  (case s {} of
+  | R s →
+    let (n, r) = filter2_to_nat (fun _ → s) {} in (S n, r)
+  | K s → (0, filter2_to_nat s))
+
+val rec 2 filter2_to_nat : ∀α SF2(α,∞) → S(α,Nat) = fun s _ →
+  (case s {} of
+  | R s →
+    let (n, r) = filter2_to_nat (fun _ → s) {} in (S n, r)
+  | K s → (0, filter2_to_nat s))
+
+val rec nat_to_filter2 : Stream(Nat) → F2 = fun s _ →
+  let (n, s) = s {} in
+  let rec fn = fun n → case n of
+  | Z → K (nat_to_filter2 s)
+  | S p → R (fn p)
+  in fn n
+
+?val rec nat_to_filter2 : ∀α S(α,Nat) → SF2(α,∞) = fun s _ →
+  let (n, s) = s {} in
+  let rec fn = fun n → case n of
+  | Z → K (nat_to_filter2 s)
+  | S p → R (fn p)
+  in fn n

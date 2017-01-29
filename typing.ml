@@ -115,7 +115,9 @@ let check_fix type_check subtype prfptr ctxt t depth f c =
     ({ctxt with fix_ihs}, hyps)
   in
   (* Search an induction hypothesis that can be applied. *)
-  try search_induction subtype prfptr ctxt t c !hyps with Not_found ->
+  try
+    if depth > 0 then raise Not_found;
+    search_induction subtype prfptr ctxt t c !hyps with Not_found ->
   (* There were no such induction hypothesis so we unroll the fixpoint. *)
   let manual = has_leading_ord_quantifier c in
   let depth = depth + (if manual then 1 else 0) in
