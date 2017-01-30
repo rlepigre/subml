@@ -187,12 +187,12 @@ val rec nat_to_filter : Stream(Nat) → F = fun s _ →
 
 type UFS(α) = μ Y {} → RK(Y,SF(α,∞))
 
-?val rec nat_to_filter : ∀α S(α,Nat) → SF(α,∞) = fun s _ →
+val rec nat_to_filter : ∀α S(α,Nat) → SF(α,∞) = fun s _ →
   let (n, s) = s {} in
-  let rec fn = fun n _ → case n of
-  | Z → K (nat_to_filter s)
-  | S p → R (fn p)
-  in fn n {}
+  let rec fn : ∀α SF(α,∞) → Nat → SF(α+1,∞) = fun s n → case n of
+  | Z   → (fun _ → K s)
+  | S p → (fun _ → R (fn s p))
+  in fn (nat_to_filter s) n {}
 
 val rec filter2_to_nat : UF2 → Stream(Nat) = fun s _ →
   (case s {} of
@@ -213,9 +213,9 @@ val rec nat_to_filter2 : Stream(Nat) → F2 = fun s _ →
   | S p → R (fn p)
   in fn n
 
-?val rec nat_to_filter2 : ∀α S(α,Nat) → SF2(α,∞) = fun s _ →
+val rec nat_to_filter2 : ∀α S(α,Nat) → SF2(α,∞) = fun s _ →
   let (n, s) = s {} in
-  let rec fn = fun n → case n of
-  | Z → K (nat_to_filter2 s)
-  | S p → R (fn p)
-  in fn n
+  let rec fn : ∀α SF2(α,∞) → Nat → SF2(α+1,∞) = fun s n _ → case n of
+  | Z → K s
+  | S p → R (fn s p {})
+  in fn (nat_to_filter2 s) n {}
