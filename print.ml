@@ -92,7 +92,7 @@ let skip_record_sugar name t =
     if String.length name > 2 && name.[0] = ':' then 2
     else
       let r = ref 0 in
-      String.iter (function ';' -> incr r | _ -> ()) name;
+      String.iter (function ';' | '(' | ',' -> incr r | _ -> ()) name;
       !r
   in
   let rec fn n t = match t.elt with
@@ -510,11 +510,15 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
           let x = binder_name b in
           let t = subst b (TVars x) in
           let sep = if first then "" else
-                    if !latex_mode then "\\, " else " " in
+                      if !latex_mode then "\\, " else " " in
+          let p = if !latex_mode && String.length x > 0 &&
+                            x.[0] = '{' then "\\record" else ""
+          in
+          let t = skip_record_sugar x t in
           begin
             match ao with
-            | None   -> fprintf ff "%s%s%a" sep x (fn false) t
-            | Some a -> fprintf ff "%s%s{:}%a%a" sep x pkind a (fn false) t
+            | None   -> fprintf ff "%s%s%s%a" sep p x (fn false) t
+            | Some a -> fprintf ff "%s%s%s{:}%a%a" sep p x pkind a (fn false) t
           end
        | _ ->
           fprintf ff ".%a" pterm t
@@ -578,7 +582,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      | "Cons", TReco l when List.sort compare (List.map fst l) = ["hd"; "tl"] ->
         fprintf ff "%a{::}%a" pterm (List.assoc "hd" l)  pterm (List.assoc "tl" l)
      | _, TReco([]) -> fprintf ff "%s" c
-     | _         -> fprintf ff "%s %a" c pterm t);
+     | _         -> fprintf ff "%s %a" c wterm t);
        if wrap then fprintf ff ")";
   | TCase(t,l,d) ->
      if List.length l = 1 && d = None && snd (List.hd l) == unbox idt then begin
@@ -600,7 +604,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
                     ("",String.sub x0 1 (String.length x0 - 1), "")
                   else
                     let p = if !latex_mode && String.length x0 > 0 &&
-                        x0.[0] = '{' then "\\record" else ""
+                      x0.[0] = '{' then "\\record" else ""
                     in
                     (c, x0, p)
                 in

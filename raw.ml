@@ -91,6 +91,11 @@ let apply_rpat c x t =
        if is_cons r then
          ":" ^ (fst (List.assoc "hd" r)).elt ^ "{::}" ^
                (fst (List.assoc "tl" r)).elt
+       else if Print.is_tuple r then
+         let r = List.sort (fun (a,_) (b,_) -> compare a b) r in
+         List.fold_left (fun acc (l,(x,_)) ->
+           if acc = "(" then acc ^ x.elt else
+           acc ^ "," ^ x.elt) "(" r ^ ")"
        else
          List.fold_left (fun acc (l,(x,_)) ->
            acc ^ l ^ "=" ^ x.elt ^ ";") "{" r ^ "}"

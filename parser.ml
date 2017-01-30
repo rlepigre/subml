@@ -415,17 +415,38 @@ and latex_atom =
       let (prf, cg) = subtype None a b in
       Latex.SProof (prf, cg)
   | hash br:int_lit?[0] ":" id:lident "#" ->
-      Latex.Kind (br, false, (Hashtbl.find val_env id).ttype)
+      (try
+         Latex.Kind (br, false, (Hashtbl.find val_env id).ttype)
+       with
+         Not_found -> raise (Unbound(id,Some _loc_id)))
   | hash br:int_lit?[0] "?" id:uident "#" ->
-      Latex.KindDef (br, Hashtbl.find typ_env id)
+      (try
+         Latex.KindDef (br, Hashtbl.find typ_env id)
+       with
+         Not_found -> raise (Unbound(id,Some _loc_id)))
   | "##" id:lident "#" ->
-      Latex.TProof (Hashtbl.find val_env id).proof
+      (try
+         Latex.TProof (Hashtbl.find val_env id).proof
+       with
+         Not_found -> raise (Unbound(id,Some _loc_id)))
   | hash "!" id:lident "#" ->
-      Latex.Sct (Hashtbl.find val_env id).calls_graph
+      (try
+         Latex.Sct (Hashtbl.find val_env id).calls_graph
+       with
+         Not_found -> raise (Unbound(id,Some _loc_id)))
   | hash "?" id:lident "." name:lident i:{"." int_lit}?[0] ordname:{"~" lgident}?["α"]  "#" ->
-      let prf =  (Hashtbl.find val_env id).proof in
-      let schemas = Latex.search_schemas name prf in
-      Latex.Sch (List.nth schemas i, ordname);
+      let prf =
+        try
+          (Hashtbl.find val_env id).proof
+        with Not_found -> raise (Unbound(id,Some _loc_id))
+      in
+      let schemas =
+        try
+          Latex.search_schemas name prf
+        with Not_found -> raise (Unbound(name,Some _loc_name))
+      in
+      Latex.Sch (List.nth schemas i, ordname)
+
 
 and sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
 
