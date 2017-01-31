@@ -535,7 +535,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
           t::acc
      in
      let terms = fn [] t in
-     let sep = if !latex_mode then " \\, " else " " in
+     let sep = if !latex_mode then " \\; " else " " in
      print_list wterm sep ff terms;
      if wrap then fprintf ff ")"
 
