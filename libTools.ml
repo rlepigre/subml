@@ -48,18 +48,6 @@ let rec list_ref_iter : ('a -> unit) -> 'a list ref -> unit =
     in
     gn [] !ptr !ptr
 
-
-(*{2 functions related to [char] }*)
-
-let int_of_chars : char list -> int = fun s ->
-  let f acc c = acc * 10 + (Char.code c - Char.code '0') in
-  List.fold_left f 0 (List.rev s)
-
-let string_of_chars : char list -> string = fun s ->
-  let b = Buffer.create 10 in
-  List.iter (Buffer.add_char b) s;
-  Buffer.contents b
-
 (*{2 Bindlib extension }*)
 
 open Bindlib

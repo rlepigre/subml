@@ -119,14 +119,6 @@ let list_sep   elt sep = glist_sep   elt (string sep ())
 let list_sep'  elt sep = glist_sep'  elt (string sep ())
 let list_sep'' elt sep = glist_sep'' elt (string sep ())
 
-let digit       = Charset.range '0' '9'
-let lowercase   = Charset.range 'a' 'z'
-let uppercase   = Charset.range 'A' 'Z'
-let underscore  = Charset.singleton '_'
-let letter      = Charset.union lowercase uppercase
-let identany    = Charset.union letter (Charset.union digit underscore)
-let lidentfirst = Charset.union lowercase (Charset.union digit underscore)
-
 let str_lit =
   let normal = in_charset
     (List.fold_left Charset.del Charset.full ['\\'; '"'; '\r'])
@@ -140,30 +132,20 @@ let str_lit =
   in
   change_layout (parser "\"" cs:schar* "\"" -> String.concat "" cs) no_blank
 
-let int_lit = change_layout (
-    parser sign:{'-'->-1}?[1] - s:(in_charset digit)+ -> sign * int_of_chars s
-  ) no_blank
+let parser int_lit = i:{#[-]?[0-9]+#} -> int_of_string i.(0)
 
-let ident first =
-  let first = in_charset first and any = in_charset identany in
-  let lident = parser c:first s:any* ps:'\''* -> string_of_chars (c::s@ps) in
-  let lident = change_layout lident no_blank in
-  apply (fun id -> check_not_keyword id; id) lident
+let parser lident = id:{#[_a-z0-9][_a-zA-Z0-9]*[']*#}[group.(0)] ->
+  if id = "_" then give_up (); check_not_keyword id; id
 
-let parser lident = s:(ident lidentfirst) -> if s = "_" then give_up (); s
-let uident = ident uppercase
+let parser uident = id:{#[A-Z][_a-zA-Z0-9]*[']*#}[group.(0)] ->
+  check_not_keyword id; id
+
 let parser loptident = lident | "_" -> ""
 let parser llident = id:lident -> in_pos _loc id
 
-let parser greekletter =
-  | "α" -> "α"
-  | "β" -> "β"
-  | "γ" -> "γ"
-  | "δ" -> "δ"
+let parser greek = "α" -> "α" | "β" -> "β" | "γ" -> "γ" | "δ" -> "δ"
 
-let parser lgident =
-  g:greekletter l:{i:'_' s:(in_charset digit)+ -> i::s}?[[]] ->
-                  g ^ string_of_chars l
+let parser lgident = g:greek l:{#[_][0-9]+#}[group.(0)]?[""] -> g ^ l
 
 let build_prod l = List.mapi (fun i x -> (string_of_int (i+1), x)) l
 
@@ -385,10 +367,7 @@ let hash =
   parser '#' no_hash
 
 (* Sequence of characters excluding '}', '{', '@' and '#'. *)
-let tex_simple =
-  let cs = Charset.(List.fold_left del full ['}';'{';'@';'#']) in
-  parser cs:(change_layout (parser (in_charset cs)+) no_blank) ->
-    string_of_chars cs
+let tex_simple = parser s:{#[^}{@#]+#} -> s.(0)
 
 (* Simple LaTeX text (without specific annotations. *)
 let parser tex_name = '{' l:tex_name_aux* '}' -> String.concat "" l
