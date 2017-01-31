@@ -5,7 +5,7 @@
 open Ast
 open Bindlib
 
-(** Mapping functions allows to apply some treatment to some constructor
+(** Mapping functions allows to apply some treatment to some constructors
     and use the default treatment to recurse for the other constructor.
 
     The output of Mapping function are bindlib's boxes, so you can
@@ -13,10 +13,24 @@ open Bindlib
 
 type self_kind = ?occ:occur -> kind -> kbox
 type self_ord  = ?occ:occur -> ordi -> obox
+
+(** [map_kind] and [map_ord] are the type of the function you need to write
+    to define your own ast mapper. They receive in argument
+    1°) the variance of the current kind/ordinal
+    2°) the kind/ordinal itself
+    3°) the function of type [self_kind] corresponding to a recursive call
+        for kind
+    4°) the function of type [self_ord] corresponding to a recursive call
+        for ordinals
+    5°) the function for to call to get the defaut behavious (which copy the
+        Ast.
+ *)
 type map_kind  = occur -> kind -> self_kind -> self_ord -> (kind -> kbox) -> kbox
 type map_ord   = occur -> ordi -> self_kind -> self_ord -> (ordi -> obox) -> obox
 
-(** Mapping for kinds *)
+
+(** Mapping for kinds. The default value of the argument would just
+    copy the kind ast. *)
 let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
   = fun ?(fkind=fun _ k _ _ defk -> defk ( repr k))
         ?(ford =fun _ o _ _ defo -> defo (orepr o))
@@ -56,7 +70,8 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
     | KPrnt _      -> box k)
 
 
-(** Mapping for ordinals *)
+(** Mapping for ordinals. The default value of the argument would just
+    copy the ordinal ast. *)
 and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
   = fun ?(fkind=fun _ k _ _ defk -> defk (repr k))
         ?(ford=fun _ o _ _ defo -> defo (orepr o))

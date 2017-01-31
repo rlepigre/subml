@@ -164,14 +164,11 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
     let res =
       match o with
       | OLess _ -> let (_, o) = eps_search true o in box o
-      | OUVar({uvar_state = {contents = Unset (Some o', _)}} as u, os) when occ = sPos ->
-         set_ouvar u o'; self_ord ~occ o (* NOTE: avoid looping in flot.typ/compose *)
-      | OUVar({uvar_state = {contents = Unset (_, Some o')}} as u, os) ->
-         ignore (self_ord (msubst o' os));
-         (try set_ouvar u (obind_ordis os (List.find (fun o ->
-           less_ordi pos o (msubst o' os)) (Array.to_list os)));
+      | OUVar(u,os) -> (* NOTE: avoid looping in flot.typ/compose *)
+         if ouvar_use_state self_ord pos u os then
            self_ord o
-           with Not_found -> def_ord o)
+         else
+           def_ord o
       | OConv when occ = sNeg && not manual ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in

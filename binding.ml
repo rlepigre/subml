@@ -66,10 +66,14 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
     in
     set_kuvar v k
 
-(** force a unification variable to use its state. Return true if
+(****************************************************************************)
+(**{2         instanciate type unification variables from state            }*)
+(****************************************************************************)
+
+(** Force a type unification variable to use its state. Return true if
     the variable is changed *)
 let uvar_use_state : kuvar -> ordi array -> bool = fun v os ->
-  (* FIXME: should not trust safe_set *)
+  (* TODO: maybe we should not trust safe_set and call subtype ? *)
   try
     match !(v.uvar_state) with
     | Set _ -> false
@@ -96,7 +100,7 @@ let uvar_use_state : kuvar -> ordi array -> bool = fun v os ->
     If we bind o in a variable ?1(o1,...,on) that may use o while o is not
     among its parameter, we must create a new variable ?2 and set
     ?1(x1,...,xn) to ?2(x1,...,xn,o). This appends in general for more
-   than one variable. See the comment in the KUVar and OUVar cases *)
+    than one variable. See the comment in the KUVar and OUVar cases *)
 
 (** [index os x u] searches the index [i] of [u] in [os] and returns [x.(i)] *)
 let index os x u =
@@ -130,8 +134,8 @@ let rec bind_both ?(from_generalise=false) os x =
        if os'' = [] then
          kuvar u (Array.map self_ord os')
        else
-         (* if the variable value is recursive, we fix its value
-            or produce occur_check now, otherwise it loops *)
+         (* If the variable state is recursive, we fix its value
+            or produce occur_check error now, otherwise it would loop *)
          let is_recursive =
            match uvar_state u with
            | Free -> Non
@@ -139,10 +143,9 @@ let rec bind_both ?(from_generalise=false) os x =
              combine acc (kuvar_occur u (msubst k os'))) Non l
          in
          if is_recursive <> Non then
-           (safe_set_kuvar Non u (constant_mbind 0 (KProd [] (*ignored anyway*))) os';
-            self_kind k)
+           if uvar_use_state u os' then self_kind k else raise Occur_check
        else
-         (* general case, we extend the list of parameters and set the
+         (* General case, we extend the list of parameters and set the
             value of u with v applied to more parameters. *)
          let os'' = Array.of_list os'' in
          let new_ords = Array.append os' os'' in
@@ -161,7 +164,7 @@ let rec bind_both ?(from_generalise=false) os x =
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
          let new_ords = Array.map self_ord new_ords in
-         (** avoid seting v with a third variable w ...
+         (** Avoid seting v with a third variable w ...
              TODO: check why this is necessary *)
          fresh_uvar := (v, new_ords) :: !fresh_uvar;
          let k = unbox (mbind mk_free_o (Array.make u.uvar_arity "α") (fun x ->
@@ -169,7 +172,8 @@ let rec bind_both ?(from_generalise=false) os x =
                       (fun i -> if i < u.uvar_arity then x.(i) else box
                           (match os''.(i - u.uvar_arity) with
                           | OVari _ -> assert from_generalise; OConv
-                          (* TODO: not clean: OVari represents OConv in generalise *)
+                          (* TODO: not very clean: OVari represents OConv that
+                             are being generalised *)
                           | o -> o)))))
          in
          set_kuvar u k;
@@ -271,3 +275,23 @@ let bind_ouvar : ouvar -> kind -> (ordi, kind) binder = fun v k ->
      hence we set the pointers defined in compare *)
 let _ = fbind_ordis := bind_ordis
 let _ = fobind_ordis := obind_ordis
+
+(****************************************************************************)
+(**{2       Instanciate ordinal unification variables from state           }*)
+(****************************************************************************)
+
+(** Force an ordinal unification variable to use its state. Return true if
+    the variable is changed *)
+let ouvar_use_state : (ordi -> 'a) -> ordi list -> ouvar -> ordi array -> bool =
+  fun self_ord pos u os -> match !(u.uvar_state) with
+  | Unset (Some o', _) ->
+     set_ouvar u o'; true
+  | Unset (_, Some o') ->
+     ignore (self_ord (msubst o' os)); (* TODO: needed to set some ouvar from state,
+                                          before the less_ordi test below, not very
+                                          clean *)
+     (try set_ouvar u (obind_ordis os (List.find (fun o ->
+          less_ordi pos o (msubst o' os)) (Array.to_list os)));
+          true
+      with Not_found -> false)
+  | _ -> false
