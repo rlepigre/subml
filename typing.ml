@@ -101,7 +101,7 @@ let search_induction subtype prfptr ctxt t c hyps =
        with Exit | Error _ -> Timed.Time.rollback time;
                               find_good_call hyps
   in
-  find_good_call hyps
+  find_good_call (List.rev hyps)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
 let check_fix type_check subtype prfptr ctxt t depth f c =
@@ -116,7 +116,6 @@ let check_fix type_check subtype prfptr ctxt t depth f c =
   in
   (* Search an induction hypothesis that can be applied. *)
   try
-    if depth > 0 then raise Not_found;
     search_induction subtype prfptr ctxt t c !hyps with Not_found ->
   (* There were no such induction hypothesis so we unroll the fixpoint. *)
   let manual = has_leading_ord_quantifier c in
