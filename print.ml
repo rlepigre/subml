@@ -226,7 +226,6 @@ let try_fold_def : kind -> kind = fun k ->
 let rec print_ordi unfold unfolded_Y ff o =
   let o = orepr o in
   let pordi = print_ordi false unfolded_Y in
-  let pterm = print_term false false unfolded_Y in
   let pkind = print_kind false false unfolded_Y in
   match o with
   | OConv   -> pp_print_string ff "∞"
@@ -260,11 +259,11 @@ let rec print_ordi unfold unfolded_Y ff o =
        | In(t,a) ->
           let ov = OVars "α" in
           fprintf ff "ε_{%a<%a}(%a∈%a)" pordi ov pordi o
-            (print_term false false unfolded_Y) t pkind (subst a ov)
+            (print_term false false None) t pkind (subst a ov)
        | NotIn(t,a) ->
           let ov = OVars "α" in
           fprintf ff "ε_{%a<%a}(%a∉%a)" pordi ov pordi o
-            (print_term false false unfolded_Y) t pkind (subst a ov)
+            (print_term false false None) t pkind (subst a ov)
        | Gen(i,s) ->
           let r = s.sch_relat in
           let f = s.sch_judge in
@@ -277,7 +276,7 @@ let rec print_ordi unfold unfolded_Y ff o =
           | SchTerm t ->
              fprintf ff "ε^%d_{%a<%a}(%a \\notin %a)"
                (i+1) (print_array pordi ",") os (print_array pordi ",") os'
-               pterm (Pos.none (TFixY(0,t))) pkind k2
+               (print_term false false None) (Pos.none (TFixY(0,t))) pkind k2
           | SchKind k1 ->
              fprintf ff "ε^%d_{%a<%a}(%a \\not\\subset %a)"
                (i+1) (print_array pordi ",") os (print_array pordi ",") os'
@@ -912,10 +911,9 @@ let print_epsilon_tbls ff =
        let x = free_of (new_tvari (binder_name f)) in
        let t = subst f x in
        fprintf ff "%s_{%d} &= ε_{%a ∈ %a}(%a ∉ %a)\\\\\n" name index
-         (print_term false) (Pos.none x)
-         (print_kind false) a (print_term false) t (print_kind false) b
-    | _ when name = "" ->
-       ()
+         (print_term ~unfolded_Y:None false) (Pos.none x) (print_kind false) a
+         (print_term ~unfolded_Y:None false) t (print_kind false) b
+    | _ when name = "" -> ()
     | _ -> assert false)
     epsilon_term_tbl;
   list_ref_iter (fun (f,(name,index,u,is_exists)) ->
@@ -923,10 +921,12 @@ let print_epsilon_tbls ff =
     let k = subst f x in
     let symbol = if is_exists then "∈" else "∉" in
       fprintf ff "%s_{%d} &= ε_{%s}(%a %s %a)\\\\\n" name index
-      (binder_name f) (print_term false) u symbol (print_kind false) k) epsilon_type_tbl;
+              (binder_name f) (print_term ~unfolded_Y:None false) u symbol
+              (print_kind false) k) epsilon_type_tbl;
   list_ref_iter (fun (o,(n,defi)) ->
-    if not defi then
-      fprintf ff "%a &= %a\\\\\n" (print_ordi false) n (print_ordi true) o) ordi_tbl
+      if not defi then
+        fprintf ff "%a &= %a\\\\\n" (print_ordi false) n
+                (print_ordi true) o) ordi_tbl
 
 exception Find_tdef of kdef
 
