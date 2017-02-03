@@ -155,10 +155,11 @@ and term' =
   | TCons of string * term                             (** Variant. *)
   | TCase of term * (string * term) list * term option (** Case analysis. *)
   | TDefi of tdef                                      (** Defined term. *)
-  | TFixY of int * (term', term) binder
+  | TFixY of bool option * int * (term', term) binder
   (** Fixpoint combinator. the integer is an indications for the termination
       checker. It indicates the number of unrolling to build the induction
-      hypothesis. *)
+      hypothesis. The boolean indicates if contravariant Conv must not be
+      replaced by ordinal parameters *)
 
   (* Type annotations. They are not part of the semantics, and they are only
      used to guide the type-checking algorithm. *)
@@ -548,7 +549,7 @@ let tprnt : Pos.popt -> string -> tbox =
 let tfixy : Pos.popt -> int -> Pos.strloc -> (tvar -> tbox) -> tbox =
   fun p n x f ->
     let b = vbind mk_free_tvari Pos.(x.elt) f in
-    box_apply (fun b -> Pos.make p (TFixY(n,b))) b
+    box_apply (fun b -> Pos.make p (TFixY(None,n,b))) b
 
 let tmlet : Pos.popt -> string array -> string array ->
             (ovar array -> kvar array -> kbox) -> tbox option ->

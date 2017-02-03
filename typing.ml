@@ -104,7 +104,7 @@ let search_induction subtype prfptr ctxt t c hyps =
   find_good_call (List.rev hyps)
 
 (* Check if the typing of a fixpoint comes from an induction hypothesis *)
-let check_fix type_check subtype prfptr ctxt t depth f c =
+let check_fix type_check subtype prfptr ctxt t manual depth f c =
   (* Stop if maximum depth has been reached. *)
   if depth < 0 then () else
   (* Obtain the relevant hypotheses (those which binder is the same). *)
@@ -118,9 +118,12 @@ let check_fix type_check subtype prfptr ctxt t depth f c =
   try
     search_induction subtype prfptr ctxt t c !hyps with Not_found ->
   (* There were no such induction hypothesis so we unroll the fixpoint. *)
-  let manual = has_leading_ord_quantifier c in
+  let manual = match manual with
+    | None -> TypingBase.has_leading_ord_quantifier c
+    | Some m -> m
+  in
   let depth = depth + (if manual then 1 else 0) in
-  let e = Pos.none (TFixY(depth - 1, f)) in
+  let e = Pos.none (TFixY(Some manual,depth - 1, f)) in
   match generalise ~manual ctxt.non_zero (SchTerm f) c ctxt.call_graphs with
   | None          -> assert false (* FIXME why cannot fail ? *)
   | Some(sch, os) ->
@@ -617,9 +620,9 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TPrnt(_) ->
          let p = subtype ctxt t (KProd []) c in
          Typ_Prnt(p)
-      | TFixY(depth,f) ->
+      | TFixY(manual,depth,f) ->
          let prf = ref Todo in
-         let check () = check_fix type_check subtype prf ctxt t depth f c in
+         let check () = check_fix type_check subtype prf ctxt t manual depth f c in
          Timed.(ctxt.fix_todo := check :: !(ctxt.fix_todo));
          Typ_YGen prf
       | TCnst(_,a,b) ->

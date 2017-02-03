@@ -276,7 +276,7 @@ let rec print_ordi unfold unfolded_Y ff o =
           | SchTerm t ->
              fprintf ff "ε^%d_{%a<%a}(%a \\notin %a)"
                (i+1) (print_array pordi ",") os (print_array pordi ",") os'
-               (print_term false false None) (Pos.none (TFixY(0,t))) pkind k2
+               (print_term false false None) (Pos.none (TFixY(None,0,t))) pkind k2
           | SchKind k1 ->
              fprintf ff "ε^%d_{%a<%a}(%a \\not\\subset %a)"
                (i+1) (print_array pordi ",") os (print_array pordi ",") os'
@@ -633,13 +633,14 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      end
   | TDefi(v) ->
      if unfold then
-       print_term ~give_pos true wrap unfolded_Y ff v.orig_value
+       print_term
+         ~give_pos true wrap unfolded_Y ff v.orig_value
      else
        let name = if !latex_mode then v.tex_name else v.name in
        pp_print_string ff name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
-  | TFixY(_,f) ->
+  | TFixY(_,_,f) ->
      let x = binder_name f in
      (match unfolded_Y with
      | Some l when not (List.memq f l) ->
@@ -743,7 +744,7 @@ let mkSchema ?(ord_name="α") schema =
   let (a,b) = msubst schema.sch_judge os in
   let s = match a with
     | SchKind k -> kind_to_string false k
-    | SchTerm t -> term_to_string false (Pos.none (TFixY(0,t)))
+    | SchTerm t -> term_to_string false (Pos.none (TFixY(None,0,t)))
   in
   let o2s = String.concat ", "
                           (List.map (fun i -> ord i) schema.sch_posit) in
