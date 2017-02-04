@@ -370,7 +370,7 @@ and print_kind unfold wrap unfolded_Y ff t =
   | KDefi(td,os,ks) ->
      let name = if !latex_mode then td.tdef_tex_name else td.tdef_name in
      if unfold then
-       pkind ff (msubst (msubst td.tdef_value os) ks)
+       print_kind true wrap unfolded_Y ff (msubst (msubst td.tdef_value os) ks)
      else if Array.length ks = 0 && Array.length os = 0 then
        pp_print_string ff name
      else if Array.length os = 0 then

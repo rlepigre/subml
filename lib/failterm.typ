@@ -134,3 +134,33 @@ val pred : ∀α (N → O(α+2)) → N → O(α+1) = fun f n → case f (S n) of
       | _ → Z:N)
     | _ → Z:N)
   | _ → Z:N
+
+(* Examples from Abel2007 *)
+type NS(α) = μα X [Z | S of X]
+type N = NS(∞)
+
+type A(α) = (N → NS(α)) → N
+
+val shift : ∀α (N → NS(α+2)) → N → NS(α+1) = fun g n →
+  case g (S n) of Z → Z | S p → p
+
+!val rec loop : ∀α A(α) = fun g → loop (shift g)
+!val rec 2 loop : ∀α A(α) = fun g → loop (shift g)
+!val rec 3 loop : ∀α A(α) = fun g → loop (shift g)
+
+(* and this one is not semi-continuous and shoud work *)
+val rec loopnot : ∀α NS(α) → (N → NS(α)) → NS(α) = fun n g →
+  case n of Z → Z
+          | S n → S (loopnot n (shift g))
+
+(*
+type Hungry(α,A) = μα X (A → X)
+
+val rec s : ∀α∀β Hungry(α,NS(β+1)) → Hungry(α,NS(β)) =
+ fun h n → s (h (
+
+
+val rec h : ∀α NS(α) → Hungry(α,NS(α)) = fun n →
+  case n of Z → Z
+          | S p → S (h p)
+*)
