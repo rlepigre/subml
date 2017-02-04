@@ -274,7 +274,7 @@ let rec print_ordi unfold unfolded_Y ff o =
                                            with Not_found -> OConv) os in
           match k1 with
           | SchTerm t ->
-             fprintf ff "ε^%d_{%a<%a}(%a \\notin %a)"
+             fprintf ff "ε^%d_{%a<%a}(%a ∉ %a)"
                (i+1) (print_array pordi ",") os (print_array pordi ",") os'
                (print_term false false None) (Pos.none (TFixY(None,0,t))) pkind k2
           | SchKind k1 ->
@@ -609,7 +609,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
                 in
                 fprintf ff "%s%s %s%s → %a" !bar c prefix x pterm (skip_record_sugar x0 t);
             end;
-            bar := if !latex_mode then (if fin = "" then "\\mid " else fin) else "| "
+            bar := if fin = "" then "∣" else fin
          | _          ->
             assert false
        in
@@ -742,23 +742,20 @@ let mkSchema ?(ord_name="α") schema =
   let osnames = String.concat "," (Array.to_list osnames) in
 
   let (a,b) = msubst schema.sch_judge os in
-  let s = match a with
-    | SchKind k -> kind_to_string false k
-    | SchTerm t -> term_to_string false (Pos.none (TFixY(None,0,t)))
+  let s, rel = match a with
+    | SchKind k -> kind_to_string false k, "⊂"
+    | SchTerm t -> term_to_string false (Pos.none (TFixY(None,0,t))), ":"
   in
   let o2s = String.concat ", "
                           (List.map (fun i -> ord i) schema.sch_posit) in
-  let arrow = if !latex_mode then "\\Rightarrow" else "=>" in
   let r2s =
     if schema.sch_relat = [] then ""
     else
       String.concat "& "
          (List.map (fun (i,j) -> ord i^"<"^ ord j) schema.sch_relat)
-      ^ arrow
+      ^ "⇒"
   in
-
-  let these = if !latex_mode then "\\vdash" else "|-" in
-  sprintf "∀%s (%s %s %s %s : %s)" osnames o2s these r2s s (kind_to_string false b)
+  sprintf "∀%s (%s %s ⊢ %s %s %s)" osnames o2s r2s s rel (kind_to_string false b)
 
 let print_schema ?(ord_name="α") ch schema =
   fprintf ch "%s" (mkSchema ~ord_name schema)
@@ -830,7 +827,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   let sub2proof = sub2proof used_ind in
   let t2s = term_to_string true and k2s = kind_to_string false in
   let o2s = String.concat ", " (List.map (ordi_to_string false) os) in
-  let c = sprintf "%s \\vdash %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b) in
+  let c = sprintf "%s ⊢ %s ∈ %s ⊂ %s" o2s (t2s t) (k2s a) (k2s b) in
   match r with
   | _ when strict_eq_kind a b
                       -> axiomN "$=$" c (* usefull because of unification *)
