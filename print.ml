@@ -791,7 +791,8 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
        sprintf (if latex_mode () then "\\H{%s}{%s}"
                 else "[%s]_{%s}") (mkSchema schema) (Sct.strInd schema.sch_index)
      in
-     let p' = unaryN "\\G" (mkJudgment os t a) (hyp c') in
+     let name = "\\I{"^ Sct.strInd schema.sch_index ^"}" in
+     let p' = unaryN "\\G" (mkJudgment os t a) (hypN name c') in
      if is_refl p then p' else binaryT "" c p p'
   | Unroll(schema,tros,p) ->
      if List.mem schema.sch_index used_ind then (
@@ -862,13 +863,14 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
                                  else "[%s]_{%s}")
                                 (mkSchema sch) (Sct.strInd sch.sch_index)
                          in
-                         unarySN "\\GP" c (hyp p0)
+                         let name = "\\IP{"^ Sct.strInd sch.sch_index ^"}" in
+                         unarySN "\\GP" c (hypN name p0)
   | Sub_Error(msg)    -> axiomSN (sprintf "ERROR(%s)" msg) c
-  | Sub_Gen(schema,tros,((os0,t0,_,_,_) as p)) ->
-     if List.mem schema.sch_index used_ind then (
-       let c0 = mkSchema schema in
+  | Sub_Gen(sch,tros,((os0,t0,_,_,_) as p)) ->
+     if List.mem sch.sch_index used_ind then (
+       let c0 = mkSchema sch in
        unarySN "\\GP" c
-         (unarySN ("\\IP{"^ Sct.strInd schema.sch_index ^"}") c0 (sub2proof p)))
+         (unarySN ("\\IP{"^ Sct.strInd sch.sch_index ^"}") c0 (sub2proof p)))
      else (
          ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
          epsilon_term_tbl := (t0,(t,"",-1)) :: !epsilon_term_tbl;
@@ -908,14 +910,28 @@ let print_position ff pos =
   fprintf ff "[%s]" pos; pp_print_flush ff ()
 
 let print_epsilon_tbls ff =
+  let newline =
+    match !print_mode with
+    | TeX -> "\\\\\n"
+    | Asc | Gml -> "\n"
+  in
+  let eq = match !print_mode with
+    | TeX -> "&="
+    | Gml | Asc -> "="
+  in
   list_ref_iter (fun (t,(t0,name,index)) ->
     match t.elt with
     | TCnst(f,a,b) when name <> "" ->
        let x = free_of (new_tvari (binder_name f)) in
        let t = subst f x in
-       fprintf ff "%s_{%d} &= ε_{%a ∈ %a}(%a ∉ %a)\\\\\n" name index
-         (print_term ~unfolded_Y:None false) (Pos.none x) (print_kind false) a
-         (print_term ~unfolded_Y:None false) t (print_kind false) b
+       fprintf ff "%s_{%d} %s ε_{%a ∈ %a}(%a ∉ %a)%s"
+               name index
+               eq
+               (print_term ~unfolded_Y:None false) (Pos.none x)
+               (print_kind false) a
+               (print_term ~unfolded_Y:None false) t
+               (print_kind false) b
+               newline
     | _ when name = "" -> ()
     | _ -> assert false)
     epsilon_term_tbl;
@@ -923,13 +939,23 @@ let print_epsilon_tbls ff =
     let x = new_prvar f in
     let k = subst f x in
     let symbol = if is_exists then "∈" else "∉" in
-      fprintf ff "%s_{%d} &= ε_{%s}(%a %s %a)\\\\\n" name index
-              (binder_name f) (print_term ~unfolded_Y:None false) u symbol
-              (print_kind false) k) epsilon_type_tbl;
+    fprintf ff "%s_{%d} %s ε_{%s}(%a %s %a)%s"
+            name index
+            eq
+            (binder_name f)
+            (print_term ~unfolded_Y:None false) u
+            symbol
+            (print_kind false) k
+            newline
+    ) epsilon_type_tbl;
   list_ref_iter (fun (o,(n,defi)) ->
       if not defi then
-        fprintf ff "%a &= %a\\\\\n" (print_ordi false) n
-                (print_ordi true) o) ordi_tbl
+        fprintf ff "%a %s %a%s"
+                (print_ordi false) n
+                eq
+                (print_ordi true) o
+                newline
+    ) ordi_tbl
 
 exception Find_tdef of kdef
 

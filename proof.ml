@@ -4,20 +4,22 @@
 open Format
 
 type 'a proof =
-  (* Hypothesis. *)
-  | Hyp  of 'a
+  (* Hypothesis. can point to the rule name that allows the hypothesis*)
+  | Hyp  of 'a * 'a option
   (* Rule: premises, conclusion, name, true means subtyping. *)
   | Rule of 'a proof list * 'a * 'a option * bool
 
 (* Map function on proofs. *)
 let rec map : ('a -> 'b) -> 'a proof -> 'b proof = fun f p ->
   match p with
-  | Hyp(h)               -> Hyp(f h)
+  | Hyp(h, None)            -> Hyp(f h, None)
+  | Hyp(h, Some n)          -> Hyp(f h, Some (f n))
   | Rule(ps, c, None   , b) -> Rule(List.map (map f) ps, f c, None     , b)
   | Rule(ps, c, Some(n), b) -> Rule(List.map (map f) ps, f c, Some(f n), b)
 
 (* Smart constructor for proofs. *)
-let hyp h = Hyp(h)
+let hyp h = Hyp(h, None)
+let hypN n h = Hyp(h, Some n)
 
 let n_ary c ps         = Rule(ps, c, None, false)
 let axiom c            = n_ary c []
@@ -58,7 +60,7 @@ let output : formatter -> string proof -> unit = fun ch p ->
     | _ -> assert false
   in
   let rec output ch = function
-    | Hyp(s)            -> fprintf ch "  \\AxiomC{$%s$}\n" s
+    | Hyp(s, _)         -> fprintf ch "  \\AxiomC{$%s$}\n" s
     | Rule(ps, c, n, _) -> List.iter (output ch) ps;
                            if ps = [] then fprintf ch "  \\AxiomC{}\n";
                            output_name ch n;

@@ -38,6 +38,21 @@ let node ch = fprintf ch
 </node>
 "
 
+(** Node printing *)
+let uNode ch = fprintf ch
+"<node id=\"%s\">
+ <data key=\"d0\">
+  <y:ShapeNode>
+   <y:Fill color=\"#88FF88\"/>
+   <y:NodeLabel alignment=\"left\">
+     %t
+   </y:NodeLabel>
+   <y:Shape type=\"rectangle\"/>
+  </y:ShapeNode>
+ </data>
+</node>
+"
+
 (** Edge printing *)
 let edge ch = fprintf ch
 "<edge source=\"%s\" target=\"%s\">
@@ -45,7 +60,18 @@ let edge ch = fprintf ch
   <y:PolyLineEdge>
    <y:LineStyle type=\"line\" width=\"2\" color=\"#000000\"/>
    <y:Arrows source=\"delta\" target=\"none\"/>
-   <y:EdgeLabel visible=\"false\">Less</y:EdgeLabel>
+  </y:PolyLineEdge>
+ </data>
+</edge>
+"
+
+(** Edge printing *)
+let revEdge ch = fprintf ch
+"<edge source=\"%s\" target=\"%s\">
+ <data key=\"d2\">
+  <y:PolyLineEdge>
+   <y:LineStyle type=\"dotted\" width=\"2\" color=\"#000000\"/>
+   <y:Arrows source=\"none\" target=\"delta\"/>
   </y:PolyLineEdge>
  </data>
 </edge>
@@ -73,13 +99,27 @@ let groupEnd ch =
 let to_nodes : formatter -> string proof -> unit = fun ch p ->
   let c = ref 0 in
   let label () = let n = sprintf "N%d" !c in incr c; n in
+  let rules = Hashtbl.create 101 in
   let rec to_nodes in_sub = function
-    | Hyp(s)           ->
-       let l = label () in node ch l s; l
-    | Rule(ps,c,_,sub) ->
+    | Hyp(s,n)         ->
+       let l = label () in
+       node ch l s;
+       begin
+         match n with
+         | None -> ()
+         | Some n ->
+            let l0 = try Hashtbl.find rules n with Not_found -> assert false in
+            revEdge ch l0 l
+       end;
+       l
+    | Rule(ps,c,n,sub) ->
        if sub && not in_sub then groupBegin ch (label ());
-       let labels = List.map (to_nodes sub) ps in
        let l0 = label () in
+       begin
+         match n with None -> ()
+                    | Some n -> Hashtbl.add rules n l0
+       end;
+       let labels = List.map (to_nodes sub) ps in
        node ch l0 c;
        List.iter (fun l -> edge ch l0 l) labels;
        if sub && not in_sub then groupEnd ch;
@@ -94,7 +134,11 @@ let output : formatter -> Ast.typ_prf -> unit = fun ch p ->
   print_mode := Gml;
   try
     let p = Print.typ2proof p in
-    fprintf ch "%s%a%s%!" head to_nodes p tail;
+    fprintf ch "%s%a%t%s%!"
+            head
+            to_nodes p
+            (fun ch -> uNode ch "index" print_epsilon_tbls)
+            tail;
     print_mode := save_mode
   with e ->
     print_mode := save_mode;
