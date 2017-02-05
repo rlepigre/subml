@@ -104,13 +104,13 @@ let check_typ_proof p =
   | Some l -> raise (Error l)
 
 let display_error ch = function
-  | Typ(p,t,k)     -> fprintf ch "TYP %a |- %a : %a\n" (print_term ~give_pos:true false) t
-                                               print_ordis p
-                                               (print_kind false) k
-  | Sub(p,t,k1,k2) -> fprintf ch "SUB %a |- %a ⊂ %a\n"
-                                               print_ordis p
-                                               (print_kind false) k1
-                                               (print_kind false) k2
+  | Typ(p,t,k)     -> fprintf ch "TYP %a ⊢ %a : %a\n" print_ordis p
+                              (print_term ~give_pos:true false) t
+                              (print_kind false) k
+  | Sub(p,t,k1,k2) -> fprintf ch "SUB %a ⊢ %a ⊂ %a\n"
+                              print_ordis p
+                              (print_kind false) k1
+                              (print_kind false) k2
   | Msg(m)       -> fprintf ch "MSG %s" m
 
 let display_errors ch = List.iter (display_error ch)

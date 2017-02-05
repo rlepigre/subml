@@ -564,7 +564,7 @@ let include_file : string -> unit = fun fn ->
 let output_graphml : strloc -> unit = fun id ->
   try
     let prf = (Hashtbl.find val_env id.elt).proof in
-    Graph.output_graphml Io.(fmts.htm) (Print.typ2proof prf)
+    Graph.output Io.(fmts.gml) prf
   with Not_found -> unbound id
 
 (****************************************************************************
@@ -586,6 +586,7 @@ let parser command top =
   | latex_kw t:tex_text$          when not top -> Io.tex "%a%!" Latex.output t
   | _:set_kw "verbose" b:enables               -> verbose := b
   | _:set_kw "texfile" fn:str_lit when not top -> Io.set_tex_file fn
+  | _:set_kw "gmlfile" fn:str_lit when not top -> Io.set_gml_file fn
   | _:clear_kw                    when top     -> LibTools.clear ()
   | {quit_kw | exit_kw}           when top     -> raise End_of_file
 

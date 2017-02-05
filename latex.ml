@@ -116,13 +116,13 @@ let rec output toplevel ch =
   | Sch (sch,ord_name) -> print_schema ~ord_name ch sch
 
 let output ff tex =
-  let save_mode = !latex_mode in
-  latex_mode := true;
+  let save_mode = !print_mode in
+  print_mode := TeX;
   try
     output true ff tex;
-    latex_mode := save_mode
+    print_mode := save_mode
   with e ->
-    latex_mode := save_mode;
+    print_mode := save_mode;
     raise e
 
 let ignore_latex = ref false

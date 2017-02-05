@@ -7,14 +7,14 @@ type fmts =
   ; mutable err : formatter
   ; mutable log : formatter
   ; mutable tex : formatter
-  ; mutable htm : formatter }
+  ; mutable gml : formatter }
 
 let fmts =
   { out = std_formatter
   ; err = err_formatter
   ; log = err_formatter
   ; tex = std_formatter
-  ; htm = std_formatter }
+  ; gml = std_formatter }
 
 let out ff = fprintf  fmts.out ff
 let err ff = fprintf  fmts.err ff
@@ -50,6 +50,8 @@ let ((fmt_of_file : string -> formatter), (close_files : unit -> unit)) =
 
 let set_tex_file : string -> unit =
   fun fn -> fmts.tex <- fmt_of_file fn
+let set_gml_file : string -> unit =
+  fun fn -> fmts.gml <- fmt_of_file fn
 
 let debug = ref ""
 let debug_sct = 'y'
