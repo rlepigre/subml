@@ -18,7 +18,7 @@ let rec eval : term -> term = fun t0 ->
   | TDefi(v)     -> eval v.value
   (* A value has been reached. *)
   | TVari(_)     -> t0
-  | TAbst(_,_)   -> t0
+  | TAbst _      -> t0
   | TFixY(_)     -> t0
   (* Evaluate under products and constructors. *)
   | TReco(l)     -> Pos.make t0.pos (TReco(map_snd eval l))
@@ -34,7 +34,7 @@ let rec eval : term -> term = fun t0 ->
         let rec fn t =
           let t = eval t in
           match t.elt with
-          | TAbst(_,b)   -> eval (subst b u.elt)
+          | TAbst(_,b,_) -> eval (subst b u.elt)
           | TFixY(_,_,f) -> fn (subst f t.elt)
           | _            -> assert false
         in fn t

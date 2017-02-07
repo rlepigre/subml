@@ -278,7 +278,7 @@ and eq_term : ordi list -> term -> term -> bool = fun pos t1 t2 ->
     | (_              , TMLet(_,_,t2)  ) -> eq_term t1 (mmsubst_dummy t2 OConv (KProd []))
     | (TVari(x1)      , TVari(x2)      ) -> eq_vars x1 x2
     | (TVars(s1)      , TVars(s2)      ) -> s1 = s2
-    | (TAbst(_,f1)    , TAbst(_,f2)    )
+    | (TAbst(_,f1,_)  , TAbst(_,f2,_)  )
     | (TFixY(_,_,f1)  , TFixY(_,_,f2)  ) -> eq_tbinder pos f1 f2
     | (TAppl(t1,u1)   , TAppl(t2,u2)   ) -> eq_term t1 t2 && eq_term u1 u2
     | (TReco(fs1)     , TReco(fs2)     ) -> eq_assoc eq_term fs1 fs2
@@ -384,7 +384,7 @@ and gen_occur :
     | TCons(_,t)     -> aux2 acc t
     | TMLet(b,x,bt)  -> aux2 acc (mmsubst_dummy bt OConv (KProd []))
     | TFixY(_,_,f)
-    | TAbst(_,f)     -> aux2 acc (subst f (TReco []))
+    | TAbst(_,f,_)   -> aux2 acc (subst f (TReco []))
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
     | TCase(t,l,d)   ->

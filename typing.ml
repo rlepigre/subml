@@ -538,7 +538,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
            Typ_Nope(p)
          else
            type_error "Type matching failed"
-      | TAbst(ao,f) ->
+      | TAbst(ao,f,_) ->
          let a = from_opt' ao new_kuvar in
          let b = new_kuvar () in
          let ptr = Subset.create ctxt.non_zero in

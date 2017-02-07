@@ -92,21 +92,44 @@ let search_ordi_tbl o =
       ordi_tbl := (o,(v,false))::!ordi_tbl;
       v
 
-let skip_record_sugar name t =
-  let nb =
-    if String.length name > 2 && name.[0] = ':' then 2
-    else
-      let r = ref 0 in
-      String.iter (function ';' | '(' | ',' -> incr r | _ -> ()) name;
-      !r
+let skip_record_sugar cons oname s t =
+  let nb = match s with
+    | SgRec f -> List.length f
+    | SgTpl n -> n
+    | SgCns   -> 2
+    | SgNil
+    | SgNop   -> 0
   in
+  let names = ref [] in
   let rec fn n t = match t.elt with
-    | TAppl({ elt = TAbst(_,f) },_) when n > 0 ->
-       let x = TVars (binder_name f) in
+    | TAppl({ elt = TAbst(_,f,_) },_) when n > 0 ->
+       let name = binder_name f in
+       names := name :: !names;
+       let x = TVars name in
        fn (n-1) (subst f x)
-    | t -> assert(n=0); t
+    | t -> assert(n=0); Pos.none t
   in
-  Pos.none (fn nb t)
+  let t = fn nb t in
+  let pat = match s with
+    | SgTpl _ ->
+       cons ^ "(" ^ List.fold_left (fun acc x ->
+                 if acc = "" then x else acc ^ "," ^ x) ""
+                                   !names
+           ^ ")"
+    | SgRec fs ->
+       let op = if latex_mode () then "\\record{" else "{" in
+       cons ^  op ^ List.fold_left2 (fun acc x1 x2 ->
+                 let x = x1 ^ "=" ^ x2 in
+                 if acc = "" then x else acc ^ ";" ^ x) ""
+                                    fs !names
+            ^ "}"
+    | SgNil -> "[]"
+    | SgNop -> cons ^ oname
+    | SgCns ->
+       assert (List.length !names = 2);
+       List.nth !names 0 ^ "::" ^ List.nth !names 1
+  in
+  (pat, t)
 
 (** A test to avoid capture in match_kind below *)
 let has_kvar : kind -> bool = fun k ->
@@ -506,23 +529,21 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
   | TVari(x) ->
       pp_print_string ff (name_of x)
   | TVars(s) ->
-      pp_print_string ff s
-  | TAbst(ao,b) ->
+     pp_print_string ff s
+  (* TODO: unsugar let too *)
+  | TAbst(ao,b,_) ->
      if wrap then fprintf ff "(";
      let rec fn first ff t = match t.elt with
-       | TAbst(ao,b) ->
-          let x = binder_name b in
-          let t = subst b (TVars x) in
+       | TAbst(ao,b,s) ->
+          let name = binder_name b in
+          let t = subst b (TVars name) in
           let sep = if first then "" else
                       if latex_mode () then "\\, " else " " in
-          let p = if latex_mode () && String.length x > 0 &&
-                            x.[0] = '{' then "\\record" else ""
-          in
-          let t = skip_record_sugar x t in
+          let (name,t) = skip_record_sugar "" name s t in
           begin
             match ao with
-            | None   -> fprintf ff "%s%s%s%a" sep p x (fn false) t
-            | Some a -> fprintf ff "%s%s%s{:}%a%a" sep p x pkind a (fn false) t
+            | None   -> fprintf ff "%s%s%a" sep name (fn false) t
+            | Some a -> fprintf ff "%s%s{:}%a%a" sep name pkind a (fn false) t
           end
        | _ ->
           fprintf ff ".%a" pterm t
@@ -595,24 +616,12 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
        let bar = ref "" in
        let pvariant fin ff (c,b) =
          match b.elt with
-         | TAbst(_,f) ->
+         | TAbst(_,f,s) ->
             let x0 = binder_name f in
             begin
               let t = subst f (free_of (new_tvari x0)) in
-              if x0 = "" then
-                let c = if c = "Nil" then "[]" else c in
-                fprintf ff "%s%s → %a" !bar c pterm t
-              else
-                let (c,x,prefix) =
-                  if c = "Cons" && String.length x0 > 0 && x0.[0] = ':' then
-                    ("",String.sub x0 1 (String.length x0 - 1), "")
-                  else
-                    let p = if latex_mode () && String.length x0 > 0 &&
-                      x0.[0] = '{' then "\\record" else ""
-                    in
-                    (c, x0, p)
-                in
-                fprintf ff "%s%s %s%s → %a" !bar c prefix x pterm (skip_record_sugar x0 t);
+              let (pat, t) = skip_record_sugar c x0 s t in
+              fprintf ff "%s %s → %a" !bar pat pterm t;
             end;
             bar := if fin = "" then "∣" else fin
          | _          ->
@@ -620,7 +629,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
        in
        let pdefault ff = function
          | None -> ()
-         | Some({elt = TAbst(_,f)}) ->
+         | Some({elt = TAbst(_,f,_)}) ->
             let x = binder_name f in
             let t = subst f (free_of (new_tvari x)) in
             fprintf ff "%s%s → %a" !bar x pterm t;
@@ -815,7 +824,7 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
      begin
        match t.elt with
        (* optim for constant constructor in case *)
-       | TAbst(_,f) when binder_name f = "" -> typ2proof p2
+       | TAbst(_,f,_) when binder_name f = "" -> typ2proof p2
        | _ -> binaryT "→_i" c p1 (typ2proof p2)
      end
   | Typ_Func_e(p1,p2) -> binaryN "→_e" c (typ2proof p1) (typ2proof p2)

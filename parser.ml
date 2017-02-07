@@ -269,8 +269,8 @@ and tcol = (pterm `Col)
 and tatm = (pterm `Atm)
 
 and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
-  | lambda xs:var+ dot t:term$    when p = `Lam -> in_pos _loc (PLAbs(xs,t))
-  | fun_kw xs:var+ arrow t:term$  when p = `Lam -> in_pos _loc (PLAbs(xs,t))
+  | lambda xs:fpat+ dot t:term$   when p = `Lam -> plabs _loc xs t
+  | fun_kw xs:fpat+ arrow t:term$ when p = `Lam -> plabs _loc xs t
   | t:tapp u:tcol                 when p = `App -> pappl _loc t u
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
   | "print(" - s:str_lit - ")"    when p = `Atm -> in_pos _loc (PPrnt(s))
@@ -339,17 +339,20 @@ and term_list =
 
 and pats = _:"|"? ps:(list_sep case "|")
 
-and rpat =
-  | EMPTY                              -> Simple None
+and fpat =
   | x:let_var                          -> Simple (Some x)
   | "(" x:let_var ")"                  -> Simple (Some x)
   | "{" ls:(list_sep (parser l:lident "=" x:var) ";") "}"
                                        -> Record ls
   | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)
 
+and rpat =
+  | EMPTY -> Simple None
+  | fpat
+
 and pattern =
   | c:uident x:rpat -> (c,x)
-  | "[" "]"         -> ("Nil", Simple None)
+  | "[" "]"         -> ("Nil", NilPat)
   | x:var"::"y:var  -> ("Cons", Record [("hd",x) ; ("tl",y)])
 
 and case = (c,x):pattern arrow t:term -> (c, x, t)

@@ -35,7 +35,7 @@ and pterm' =
   | PCoer of pterm * pkind
   | PMLet of string list * string list * pkind * string * pterm
   | PLVar of string
-  | PLAbs of (strloc * pkind option) list * pterm
+  | PLAbs of (strloc * pkind option) * pterm * sugar
   | PAppl of pterm * pterm
   | PReco of (string * pterm) list
   | PProj of pterm * string
@@ -44,6 +44,7 @@ and pterm' =
   | PPrnt of string
   | PFixY of strloc * int * pterm
 and ppat =
+  | NilPat
   | Simple of (strloc * pkind option) option
   | Record of (string * (strloc * pkind option)) list
 
@@ -60,7 +61,8 @@ let dummy_case_var _loc =
 (* "t; u" := "(fun (_ : unit) ↦ u) t" *)
 let sequence _loc t u =
   let dum = (in_pos _loc "_", Some(in_pos _loc (PProd []))) in
-  in_pos _loc (PAppl(in_pos _loc (PLAbs([dum],u)), t))
+  (* TODO: a desugaring info for printing could be used here *)
+  in_pos _loc (PAppl(in_pos _loc (PLAbs(dum,u,SgNop)), t))
 
 let pfixY (id, ko) _loc n t =
   let n = match n with
@@ -80,33 +82,33 @@ let pappl _loc t u = match t.elt with
 
 let apply_rpat c x t =
   match x with
+  | NilPat ->
+     Pos.make t.pos (PLAbs(dummy_case_var t.pos,t,SgNil))
   | Simple x ->
      let x = from_opt x (dummy_case_var t.pos) in
-     Pos.make t.pos (PLAbs([x],t))
+     Pos.make t.pos (PLAbs(x,t,SgNop))
   | Record r ->
-     let is_cons r =
+     let is_cons =
        c = "Cons" && List.length r = 2 && List.mem_assoc "hd" r && List.mem_assoc "tl" r
      in
-     let name =
-       if is_cons r then
-         ":" ^ (fst (List.assoc "hd" r)).elt ^ "{::}" ^
-               (fst (List.assoc "tl" r)).elt
-       else if Print.is_tuple r then
-         let r = List.sort (fun (a,_) (b,_) -> compare a b) r in
-         List.fold_left (fun acc (l,(x,_)) ->
-           if acc = "(" then acc ^ x.elt else
-           acc ^ "," ^ x.elt) "(" r ^ ")"
-       else
-         List.fold_left (fun acc (l,(x,_)) ->
-           acc ^ l ^ "=" ^ x.elt ^ ";") "{" r ^ "}"
+     let sugar =
+       if is_cons then SgCns
+       else if Print.is_tuple r then SgTpl (List.length r)
+       else SgRec (List.map fst r)
      in
+     let name = "_r" in
      let v = Pos.make t.pos (PLVar name) in
      let t =
        List.fold_left (fun acc (l,x) ->
-         (Pos.make t.pos (PAppl(Pos.make t.pos (PLAbs([x],acc)),
+         (Pos.make t.pos (PAppl(Pos.make t.pos (PLAbs(x,acc,SgNop)),
                               Pos.make t.pos (PProj(v, l)))))) t r
      in
-     Pos.make t.pos (PLAbs([Pos.make t.pos name, None],t))
+     Pos.make t.pos (PLAbs((Pos.make t.pos name, None),t,sugar))
+
+let rec plabs _loc rpats t =
+  match rpats with
+  | [] -> t
+  | pat::rpats -> in_pos _loc (apply_rpat "_" pat (plabs _loc rpats t)).elt
 
 let pcond _loc c t e =
   let l = [("Tru", Simple None, t); ("Fls", Simple None, e)] in
@@ -262,20 +264,13 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
 
 and unsugar_term : env -> pterm -> tbox = fun env pt ->
   match pt.elt with
-  | PLAbs(vs,t) -> let rec aux first env = function
-                     | []           -> unsugar_term env t
-                     | (x,ko) :: xs ->
-                         let ko = map_opt (unsugar_kind env) ko in
-                         let f xt = aux false (add_term x.elt xt env) xs in
-                         let pos =
-                           if first then pt.pos else
-                             (*
-                           { pt.pos with line_start = x.pos.line_start
-                           ; col_start = x.pos.col_start }
-                           *) pt.pos (* FIXME *)
-                         in
-                         tabst pos ko x f
-                   in aux true env vs
+  | PLAbs((x,ko),t,s) ->
+     let ko = map_opt (unsugar_kind env) ko in
+     let f xt = unsugar_term (add_term x.elt xt env) t in
+     let pos = t.pos (* FIXME { t.pos with start_line = x.pos.start_line
+                          ; start_col  = x.pos.start_col } *)
+     in
+     tabst pos ko x s f
   | PCoer(t,k)  -> tcoer pt.pos (unsugar_term env t) (unsugar_kind env k)
   | PMLet(osn,ksn,k,x,t) ->
      let osn = Array.of_list osn and ksn = Array.of_list ksn in

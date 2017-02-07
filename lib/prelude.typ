@@ -7,8 +7,8 @@ val tru : Bool = Tru
 val fls : Bool = Fls
 
 (* Condition function. Prefer the use of syntax "if ... then ... else ...". *)
-val cond : ∀X Bool → X → X → X = fun c t e →
-  case c of Tru → t | Fls → e
+val cond : ∀X Bool → X → X → X = (fun c t e →
+  (case c of Tru → t | Fls → e))
 
 val or : Bool → Bool → Bool = fun a b →
   if a then tru else b

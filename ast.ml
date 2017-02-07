@@ -143,18 +143,25 @@ and ord_wit =
 (** Abstract syntax tree for terms, with a source code position. *)
 and term = term' Pos.loc
 
+(** syntactic sugar from parsing *)
+and sugar =
+  | SgNop
+  | SgNil
+  | SgCns
+  | SgRec of string list
+  | SgTpl of int
+
 (** Abstract syntax tree for terms. *)
 and term' =
   (* Main term constructors. *)
-
-  | TVari of term' var                                 (** Free λ-variable. *)
-  | TAbst of kind option * (term', term) binder        (** λ-abstraction. *)
-  | TAppl of term * term                               (** Application. *)
-  | TReco of (string * term) list                      (** Record. *)
-  | TProj of term * string                             (** Projection. *)
-  | TCons of string * term                             (** Variant. *)
-  | TCase of term * (string * term) list * term option (** Case analysis. *)
-  | TDefi of tdef                                      (** Defined term. *)
+  | TVari of term' var                                  (** Free λ-variable. *)
+  | TAbst of kind option * (term', term) binder * sugar (** λ-abstraction. *)
+  | TAppl of term * term                                (** Application. *)
+  | TReco of (string * term) list                       (** Record. *)
+  | TProj of term * string                              (** Projection. *)
+  | TCons of string * term                              (** Variant. *)
+  | TCase of term * (string * term) list * term option  (** Case analysis. *)
+  | TDefi of tdef                                       (** Defined term. *)
   | TFixY of bool option * int * (term', term) binder
   (** Fixpoint combinator. the integer is an indications for the termination
       checker. It indicates the number of unrolling to build the induction
@@ -510,10 +517,11 @@ let tvari : Pos.popt -> term' var -> tbox =
   fun p x ->
     box_apply (Pos.make p) (box_of_var x)
 
-let tabst : Pos.popt -> kbox option -> Pos.strloc -> (tvar -> tbox) -> tbox =
-  fun p ko x f ->
+let tabst : Pos.popt -> kbox option -> Pos.strloc -> sugar ->
+            (tvar -> tbox) -> tbox =
+  fun p ko x s f ->
     let b = vbind mk_free_tvari Pos.(x.elt) f in
-    box_apply2 (fun ko b -> Pos.make p (TAbst(ko,b))) (box_opt ko) b
+    box_apply2 (fun ko b -> Pos.make p (TAbst(ko,b,s))) (box_opt ko) b
 
 let tappl : Pos.popt -> tbox -> tbox -> tbox =
   fun p ->
@@ -577,7 +585,7 @@ let top : kind =
 
 let idt : tbox =
   let fn x = box_apply Pos.none (box_of_var x) in
-  tabst None None (Pos.none "x") fn
+  tabst None None (Pos.none "x") SgNop fn
 
 let generic_tcnst : kbox -> kbox -> tbox =
   fun a b ->
