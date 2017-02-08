@@ -75,9 +75,9 @@ let rec run_fix_todo : ctxt -> unit = fun ctxt ->
 let find_indexes ftbl pos index index' a b =
   let open Sct in
   Io.log_mat "build matrix for %a %a\n" prInd index prInd index';
-  let c = arity index ftbl and l = arity index' ftbl in
-  let h = l and w = c in
-  let m = Array.init l (fun _ -> Array.make c Infi) in
+  let w = arity index  ftbl in
+  let h = arity index' ftbl in
+  let tab = Array.init h (fun _ -> Array.make w Infi) in
   List.iteri (fun j (j',o') ->
     assert(j=j');
     List.iteri (fun i (i',o) ->
@@ -90,11 +90,11 @@ let find_indexes ftbl pos index index' a b =
         else Infi
       in
       Io.log_mat "%a\n%!" prCmp r;
-      assert(j < l);
-      assert(i < c);
-      m.(j).(i) <- r
+      assert(j < h);
+      assert(i < w);
+      tab.(j).(i) <- r
     ) a) b;
-  {w; h; tab = m}
+  {w; h; tab}
 
 let consecutive =
   let rec fn n = function
