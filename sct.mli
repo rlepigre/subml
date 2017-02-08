@@ -6,9 +6,9 @@
 open Format
 
 type cmp =
-  | Less (** argument is stricly smaller than the calling parameter *)
-  | Leq  (** argument is less of equal than the calling parameter   *)
-  | Unknown (** no relation is known between the argument and the parameter *)
+  | Min1 (** argument is stricly smaller than the calling parameter *)
+  | Zero (** argument is less of equal than the calling parameter   *)
+  | Infi (** no relation is known between the argument and the parameter *)
 
 (**a call g(x0-1,x1,x1-1) inside f(x0,x1) is
    represented by (g_n, f_n, [|[| Less; Unknown; Unknown |];
@@ -28,7 +28,8 @@ type cmp =
     are call to an induction hypothesis and have a true boolean.
 *)
 type index
-type call = index * index * cmp array array * bool
+type matrix = { w : int ; h : int ; tab : cmp array array }
+type call = index * index * matrix * bool
 
 val call_index : call -> index
 
@@ -55,7 +56,6 @@ val prCmp : Format.formatter -> cmp   -> unit
 val latex_print_calls : formatter -> call_table -> unit
 
 val strInd : index -> string
-val strCmp : cmp   -> string
 
 (** Returns true for a table with no call *)
 val is_empty : call_table -> bool

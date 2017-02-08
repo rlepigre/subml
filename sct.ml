@@ -1,54 +1,87 @@
-(*****************************************************************************)
-(**{3                 Size change termination principle                     }*)
-(**         Chin Soon Lee, Neil D. Jones, Amir M. Ben-AmramPOPL2001          *)
-(*****************************************************************************)
-open Format
+(** Size change principle. This module implements a decision procedure based
+    on the work of Chin Soon Lee, Neil D. Jones and Amir M. Ben-Amram (POPL
+    2001). It is used by PML to check that typing and subtyping proofs are
+    well-founded. *)
 
-(** Implementation of the sct we need for subtyping and typing:
+(** Map with integer keys. *)
+module IMap = Map.Make(
+  struct
+    type t = int
+    let compare = compare
+  end)
 
-    - In the case of subtyping, all arguments of a call correpond to a
-      parameter with a known relation : Less or Less or equal. In
-      this case the sct is a decision procedure
+(** Representation of the set {-1, 0, ∞} *)
+type cmp = Min1 | Zero | Infi
 
-    - For typing recursive program, general SCT is used and it is
-      only a correct termination criteria *)
+(** String representation. *)
+let cmp_to_string : cmp -> string =
+  function Min1 -> "<" | Zero -> "=" | Infi -> "?"
 
-(*****************************************************************************)
-(**{2                     General functions and types                       }*)
-(*****************************************************************************)
+(** Addition operation (minimum) *)
+let (<+>) : cmp -> cmp -> cmp = min
 
-type cmp =
-  | Less (** argument is stricly smaller than the calling parameter *)
-  | Leq  (** argument is less of equal than the calling parameter   *)
-  | Unknown (** no relation is known between the argument and the parameter *)
+(** Multiplication operation. *)
+let (<*>) : cmp -> cmp -> cmp = fun e1 e2 ->
+  match (e1, e2) with
+  | (Infi, _   ) | (_   , Infi) -> Infi
+  | (Min1, _   ) | (_   , Min1) -> Min1
+  | (Zero, Zero) -> Zero
 
-(**a call g(x0-1,x1,x1-1) inside f(x0,x1) is
-   represented by (g_n, f_n, [|[| Less; Unknown; Unknown |];
-                               [| Unknown; Leq; Less  |]|], b)
+(** Type of a size change matrix. *)
+type matrix =
+  { w   : int
+  ; h   : int
+  ; tab : cmp array array }
 
-   more precisely, a call (i,j,m) represents a call
-   to the function numbered i inside the function numbered j.
-   m is a matrix. the coefficient m.(a).(b) give the relation
-   between the a-th parameter of the caller and the b-th argument
-   of the called function.
+(** Matrix product. *)
+let prod : matrix -> matrix -> matrix = fun m1 m2 ->
+  assert (m1.w = m2.h);
+  let tab =
+    Array.init m1.h (fun y ->
+      Array.init m2.w (fun x ->
+        let r = ref Infi in
+        for k = 0 to m1.w - 1 do
+          r := !r <+> (m1.tab.(y).(k) <*> m2.tab.(k).(x))
+        done; !r
+      )
+    )
+  in
+  { w = m2.w ; h = m1.h ; tab }
 
-   The boolean in call indicates a recursive call, that must not be
-   removed by inlining. The boolean is true when the call is a recursive
-    call. i.e. A call to a generalised hypothesis lower in the tree.
-    More precisely, each subtyping in a typing, each rule introducing
-    a new induction hypothesis has a false boolean. All other call
-    are call to an induction hypothesis and have a true boolean.
-*)
+(** Check if a matrix corresponds to a decreasing idempotent call. *)
+let decreasing : matrix -> bool = fun m ->
+  assert (m.w = m.h);
+  try
+    for k = 0 to m.w - 1 do
+      if m.tab.(k).(k) = Min1 then raise Exit
+    done; false
+  with Exit -> true
+
+(** Check if a matrix subsumes another one (i.e. gives more infomation). *)
+let subsumes : matrix -> matrix -> bool = fun m1 m2 ->
+  try
+    Array.iteri (fun y l ->
+      Array.iteri (fun x e ->
+        if not (e >= m2.tab.(y).(x)) then raise Exit
+      ) l
+    ) m1.tab; true
+  with Exit -> false
+
+
+
+
+
 type index = int (** index of a function *)
-type call = index * index * cmp array array * bool
+type call = index * index * matrix * bool
 type calls = call list
+type symbol = string * int * string array
 
 let call_index : call -> index =
   fun (i, _, _, _) -> i
 
 (** This stores the function table, giving name, arity and the
     way to print the function for debugging *)
-type arities = (int * (string * int * string array)) list
+type arities = (int * symbol) list
 type call_table =
   { current : int ref
   ; table   : arities ref
@@ -94,38 +127,36 @@ let is_empty tbl = !(tbl.calls) = []
 (**{2               Printing functions for debugging                        }*)
 (*****************************************************************************)
 
+open Format
+
 let prInd ff = fprintf ff "%d"
 let strInd = string_of_int
-let prCmp ff c =
-  match c with
-  | Unknown -> fprintf ff "?"
-  | Less -> fprintf ff "<"
-  | Leq  -> fprintf ff "="
-let strCmp c =
-  match c with
-  | Unknown -> "?"
-  | Less -> "<"
-  | Leq  -> "="
+let prCmp ff c = pp_print_string ff (cmp_to_string c)
 
-let print_call ff tbl (i,j,m,_) =
-  let (namej,aj,prj) = try List.assoc j tbl with Not_found -> assert false in
-  let (namei,ai,_  ) = try List.assoc i tbl with Not_found -> assert false in
-  let print_args = LibTools.print_array pp_print_string "," in
-  fprintf ff "%s%d(%a%!) <- %s%d%!(" namej j print_args prj namei i;
-  for i = 0 to ai - 1 do
-    if i > 0 then fprintf ff ",";
-    let some = ref false in
-    for j = 0 to aj - 1 do
-      let c = m.(j).(i) in
-      if c <> Unknown then
-        begin
-          let sep = if !some then " " else "" in
-          fprintf ff "%s%a%s" sep prCmp c prj.(j);
-          some := true
-        end
-    done
-  done;
-  fprintf ff ")%!"
+let print_call : formatter -> (int * symbol) list -> call -> unit =
+  fun ff tbl (i,j,m,_) ->
+    let (namej,aj,prj) =
+      try List.assoc j tbl with Not_found -> assert false
+    in
+    let (namei,ai,_  ) =
+      try List.assoc i tbl with Not_found -> assert false
+    in
+    let print_args = LibTools.print_array pp_print_string "," in
+    fprintf ff "%s%d(%a%!) <- %s%d%!(" namej j print_args prj namei i;
+    for i = 0 to ai - 1 do
+      if i > 0 then fprintf ff ",";
+      let some = ref false in
+      for j = 0 to aj - 1 do
+        let c = m.tab.(j).(i) in
+        if c <> Infi then
+          begin
+            let sep = if !some then " " else "" in
+            fprintf ff "%s%a%s" sep prCmp c prj.(j);
+            some := true
+          end
+      done
+    done;
+    fprintf ff ")%!"
 
 let latex_print_calls ff tbl =
   let arities = !(tbl.table) in
@@ -163,10 +194,10 @@ let latex_print_calls ff tbl =
       for j = 0 to aj - 1 do
         if j > 0 then fprintf ff "&";
         let c =
-          match m.(j).(i) with
-          | Unknown -> "\\infty"
-          | Leq -> "0"
-          | Less -> "-1"
+          match m.tab.(j).(i) with
+          | Infi -> "\\infty"
+          | Zero -> "0"
+          | Min1 -> "-1"
         in
         fprintf ff "%s" c
       done;
@@ -175,48 +206,6 @@ let latex_print_calls ff tbl =
   in
   List.iter (print_call arities) calls;
   fprintf ff "  }\n\\end{dot2tex}\n"
-
-(*****************************************************************************)
-(**{2                   Basic operations on matrices                        }*)
-(*****************************************************************************)
-
-(** Composition of size change information *)
-let compose c1 c2 = match c1, c2 with
-  | Unknown, _ | _, Unknown -> Unknown
-  | Less, _ | _, Less -> Less
-  | Leq, Leq -> Leq
-
-(** The induced matric product *)
-let mat_prod l1 c1 c2 m1 m2 =
-  Array.init l1 (fun i ->
-    Array.init c2 (fun j ->
-      let r = ref Unknown in
-      for k = 0 to c1 - 1 do
-        r := min !r (compose m1.(i).(k) m2.(k).(j))
-      done;
-      !r
-    ))
-
-(** Check if a call (supposed idempotnent) is decreasing *)
-let decrease m =
-  try
-    Array.iteri (fun i l ->
-      match l.(i) with
-      | Less -> raise Exit
-      | _ -> ()) m;
-    false
-  with
-    Exit -> true
-
-(** Check is a matrice subsumes anothe one (i.e, give less infomation) *)
-let subsume m1 m2 =
-  try
-    Array.iteri (fun i l1 ->
-      Array.iteri (fun j x ->
-        if not (x >= m2.(i).(j)) then raise Exit) l1) m1;
-    true
-  with
-    Exit -> false
 
 (*****************************************************************************)
 (**{2                          The Main algorithm                           }*)
@@ -235,17 +224,16 @@ let sct_only : call_table -> bool = fun ftbl ->
      if the edge is new or not *)
   let add_edge i j m =
     (* test idempotent edges as soon as they are discovered *)
-    let (_, a, _) = List.assoc i arities in
-    if i = j && mat_prod a a a m m = m && not (decrease m) then begin
+    if i = j && prod m m = m && not (decreasing m) then begin
       Io.log_sct "edge %a idempotent and looping\n%!" print_call (i,j,m,true);
       raise Exit
     end;
     let ti = tbl.(i) in
     let ms = ti.(j) in
-    if List.exists (fun m' -> subsume m' m) ms then
+    if List.exists (fun m' -> subsumes m' m) ms then
       false
     else (
-      let ms = m :: List.filter (fun m' -> not (subsume m m')) ms in
+      let ms = m :: List.filter (fun m' -> not (subsumes m m')) ms in
       ti.(j) <- ms;
       true)
   in
@@ -270,10 +258,7 @@ let sct_only : call_table -> bool = fun ftbl ->
           Array.iteri (fun k t -> List.iter (fun m' ->
             Io.log_sct "\tcompose: %a * %a = %!"
               print_call (i,j,m,true) print_call (j,k,m',true);
-            let (_, a, _) = List.assoc k arities in
-            let (_, b, _) = List.assoc j arities in
-            let (_, d, _) = List.assoc i arities in
-            let m'' = mat_prod a b d m' m in
+            let m'' = prod m' m in
             incr composed;
             new_edges := (i,k,m'',true) :: !new_edges;
             Io.log_sct "%a\n%!" print_call (i,k,m'',true);
@@ -323,10 +308,7 @@ let inline : call_table -> call_table = fun ftbl ->
       try
         match Hashtbl.find tbl i with
         | One (_,k,m',_) ->
-           let a = arity k ftbl in
-           let b = arity i ftbl in
-           let c = arity j ftbl in
-           let call = (j,k,mat_prod a b c m' m,r) in
+           let call = (j,k,prod m' m,r) in
            fn call
         | _ -> (j,i,m,true)
       with Not_found -> (j,i,m,true)

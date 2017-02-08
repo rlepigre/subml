@@ -76,7 +76,8 @@ let find_indexes ftbl pos index index' a b =
   let open Sct in
   Io.log_mat "build matrix for %a %a\n" prInd index prInd index';
   let c = arity index ftbl and l = arity index' ftbl in
-  let m = Array.init l (fun _ -> Array.make c Unknown) in
+  let h = l and w = c in
+  let m = Array.init l (fun _ -> Array.make c Infi) in
   List.iteri (fun j (j',o') ->
     assert(j=j');
     List.iteri (fun i (i',o) ->
@@ -84,16 +85,16 @@ let find_indexes ftbl pos index index' a b =
       Io.log_mat "  compare %d %a <=? %d %a => %!" i (print_ordi false) o
         j (print_ordi false) o';
       let r =
-        if less_ordi pos o o' then Less
-        else if leq_ordi pos o o' then Leq
-        else Unknown
+        if less_ordi pos o o' then Min1
+        else if leq_ordi pos o o' then Zero
+        else Infi
       in
       Io.log_mat "%a\n%!" prCmp r;
       assert(j < l);
       assert(i < c);
       m.(j).(i) <- r
     ) a) b;
-  m
+  {w; h; tab = m}
 
 let consecutive =
   let rec fn n = function
