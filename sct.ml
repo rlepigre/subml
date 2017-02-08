@@ -242,11 +242,12 @@ let sct_only : t -> bool = fun ftbl ->
      if the edge is new or not *)
   let add_edge i j m =
     (* test idempotent edges as soon as they are discovered *)
-    if i = j && prod m m = m && not (decreasing m) then begin
-      Io.log_sct "edge %a idempotent and looping\n%!" print_call
-        {callee = i; caller = j; matrix = m; is_rec = true};
-      raise Exit
-    end;
+    if i = j && prod m m = m && not (decreasing m) then
+      begin
+        Io.log_sct "edge %a idempotent and looping\n%!" print_call
+          {callee = i; caller = j; matrix = m; is_rec = true};
+        raise Exit
+      end;
     let ti = tbl.(i) in
     let ms = ti.(j) in
     if List.exists (fun m' -> subsumes m' m) ms then
