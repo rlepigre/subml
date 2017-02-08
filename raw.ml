@@ -55,7 +55,7 @@ let list_cons _loc t l =
   let c = in_pos _loc (PReco [("hd",t);("tl",l)]) in
   in_pos _loc (PCons("Cons", Some c))
 
-let dummy_case_var _loc =
+let unit_var _loc =
   (Pos.make _loc "", Some(Pos.none (PProd [])))
 
 (* "t; u" := "(fun (_ : unit) ↦ u) t" *)
@@ -83,20 +83,19 @@ let pappl _loc t u = match t.elt with
 let apply_rpat c x t =
   match x with
   | NilPat ->
-     Pos.make t.pos (PLAbs(dummy_case_var t.pos,t,SgNil))
+     Pos.make t.pos (PLAbs(unit_var t.pos,t,SgNil))
   | Simple x ->
-     let x = from_opt x (dummy_case_var t.pos) in
+     let x = from_opt x (unit_var t.pos) in
      Pos.make t.pos (PLAbs(x,t,SgNop))
   | Record r ->
      let is_cons =
        c = "Cons" && List.length r = 2 && List.mem_assoc "hd" r && List.mem_assoc "tl" r
      in
-     let sugar =
-       if is_cons then SgCns
-       else if Print.is_tuple r then SgTpl (List.length r)
-       else SgRec (List.map fst r)
+     let name, sugar =
+       if is_cons then "@c", SgCns
+       else if Print.is_tuple r then "@t", SgTpl (List.length r)
+       else "@r", SgRec (List.map fst r)
      in
-     let name = "_r" in
      let v = Pos.make t.pos (PLVar name) in
      let t =
        List.fold_left (fun acc (l,x) ->

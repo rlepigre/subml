@@ -92,7 +92,7 @@ let search_ordi_tbl o =
       ordi_tbl := (o,(v,false))::!ordi_tbl;
       v
 
-let skip_record_sugar cons oname s t =
+let unsugar_pattern cons oname s t =
   let nb = match s with
     | SgRec f -> List.length f
     | SgTpl n -> n
@@ -539,7 +539,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
           let t = subst b (TVars name) in
           let sep = if first then "" else
                       if latex_mode () then "\\, " else " " in
-          let (name,t) = skip_record_sugar "" name s t in
+          let (name,t) = unsugar_pattern "" name s t in
           begin
             match ao with
             | None   -> fprintf ff "%s%s%a" sep name (fn false) t
@@ -620,7 +620,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
             let x0 = binder_name f in
             begin
               let t = subst f (free_of (new_tvari x0)) in
-              let (pat, t) = skip_record_sugar c x0 s t in
+              let (pat, t) = unsugar_pattern c x0 s t in
               fprintf ff "%s %s → %a" !bar pat pterm t;
             end;
             bar := if fin = "" then "∣" else fin
