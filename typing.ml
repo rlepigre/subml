@@ -85,16 +85,16 @@ let search_induction subtype prfptr ctxt t c hyps =
        let time = Timed.Time.save () in
        try
          let (ov, pos, _, a) = recompose sch in
-         Io.log_ind "searching IH (2) with %a ~ %a <- %a:\n%!"
-                    Sct.prInd sch.sch_index Print.kind a Print.kind c;
+         Io.log_ind "searching IH (2) with %d ~ %a <- %a:\n%!"
+                    (Sct.int_of_index sch.sch_index) Print.kind a Print.kind c;
          (* We need to call [subtype] to rollback unification if it fails. *)
          let prf = subtype ctxt t a c in
          (* Change the proof even if wrong to have a good error message *)
          if !prfptr = Todo then Timed.(prfptr := Induction(sch,prf));
          check_sub_proof prf; (* NOTE: check for subtype error *)
          if not (List.for_all (is_positive ctxt.non_zero) pos) then raise Exit;
-         Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
-                    Sct.prInd sch.sch_index Print.kind a Print.kind c
+         Io.log_ind "induction hyp applies with %d %a ~ %a <- %a:\n%!"
+                    (Sct.int_of_index sch.sch_index) Print.kind a Print.kind c
                     print_nz { ctxt with non_zero = pos};
          Sct.add_call ctxt.call_graphs (build_call ctxt sch.sch_index ov true);
          Timed.(prfptr := Induction(sch, prf))
@@ -130,8 +130,8 @@ let check_fix type_check subtype prfptr ctxt t manual depth f c =
       if os <> [] then Timed.(hyps := sch :: !hyps);
       let (os0, non_zero, _, a) = recompose_term ~general:false sch in
       let tros = List.combine (List.map snd os) (List.map snd os0) in
-      Io.log_ind "Adding IH (1) %a:\n  %a => %a\n%!" Sct.prInd sch.sch_index
-        Print.kind c Print.kind a;
+      Io.log_ind "Adding IH (1) %d:\n  %a => %a\n%!"
+        (Sct.int_of_index sch.sch_index) Print.kind c Print.kind a;
       add_call ctxt sch.sch_index os false;
       let ctxt = {ctxt with top_induction = (sch.sch_index, os0); non_zero} in
       let prf = type_check ctxt (subst f e.elt) a in

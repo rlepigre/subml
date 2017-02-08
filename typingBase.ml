@@ -74,7 +74,8 @@ let rec run_fix_todo : ctxt -> unit = fun ctxt ->
 
 let find_indexes ftbl pos index index' a b =
   let open Sct in
-  Io.log_mat "build matrix for %a %a\n" prInd index prInd index';
+  Io.log_mat "build matrix for %d %d\n"
+    (int_of_index index) (int_of_index index');
   let w = arity index  ftbl in
   let h = arity index' ftbl in
   let tab = Array.init h (fun _ -> Array.make w Infi) in
@@ -89,7 +90,7 @@ let find_indexes ftbl pos index index' a b =
         else if leq_ordi pos o o' then Zero
         else Infi
       in
-      Io.log_mat "%a\n%!" prCmp r;
+      Io.log_mat "%s\n%!" (cmp_to_string r);
       assert(j < h);
       assert(i < w);
       tab.(j).(i) <- r
@@ -110,7 +111,8 @@ let build_call ctxt callee os is_rec =
   let caller, os0 = ctxt.top_induction in
   assert(consecutive os);
   assert(consecutive os0);
-  Io.log_mat "adding call %a -> %a\n%!" prInd caller prInd callee;
+  Io.log_mat "adding call %d -> %d\n%!"
+    (int_of_index caller) (int_of_index callee);
   let matrix = find_indexes calls pos callee caller os os0 in
   {callee; caller; matrix; is_rec}
 

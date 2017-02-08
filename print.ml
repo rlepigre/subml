@@ -797,17 +797,18 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   | Todo -> axiomN (sprintf "ERROR(Missing inductive proof)") c
   | Induction(schema,(os,t,a,_,_ as p))  ->
      let c' =
-       sprintf (if latex_mode () then "\\H{%s}{%s}"
-                else "[%s]_{%s}") (mkSchema schema) (Sct.strInd schema.sch_index)
+       sprintf (if latex_mode () then "\\H{%s}{%d}"
+                else "[%s]_{%d}") (mkSchema schema)
+                         (Sct.int_of_index schema.sch_index)
      in
-     let name = "\\I{"^ Sct.strInd schema.sch_index ^"}" in
+     let name = sprintf "\\I{%i}" (Sct.int_of_index schema.sch_index) in
      let p' = unaryN "\\G" (mkJudgment os t a) (hypN name c') in
      if is_refl p then p' else binaryT "" c p p'
   | Unroll(schema,tros,p) ->
      if List.mem schema.sch_index used_ind then (
        let c0 = mkSchema schema in
        unaryN "\\G" c
-         (unaryN ("\\I{"^ Sct.strInd schema.sch_index ^"}") c0 (typ2proof p)))
+         (unaryN (sprintf "\\I{%i}" (Sct.int_of_index schema.sch_index)) c0 (typ2proof p)))
      else (
          ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
          typ2proof p)
@@ -868,18 +869,18 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   | Sub_Or_l(p)       -> unarySN "∨_l" c (sub2proof p)
   | Sub_Or_r(p)       -> unarySN "∨_r" c (sub2proof p)
   | Sub_Ind(sch)      -> let p0 = sprintf
-                                (if latex_mode () then "\\H{%s}{%s}"
-                                 else "[%s]_{%s}")
-                                (mkSchema sch) (Sct.strInd sch.sch_index)
+                                (if latex_mode () then "\\H{%s}{%d}"
+                                 else "[%s]_{%d}")
+                                (mkSchema sch) (Sct.int_of_index sch.sch_index)
                          in
-                         let name = "\\IP{"^ Sct.strInd sch.sch_index ^"}" in
+                         let name = sprintf "\\IP{%i}" (Sct.int_of_index sch.sch_index) in
                          unarySN "\\GP" c (hypN name p0)
   | Sub_Error(msg)    -> axiomSN (sprintf "ERROR(%s)" msg) c
   | Sub_Gen(sch,tros,((os0,t0,_,_,_) as p)) ->
      if List.mem sch.sch_index used_ind then (
        let c0 = mkSchema sch in
        unarySN "\\GP" c
-         (unarySN ("\\IP{"^ Sct.strInd sch.sch_index ^"}") c0 (sub2proof p)))
+         (unarySN (sprintf "\\IP{%i}" (Sct.int_of_index sch.sch_index)) c0 (sub2proof p)))
      else (
          ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
          epsilon_term_tbl := (t0,(t,"",-1)) :: !epsilon_term_tbl;

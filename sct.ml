@@ -63,6 +63,9 @@ let subsumes : matrix -> matrix -> bool = fun m1 m2 ->
 (** Index of a function symbol. *)
 type index = int
 
+(** Conversion to int. *)
+let int_of_index : index -> int = fun i -> i
+
 (** Index of the root. *)
 let root : index = -1
 
@@ -162,12 +165,6 @@ let arity : index -> t -> int =
 
 open Format
 
-let prInd ff = fprintf ff "%d"
-let strInd = string_of_int
-let prCmp ff c = pp_print_string ff (cmp_to_string c)
-
- (*  (i,j,m,_) -> *)
-
 let print_call : formatter -> symbol IMap.t -> call -> unit = fun ff tbl c ->
   let caller_sym = IMap.unsafe_find c.caller tbl in
   let callee_sym = IMap.unsafe_find c.callee tbl in
@@ -182,7 +179,7 @@ let print_call : formatter -> symbol IMap.t -> call -> unit = fun ff tbl c ->
       if c <> Infi then
         begin
           let sep = if !some then " " else "" in
-          fprintf ff "%s%a%s" sep prCmp c caller_sym.args.(j);
+          fprintf ff "%s%s%s" sep (cmp_to_string c) caller_sym.args.(j);
           some := true
         end
     done
