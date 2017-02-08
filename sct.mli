@@ -52,7 +52,6 @@ val arity : index-> call_table -> int
 
 val prInd : Format.formatter -> index -> unit
 val prCmp : Format.formatter -> cmp   -> unit
-val print_calls : formatter -> call_table -> unit
 val latex_print_calls : formatter -> call_table -> unit
 
 val strInd : index -> string

@@ -108,31 +108,24 @@ let strCmp c =
   | Leq  -> "="
 
 let print_call ff tbl (i,j,m,_) =
-  let (_, aj, prj) = try List.assoc j tbl with Not_found -> assert false in
-  let (_, ai, _) = try List.assoc i tbl with Not_found -> assert false in
-  let print_args ff =
-    for j = 0 to aj - 1 do
-      fprintf ff "%s%s" (if j = 0 then "" else ",") prj.(j)
-    done
-  in
-  let (namei, _, _) = try List.assoc i tbl with Not_found -> assert false in
-  let (namej, _, _) = try List.assoc j tbl with Not_found -> assert false in
-  fprintf ff "%s%d(%t%!) <- %s%d%!(" namej j print_args namei i;
+  let (namej,aj,prj) = try List.assoc j tbl with Not_found -> assert false in
+  let (namei,ai,_  ) = try List.assoc i tbl with Not_found -> assert false in
+  let print_args = LibTools.print_array pp_print_string "," in
+  fprintf ff "%s%d(%a%!) <- %s%d%!(" namej j print_args prj namei i;
   for i = 0 to ai - 1 do
     if i > 0 then fprintf ff ",";
     let some = ref false in
     for j = 0 to aj - 1 do
       let c = m.(j).(i) in
-      if c <> Unknown then (
-      let sep = if !some then " " else "" in
-      fprintf ff "%s%a%s" sep prCmp c prj.(j);
-      some := true)
+      if c <> Unknown then
+        begin
+          let sep = if !some then " " else "" in
+          fprintf ff "%s%a%s" sep prCmp c prj.(j);
+          some := true
+        end
     done
   done;
   fprintf ff ")%!"
-
-let print_calls : formatter -> call_table -> unit = fun ff tbl ->
-  List.iter (print_call ff !(tbl.table)) !(tbl.calls)
 
 let latex_print_calls ff tbl =
   let arities = !(tbl.table) in
