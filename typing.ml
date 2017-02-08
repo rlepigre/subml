@@ -503,7 +503,8 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
 (** A boolean test for subtyping *)
 let is_subtype ctxt t a b =
   Timed.pure_test (fun () ->
-    (** protect the call graph *)
+    (** protect the call graph, because we don't need the proof we only
+        want to instantiate some unification variables *)
     let ctxt = { ctxt with call_graphs = Sct.copy ctxt.call_graphs} in
     let prf = subtype ctxt t a b in
     try check_sub_proof prf; true with Error _ -> false) ()

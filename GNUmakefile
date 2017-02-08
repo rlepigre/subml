@@ -21,7 +21,7 @@ deploy: www
 	ssh $(LOGIN)@lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/*
 	scp -r www/* $(LOGIN)@lama.univ-savoie.fr:/home/rlepi/WWW/subml
 
-MLFILES=$(wildcard *.ml) config.ml
+MLFILES=$(wildcard *.ml *.mli) config.ml
 
 doc: config.ml
 	ocamlbuild -use-ocamlfind -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html

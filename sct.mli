@@ -39,7 +39,6 @@ type t = call_table
 val init_table : unit -> call_table
 val copy : call_table -> call_table
 
-(** the index of the main function *)
 val root : index
 
 (** Creation of a new function, return the function index in the table *)

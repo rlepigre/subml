@@ -266,9 +266,10 @@ let sct_only : call_table -> bool = fun ftbl ->
     let rec fn () =
       match !new_edges with
         [] -> ()
-      | (i,j,_,_)::l when i < 0 || j < 0 -> new_edges := l; fn () (* ignore root *)
+      | (i,j,_,_)::l when j < 0 -> new_edges := l; fn () (* ignore root *)
       | (i,j,m,_)::l ->
-         new_edges := l;
+        assert (i >= 0);
+        new_edges := l;
         if add_edge i j m then begin
           Io.log_sct "\tedge %a added\n%!" print_call (i,j,m,true);
           incr added;
