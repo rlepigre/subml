@@ -157,12 +157,6 @@ let arity : index -> t -> int =
     let sym = IMap.find key !(g.symbols) in
     sym.arity
 
-
-
-(*****************************************************************************)
-(**{2               Printing functions for debugging                        }*)
-(*****************************************************************************)
-
 open Format
 
 let print_call : formatter -> symbol IMap.t -> call -> unit = fun ff tbl c ->
@@ -235,10 +229,6 @@ let latex_print_calls ff tbl =
   List.iter (print_call arities) calls;
   fprintf ff "  }\n\\end{dot2tex}\n"
 
-(*****************************************************************************)
-(**{2                          The Main algorithm                           }*)
-(*****************************************************************************)
-
 (** the main function, checking if calls are well-founded *)
 let sct_only : t -> bool = fun ftbl ->
   Io.log_sct "SCT starts...\n%!";
@@ -304,10 +294,6 @@ let sct_only : t -> bool = fun ftbl ->
     Io.log_sct "SCT failed (%5d edges added, %6d composed)\n%!" !added !composed;
     false
 
-(*****************************************************************************)
-(**{2                          Inlining                                     }*)
-(*****************************************************************************)
-
 (** Inlining can be deactivated *)
 let do_inline = ref true
 
@@ -323,44 +309,37 @@ let insert_call rec_call n call =
 
 (** inline function that calls only one function. *)
 (* TODO: inline function that are called at most once *)
-let inline : t -> t = fun ftbl ->
-  if not !do_inline then ftbl else
-    let calls = !(ftbl.calls) in
-      (* Io.log "before inlining\n";
-         List.iter (Io.log "%a\n%!" pr_call) calls; *)
-    let tbl = Hashtbl.create 31 in
-    let fn c =
-      let old = try Hashtbl.find tbl c.callee with Not_found -> Zero in
-      let n = insert_call c.is_rec old {c with is_rec = true} in
-      Hashtbl.replace tbl c.callee n
-    in
-    List.iter fn calls;
-    let rec fn ({callee = j; caller = i; matrix = m; is_rec = r} as c) =
-      try
-        match Hashtbl.find tbl i with
-        | One {caller = k; matrix = m'} ->
-            let call =
-              {callee = j; caller = k; matrix = prod m' m; is_rec = r}
-            in fn call
-        | _ -> c
-      with Not_found -> c
-    in
+let inline : t -> t = fun g ->
+  if not !do_inline then g else
+  let calls = !(g.calls) in
+  let tbl = Hashtbl.create 31 in
+  let fn c =
+    let old = try Hashtbl.find tbl c.callee with Not_found -> Zero in
+    let n = insert_call c.is_rec old {c with is_rec = true} in
+    Hashtbl.replace tbl c.callee n
+  in
+  List.iter fn calls;
+  let rec fn ({callee = j; caller = i; matrix = m; is_rec = r} as c) =
+    try
+      match Hashtbl.find tbl i with
+      | One {caller = k; matrix = m'} ->
+          fn {callee = j; caller = k; matrix = prod m' m; is_rec = r}
+      | _ -> c
+    with Not_found -> c
+  in
+  let calls = List.filter (fun c -> Hashtbl.find tbl c.callee = More) calls in
+  let calls = List.map fn calls in
+  let rec gn calls =
+    let removed_one = ref false in
     let calls =
-      List.filter (fun c -> Hashtbl.find tbl c.callee = More) calls
-    in
-    let calls = List.map fn calls in
-    let rec gn calls =
-      let removed_one = ref false in
-      let calls =
-        List.filter (fun {caller = i} ->
-          let b = List.exists (fun {callee = j} -> i = j) calls in
-          if not b then removed_one := true; b
-        ) calls
+      let fn {caller} =
+        let b = List.exists (fun {callee} -> caller = callee) calls in
+        if not b then removed_one := true; b
       in
-      if !removed_one then gn calls else calls
+      List.filter fn calls
     in
-    { next_index = ftbl.next_index
-    ; symbols    = ftbl.symbols
-    ; calls      = ref (gn calls) }
+    if !removed_one then gn calls else calls
+  in
+  { g with calls = ref (gn calls) }
 
 let sct : t -> bool = fun tbl -> sct_only (inline tbl)
