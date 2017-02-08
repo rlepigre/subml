@@ -43,7 +43,7 @@ type ctxt =
   ; fix_ihs       : fix_induction list
   ; fix_todo      : (unit -> unit) list ref
   ; top_induction : induction_node
-  ; call_graphs   : Sct.call_table
+  ; call_graphs   : Sct.t
   ; non_zero      : ordi list }
 
 (** induction hypothesis for typing recursive programs *)
@@ -57,7 +57,7 @@ let empty_ctxt () =
   ; fix_ihs       = []
   ; fix_todo      = ref []
   ; top_induction = (Sct.root, [])
-  ; call_graphs   = Sct.init_table ()
+  ; call_graphs   = Sct.create ()
   ; non_zero      = [] }
 
 (** run the registered functions. *)
@@ -103,20 +103,20 @@ let consecutive =
     | _ -> false
   in fn 0
 
-let build_call ctxt fnum os is_induction_hyp =
+let build_call ctxt callee os is_rec =
   let open Sct in
   let pos = ctxt.non_zero in
   let calls = ctxt.call_graphs in
-  let cur, os0 = ctxt.top_induction in
+  let caller, os0 = ctxt.top_induction in
   assert(consecutive os);
   assert(consecutive os0);
-  Io.log_mat "adding call %a -> %a\n%!" prInd cur prInd fnum;
-  let m = find_indexes calls pos fnum cur os os0 in
-  fnum, cur, m, is_induction_hyp
+  Io.log_mat "adding call %a -> %a\n%!" prInd caller prInd callee;
+  let matrix = find_indexes calls pos callee caller os os0 in
+  {callee; caller; matrix; is_rec}
 
-let add_call ctxt fnum os is_induction_hyp =
-  let call = build_call ctxt fnum os is_induction_hyp in
-  Sct.new_call ctxt.call_graphs call
+let add_call ctxt fnum os is_rec =
+  let call = build_call ctxt fnum os is_rec in
+  Sct.add_call ctxt.call_graphs call
 
 (** If w = Some w': construction of an ordinal < o such that w
     If w = None: find an ordinal o' < o *)

@@ -98,7 +98,7 @@ let recompose_term : ?general:bool -> schema -> unit particular =
     prove the schema.
  *)
 let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
-                 -> Sct.call_table -> schema * (int * ordi) list =
+                 -> Sct.t -> schema * (int * ordi) list =
   fun ?(manual=false) pos k1 k2 call_table ->
 
   (* will of the table of all ordinals in the type to generalize them.
@@ -267,9 +267,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
     Format.fprintf ff "(%d,%a) "n (print_ordi false) o) l) os;
 
   (* we ask a new function index to the sct module *)
-  let fnum = Sct.new_function call_table name
-                              (Array.to_list (Bindlib.mbinder_names both))
-  in
+  let fnum = Sct.create_symbol call_table name (Bindlib.mbinder_names both) in
   (* we can now build the final schema *)
   let schema =
     { sch_index = fnum
@@ -281,7 +279,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
   (schema, os)
 
 let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
-                 -> Sct.call_table -> (schema * (int * ordi) list) option =
+                 -> Sct.t -> (schema * (int * ordi) list) option =
   fun ?manual pos k1 k2 call_table ->
     try Some(generalise ?manual pos k1 k2 call_table)
     with FailGeneralise -> None

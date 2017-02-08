@@ -19,10 +19,10 @@ type latex_output =
   | Term    of int * bool * term
   | Text    of string
   | List    of latex_output list
-  | SProof  of sub_prf * Sct.call_table
+  | SProof  of sub_prf * Sct.t
   | TProof  of typ_prf
   | Sch     of schema * string
-  | Sct     of Sct.call_table
+  | Sct     of Sct.t
   | Witnesses
 
 let rec search_schemas name p =

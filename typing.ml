@@ -96,7 +96,7 @@ let search_induction subtype prfptr ctxt t c hyps =
          Io.log_ind "induction hyp applies with %a %a ~ %a <- %a:\n%!"
                     Sct.prInd sch.sch_index Print.kind a Print.kind c
                     print_nz { ctxt with non_zero = pos};
-         Sct.new_call ctxt.call_graphs (build_call ctxt sch.sch_index ov true);
+         Sct.add_call ctxt.call_graphs (build_call ctxt sch.sch_index ov true);
          Timed.(prfptr := Induction(sch, prf))
        with Exit | Error _ -> Timed.Time.rollback time;
                               find_good_call hyps

@@ -188,13 +188,13 @@ and term' =
 
 (** Term definition (user defined term) *)
 and tdef =
-  { name       : string         (** Name of the term. *)
-  ; tex_name   : string         (** Latex name of the term. *)
-  ; value      : term           (** Evaluated term. *)
-  ; orig_value : term           (** Original term (not evaluated). *)
-  ; ttype      : kind           (** Type of the term. *)
-  ; proof      : typ_prf        (** Typing proof. *)
-  ; calls_graph: Sct.call_table (** SCT instance. *) }
+  { name       : string  (** Name of the term. *)
+  ; tex_name   : string  (** Latex name of the term. *)
+  ; value      : term    (** Evaluated term. *)
+  ; orig_value : term    (** Original term (not evaluated). *)
+  ; ttype      : kind    (** Type of the term. *)
+  ; proof      : typ_prf (** Typing proof. *)
+  ; calls_graph: Sct.t   (** SCT instance. *) }
 
 (** the type of a general typing judgement, i.e. with
     quantified ordinals *)

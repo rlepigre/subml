@@ -29,43 +29,45 @@ type cmp =
 *)
 type index
 type matrix = { w : int ; h : int ; tab : cmp array array }
-type call = index * index * matrix * bool
-
-val call_index : call -> index
+type call =
+  { callee : index
+  ; caller : index
+  ; matrix : matrix
+  ; is_rec : bool }
 
 (** A list of calls to be constructed then checked *)
-type call_table
-type t = call_table
+type call_graph
+type t = call_graph
 
-val init_table : unit -> call_table
-val copy : call_table -> call_table
+val create : unit -> t
+val copy : t -> t
 
 val root : index
 
 (** Creation of a new function, return the function index in the table *)
-val new_function : call_table -> string -> string list -> index
+val create_symbol : t -> string -> string array -> index
 
 (** Creation of a new call *)
-val new_call : call_table -> call -> unit
+val add_call : t -> call -> unit
 
 (** Gives the arity of a given function *)
-val arity : index-> call_table -> int
+val arity : index-> t -> int
 
 val prInd : Format.formatter -> index -> unit
 val prCmp : Format.formatter -> cmp   -> unit
-val latex_print_calls : formatter -> call_table -> unit
+val latex_print_calls : formatter -> t -> unit
 
 val strInd : index -> string
 
 (** Returns true for a table with no call *)
-val is_empty : call_table -> bool
+val is_empty : t -> bool
 
 (** True (by default) to activate inlining *)
 val do_inline : bool ref
 
 (** Run the sct decision procedure *)
-val sct : call_table -> bool
+val sct : t -> bool
 
-(** Run the inlining only. Useful to print or store a smaller call_graph.
+(** Run the inlining only. Useful to print or store a smaller t.
     [inline] does nothing if [!do_inline] is false *)
-val inline : call_table -> call_table
+val inline : t -> t

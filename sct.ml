@@ -3,13 +3,6 @@
     2001). It is used by PML to check that typing and subtyping proofs are
     well-founded. *)
 
-(** Map with integer keys. *)
-module IMap = Map.Make(
-  struct
-    type t = int
-    let compare = compare
-  end)
-
 (** Representation of the set {-1, 0, ∞} *)
 type cmp = Min1 | Zero | Infi
 
@@ -67,61 +60,101 @@ let subsumes : matrix -> matrix -> bool = fun m1 m2 ->
     ) m1.tab; true
   with Exit -> false
 
+(** Index of a function symbol. *)
+type index = int
 
+(** Index of the root. *)
+let root : index = -1
 
+(** Map with indices as keys. *)
+module IMap =
+  struct
+    include Map.Make(
+      struct
+        type t = index
+        let compare = compare
+      end)
 
+    let unsafe_find : key -> 'a t -> 'a =
+      fun k m -> try find k m with Not_found -> invalid_arg "unsafe_find"
+  end
 
-type index = int (** index of a function *)
-type call = index * index * matrix * bool
-type calls = call list
-type symbol = string * int * string array
+(** A call [{callee; caller; matrix; is_rec}] represents a call to the
+    function symbol with key [callee] by the function symbole with the
+    key [caller]. The [matrix] gives the relation between the parameters
+    of the caller and the callee. The coefficient [matrix.(a).(b)] give
+    the relation between the [a]-th parameter of the caller and the
+    [b]-th argument of the callee. The boolean [is_rec] is true when the
+    call is a reccursive call (i.e. a call to a generalised hypothesis
+    lower in the tree. It is [false] for every call to subtyping in the
+    typing algorithm and the same goes for rules introducing a new
+    induction hypothesis. Every other call refers to a previously
+    introduced induction hypothesis and its boolean is [true]. *)
+type call =
+  { callee : index  (** Key of the function symbol being called. *)
+  ; caller : index  (** Key of the calling function symbol. *)
+  ; matrix : matrix (** Size change matrix of the call. *)
+  ; is_rec : bool   (** Indicates if this is a recursive call. *) }
 
-let call_index : call -> index =
-  fun (i, _, _, _) -> i
+(** Representation of a function symbol. *)
+type symbol =
+  { index : index        (** Index for use in a [call]. *)
+  ; name  : string       (** Name of the symbol. *)
+  ; arity : int          (** Arity of the symbol (number of args). *)
+  ; args  : string array (** Name of the arguments. *) }
 
-(** This stores the function table, giving name, arity and the
-    way to print the function for debugging *)
-type arities = (int * symbol) list
-type call_table =
-  { current : int ref
-  ; table   : arities ref
-  ; calls   : calls ref }
+(** Internal state of the SCT, including the representation of symbols and
+    the call graph. *)
+type call_graph =
+  { next_index : index ref
+  ; symbols    : symbol IMap.t ref
+  ; calls      : call list ref }
 
-type t = call_table
+(** Synonym of [call_graph]. *)
+type t = call_graph
 
-(** Initialisation of a new function table *)
-let init_table () =
-  { current = ref 0
-  ; table   = ref [(-1, ("R", 0, [||]))] (* the root call is predefined *)
-  ; calls   = ref [] }
+(** Creation of a new initial [call_graph]. It contains the initial root
+    symbol. *)
+let create : unit -> t =
+  let root = { index = -1 ; name  = "R" ; arity = 0 ; args  = [||] } in
+  let syms = IMap.singleton (-1) root in
+  fun () -> { next_index = ref 0 ; symbols = ref syms ; calls = ref [] }
 
-(** the root index *)
-let root = -1
-
-(** Creation of a new function, return the function index in the table *)
-let new_function : call_table -> string -> string list -> index =
-  fun ftbl name args ->
-    let args = Array.of_list args in
+(** Creation of a new symbol. The return value is the key of the created
+    symbol, to be used in calls. *)
+let create_symbol : t -> string -> string array -> index =
+  fun g name args ->
     let arity = Array.length args in
-    let n = !(ftbl.current) in
+    let index = !(g.next_index) in
+    let sym = {index ; name ; arity ; args} in
     let open Timed in
-    ftbl.current := n + 1;
-    ftbl.table   := (n, (name, arity, args))::!(ftbl.table);
-    n
+    incr g.next_index;
+    g.symbols := IMap.add index sym !(g.symbols);
+    index
 
-let new_call : call_table -> call -> unit = fun tbl call ->
-  Timed.(tbl.calls := call::!(tbl.calls))
+(** Copy a call graph. NOTE not timed. *)
+let copy : t -> t =
+  fun g ->
+    { next_index = ref !(g.next_index)
+    ; symbols    = ref !(g.symbols)
+    ; calls      = ref !(g.calls) }
 
-(** Gives the arity of a given function *)
-let arity : int -> call_table -> int = fun i ftbl ->
-  try let (_,a,_) = List.assoc i !(ftbl.table) in a
-  with Not_found -> assert false
+(** Test if the call graph is empty. *)
+let is_empty : t -> bool =
+  fun g -> !(g.calls) = []
 
-let copy t = { current = ref !(t.current)
-             ; table   = ref !(t.table)
-             ; calls   = ref !(t.calls) }
+(** Add a new call to the call graph. *)
+let add_call : t -> call -> unit =
+  fun g c -> Timed.(g.calls := c :: !(g.calls))
 
-let is_empty tbl = !(tbl.calls) = []
+(** Gives the arity of the symbol corresponding to the given key. The symbol
+    must exist. *)
+let arity : index -> t -> int =
+  fun key g ->
+    let sym = IMap.find key !(g.symbols) in
+    sym.arity
+
+
 
 (*****************************************************************************)
 (**{2               Printing functions for debugging                        }*)
@@ -133,58 +166,56 @@ let prInd ff = fprintf ff "%d"
 let strInd = string_of_int
 let prCmp ff c = pp_print_string ff (cmp_to_string c)
 
-let print_call : formatter -> (int * symbol) list -> call -> unit =
-  fun ff tbl (i,j,m,_) ->
-    let (namej,aj,prj) =
-      try List.assoc j tbl with Not_found -> assert false
-    in
-    let (namei,ai,_  ) =
-      try List.assoc i tbl with Not_found -> assert false
-    in
-    let print_args = LibTools.print_array pp_print_string "," in
-    fprintf ff "%s%d(%a%!) <- %s%d%!(" namej j print_args prj namei i;
-    for i = 0 to ai - 1 do
-      if i > 0 then fprintf ff ",";
-      let some = ref false in
-      for j = 0 to aj - 1 do
-        let c = m.tab.(j).(i) in
-        if c <> Infi then
-          begin
-            let sep = if !some then " " else "" in
-            fprintf ff "%s%a%s" sep prCmp c prj.(j);
-            some := true
-          end
-      done
-    done;
-    fprintf ff ")%!"
+ (*  (i,j,m,_) -> *)
+
+let print_call : formatter -> symbol IMap.t -> call -> unit = fun ff tbl c ->
+  let caller_sym = IMap.unsafe_find c.caller tbl in
+  let callee_sym = IMap.unsafe_find c.callee tbl in
+  let print_args = LibTools.print_array pp_print_string "," in
+  fprintf ff "%s%d(%a%!) <- %s%d%!(" caller_sym.name c.caller
+    print_args caller_sym.args callee_sym.name c.callee;
+  for i = 0 to callee_sym.arity - 1 do
+    if i > 0 then fprintf ff ",";
+    let some = ref false in
+    for j = 0 to caller_sym.arity - 1 do
+      let c = c.matrix.tab.(j).(i) in
+      if c <> Infi then
+        begin
+          let sep = if !some then " " else "" in
+          fprintf ff "%s%a%s" sep prCmp c caller_sym.args.(j);
+          some := true
+        end
+    done
+  done;
+  fprintf ff ")%!"
 
 let latex_print_calls ff tbl =
-  let arities = !(tbl.table) in
+  let arities = IMap.bindings !(tbl.symbols) in
   let calls = !(tbl.calls) in
   fprintf ff "\\begin{dot2tex}[dot,options=-tmath]\n  digraph G {\n";
   let arities = List.filter (fun (j,_) ->
-    List.exists (fun (i1,i2,_,_) -> j = i1 || j = i2) calls)
+    List.exists (fun c -> j = c.caller || j = c.callee) calls)
     (List.rev arities)
   in
   let numbering = List.mapi (fun i (j,_) -> (j,i)) arities in
   let index j = List.assoc j numbering in
   let not_unique name =
-    List.fold_left (fun acc (_,(n,_,_)) -> if n = name then acc+1 else acc) 0 arities
+    List.fold_left (fun acc (_,sym) -> if sym.name = name then acc+1 else acc) 0 arities
                    >= 2
   in
-  let f (j,(name,_,_)) =
-    if not_unique name then
-      fprintf ff "    N%d [ label = \"%s_{%d}\" ];\n" (index j) name (index j)
+  let f (j,sym) =
+    if not_unique sym.name then
+      fprintf ff "    N%d [ label = \"%s_{%d}\" ];\n" (index j) sym.name (index j)
     else
-      fprintf ff "    N%d [ label = \"%s\" ];\n" (index j) name
+      fprintf ff "    N%d [ label = \"%s\" ];\n" (index j) sym.name
   in
   List.iter f (List.filter (fun (i,_) ->
-    List.exists (fun (j,k,_,_) -> i = j || i =k) calls) arities);
-  let print_call arities (i,j,m,_) =
-    let (namej, aj, prj) =
+    List.exists (fun c -> i = c.caller || i = c.callee) calls) arities);
+  let print_call arities {callee = i; caller = j; matrix = m} =
+    let {name = namej; arity = aj; args = prj} =
       try List.assoc j arities with Not_found -> assert false
     in
-    let (namei, ai, pri) =
+    let {name = namei; arity = ai; args = pri} =
       try List.assoc i arities with Not_found -> assert false
     in
     fprintf ff "    N%d -> N%d [label = \"\\left(\\begin{smallmatrix}"
@@ -212,10 +243,10 @@ let latex_print_calls ff tbl =
 (*****************************************************************************)
 
 (** the main function, checking if calls are well-founded *)
-let sct_only : call_table -> bool = fun ftbl ->
+let sct_only : t -> bool = fun ftbl ->
   Io.log_sct "SCT starts...\n%!";
-  let num_fun = !(ftbl.current) in
-  let arities = !(ftbl.table) in
+  let num_fun = !(ftbl.next_index) in
+  let arities = !(ftbl.symbols) in
   let tbl = Array.init num_fun (fun _ -> Array.make num_fun []) in
   let print_call ff = print_call ff arities in
   (* counters to count added and composed edges *)
@@ -225,7 +256,8 @@ let sct_only : call_table -> bool = fun ftbl ->
   let add_edge i j m =
     (* test idempotent edges as soon as they are discovered *)
     if i = j && prod m m = m && not (decreasing m) then begin
-      Io.log_sct "edge %a idempotent and looping\n%!" print_call (i,j,m,true);
+      Io.log_sct "edge %a idempotent and looping\n%!" print_call
+        {callee = i; caller = j; matrix = m; is_rec = true};
       raise Exit
     end;
     let ti = tbl.(i) in
@@ -246,25 +278,26 @@ let sct_only : call_table -> bool = fun ftbl ->
     Io.log_sct "start completion\n%!";
     let rec fn () =
       match !new_edges with
-        [] -> ()
-      | (i,j,_,_)::l when j < 0 -> new_edges := l; fn () (* ignore root *)
-      | (i,j,m,_)::l ->
+      | [] -> ()
+      | {callee = i; caller = j}::l when j < 0 -> new_edges := l; fn () (* ignore root *)
+      | ({callee = i; caller = j; matrix = m} as c)::l ->
         assert (i >= 0);
         new_edges := l;
         if add_edge i j m then begin
-          Io.log_sct "\tedge %a added\n%!" print_call (i,j,m,true);
+          Io.log_sct "\tedge %a added\n%!" print_call c;
           incr added;
           let t' = tbl.(j) in
           Array.iteri (fun k t -> List.iter (fun m' ->
-            Io.log_sct "\tcompose: %a * %a = %!"
-              print_call (i,j,m,true) print_call (j,k,m',true);
+            let c' = {callee = j; caller = k; matrix = m'; is_rec = true} in
+            Io.log_sct "\tcompose: %a * %a = %!" print_call c print_call c';
             let m'' = prod m' m in
             incr composed;
-            new_edges := (i,k,m'',true) :: !new_edges;
-            Io.log_sct "%a\n%!" print_call (i,k,m'',true);
+            let c'' = {callee = i; caller = k; matrix = m''; is_rec = true} in
+            new_edges := c'' :: !new_edges;
+            Io.log_sct "%a\n%!" print_call c'';
           ) t) t'
         end else
-          Io.log_sct "\tedge %a is old\n%!" print_call (i,j,m,true);
+          Io.log_sct "\tedge %a is old\n%!" print_call c;
         fn ()
     in
     fn ();
@@ -285,7 +318,7 @@ let do_inline = ref true
 type count = Zero | One of call | More
 
 (** function to count the call according to the above comments     *)
-let add_call rec_call n call =
+let insert_call rec_call n call =
   if rec_call then More else
     match n with
     | Zero -> One call
@@ -293,43 +326,44 @@ let add_call rec_call n call =
 
 (** inline function that calls only one function. *)
 (* TODO: inline function that are called at most once *)
-let inline : call_table -> call_table = fun ftbl ->
+let inline : t -> t = fun ftbl ->
   if not !do_inline then ftbl else
     let calls = !(ftbl.calls) in
       (* Io.log "before inlining\n";
          List.iter (Io.log "%a\n%!" pr_call) calls; *)
     let tbl = Hashtbl.create 31 in
-    List.iter (
-      fun (i,j,m,rec_call) ->
-        let old = try Hashtbl.find tbl i with Not_found -> Zero in
-        let n = add_call rec_call old (i,j,m,true) in
-        Hashtbl.replace tbl i n) calls;
-    let rec fn (j,i,m,r) =
+    let fn c =
+      let old = try Hashtbl.find tbl c.callee with Not_found -> Zero in
+      let n = insert_call c.is_rec old {c with is_rec = true} in
+      Hashtbl.replace tbl c.callee n
+    in
+    List.iter fn calls;
+    let rec fn ({callee = j; caller = i; matrix = m; is_rec = r} as c) =
       try
         match Hashtbl.find tbl i with
-        | One (_,k,m',_) ->
-           let call = (j,k,prod m' m,r) in
-           fn call
-        | _ -> (j,i,m,true)
-      with Not_found -> (j,i,m,true)
+        | One {caller = k; matrix = m'} ->
+            let call =
+              {callee = j; caller = k; matrix = prod m' m; is_rec = r}
+            in fn call
+        | _ -> c
+      with Not_found -> c
     in
     let calls =
-      List.filter (fun (i,j,_,_) -> Hashtbl.find tbl i = More) calls
+      List.filter (fun c -> Hashtbl.find tbl c.callee = More) calls
     in
     let calls = List.map fn calls in
     let rec gn calls =
       let removed_one = ref false in
       let calls =
-        List.filter (fun (_,i,_,_) ->
-          let b = List.exists (fun (j,_,_,_) -> i = j) calls in
-          if not b then removed_one := true;
-          b
+        List.filter (fun {caller = i} ->
+          let b = List.exists (fun {callee = j} -> i = j) calls in
+          if not b then removed_one := true; b
         ) calls
       in
       if !removed_one then gn calls else calls
     in
-    { current = ftbl.current
-    ; table   = ftbl.table
-    ; calls   = ref (gn calls) }
+    { next_index = ftbl.next_index
+    ; symbols    = ftbl.symbols
+    ; calls      = ref (gn calls) }
 
-let sct : call_table -> bool = fun tbl -> sct_only (inline tbl)
+let sct : t -> bool = fun tbl -> sct_only (inline tbl)
