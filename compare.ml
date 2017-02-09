@@ -168,10 +168,6 @@ and leqi_ordi pos o1 i o2 =
   | (o1         , o2      ) when strict_eq_ordi (oadd o1 i) o2 -> true
   | (o1         , OSucc o2  ) -> leqi_ordi pos o1 (i-1) o2
   | (OSucc o1   ,       o2  ) -> leqi_ordi pos o1 (i+1) o2
-  (* The OLess constraint is enough with no new instanciation *)
-  | (OLess(o1,_),       o2  ) when
-      let i = if strict (is_positive pos) o1 then i-1 else i in
-      strict (leqi_ordi pos o1 i) o2 -> true
   (* the existing constraint is enough *)
   | (OUVar({uvar_state = {contents = Unset (_, Some o')}},os), o2)
        when strict (leqi_ordi pos (msubst o' os) (i-1)) o2 -> true
@@ -183,10 +179,6 @@ and leqi_ordi pos o1 i o2 =
         let o1 = oadd o1 i in
         less_opt_ordi pos o1 (uvar_state p) os) () ->
      p.uvar_state := Unset(Some (!fobind_ordis os (oadd o1 i)), snd (uvar_state p));
-     leqi_ordi pos o1 i o2
-  (* setting the variable on the left with the constraint or o2 *)
-  | (OUVar({uvar_state = {contents = Unset (Some o',_)}} as p,os), o2) ->
-     set_ouvar ~msg:"leq3" p o';
      leqi_ordi pos o1 i o2
   | (OUVar(p,os)   , o2      ) when i<=0 && safe_set_ouvar pos p os o2 ->
      leqi_ordi pos o1 i o2

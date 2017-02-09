@@ -109,9 +109,6 @@ val rec 2 flatten2 : ∀A List(List(A)) → List(A) = fun ll →
     | [] → flatten2 ll
     | x::l → x :: flatten2 (l :: ll))
 
-set gmlfile "flatten2.graphml"
-graphml flatten2
-
 (* Should not work, as two unfolding are necessary *)
 ?val rec flatten2 : ∀A List(List(A)) → List(A) = fun ll →
   case ll of
