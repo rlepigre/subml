@@ -78,8 +78,10 @@ module IMap =
         let compare = compare
       end)
 
-    let unsafe_find : key -> 'a t -> 'a =
-      fun k m -> try find k m with Not_found -> invalid_arg "unsafe_find"
+    (** [find k m] will not raise [Not_found] because it will always be used
+        when we are sure that the given key [k] is mapped in [m]. *)
+    let find : key -> 'a t -> 'a =
+      fun k m -> try find k m with Not_found -> assert false
   end
 
 (** A call [{callee; caller; matrix; is_rec}] represents a call to the
@@ -160,8 +162,8 @@ let arity : index -> t -> int =
 open Format
 
 let print_call : formatter -> symbol IMap.t -> call -> unit = fun ff tbl c ->
-  let caller_sym = IMap.unsafe_find c.caller tbl in
-  let callee_sym = IMap.unsafe_find c.callee tbl in
+  let caller_sym = IMap.find c.caller tbl in
+  let callee_sym = IMap.find c.callee tbl in
   let print_args = LibTools.print_array pp_print_string "," in
   fprintf ff "%s%d(%a%!) <- %s%d%!(" caller_sym.name c.caller
     print_args caller_sym.args callee_sym.name c.callee;
