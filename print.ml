@@ -929,12 +929,29 @@ let print_epsilon_tbls ff =
     | TeX -> "&="
     | Gml | Asc -> "="
   in
+  let output = ref [] in
+  let add_out fmt =
+    kasprintf (fun s -> output := s::!output) fmt
+  in
+  list_ref_iter (fun (f,(name,index,u,is_exists)) ->
+    let x = new_prvar f in
+    let k = subst f x in
+    let symbol = if is_exists then "∈" else "∉" in
+    add_out "%s_{%d} %s ε_{%s}(%a %s %a)%s"
+            name index
+            eq
+            (binder_name f)
+            (print_term ~unfolded_Y:None false) u
+            symbol
+            (print_kind false) k
+            newline
+    ) epsilon_type_tbl;
   list_ref_iter (fun (t,(t0,name,index)) ->
     match t.elt with
     | TCnst(f,a,b) when name <> "" ->
        let x = free_of (new_tvari (binder_name f)) in
        let t = subst f x in
-       fprintf ff "%s_{%d} %s ε_{%a ∈ %a}(%a ∉ %a)%s"
+       add_out "%s_{%d} %s ε_{%a ∈ %a}(%a ∉ %a)%s"
                name index
                eq
                (print_term ~unfolded_Y:None false) (Pos.none x)
@@ -945,27 +962,16 @@ let print_epsilon_tbls ff =
     | _ when name = "" -> ()
     | _ -> assert false)
     epsilon_term_tbl;
-  list_ref_iter (fun (f,(name,index,u,is_exists)) ->
-    let x = new_prvar f in
-    let k = subst f x in
-    let symbol = if is_exists then "∈" else "∉" in
-    fprintf ff "%s_{%d} %s ε_{%s}(%a %s %a)%s"
-            name index
-            eq
-            (binder_name f)
-            (print_term ~unfolded_Y:None false) u
-            symbol
-            (print_kind false) k
-            newline
-    ) epsilon_type_tbl;
   list_ref_iter (fun (o,(n,defi)) ->
       if not defi then
-        fprintf ff "%a %s %a%s"
+        add_out "%a %s %a%s"
                 (print_ordi false) n
                 eq
                 (print_ordi true) o
                 newline
-    ) ordi_tbl
+    ) ordi_tbl;
+  List.iter (fun line ->
+      fprintf ff "%s" line) !output
 
 exception Find_tdef of kdef
 
