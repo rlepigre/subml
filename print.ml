@@ -136,21 +136,21 @@ let has_kvar : kind -> bool = fun k ->
   let rec fn k =
     match repr k with
     | KFunc(a,b) -> fn a; fn b
-    | KProd(ls)
+    | KProd(ls,_)
     | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
     | KKAll(f)
-    | KKExi(f)   -> fn (subst f (KProd []))
-    | KFixM(o,f) -> gn o; fn (subst f (KProd []))
-    | KFixN(o,f) -> gn o; fn (subst f (KProd []))
+    | KKExi(f)   -> fn (subst f kdummy)
+    | KFixM(o,f) -> gn o; fn (subst f kdummy)
+    | KFixN(o,f) -> gn o; fn (subst f kdummy)
     | KOAll(f)
-    | KOExi(f)   -> fn (subst f OConv)
+    | KOExi(f)   -> fn (subst f odummy)
     | KUVar(u,_) -> ()
     | KDefi(d,o,a) -> Array.iter fn a
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | KVari _    -> raise Exit
     | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> fn (subst f (KProd []))
+    | KECst(_,f,cl) -> fn (subst f kdummy)
     | KPrnt _    -> ()
   and gn o = match orepr o with
     | OUVar _ -> ()
@@ -174,9 +174,14 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
      set_kuvar ua (constant_mbind 0 k); not (has_kvar p) (* NOTE: to avoid capture *)
   | KFunc(p1,p2), KFunc(k1,k2) ->
      match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
-  | KDSum(ps1), KDSum(ps2)
-  | KProd(ps1), KProd(ps2) ->
+  | KDSum(ps1), KDSum(ps2) ->
      List.length ps1 = List.length ps2 &&
+     let ps1 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps1 in
+     let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
+     List.for_all2 (fun (s1,p1) (s2,k1) ->
+       s1 = s2 && match_kind kuvars ouvars p1 k1) ps1 ps2
+  | KProd(ps1,e1), KProd(ps2,e2) ->
+     e1 = e2 && List.length ps1 = List.length ps2 &&
      let ps1 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps1 in
      let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
      List.for_all2 (fun (s1,p1) (s2,k1) ->
@@ -335,8 +340,8 @@ and print_kind unfold wrap unfolded_Y ff t =
      if wrap then pp_print_string ff "(";
      fprintf ff "%a → %a" pkindw a pkind b;
      if wrap then pp_print_string ff ")"
-  | KProd(fs) ->
-     if is_tuple fs && List.length fs > 0 then begin
+  | KProd(fs,e) ->
+     if not e && is_tuple fs && List.length fs > 0 then begin
        if wrap then pp_print_string ff "(";
        for i = 1 to List.length fs do
          if i >= 2 then fprintf ff " × ";
@@ -344,25 +349,26 @@ and print_kind unfold wrap unfolded_Y ff t =
        done;
        if wrap then pp_print_string ff ")"
      end else
+       let ext = if e then (if latex_mode () then ";\\ldots" else ";…") else "" in
        if !break_hint = 0 then begin
          let pfield ff (l,a) =
            fprintf ff (if latex_mode () then "\\mathrm{%s} : %a" else "%s : %a")
              l pkind a
          in
-         fprintf ff (if latex_mode () then "\\{%a\\}" else "{%a}")
-           (print_list pfield "; ") fs
+         fprintf ff (if latex_mode () then "\\{%a%s\\}" else "{%a%s}")
+           (print_list pfield "; ") fs ext
        end else begin
          decr break_hint;
          let pfield ff (l,a) = fprintf ff "\\mathrm{%s} &: %a" l pkind a in
          fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
          fprintf ff "\\begin{array}{ll}%a" (print_list pfield ";\\\\\n") fs;
-         fprintf ff "\\end{array}\\right\\}";
+         fprintf ff "\\end{array}%s\\right\\}" ext;
          incr break_hint
        end
   | KDSum(cs) ->
       let pvariant ff (c,a) =
        match repr a with
-       | KProd [] ->
+       | KProd([],false) ->
           fprintf ff (if latex_mode () then "\\mathrm{%s}" else "%s") c
        | _        ->
           fprintf ff (if latex_mode () then "\\mathrm{%s} \\of %a" else "%s of %a")
@@ -506,7 +512,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      fprintf ff "%a : %a" (print_term ~give_pos unfold wrap unfolded_Y) t pkind a;
      if wrap then fprintf ff ")"
   | TMLet(b,x,bt)->
-     let (onames, knames) = mmbinder_names bt OConv in
+     let (onames, knames) = mmbinder_names bt odummy in
      let ovars = Array.map (fun n -> free_of (new_ovari n)) onames in
      let kvars = Array.map (fun n -> free_of (new_kvari n)) knames in
      let t = mmsubst bt ovars kvars in
@@ -744,7 +750,6 @@ and typ_used_ind (_, _, _, r) =
   | Typ_DSum_e (p, ps, Some po)
     -> List.fold_left (fun acc p -> acc @ typ_used_ind p) (typ_used_ind p @ typ_used_ind po) ps
 
-  | Typ_Hole
   | Typ_Error _       -> []
 
 let is_refl : sub_prf -> bool = fun (_,_,a,b,_) -> strict_eq_kind a b
@@ -833,7 +838,6 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   | Typ_Prod_e(p)     -> unaryN "×_e" c (typ2proof p)
   | Typ_DSum_i(p1,p2) -> binaryT "+_i" c p1 (typ2proof p2)
   | Typ_DSum_e(p,ps,_)-> n_aryN "+_e" c (typ2proof p :: List.map typ2proof ps) (* FIXME *)
-  | Typ_Hole          -> axiomN "AXIOM" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
   | Typ_Yufl p        -> unaryN "Y" c (typ2proof p)
 

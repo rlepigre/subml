@@ -165,7 +165,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
        Sub_And_r(subtype ctxt0 t0 a0 b)
 
     (* unification. (sum and product special) *)
-    | (KUVar(ua,os), KProd(l))
+    | (KUVar(ua,os), KProd(l,true))
        when (match uvar_state ua with DSum _ -> false | _ -> true) ->
        let l0 = match uvar_state ua with
          | Free   -> []
@@ -284,7 +284,8 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         end;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
-    | (KUVar(ua,os), b            ) ->
+    | (KUVar(ua,os), b            ) -> (* NOTE: deal with KProd(_,true) and
+                                          may be too much incomplete in this case *)
         let bb = bind_ordis os b0 in (* NOTE: may instanciate ua *)
         if is_unset ua then safe_set_kuvar sNeg ua bb os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
@@ -339,7 +340,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         (* NOTE: the heuristic below works well for Church like encoding *)
        if has_uvar b1 then
          let wit =
-           if strict_eq_kind a2 (KProd []) then Pos.none (TReco [])
+           if strict_eq_kind a2 kunit then tunit
            else wit
          in
          let p2 = subtype ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
@@ -348,22 +349,29 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
        else
          let p1 = subtype ctxt wit a2 a1 in
          let wit =
-           if strict_eq_kind a2 (KProd []) then Pos.none (TReco [])
+           if strict_eq_kind a2 kunit then tunit
            else wit
          in
          let p2 = subtype ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
          Sub_Func(p1, p2)
 
     (* Product type. *)
-    | (KProd(fsa)  , KProd(fsb)  ) ->
+    | (KProd(fsa,ea), KProd(fsb,eb)) ->
+        if ea && not eb then  subtype_error ("Extensible product mismatch.");
         let check_field (l,b) =
           let a =
             try List.assoc l fsa
-            with Not_found -> subtype_error ("Product fields clash: " ^ l)
+            with Not_found -> subtype_error ("Product field clash: " ^ l)
           in
           (l, subtype ctxt (Pos.none (TProj(t,l))) a b)
         in
         let ps = List.map check_field fsb in
+        if not eb then begin
+          try
+            let (l,_) = List.find (fun (l,_) -> not (List.mem_assoc l fsb)) fsa in
+            subtype_error ("Product extra field: " ^ l)
+          with Not_found -> ()
+        end;
         Sub_Prod(ps)
 
     (* Sum type. *)
@@ -528,8 +536,8 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
            (* NOTE other cases not allowed by parser *)
            | Some(_)                    -> assert false
          in
-         let (oa, ka) = mmbinder_arities bk OConv in
-         assert((oa, ka) = mmbinder_arities bt OConv);
+         let (oa, ka) = mmbinder_arities bk odummy in
+         assert((oa, ka) = mmbinder_arities bt odummy);
          let oargs = Array.init oa (fun _ -> new_ouvar ()) in
          let kargs = Array.init ka (fun _ -> new_kuvar ()) in
          let k = mmsubst bk oargs kargs in
@@ -550,25 +558,20 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p2 = type_check ctxt (subst f wit.elt) b in
          Typ_Func_i(p1, p2)
       | TAppl(t,u) when is_neutral t && not (is_neutral u)->
-         let a =
-           if strict_eq_term u (Pos.none (TReco []))
-           then KProd [] else new_kuvar () in
+         let a = if strict_eq_term u tunit then kunit else new_kuvar () in
          let ptr = Subset.create ctxt.non_zero in
          let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let p1 = type_check ctxt u a in
          Typ_Func_e(p1, p2)
       | TAppl(t,u) ->
-         let a =
-           if strict_eq_term u (Pos.none (TReco [])) then KProd []
-           else new_kuvar ()
-         in
+         let a = if strict_eq_term u tunit then kunit else new_kuvar () in
          let p1 = type_check ctxt u a in
          let p2 = type_check ctxt t (KFunc(a,c)) in
          Typ_Func_e(p1, p2)
       | TReco(fs) ->
          let ts = List.map (fun (l,_) -> (l, new_kuvar ())) fs in
-         let c' = KProd(ts) in
+         let c' = KProd(ts,false) in
          let ptr = Subset.create ctxt.non_zero in
          let c' =  if is_normal t then KNRec(ptr,c') else c' in
          let p1 = subtype ctxt t c' c in
@@ -619,7 +622,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p = subtype ctxt v.value v.ttype c in
          Typ_Defi(p)
       | TPrnt(_) ->
-         let p = subtype ctxt t (KProd []) c in
+         let p = subtype ctxt t kunit c in
          Typ_Prnt(p)
       | TFixY(manual,depth,f) ->
          let prf = ref Todo in

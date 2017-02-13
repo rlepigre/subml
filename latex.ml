@@ -63,7 +63,6 @@ let rec search_schemas name p =
     | Typ_Defi  _
     | Typ_Prnt  _
     | Typ_Cnst  _
-    | Typ_Hole
     | Typ_Error _  -> ()
   in
   gn p; !res

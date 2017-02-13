@@ -17,7 +17,7 @@ type pkind = pkind' loc
 and pkind' =
   | PTVar of string * pordi list * pkind list
   | PFunc of pkind * pkind
-  | PProd of (string * pkind) list
+  | PProd of (string * pkind) list * bool
   | PDSum of (string * pkind option) list
   | PKAll of string * pkind
   | PKExi of string * pkind
@@ -56,11 +56,11 @@ let list_cons _loc t l =
   in_pos _loc (PCons("Cons", Some c))
 
 let unit_var _loc =
-  (Pos.make _loc "", Some(Pos.none (PProd [])))
+  (Pos.make _loc "", Some(Pos.none (PProd([],false))))
 
 (* "t; u" := "(fun (_ : unit) ↦ u) t" *)
 let sequence _loc t u =
-  let dum = (in_pos _loc "_", Some(in_pos _loc (PProd []))) in
+  let dum = (in_pos _loc "_", Some(in_pos _loc (PProd([], false)))) in
   (* TODO: a desugaring info for printing could be used here *)
   in_pos _loc (PAppl(in_pos _loc (PLAbs(dum,u,SgNop)), t))
 
@@ -246,11 +246,11 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                     let f xk =
                       unsugar_kind ~pos (add_kind x xk pos env) k
                     in kfixn x o f
-  | PProd(fs)    -> let f (l,k) = (l, unsugar_kind ~pos env k) in
-                    kprod (List.map f fs)
+  | PProd(fs,e)  -> let f (l,k) = (l, unsugar_kind ~pos env k) in
+                    kprod e (List.map f fs)
   | PDSum(cs)    -> let f (c,ko) =
                       match ko with
-                      | None   -> (c, kprod [])
+                      | None   -> (c, box kunit)
                       | Some k -> (c, unsugar_kind ~pos env k)
                     in kdsum (List.map f cs)
   | PWith(a,s,b) -> with_clause (unsugar_kind ~pos env a)

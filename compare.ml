@@ -219,7 +219,7 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
     k1 == k2 || match (full_repr k1, full_repr k2) with
     | (KVari(x1)   , KVari(x2)   ) -> eq_vars x1 x2
     | (KFunc(a1,b1), KFunc(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
-    | (KProd(fs1)  , KProd(fs2)  ) -> eq_assoc eq_kind fs1 fs2
+    | (KProd(s1,e1), KProd(s2,e2)) -> e1 = e2 && eq_assoc eq_kind s1 s2
     | (KDSum(cs1)  , KDSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
     | (KKAll(b1)   , KKAll(b2)   )
     | (KKExi(b1)   , KKExi(b2)   ) -> eq_kbinder pos b1 b2
@@ -266,8 +266,8 @@ and eq_term : ordi list -> term -> term -> bool = fun pos t1 t2 ->
     | (_              , TCoer(t2,_)    ) -> eq_term t1 t2
     | (TDefi(d1)      , _              ) -> eq_term d1.value t2
     | (_              , TDefi(d2)      ) -> eq_term t1 d2.value
-    | (TMLet(_,_,t1)  , _              ) -> eq_term (mmsubst_dummy t1 OConv (KProd [])) t2
-    | (_              , TMLet(_,_,t2)  ) -> eq_term t1 (mmsubst_dummy t2 OConv (KProd []))
+    | (TMLet(_,_,t1)  , _              ) -> eq_term (mmsubst_dummy t1 odummy kdummy) t2
+    | (_              , TMLet(_,_,t2)  ) -> eq_term t1 (mmsubst_dummy t2 odummy kdummy)
     | (TVari(x1)      , TVari(x2)      ) -> eq_vars x1 x2
     | (TVars(s1)      , TVars(s2)      ) -> s1 = s2
     | (TAbst(_,f1,_)  , TAbst(_,f2,_)  )
@@ -331,8 +331,6 @@ and gen_occur :
                                          unit -> (kind -> occur) * (ordi -> occur) =
   fun ?(safe_ordis=[||]) ?(kuvar=fun _ -> false) ?(ouvar=fun _ -> false) () ->
    let safe_ordis = Array.to_list safe_ordis in
-  let kdummy = KProd [] in
-  let odummy = OConv in
   let adone_k = ref [] in
   let adone_t = ref [] in
   let adone_o = ref [] in
@@ -343,7 +341,7 @@ and gen_occur :
     match k with
     | KVari(x)   -> acc
     | KFunc(a,b) -> aux (neg occ) (aux occ acc b ) a
-    | KProd(ks)
+    | KProd(ks,_)
     | KDSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
     | KKAll(f)
     | KKExi(f)   -> aux occ acc (subst f kdummy)
@@ -370,13 +368,13 @@ and gen_occur :
     if List.memq t.elt !adone_t then acc else (
     adone_t := t.elt :: !adone_t;
     match t.elt with
-    | TCnst(t,k1,k2) -> aux2 (aux All (aux All acc k1) k2) (subst t (TReco []))
+    | TCnst(t,k1,k2) -> aux2 (aux All (aux All acc k1) k2) (subst t tdummy)
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
-    | TMLet(b,x,bt)  -> aux2 acc (mmsubst_dummy bt OConv (KProd []))
+    | TMLet(b,x,bt)  -> aux2 acc (mmsubst_dummy bt odummy kdummy)
     | TFixY(_,_,f)
-    | TAbst(_,f,_)   -> aux2 acc (subst f (TReco []))
+    | TAbst(_,f,_)   -> aux2 acc (subst f tdummy)
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2
     | TReco(l)       -> List.fold_left (fun acc (_,t) -> aux2 acc t) acc l
     | TCase(t,l,d)   ->
@@ -398,7 +396,7 @@ and gen_occur :
        | In(t,f)|NotIn(t,f) -> aux All (aux2 acc t) (subst f odummy)
        | Gen(_,s) ->
           let f = s.sch_judge in
-          let os = Array.make (mbinder_arity f) OConv in
+          let os = Array.make (mbinder_arity f) odummy in
           let (k1,k2) = msubst f os in
           aux5 (aux All acc k2) k1)
     | OSucc o -> aux3 acc o
@@ -419,7 +417,7 @@ and gen_occur :
     in
     acc
   and aux5 acc = function
-    | SchTerm t -> aux2    acc (subst t (TReco []))
+    | SchTerm t -> aux2    acc (subst t tdummy)
     | SchKind k -> aux All acc k
   in
   (fun k -> aux sPos Non k), (fun o -> aux3 Non o)

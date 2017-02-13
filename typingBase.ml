@@ -211,14 +211,14 @@ let has_leading_ord_quantifier : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
     | KFunc(a,b) -> fn b
-    | KProd(ls)
+    | KProd(ls,_)
     | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KOAll(f)
     | KOExi(f)   -> true
     | KKAll(f)
     | KKExi(f)
     | KFixM(_,f)
-    | KFixN(_,f) -> fn (subst f (KProd []))
+    | KFixN(_,f) -> fn (subst f kdummy)
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | _ -> false
@@ -230,14 +230,14 @@ let has_leading_exists : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
     | KFunc(a,b) -> false
-    | KProd(ls)
+    | KProd(ls,_)
     | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KKExi(f)   -> true
     | KOExi(f)   -> true
-    | KOAll(f)   -> fn (subst f OConv)
+    | KOAll(f)   -> fn (subst f odummy)
     | KKAll(f)
     | KFixM(_,f)
-    | KFixN(_,f) -> fn (subst f (KProd []))
+    | KFixN(_,f) -> fn (subst f kdummy)
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | _ -> false
@@ -248,14 +248,14 @@ let has_leading_forall : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
     | KFunc(a,b) -> false
-    | KProd(ls)
+    | KProd(ls,_)
     | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KKAll(f)   -> true
     | KOAll(f)   -> true
-    | KOExi(f)   -> fn (subst f OConv)
+    | KOExi(f)   -> fn (subst f odummy)
     | KKExi(f)
     | KFixM(_,f)
-    | KFixN(_,f) -> fn (subst f (KProd []))
+    | KFixN(_,f) -> fn (subst f kdummy)
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | _ -> false
@@ -266,21 +266,21 @@ let has_uvar : kind -> bool = fun k ->
   let rec fn k =
     match repr k with
     | KFunc(a,b) -> fn a; fn b
-    | KProd(ls)
+    | KProd(ls,_)
     | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
     | KKAll(f)
-    | KKExi(f)   -> fn (subst f (KProd []))
-    | KFixM(o,f) -> fn (subst f (KProd []))
-    | KFixN(o,f) -> fn (subst f (KProd []))
+    | KKExi(f)   -> fn (subst f kdummy)
+    | KFixM(o,f) -> fn (subst f kdummy)
+    | KFixN(o,f) -> fn (subst f kdummy)
     | KOAll(f)
-    | KOExi(f)   -> fn (subst f OConv)
+    | KOExi(f)   -> fn (subst f odummy)
     | KUVar(_) -> raise Exit
     | KDefi(d,o,a) -> Array.iter fn a
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | KVari _    -> ()
     | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> fn (subst f (KProd []))
+    | KECst(_,f,cl) -> fn (subst f kdummy)
     | KPrnt _    -> assert false
   in
   try

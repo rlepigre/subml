@@ -27,8 +27,7 @@ let is_normal : term -> bool = fun t ->
     | TReco(fs)   -> List.for_all (fun (_,t) -> fn t) fs
 
     | TMLet(b,x,bt)->
-       let (oa, ka) = mmbinder_arities bt OConv in
-       fn (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
+       fn (mmsubst_dummy bt odummy kdummy)
 
     | TVari _
     | TVars _   -> assert false
@@ -56,8 +55,7 @@ let is_neutral : term -> bool = fun t ->
     | TCase(a,_,_)-> fn a
 
     | TMLet(b,x,bt)->
-       let (oa, ka) = mmbinder_arities bt OConv in
-       fn (mmsubst bt (Array.make oa OConv) (Array.make ka (KProd [])))
+       fn (mmsubst_dummy bt odummy kdummy)
 
     | TVari _
     | TVars _   -> assert false

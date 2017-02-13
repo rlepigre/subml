@@ -298,20 +298,20 @@ let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
     adone := k::!adone;
     match k with
     | KFunc(a,b)   -> fn a; fn b
-    | KProd(ls)
+    | KProd(ls,_)
     | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
-    | KKExi(f)     -> fn (subst f (KProd []))
+    | KKExi(f)     -> fn (subst f kdummy)
     | KFixM(o,f)
-    | KFixN(o,f)   -> fn (subst f (KProd []))
+    | KFixN(o,f)   -> fn (subst f kdummy)
     | KOAll(f)
-    | KOExi(f)     -> fn (subst f OConv)
+    | KOExi(f)     -> fn (subst f odummy)
     | KUVar(u,os)  ->
        begin
          match uvar_state u with
          | Free -> ()
          | DSum l | Prod l ->
-            List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) OConv))) l
+            List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) odummy))) l
        end;
        if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
          r := (u,os) :: !r
@@ -320,7 +320,7 @@ let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
     | KNRec _      -> assert false
     | KVari _      -> ()
     | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> fn (subst f (KProd []))
+    | KECst(_,f,cl) -> fn (subst f kdummy)
     | KPrnt _ -> assert false)
   in
   fn k; !r
@@ -336,20 +336,20 @@ let ouvar_list : kind -> ouvar list = fun k ->
     match k with
     | KUVar(_,_)   -> () (* ignore ordinals, will be constant *)
     | KFunc(a,b)   -> fn a; fn b
-    | KProd(ls)
+    | KProd(ls,_)
     | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
-    | KKExi(f)     -> fn (subst f (KProd []))
+    | KKExi(f)     -> fn (subst f kdummy)
     | KFixM(o,f)
-    | KFixN(o,f)   -> gn o; fn (subst f (KProd []))
+    | KFixN(o,f)   -> gn o; fn (subst f kdummy)
     | KOAll(f)
-    | KOExi(f)     -> fn (subst f OConv)
+    | KOExi(f)     -> fn (subst f odummy)
     | KDefi(d,o,a) -> Array.iter gn o;  Array.iter fn a
     | KMRec _
     | KNRec _      -> assert false
     | KVari _      -> ()
     | KUCst(_,f,cl)
-    | KECst(_,f,cl)-> fn (subst f (KProd []))
+    | KECst(_,f,cl)-> fn (subst f kdummy)
     | KPrnt _      -> assert false)
   and gn o =
     match orepr o with

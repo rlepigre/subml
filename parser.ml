@@ -223,6 +223,10 @@ let parser kind : pkind grammar = (pkind `Fun)
 and kind_atm = (pkind `Atm)
 and kind_prd = (pkind `Prd)
 
+and ext =
+  | EMPTY -> false
+  | ';' {"..." | "…"} -> true
+
 and pkind (p : [`Atm | `Prd | `Fun]) =
   | a:kind_prd arrow b:kind    when p = `Fun -> in_pos _loc (PFunc(a,b))
   | id:uident (o,k):kind_args$ when p = `Atm -> in_pos _loc (PTVar(id,o,k))
@@ -232,8 +236,8 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | exists id:lgident a:kind   when p = `Fun -> in_pos _loc (POExi(id,a))
   | mu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixM(o,id,a))
   | nu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixN(o,id,a))
-  | "{" fs:kind_reco "}"       when p = `Atm -> in_pos _loc (PProd(fs))
-  | fs:kind_prod               when p = `Prd -> in_pos _loc (PProd(fs))
+  | "{" fs:kind_reco e:ext"}"  when p = `Atm -> in_pos _loc (PProd(fs,e))
+  | fs:kind_prod               when p = `Prd -> in_pos _loc (PProd(fs,false))
   | "[" fs:kind_dsum "]"       when p = `Atm -> in_pos _loc (PDSum(fs))
   | a:kind_atm (s,b):with_eq   when p = `Atm -> in_pos _loc (PWith(a,s,b))
   | id:llident '.' s:uident    when p = `Atm -> in_pos _loc (PDPrj(id,s))

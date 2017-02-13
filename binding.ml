@@ -50,7 +50,7 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
       | Free -> k
         (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
       | DSum l -> mbind_assoc kdsum v.uvar_arity l
-      | Prod l -> mbind_assoc kprod v.uvar_arity l
+      | Prod l -> mbind_assoc eprod v.uvar_arity l
     in
     assert (mbinder_arity k = v.uvar_arity);
     let k =
@@ -85,7 +85,7 @@ let uvar_use_state : kuvar -> ordi array -> bool = fun v os ->
          safe_set_kuvar All v fk os);
        true
     | Unset (Prod l) ->
-       let fk = mbind_assoc kprod v.uvar_arity l in
+       let fk = mbind_assoc eprod v.uvar_arity l in
        if is_unset v then (
          Timed.(v.uvar_state := Unset Free);
          safe_set_kuvar All v fk os);

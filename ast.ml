@@ -26,7 +26,8 @@ type occur =
 type kind =
   | KVari of kind var             (** Free type variable. *)
   | KFunc of kind * kind          (** Arrow type. *)
-  | KProd of (string * kind) list (** Record (or product) type. *)
+  | KProd of (string * kind) list (** Record (or product) type.*)
+             * bool               (** if true: the record is extensible *)
   | KDSum of (string * kind) list (** Sum (of Variant) type. *)
   | KKAll of kkbinder             (** Universal quantifier over a type. *)
   | KKExi of kkbinder             (** Corresponding existential quantifier. *)
@@ -257,7 +258,6 @@ and typ_rule =
   | Typ_DSum_e of typ_prf * typ_prf list * typ_prf option
   | Typ_YGen   of typ_gen ref
   | Typ_Yufl   of typ_prf
-  | Typ_Hole   (* used by dummy_proof below *)
   | Typ_Error  of string
 and typ_prf =
   ordi list * term * kind * typ_rule
@@ -269,8 +269,10 @@ and typ_gen =
 let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
 (** Equality on variables *)
 
-(** Used as initial value *)
-let dummy_proof = (Pos.none (TReco []), KProd [], Typ_Hole)
+let tdummy = TReco []
+let pdummy = Pos.none tdummy
+let kdummy = KProd([],false)
+let odummy = OConv
 
 (**{2 Unfolding unification variables indirections and definitions.
       Also perform mu/nu contractions} *)
@@ -322,11 +324,11 @@ let rec repr : bool -> kind -> kind = fun unfold -> function
   | k -> k
 
 and is_mu unfold f = !contract_mu &&
-  match repr unfold (subst f (KProd [])) with KFixM(OConv,_) -> true
+  match repr unfold (subst f kdummy) with KFixM(OConv,_) -> true
   | _ -> false
 
 and is_nu unfold f = !contract_mu &&
-  match repr unfold (subst f (KProd [])) with KFixN(OConv,_) -> true
+  match repr unfold (subst f kdummy) with KFixN(OConv,_) -> true
   | _ -> false
 
 (** The main function: unfold type variables indirections and definitions *)
@@ -426,10 +428,13 @@ let kvari : string -> kbox =
 let kfunc : kbox -> kbox -> kbox =
   box_apply2 (fun t u -> KFunc(t,u))
 
-let kprod : (string * kbox) list -> kbox =
-  fun fs ->
+let kprod : bool -> (string * kbox) list -> kbox =
+  fun b fs ->
     let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
-    box_apply (fun fs -> KProd(fs)) (box_list fs)
+    box_apply (fun fs -> KProd(fs,b)) (box_list fs)
+let sprod = kprod false
+let eprod = kprod true
+let kunit = KProd([], false)
 
 let kdsum : (string * kbox) list -> kbox =
   fun cs ->
@@ -531,6 +536,7 @@ let treco : Pos.popt -> (string * tbox) list -> tbox =
   fun p fs ->
     let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
     box_apply (fun fs -> Pos.make p (TReco(fs))) (box_list fs)
+let tunit = Pos.none (TReco [])
 
 let tproj : Pos.popt -> tbox -> string -> tbox =
   fun p t l ->
@@ -612,7 +618,7 @@ let dot_proj : tbox -> string -> kbox = fun t s ->
     | TDefi(d) -> do_dot_proj t d.ttype s
     | TCnst(_,a,_) -> do_dot_proj t a s
     | TVars x -> KPrnt (DotPrj(x,s)) (** printing only *)
-    | _ -> KProd []
+    | _ -> kdummy
   in
   box_apply fn t
 
