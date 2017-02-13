@@ -20,6 +20,7 @@ let test : ('a -> 'a -> bool) -> 'a set -> 'a list -> bool =
       | CoFinite _ -> assert false (* enforced by get *)
       | Finite l' -> List.for_all (fun x -> List.exists (fun y -> eq x y) l) l'
     else
+      (** when the set is not fixed we change set into (set inter (Finite l))
       match set.set with
       | CoFinite l' -> set.set <- Finite (List.filter (fun x ->
                               not (List.exists (fun y -> eq x y) l')) l); true
