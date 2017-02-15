@@ -45,7 +45,7 @@ let recompose : ?general:bool -> schema -> term_or_kind particular =
             with Not_found ->
               new_ouvar ()
           else
-             let o' = try search (List.assoc i rel) with Not_found -> OConv in
+             let o' = try search (List.assoc i rel) with Not_found -> OSucc(OConv) in
              OLess(o',Gen(i,schema))
         in
         res := (i, o) :: !res;
@@ -135,7 +135,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
             let n = !i in incr i;
             let v = new_ovari ("o_" ^ string_of_int n) in
             res := (o, (n, v, ref keep)) :: !res;
-            if o' <> OConv then (
+            if o' <> OSucc(OConv) && o' <> OConv then (
                 let (p, _) = eps_search false o' in
                 relation := (n,p)::!relation);
             (n, o))

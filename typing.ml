@@ -305,11 +305,11 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         Sub_KExi_l(p)
 
     | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt0 t0 a0 (subst f (OLess(OConv, NotIn(t0,f)))) in
+        let p = subtype ctxt0 t0 a0 (subst f (OLess(OSucc(OConv), NotIn(t0,f)))) in
         Sub_OAll_r(p)
 
     | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt0 t0 (subst f (OLess(OConv, In(t0,f)))) b0 in
+        let p = subtype ctxt0 t0 (subst f (OLess(OSucc(OConv), In(t0,f)))) b0 in
         Sub_OExi_l(p)
 
 
