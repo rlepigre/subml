@@ -155,6 +155,7 @@ let has_kvar : kind -> bool = fun k ->
   and gn o = match orepr o with
     | OUVar _ -> ()
     | OConv -> ()
+    | OMaxi -> ()
     | OSucc o -> gn o
     | OLess(o,_) -> gn o (* TODO: look at the witness *)
     | OVars _ -> ()
@@ -262,6 +263,7 @@ let rec print_ordi unfold unfolded_Y ff o =
   let pkind = print_kind false false unfolded_Y in
   match o with
   | OConv   -> pp_print_string ff "∞"
+  | OMaxi   -> pp_print_string ff "∞+ω"
   | OSucc(o) ->
      let rec fn i o =
        match orepr o with
@@ -288,14 +290,18 @@ let rec print_ordi unfold unfolded_Y ff o =
   | OVars(s) -> fprintf ff "%s" s
   | OLess(o,w) when unfold ->
      begin
+       let print_upper ff = function
+         | OMaxi -> ()
+         | o -> fprintf "%t%a" lt pordi o
+       in
        match w with
        | In(t,a) ->
           let ov = OVars "α" in
-          fprintf ff "ε_{%a%t%a}(%a∈%a)" pordi ov lt pordi o
+          fprintf ff "ε_{%a%a}(%a∈%a)" pordi ov print_upper o
             (print_term false false None) t pkind (subst a ov)
        | NotIn(t,a) ->
           let ov = OVars "α" in
-          fprintf ff "ε_{%a%t%a}(%a∉%a)" pordi ov lt pordi o
+          fprintf ff "ε_{%a%a}(%a∉%a)" pordi ov print_upper o
             (print_term false false None) t pkind (subst a ov)
        | Gen(i,s) ->
           let r = s.sch_relat in

@@ -112,7 +112,9 @@ and ordi =
   (* Main type constructors. *)
 
   | OVari of ordi var (** Free ordinal variable. *)
-  | OConv             (** Biggest ordinal (makes fixpoints converge). *)
+  | OConv             (** ordinal that makes fixpoints converge. *)
+  | OMaxi             (** OConv + omega, ordinal defining the model.
+                          only appears in OLess *)
   | OSucc of ordi     (** Succesor of an ordinal. *)
 
   (* Witnesses (a.k.a. epsilons) used in the μl and νr rules. [OLess(o,w)] is

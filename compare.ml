@@ -165,6 +165,8 @@ and leqi_ordi pos o1 i o2 =
   Io.log_ord "%a <_%d %a %b\n%!"
     (!fprint_ordi false) o1 i (!fprint_ordi false) o2 !eq_strict;
   match (orepr o1, orepr o2) with
+  | (_          , OMaxi   )   -> assert false
+  | (OMaxi      , _       )   -> assert false
   | (o1         , o2      ) when strict_eq_ordi (oadd o1 i) o2 -> true
   | (o1         , OSucc o2  ) -> leqi_ordi pos o1 (i-1) o2
   | (OSucc o1   ,       o2  ) -> leqi_ordi pos o1 (i+1) o2
@@ -182,7 +184,7 @@ and leqi_ordi pos o1 i o2 =
      leqi_ordi pos o1 i o2
   | (OUVar(p,os)   , o2      ) when i<=0 && safe_set_ouvar pos p os o2 ->
      leqi_ordi pos o1 i o2
-  | (OLess(o1,_),       o2  ) ->
+  | (OLess(o1,_),       o2  ) when o1 <> OMaxi ->
      let i = if is_positive pos o1 then i-1 else i in
      leqi_ordi pos o1 i o2
   | (_          , _         ) -> false

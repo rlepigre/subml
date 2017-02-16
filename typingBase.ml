@@ -132,6 +132,7 @@ let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
   | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os), _ ->
      set_ouvar p o'; opred o w
   | OConv, None -> OConv
+  | OMaxi, _ -> assert false
   | (OLess _ | OUVar _) as o, None -> new_ouvar ~upper:(constant_mbind 0 o) ()
   | OUVar _, Some w ->
      subtype_error "opred fails"; (* FIXME: can we do better ? OLess(o,w)
@@ -145,7 +146,8 @@ let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
 let possible_positive ctxt o =
   let pos = ctxt.non_zero in
   let res = match orepr o with
-  | OConv -> [OConv]
+  | OConv    -> [OConv]
+  | OMaxi    -> assert false
   | OSucc o' -> [o]
   | OUVar(u,os) ->
      let l = List.filter

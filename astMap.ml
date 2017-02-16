@@ -101,4 +101,4 @@ and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
        oless_Gen (map_ordi ~occ o) i s
 
     | OUVar(u,os) -> ouvar u (Array.map (map_ordi ~occ:All) os)
-    | OConv -> box o)
+    | OConv | OMaxi -> box o)
