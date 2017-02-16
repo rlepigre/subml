@@ -292,7 +292,7 @@ let rec print_ordi unfold unfolded_Y ff o =
      begin
        let print_upper ff = function
          | OMaxi -> ()
-         | o -> fprintf "%t%a" lt pordi o
+         | o -> fprintf ff "%t%a" lt pordi o
        in
        match w with
        | In(t,a) ->
