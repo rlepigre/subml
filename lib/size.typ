@@ -32,6 +32,11 @@ val pred' : ∀α NS(α+2) → NS(α+1) = fun n →
   | Z   → Z
   | S n → n
 
+?val rec idt6 : N → N = fun n →
+  case n of
+  | Z    → Z
+  | S(_) → S(idt6 (pred' n))
+
 val rec suc1 : ∀α NS(α) → NS(α+1) = fun n →
   case n of
   | Z  → S Z
@@ -82,7 +87,6 @@ val rec add : N → N → N = fun x y →
   case x of
   | Z    → y
   | S x' → S(add x' y)
-
 
 val rec add' : N → N → N = fun x y →
   case x of
