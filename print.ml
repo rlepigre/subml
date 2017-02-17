@@ -263,7 +263,7 @@ let rec print_ordi unfold unfolded_Y ff o =
   let pkind = print_kind false false unfolded_Y in
   match o with
   | OConv   -> pp_print_string ff "∞"
-  | OMaxi   -> pp_print_string ff "∞+ω"
+  | OMaxi   -> pp_print_string ff (if latex_mode () then "\OMaxi" else "_")
   | OSucc(o) ->
      let rec fn i o =
        match orepr o with
@@ -310,7 +310,7 @@ let rec print_ordi unfold unfolded_Y ff o =
             (fun i -> OVars ("α_{"^string_of_int (i+1)^"}")) in
           let (k1,k2) = msubst f os in
           let os' = Array.mapi (fun i _ -> try os.(List.assoc i r)
-                                           with Not_found -> OConv) os in
+                                           with Not_found -> OMaxi) os in
           match k1 with
           | SchTerm t ->
              fprintf ff "ε^%d_{%a%t%a}(%a ∉ %a)"
