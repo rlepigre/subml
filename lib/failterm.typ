@@ -157,23 +157,35 @@ val pred : ∀α (NS(α+1) → NS(α)) = fun n →
   case n of Z   → abort
           | S p → p
 
-type Hungry(α,A) = μα X (A → X)
+type Hungry(α,A) = μα X [ In of (A → X) ]
 
 (* Subml loops ... But seems incorrect,
    because α is not positive and we
    can not use (fun n →  ...) : Hungry(α,NS(β+1))
    without α > 0 *)
-(*val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
-  fun h →
-     let α, β such that h : Hungry(α,NS(β)) in
-     fun n →
-       s (h ((pred n) : NS(β))*)
+val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
+  fun f →
+    case f of In f' → In (fun n → s (f' (pred n)))
 
-!val rec s2 : ∀α∀β Hungry(α+1,NS(β)) → Hungry(α+1,NS(β+1)) =
-  fun h →
-     let α, β such that h : Hungry(α+1,NS(β)) in
-     fun n →
-       s2 (h ((pred n) : NS(β))
+val rec p : ∀α∀β Hungry(α,NS(β+1)) → Hungry(α,NS(β)) =
+  fun f →
+    case f of In f' → In (fun n → p (f' (S n)))
+
+val rec tr : ∀α Hungry(α,N) → ∀X X =
+  fun f →
+    case f of In f' → tr (p (f' (S Z)))
+
+(* Subml loops here ... reject would be better *)
+(*val rec h : ∀α NS(α) → Hungry(α,NS(α)) =
+  fun p → In (fun n → s (h (pred n)))*)
+
+(* Subml loops ... But seems incorrect,
+   because α is not positive and we
+   can not use (fun n →  ...) : Hungry(α,NS(β+1))
+   without α > 0 *)
+val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
+  fun h → { inn = (fun n → s (h.inn (pred n))) }
+
 
 (* Trying with ν we go further *)
 type Hungry2(α,A) = να X (A → X)
