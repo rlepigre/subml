@@ -159,12 +159,37 @@ val pred : ∀α (NS(α+1) → NS(α)) = fun n →
 
 type Hungry(α,A) = μα X (A → X)
 
-(*
-val rec s : ∀α∀β Hungry(α,NS(β+1)) → Hungry(α,NS(β)) =
- fun h n → s (h (
+(* Subml loops ... But seems incorrect,
+   because α is not positive and we
+   can not use (fun n →  ...) : Hungry(α,NS(β+1))
+   without α > 0 *)
+val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
+  fun h →
+     let α, β such that h : Hungry(α,NS(β)) in
+     fun n →
+       s (h ((pred n) : NS(β))
 
+(* Trying with ν we go further *)
+type Hungry2(α,A) = να X (A → X)
 
-val rec h : ∀α NS(α) → Hungry(α,NS(α)) = fun n →
-  case n of Z → Z
-          | S p → S (h p)
-*)
+val rec s : ∀α∀β Hungry2(α,NS(β)) → Hungry2(α,NS(β+1)) =
+  fun h n →
+     let β such that n : NS(β+1) in
+     s (h (pred n))
+
+val rec p : ∀α∀β Hungry2(α,NS(β+1)) → Hungry2(α,NS(β)) =
+  fun h n →
+     let β such that n : NS(β+1) in
+     p (h (S n))
+
+val rec h : ∀α NS(α) → Hungry2(α,NS(α)) =
+  fun _ n → s (h (pred n))
+
+!val rec tr : Hungry2(∞,N) → ∀X X =
+   fun h → tr (p (h (S Z)))
+
+!val rec 2 tr : Hungry2(∞,N) → ∀X X =
+   fun h → tr (p (h (S Z)))
+
+!val rec 3 tr : Hungry2(∞,N) → ∀X X =
+   fun h → tr (p (h (S Z)))
