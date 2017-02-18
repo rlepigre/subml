@@ -10,6 +10,17 @@ val rec idt : ∀α NS(α) → NS(α) = fun n →
   | Z    → Z
   | S(n) → S(idt n)
 
+!val rec succ  : ∀α NS(α) → NS(α) = fun n →
+  let α such that _ : NS(α) in
+  (S (case n of
+  | Z    → Z
+  | S(n) → succ n) : NS(α))
+
+val rec succ  : ∀α NS(α) → NS(α+1) = fun n →
+  S (case n of
+  | Z    → Z
+  | S(n) → succ n)
+
 val rec idt2 : ∀α NS(α) → NS(α) = fun n →
   case n of
   | Z    → Z
@@ -31,6 +42,15 @@ val pred' : ∀α NS(α+2) → NS(α+1) = fun n →
   case n of
   | Z   → Z
   | S n → n
+
+val rec minus : ∀α∀β NS(α) → NS(β) → NS(α) =
+  fun n m →
+    case n of
+    | Z → Z
+    | S n' →
+       (case m of
+       | Z → n
+       | S m' → minus n' m')
 
 ?val rec idt6 : N → N = fun n →
   case n of

@@ -179,14 +179,6 @@ val rec tr : ∀α Hungry(α,N) → ∀X X =
 (*val rec h : ∀α NS(α) → Hungry(α,NS(α)) =
   fun p → In (fun n → s (h (pred n)))*)
 
-(* Subml loops ... But seems incorrect,
-   because α is not positive and we
-   can not use (fun n →  ...) : Hungry(α,NS(β+1))
-   without α > 0 *)
-val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
-  fun h → { inn = (fun n → s (h.inn (pred n))) }
-
-
 (* Trying with ν we go further *)
 type Hungry2(α,A) = να X (A → X)
 
