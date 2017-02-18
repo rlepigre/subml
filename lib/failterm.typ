@@ -163,11 +163,17 @@ type Hungry(α,A) = μα X (A → X)
    because α is not positive and we
    can not use (fun n →  ...) : Hungry(α,NS(β+1))
    without α > 0 *)
-val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
+(*val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
   fun h →
      let α, β such that h : Hungry(α,NS(β)) in
      fun n →
-       s (h ((pred n) : NS(β))
+       s (h ((pred n) : NS(β))*)
+
+!val rec s2 : ∀α∀β Hungry(α+1,NS(β)) → Hungry(α+1,NS(β+1)) =
+  fun h →
+     let α, β such that h : Hungry(α+1,NS(β)) in
+     fun n →
+       s2 (h ((pred n) : NS(β))
 
 (* Trying with ν we go further *)
 type Hungry2(α,A) = να X (A → X)
