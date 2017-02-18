@@ -382,6 +382,7 @@ and gen_occur :
     | TCase(t,l,d)   ->
        let acc = match d with None -> acc | Some t -> aux2 acc t in
        List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
+    | TAbrt
     | TVari(_)
     | TVars(_)
     | TDefi(_)

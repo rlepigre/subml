@@ -43,6 +43,7 @@ and pterm' =
   | PCase of pterm * (string * ppat * pterm) list * (ppat * pterm) option
   | PPrnt of string
   | PFixY of strloc * int * pterm
+  | PAbrt
 and ppat =
   | NilPat
   | Simple of (strloc * pkind option) option
@@ -298,3 +299,4 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
                    treco pt.pos (List.map f fs)
   | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in
                    tfixy pt.pos n x f
+  | PAbrt       -> tabrt pt.pos

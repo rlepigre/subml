@@ -60,6 +60,7 @@ let rec search_schemas name p =
     | Typ_DSum_e (p, ps, Some po)
                           -> gn p; List.iter gn ps; gn po
 
+    | Typ_Abrt
     | Typ_Defi  _
     | Typ_Prnt  _
     | Typ_Cnst  _

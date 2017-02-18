@@ -20,6 +20,7 @@ let rec eval : term -> term = fun t0 ->
   | TVari(_)     -> t0
   | TAbst _      -> t0
   | TFixY(_)     -> t0
+  | TAbrt        -> t0
   (* Evaluate under products and constructors. *)
   | TReco(l)     -> Pos.make t0.pos (TReco(map_snd eval l))
   | TCons(c,t)   -> Pos.make t0.pos (TCons(c, eval t))

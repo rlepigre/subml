@@ -85,7 +85,7 @@ and check_typ_proof (p, t, k, r) =
     | Typ_DSum_e (p, ps, Some po)
                           -> check_typ_proof p &&& for_all check_typ_proof ps &&&
                              check_typ_proof po
-
+    | Typ_Abrt            -> None
     | Typ_Error msg       -> Some [ Msg msg ]
   in
   match res with

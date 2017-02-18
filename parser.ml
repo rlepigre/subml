@@ -168,6 +168,7 @@ let then_kw = new_keyword "then"
 let else_kw = new_keyword "else"
 let with_kw = new_keyword "with"
 let type_kw = new_keyword "type"
+let abrt_kw = new_keyword "abort"
 
 let unfold_kw  = new_keyword "unfold"
 let clear_kw   = new_keyword "clear"
@@ -293,6 +294,8 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | term_mlet                     when p = `Lam
   | term_cond                     when p = `Atm
   | t:tapp "::" u:tseq$           when p = `Seq -> list_cons _loc t u
+
+  | abrt_kw                       when p = `Atm -> in_pos _loc PAbrt
   (* Parenthesis and coercions. *)
   | "(" term ")" when p = `Atm
   | tapp when p = `Seq

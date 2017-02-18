@@ -26,7 +26,7 @@
 		      (regexp-opt '("case" "of" "val" "let" "in" "rec" "fun" "eval"
 				    "include" "type" "if" "then" "else" "check"
                                     "fix" "unfold" "clear" "quit" "parse" "latex"
-                                    "exit" "set" "html" "such" "that"))
+                                    "exit" "set" "html" "such" "that" "abort"))
                       "\\>")
               'font-lock-keyword-face)
         )

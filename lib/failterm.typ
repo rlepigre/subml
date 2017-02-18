@@ -153,9 +153,13 @@ val rec loopnot : ∀α NS(α) → (N → NS(α)) → NS(α) = fun n g →
   case n of Z → Z
           | S n → S (loopnot n (shift g))
 
-(*
+val pred : ∀α (NS(α+1) → NS(α)) = fun n →
+  case n of Z   → abort
+          | S p → p
+
 type Hungry(α,A) = μα X (A → X)
 
+(*
 val rec s : ∀α∀β Hungry(α,NS(β+1)) → Hungry(α,NS(β)) =
  fun h n → s (h (
 

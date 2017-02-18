@@ -263,7 +263,7 @@ let rec print_ordi unfold unfolded_Y ff o =
   let pkind = print_kind false false unfolded_Y in
   match o with
   | OConv   -> pp_print_string ff "∞"
-  | OMaxi   -> pp_print_string ff (if latex_mode () then "\OMaxi" else "_")
+  | OMaxi   -> pp_print_string ff (if latex_mode () then "\\OMaxi" else "_")
   | OSucc(o) ->
      let rec fn i o =
        match orepr o with
@@ -675,6 +675,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
         fprintf ff "Y%s.%a" x (print_term ~give_pos false false unfolded_Y) t
      | _ ->
         fprintf ff (if latex_mode () then "\\mathrm{%s}" else "%s") x)
+  | TAbrt        -> fprintf ff "Abort"
   | TCnst(f,a,b) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
@@ -756,6 +757,7 @@ and typ_used_ind (_, _, _, r) =
   | Typ_DSum_e (p, ps, Some po)
     -> List.fold_left (fun acc p -> acc @ typ_used_ind p) (typ_used_ind p @ typ_used_ind po) ps
 
+  | Typ_Abrt
   | Typ_Error _       -> []
 
 let is_refl : sub_prf -> bool = fun (_,_,a,b,_) -> strict_eq_kind a b
@@ -844,6 +846,7 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   | Typ_Prod_e(p)     -> unaryN "×_e" c (typ2proof p)
   | Typ_DSum_i(p1,p2) -> binaryT "+_i" c p1 (typ2proof p2)
   | Typ_DSum_e(p,ps,_)-> n_aryN "+_e" c (typ2proof p :: List.map typ2proof ps) (* FIXME *)
+  | Typ_Abrt          -> axiomN "Ab" c
   | Typ_Error msg     -> axiomN (sprintf "ERROR(%s)" msg) c
   | Typ_Yufl p        -> unaryN "Y" c (typ2proof p)
 

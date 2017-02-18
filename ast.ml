@@ -170,7 +170,7 @@ and term' =
       checker. It indicates the number of unrolling to build the induction
       hypothesis. The boolean indicates if contravariant Conv must not be
       replaced by ordinal parameters *)
-
+  | TAbrt                                               (** Error. *)
   (* Type annotations. They are not part of the semantics, and they are only
      used to guide the type-checking algorithm. *)
 
@@ -260,6 +260,7 @@ and typ_rule =
   | Typ_DSum_e of typ_prf * typ_prf list * typ_prf option
   | Typ_YGen   of typ_gen ref
   | Typ_Yufl   of typ_prf
+  | Typ_Abrt
   | Typ_Error  of string
 and typ_prf =
   ordi list * term * kind * typ_rule
@@ -561,6 +562,9 @@ let tdefi : Pos.popt -> tdef -> tbox =
 let tprnt : Pos.popt -> string -> tbox =
   fun p s ->
     box (Pos.make p (TPrnt(s)))
+
+let tabrt : Pos.popt -> tbox =
+  fun p -> box (Pos.make p TAbrt)
 
 let tfixy : Pos.popt -> int -> Pos.strloc -> (tvar -> tbox) -> tbox =
   fun p n x f ->

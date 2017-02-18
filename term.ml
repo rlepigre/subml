@@ -14,6 +14,7 @@ let is_normal : term -> bool = fun t ->
     match t.elt with
     | TAbst(_)    -> true
     | TCnst _     -> true
+    | TAbrt       -> true
 
     | TFixY(_)    -> false
     | TAppl(a,b)  -> false
@@ -45,6 +46,7 @@ let is_neutral : term -> bool = fun t ->
     | TCnst _     -> true
     | TPrnt _     -> true
 
+    | TAbrt       -> false
     | TCons(s,a)  -> false
     | TAbst(_)    -> false
     | TFixY(_)    -> false
