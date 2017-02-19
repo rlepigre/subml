@@ -777,7 +777,7 @@ let mkSchema ?(ord_name="α") schema =
                           (List.map (fun i -> ord i) schema.sch_posit) in
   let r2s =
     if schema.sch_relat = [] then ""
-    else
+    else ", " ^
       String.concat "∧"
          (List.map (fun (i,j) -> ord i^lts ()^ ord j) schema.sch_relat)
       ^ "⇒"
