@@ -212,8 +212,9 @@ and match_ordi : ouvar list -> ordi -> ordi -> bool = fun ouvars p o ->
     with Not_found -> o
   in
   let res = match orepr p, orepr o with
-    | OUVar(uo,_), o when List.memq uo ouvars ->
-       set_ouvar uo (constant_mbind 0 o); true
+    | OUVar(uo,os), o when List.memq uo ouvars ->
+       assert (os = [||]);
+       safe_set_ouvar [] uo os o
     | OSucc(p), OSucc(o) -> match_ordi ouvars p o
     | p, k -> strict_eq_ordi p k in
   res

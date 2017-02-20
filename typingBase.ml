@@ -33,10 +33,6 @@ exception Loop_error of popt
 let loop_error : popt -> 'a =
   fun p -> raise (Loop_error p)
 
-exception Interrupted of popt
-let interrupted : popt -> 'a =
-  fun p -> raise (Interrupted p)
-
 type induction_node = Sct.index * (int * ordi) list
 type ctxt =
   { sub_ihs       : schema list
@@ -128,8 +124,9 @@ let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
   | OSucc o', _ -> o'
   | OUVar({uvar_state = {contents = Unset (None,None)}; uvar_arity = a} as p, os), _ ->
      let o' = OUVar(new_ouvara a,os) in
-     set_ouvar p (obind_ordis os (OSucc o')); o'
-  | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os), _ ->
+     assert (safe_set_ouvar [] p os (OSucc o')); o'
+  | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os), _
+                                                   when not (ouvar_mbind_occur p o') ->
      set_ouvar p o'; opred o w
   | OConv, None -> OConv
   | OMaxi, _ -> assert false

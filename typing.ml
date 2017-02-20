@@ -441,7 +441,10 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
             assert (is_positive ctxt.non_zero o');
             let save = Timed.Time.save () in
             try
-              (match orepr o with OUVar(p,os) -> set_ouvar p (obind_ordis os o') | _ -> ());
+              (match orepr o with
+               | OUVar(p,os) ->
+                  if not (safe_set_ouvar ctxt.non_zero p os o') then raise Not_found
+               | _ -> ());
               let o'' = opred o' None in
               let a = if o' = OConv then a else KFixN(o'',f) in
               let p = subtype ctxt t (subst f a) b0 in
@@ -463,14 +466,16 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
             assert (is_positive ctxt.non_zero o');
             let save = Timed.Time.save () in
             try
-              (match orepr o with OUVar(p,os) -> set_ouvar p (obind_ordis os o') | _ -> ());
+              (match orepr o with
+               | OUVar(p,os) ->
+                  if not (safe_set_ouvar ctxt.non_zero p os o') then raise Not_found
+               | _ -> ());
               let o'' = opred o' None in
               let b = if o' = OConv then b else KFixM(o'',f) in
               let p = subtype ctxt t a0 (subst f b) in
               remember_first some_prf p; check_sub_proof p;
               Sub_FixM_r(p)
             with Not_found | Error _ -> Timed.Time.rollback save; fn l
-            | _ -> assert false
        in
        fn (possible_positive ctxt o)
 
@@ -640,7 +645,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
                            It not, should use the same exception *)
     | Type_error msg -> Typ_Error msg
     | Occur_check    -> Typ_Error "occur_check"
-    | Sys.Break      -> interrupted t.pos
+    | Sys.Break      -> Typ_Error "interrupted"
   in (ctxt.non_zero, t, c, r)
 
 (** [subtype t a b] checks the pointed subtyping relation "t ∈ A ⊂ B". Since

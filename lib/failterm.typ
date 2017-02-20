@@ -159,10 +159,6 @@ val pred : ∀α (NS(α+1) → NS(α)) = fun n →
 
 type Hungry(α,A) = μα X [ In of (A → X) ]
 
-(* Subml loops ... But seems incorrect,
-   because α is not positive and we
-   can not use (fun n →  ...) : Hungry(α,NS(β+1))
-   without α > 0 *)
 val rec s : ∀α∀β Hungry(α,NS(β)) → Hungry(α,NS(β+1)) =
   fun f →
     case f of In f' → In (fun n → s (f' (pred n)))

@@ -235,6 +235,7 @@ let rec bind_both ?(from_generalise=false) os x =
                  | o -> o)))))
            in
            Io.log_uni "set in bind gn\n%!";
+           assert (not (ouvar_mbind_occur u k));
            set_ouvar u k;
            ouvar v new_os
       | o -> def_ord o
@@ -284,14 +285,13 @@ let _ = fobind_ordis := obind_ordis
     the variable is changed *)
 let ouvar_use_state : (ordi -> 'a) -> ordi list -> ouvar -> ordi array -> bool =
   fun self_ord pos u os -> match !(u.uvar_state) with
-  | Unset (Some o', _) ->
+  | Unset (Some o', _) when not (ouvar_mbind_occur u o') ->
      set_ouvar u o'; true
   | Unset (_, Some o') ->
      ignore (self_ord (msubst o' os)); (* TODO: needed to set some ouvar from state,
                                           before the less_ordi test below, not very
                                           clean *)
-     (try set_ouvar u (obind_ordis os (List.find (fun o ->
-          less_ordi pos o (msubst o' os)) (Array.to_list os)));
-          true
+     (try safe_set_ouvar pos u os (List.find (fun o ->
+          less_ordi pos o (msubst o' os)) (Array.to_list os))
       with Not_found -> false)
   | _ -> false

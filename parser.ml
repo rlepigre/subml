@@ -514,8 +514,8 @@ let check pos flag f a =
           | MustFail
           | CanFail  -> raise OK
         end
-    | Sys.Break | Interrupted _ as e -> raise e
-    | e               ->
+    | Sys.Break as e -> raise e
+    | e              ->
        Printexc.print_backtrace stderr;
        Io.err "UNCAUGHT EXCEPTION: %s\n%!" (Printexc.to_string e);
        exit 1
@@ -641,7 +641,6 @@ let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
     try fn v; ok := true with
     | End_of_file            -> raise End_of_file
     | Sys.Break              -> Io.err "\n[Interrupted]\n%!"
-    | Interrupted(p)         -> Io.err "\n[Interrupted at %a]\n%!" pp p
     | Arity_error(p,m)       -> Io.err "%a: %s\n%!" pp p m
     | Positivity_error(p,m)  -> Io.err "%a: %s\n%!" pp p m
     | Parse_error(buf,pos,_) -> Io.err "%a: syntax error.\n%!" pp
