@@ -52,13 +52,13 @@ val rec add : Int → Int → Int = fun n m →
       let α such that n:NS(α) in
       add n (pre (pre m)))
 
-?val rec 2 add : Int → Int → Int = fun n m →
+val rec[1] add : Int → Int → Int = fun n m →
   case n of
   | Z → m
   | S n → (case n of Z → suc m | S n → add n (suc (suc m)))
   | P n → (case n of Z → pre m | P n → add n (pre (pre m)))
 
-?val rec 2 add : Int → Int → Int = fun n m →
+?val rec[2] add : Int → Int → Int = fun n m →
   case n of
   | Z → m
   | S n → add n (suc m)
@@ -74,7 +74,7 @@ val rec oppN : Neg → Pos = fun n →
   | Z → Z
   | P p → S (oppN p)
 
-val  opp : Int → Int = fun n →
+val opp : Int → Int = fun n →
   case n of
   | Z → Z
   | S p → P (oppP p)

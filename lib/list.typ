@@ -102,7 +102,7 @@ val rec flatten : ∀A List(List(A)) → List(A) = fun l →
   | [] → []
   | x::l → rev_append (rev x) (flatten l)
 
-val rec 2 flatten2 : ∀A List(List(A)) → List(A) = fun ll →
+val rec[2] flatten2 : ∀A List(List(A)) → List(A) = fun ll →
   case ll of
   | [] → []
   | l::ll → (case l of
@@ -110,7 +110,7 @@ val rec 2 flatten2 : ∀A List(List(A)) → List(A) = fun ll →
     | x::l → x :: flatten2 (l :: ll))
 
 (* Should not work, as two unfolding are necessary *)
-?val rec flatten2 : ∀A List(List(A)) → List(A) = fun ll →
+!val rec[1] flatten2 : ∀A List(List(A)) → List(A) = fun ll →
   case ll of
   | [] → []
   | l::ll → (case l of

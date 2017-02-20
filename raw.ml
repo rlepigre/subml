@@ -65,9 +65,11 @@ let sequence _loc t u =
   (* TODO: a desugaring info for printing could be used here *)
   in_pos _loc (PAppl(in_pos _loc (PLAbs(dum,u,SgNop)), t))
 
+let fixpoint_depth = ref 3
+
 let pfixY (id, ko) _loc n t =
   let n = match n with
-    | None -> !(Typing.fixpoint_depth)
+    | None -> !fixpoint_depth
     | Some n -> n
   in
   match ko with

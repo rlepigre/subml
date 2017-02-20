@@ -118,12 +118,9 @@ let check_fix type_check subtype prfptr ctxt t manual depth f c =
   try
     search_induction subtype prfptr ctxt t c !hyps with Not_found ->
   (* There were no such induction hypothesis so we unroll the fixpoint. *)
-  let manual, depth = match manual with
-    | None ->
-       let m = TypingBase.has_leading_ord_quantifier c in
-       let depth = if m then depth + 1 else depth in
-       (m, depth)
-    | Some m -> (m, depth)
+  let manual = match manual with
+    | None -> TypingBase.has_leading_ord_quantifier c
+    | Some m -> m
   in
   let e = Pos.none (TFixY(Some manual,depth - 1, f)) in
   match generalise ~manual ctxt.non_zero (SchTerm f) c ctxt.call_graphs with
@@ -140,8 +137,6 @@ let check_fix type_check subtype prfptr ctxt t manual depth f c =
       let prf = (ctxt.non_zero, e, a, Typ_Yufl prf) in
       Timed.(prfptr := Unroll(sch,tros, prf))
 
-
-let fixpoint_depth = ref 1 (* TODO move *)
 
 let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 ->
   Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!" Print.term t0 Print.kind a0

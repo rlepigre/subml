@@ -37,7 +37,7 @@ let spec = Arg.align
     , Arg.Clear Ast.contract_mu
     , "  Do not contract the fixpoints" )
   ; ( "--fix-depth"
-    , Arg.Set_int Typing.fixpoint_depth
+    , Arg.Set_int Raw.fixpoint_depth
     , "i  Set the maximal unrolling depth for fixpoints" )
   ; ( "--debug"
     , Arg.String Io.set_debug

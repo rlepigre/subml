@@ -69,12 +69,12 @@ val rec suc2 : ∀α NS(α) → NS(α+2) = fun n →
     let α such that n : NS(α) in
     S (suc2 n) : NS(α+2)
 
-?val rec suc2 : ∀α NS(α) → NS(α+2) = fun n →
+?val rec[1] suc2 : ∀α NS(α) → NS(α+2) = fun n →
   case n of
   | Z  → S (S Z)
   | S n → S (suc2 n)
 
-?val rec 2 suc2 : ∀α NS(α) → NS(α+2) = fun n →
+?val rec[2] suc2 : ∀α NS(α) → NS(α+2) = fun n →
   case n of
   | Z  → S (S Z)
   | S n → S (suc2 n)

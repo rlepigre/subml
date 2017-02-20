@@ -1,6 +1,6 @@
 type T = μX [ L | N of X * X ]
 
-?val rec peigne : T → T = fun t →
+?val rec[1] peigne : T → T = fun t →
   case t of
   | L → L
   | N(l,r) →
@@ -9,7 +9,7 @@ type T = μX [ L | N of X * X ]
     | N(rl,rr) →
        peigne (N(N(l,rl),rr)))
 
-?val rec 2 peigne : T → T = fun t →
+?val rec[2] peigne : T → T = fun t →
   case t of
   | L → L
   | N(l,r) →
@@ -18,7 +18,7 @@ type T = μX [ L | N of X * X ]
     | N(rl,rr) →
        peigne (N(N(l,rl),rr)))
 
-?val rec 3 peigne : T → T = fun t →
+?val rec[3] peigne : T → T = fun t →
   case t of
   | L → L
   | N(l,r) →
@@ -27,7 +27,7 @@ type T = μX [ L | N of X * X ]
     | N(rl,rr) →
        peigne (N(N(l,rl),rr)))
 
-?val rec 4 peigne : T → T = fun t →
+?val rec[4] peigne : T → T = fun t →
   case t of
   | L → L
   | N(l,r) →
@@ -38,7 +38,7 @@ type T = μX [ L | N of X * X ]
 
 (* NOTE: kept because was looping in the previous version of subml *)
 
-!val rec 3 peigne : T → T = fun t → (* still loops with 4 !*)
+!val rec[4] peigne : T → T = fun t →
   case t of
   | L → L
   | N(l,r) →
@@ -56,22 +56,22 @@ type S(α,A) = να X {} → A × X
 val guard2 : ∀α∀A (S(α+1,N) → S(∞,N)) → S(α,N) → S(∞,N) =
   fun g xs → g (g (fun u →  (Z,xs)))
 
-!val rec f : ∀α∀A (S(α,N) → S(∞,N)) → S(α,N) = fun g →
+!val rec[1] f : ∀α∀A (S(α,N) → S(∞,N)) → S(α,N) = fun g →
   guard2 g (f (guard2 g))
 
-!val rec 2 f : ∀α∀A (S(α,N) → S(∞,N)) → S(α,N) = fun g →
+!val rec[2] f : ∀α∀A (S(α,N) → S(∞,N)) → S(α,N) = fun g →
   guard2 g (f (guard2 g))
 
-!val rec 3 f : ∀α∀A (S(α,N) → S(∞,N)) → S(α,N) = fun g →
+!val rec[3] f : ∀α∀A (S(α,N) → S(∞,N)) → S(α,N) = fun g →
   guard2 g (f (guard2 g))
 
-!val rec f : ∀α∀A (S(α+1,N) → S(∞,N)) → S(α+1,N) = fun g →
+!val rec[1] f : ∀α∀A (S(α+1,N) → S(∞,N)) → S(α+1,N) = fun g →
   guard2 g (f (guard2 g))
 
-!val rec 2 f : ∀α∀A (S(α+1,N) → S(∞,N)) → S(α+1,N) = fun g →
+!val rec[2] f : ∀α∀A (S(α+1,N) → S(∞,N)) → S(α+1,N) = fun g →
   guard2 g (f (guard2 g))
 
-!val rec 3 f : ∀α∀A (S(α+1,N) → S(∞,N)) → S(α+1,N) = fun g →
+!val rec[3] f : ∀α∀A (S(α+1,N) → S(∞,N)) → S(α+1,N) = fun g →
   guard2 g (f (guard2 g))
 
 (* Cody Roux Paradox *)
@@ -84,7 +84,7 @@ val pred : ∀α (N → O(α+2)) → N → O(α+1) = fun f n → case f (S n) of
   | L g → g n
   | M(x,y) → x
 
-!val rec deep : ∀α O(α) → N = fun o →
+!val rec[1] deep : ∀α O(α) → N = fun o →
   case o of
   | M(x,y) →
     (case x of
@@ -101,7 +101,7 @@ val pred : ∀α (N → O(α+2)) → N → O(α+1) = fun f n → case f (S n) of
     | _ → Z:N)
   | _ → Z:N
 
-!val rec 2 deep : ∀α O(α) → N = fun o →
+!val rec[2] deep : ∀α O(α) → N = fun o →
   case o of
   | M(x,y) →
     (case x of
@@ -118,7 +118,7 @@ val pred : ∀α (N → O(α+2)) → N → O(α+1) = fun f n → case f (S n) of
     | _ → Z:N)
   | _ → Z:N
 
-!val rec 3 deep : ∀α O(α) → N = fun o →
+!val rec[3] deep : ∀α O(α) → N = fun o →
   case o of
   | M(x,y) →
     (case x of
@@ -144,9 +144,9 @@ type A(α) = (N → NS(α)) → N
 val shift : ∀α (N → NS(α+2)) → N → NS(α+1) = fun g n →
   case g (S n) of Z → Z | S p → p
 
-!val rec loop : ∀α A(α) = fun g → loop (shift g)
-!val rec 2 loop : ∀α A(α) = fun g → loop (shift g)
-!val rec 3 loop : ∀α A(α) = fun g → loop (shift g)
+!val rec[1] loop : ∀α A(α) = fun g → loop (shift g)
+!val rec[2] loop : ∀α A(α) = fun g → loop (shift g)
+!val rec[3] loop : ∀α A(α) = fun g → loop (shift g)
 
 (* and this one is not semi-continuous and shoud work *)
 val rec loopnot : ∀α NS(α) → (N → NS(α)) → NS(α) = fun n g →
@@ -190,11 +190,11 @@ val rec p : ∀α∀β Hungry2(α,NS(β+1)) → Hungry2(α,NS(β)) =
 val rec h : ∀α NS(α) → Hungry2(α,NS(α)) =
   fun _ n → s (h (pred n))
 
-!val rec tr : Hungry2(∞,N) → ∀X X =
+!val rec[1] tr : Hungry2(∞,N) → ∀X X =
    fun h → tr (p (h (S Z)))
 
-!val rec 2 tr : Hungry2(∞,N) → ∀X X =
+!val rec[2] tr : Hungry2(∞,N) → ∀X X =
    fun h → tr (p (h (S Z)))
 
-!val rec 3 tr : Hungry2(∞,N) → ∀X X =
+!val rec[3] tr : Hungry2(∞,N) → ∀X X =
    fun h → tr (p (h (S Z)))
