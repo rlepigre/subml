@@ -114,7 +114,7 @@ and safe_set_ouvar pos p os o =
         let st = uvar_state p in
         let fo = !fobind_ordis os o in
         set_ouvar ~msg:"eq1" p fo;
-        not (ouvar_mbind_occur p fo os) && less_opt_ordi pos o st os) ()
+        less_opt_ordi pos o st os) ()
 
 and is_positive pos o =
   match orepr o with
