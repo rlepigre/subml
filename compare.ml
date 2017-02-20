@@ -113,9 +113,8 @@ and safe_set_ouvar pos p os o =
     Timed.pure_test (fun () ->
         let st = uvar_state p in
         let fo = !fobind_ordis os o in
-        assert (not (ouvar_mbind_occur p fo));
         set_ouvar ~msg:"eq1" p fo;
-        less_opt_ordi pos o st os) ()
+        not (ouvar_mbind_occur p fo os) && less_opt_ordi pos o st os) ()
 
 and is_positive pos o =
   match orepr o with
@@ -443,9 +442,8 @@ and kuvar_ord_occur : ?safe_ordis:ordi array -> kuvar -> ordi -> bool =
   fun ?(safe_ordis=[||]) v o ->
     (snd (gen_occur ~safe_ordis ~kuvar:(fun w -> v.uvar_key = w.uvar_key) ()) o <> Non)
 
-and ouvar_mbind_occur : ouvar -> ordi from_ordis -> bool =
-  fun p o ->
-    ouvar_occur p (msubst o (Array.make (mbinder_arity o) odummy))
+and ouvar_mbind_occur : ouvar -> ordi from_ordis -> ordi array -> bool =
+  fun p o os -> ouvar_occur p (msubst o os)
 
 (****************************************************************************)
 (**{2                     Protection of tests                              }*)

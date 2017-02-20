@@ -171,9 +171,8 @@ val rec tr : ∀α Hungry(α,N) → ∀X X =
   fun f →
     case f of In f' → tr (p (f' (S Z)))
 
-(* Subml loops here ... reject would be better *)
-(*val rec h : ∀α NS(α) → Hungry(α,NS(α)) =
-  fun p → In (fun n → s (h (pred n)))*)
+!val rec h : ∀α NS(α) → Hungry(α,NS(α)) =
+  fun p → In (fun n → s (h (pred n)))
 
 (* Trying with ν we go further *)
 type Hungry2(α,A) = να X (A → X)

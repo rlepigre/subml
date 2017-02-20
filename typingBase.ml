@@ -126,7 +126,7 @@ let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
      let o' = OUVar(new_ouvara a,os) in
      assert (safe_set_ouvar [] p os (OSucc o')); o'
   | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os), _
-                                                   when not (ouvar_mbind_occur p o') ->
+                                                   when not (ouvar_mbind_occur p o' os) ->
      set_ouvar p o'; opred o w
   | OConv, None -> OConv
   | OMaxi, _ -> assert false

@@ -235,7 +235,7 @@ let rec bind_both ?(from_generalise=false) os x =
                  | o -> o)))))
            in
            Io.log_uni "set in bind gn\n%!";
-           assert (not (ouvar_mbind_occur u k));
+           assert (not (ouvar_mbind_occur u k os'));
            set_ouvar u k;
            ouvar v new_os
       | o -> def_ord o
@@ -285,7 +285,7 @@ let _ = fobind_ordis := obind_ordis
     the variable is changed *)
 let ouvar_use_state : (ordi -> 'a) -> ordi list -> ouvar -> ordi array -> bool =
   fun self_ord pos u os -> match !(u.uvar_state) with
-  | Unset (Some o', _) when not (ouvar_mbind_occur u o') ->
+  | Unset (Some o', _) when not (ouvar_mbind_occur u o' os) ->
      set_ouvar u o'; true
   | Unset (_, Some o') ->
      ignore (self_ord (msubst o' os)); (* TODO: needed to set some ouvar from state,
