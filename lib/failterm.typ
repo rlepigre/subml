@@ -198,3 +198,11 @@ val rec h : ∀α NS(α) → Hungry2(α,NS(α)) =
 
 !val rec[3] tr : Hungry2(∞,N) → ∀X X =
    fun h → tr (p (h (S Z)))
+
+type F = ∀X (X → X → X)  → (X → X → X)  → X
+
+(* loops
+check F ⊂ F → F → F
+
+val f : F → F  = λx.(x x x)
+*)
