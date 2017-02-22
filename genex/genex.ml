@@ -1,9 +1,11 @@
-let parser incl = "include \"" f:''[a-zA-Z0-9/._-]+'' "\"\n"
+let blank = Earley.blank_regexp "[ \n\r\t]*"
 
-let parser sect =  "(*" name:''[A-Za-z0-9 -]*'' "*)\n" is:incl+ "\n" ->
+let parser incl = "include \"" f:''[a-zA-Z0-9/._-]+'' "\""
+
+let parser sect =  "(*" name:''[A-Za-z0-9 -]*'' "*)" is:incl+ ->
   (String.trim name, is)
 
-let parse = Earley.parse_file (parser sect*) Earley.no_blank
+let parse = Earley.parse_file (parser sect*) blank
 
 let output_html ss =
   let output_sect (n, is) =
@@ -30,4 +32,4 @@ let _ =
       Printf.eprintf "Usage: %s <all.typ>\n%!" Sys.argv.(0);
       exit 1;
     end;
-  output_html (Earley.handle_exception parse Sys.argv.(1)) 
+  output_html (Earley.handle_exception parse Sys.argv.(1))
