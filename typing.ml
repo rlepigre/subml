@@ -281,17 +281,6 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         end;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
-    | (KUVar(ua,os), b            ) -> (* NOTE: deal with KProd(_,true) and
-                                          may be too much incomplete in this case *)
-        let bb = bind_ordis os b0 in (* NOTE: may instanciate ua *)
-        if is_unset ua then safe_set_kuvar sNeg ua bb os;
-        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
-
-    | (a           ,(KUVar(ub,os)))  ->
-        let aa = bind_ordis os a0 in (* NOTE: may instanciate ub *)
-        if is_unset ub then safe_set_kuvar sPos ub aa os;
-        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
-
     (* quantification rule introducing witness before induction *)
     | (_           , KKAll(f)    ) ->
         let p = subtype ctxt0 t0 a0 (subst f (KUCst(t0,f,true))) in
@@ -309,6 +298,16 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         let p = subtype ctxt0 t0 (subst f (OLess(OMaxi, In(t0,f)))) b0 in
         Sub_OExi_l(p)
 
+    | (KUVar(ua,os), b            ) -> (* NOTE: deal with KProd(_,true) and
+                                          may be too much incomplete in this case *)
+        let bb = bind_ordis os b0 in (* NOTE: may instanciate ua *)
+        if is_unset ua then safe_set_kuvar sNeg ua bb os;
+        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
+
+    | (a           ,(KUVar(ub,os)))  ->
+        let aa = bind_ordis os a0 in (* NOTE: may instanciate ub *)
+        if is_unset ub then safe_set_kuvar sPos ub aa os;
+        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
     | _ -> raise Exit
   in (ctxt0.non_zero, t0, a0, b0, rule)
@@ -559,10 +558,10 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let wit = unbox (tcnst f (box a) (box b)) in
          let p2 = type_check ctxt (subst f wit.elt) b in
          Typ_Func_i(p1, p2)
-      | TAppl(t,u) when is_neutral t && not (is_neutral u)->
+      | TAppl(f,u) when is_neutral f && not (is_neutral u)->
          let a = if strict_eq_term u tunit then kunit else new_kuvar () in
          let ptr = Subset.create ctxt.non_zero in
-         let p2 = type_check ctxt t (KMRec(ptr,KFunc(a,c))) in
+         let p2 = type_check ctxt f (KMRec(ptr,KFunc(a,c))) in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let p1 = type_check ctxt u a in
          Typ_Func_e(p1, p2)

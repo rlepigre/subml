@@ -235,7 +235,6 @@ let rec bind_both ?(from_generalise=false) os x =
                  | o -> o)))))
            in
            Io.log_uni "set in bind gn\n%!";
-           assert (not (ouvar_mbind_occur u k os'));
            set_ouvar u k;
            ouvar v new_os
       | o -> def_ord o
