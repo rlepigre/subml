@@ -3,13 +3,15 @@ var term = undefined;
 var prelude = false;
 
 function loadsubmlfile(fn) {
+  if (fn == "tutorial.typ") dir = "subml/";
+  else dir = "subml/lib/";
   $.ajax({
     type     : "GET",
-    url      : "subml/" + fn,
+    url      : dir + fn,
     dataType : 'text',
     success  :
-    function (data) {
-      edit.setValue(data);
+      function (data) {
+	  edit.setValue(data);
     }
   });
 }
@@ -41,7 +43,7 @@ $(function() {
           var spaces = Array(instance.getOption("indentUnit") + 1).join(" ");
           instance.replaceSelection(spaces);
         },
-      Space : 
+      Space :
         function(instance){
           var pos = instance.getCursor();
           var line = instance.getLine(pos.line);

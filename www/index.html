@@ -20,9 +20,15 @@
     <div id="edit"></div>
     <div id="panel">
       <p id="pos"></p>
-      <a href="javascript:subml_eval()">Load</a>
-      <a href="javascript:term.setValue('')">Clear log</a>
-      <a href="javascript:edit.setValue('')">Clear editor</a>
+      <a title="run the program" href="enableJavascript.html"
+	 onclick="subml_eval(); return false;">
+	Run</a>
+      <a title="clear log" href="enableJavascript.html"
+	 onclick="term.setValue(''); return false;">
+	Clear log</a>
+      <a title="clear editor" href="enableJavascript.html"
+	 onclick="edit.setValue(''); return false;">
+	Clear editor</a>
     </div>
     <div id="term"></div>
   </div>
@@ -67,7 +73,7 @@
       <h2>Full list of examples</h2>
       <div id="examples"></div>
       <script>
-        $("#examples").load("examples.html"); 
+        $("#examples").load("examples.html");
       </script>
     </div>
   </div>

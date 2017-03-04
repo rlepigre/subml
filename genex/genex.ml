@@ -7,19 +7,22 @@ let parser sect =  "(*" name:''[A-Za-z0-9 -]*'' "*)" is:incl+ ->
 
 let parse = Earley.parse_file (parser sect*) blank
 
+let eLink="enableJavascript.html"
+
 let output_html ss =
+  let print_link ch (n, l) =
+    Printf.printf "<a class=\"submlfile\" href=\"%s\" title=\"load %s\" " eLink l;
+    Printf.printf "onclick=\"loadsubmlfile('%s'); return false;\"" l;
+    Printf.printf ">%s</a>\n" l
+  in
   let output_sect (n, is) =
     match is with
     | []  -> ()
-    | [l] -> Printf.printf "<h3>%s (<a class=\"submlfile\" href=\"" n;
-             Printf.printf "javascript:loadsubmlfile('%s')" l;
-             Printf.printf "\">%s</a>)</h3>\n" l;
+    | [l] -> Printf.printf "<h3>%s (%a)</h3>\n" l print_link (n, l);
     | _   -> Printf.printf "<h3>%s</h3>\n" n;
              Printf.printf "<ul>\n";
              let print_link l =
-               Printf.printf "  <li><a class=\"submlfile\" href=\"";
-               Printf.printf "javascript:loadsubmlfile('%s')" l;
-               Printf.printf "\">%s</a></li>\n" l
+               Printf.printf "  <li>%a</li>\n" print_link (n, l)
              in
              List.iter print_link is;
              Printf.printf "</ul>\n"
