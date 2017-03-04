@@ -20,10 +20,11 @@ val rec f : ∀α ((FNat(α) → Nat) → Nat) → Nat =
 
 val f' : ((Nat → Nat) → Nat) → Nat = f
 
-(* FIXME: ordinal indication fails for recursive function
-val f' : ∀α (((μα X [ Z | S of X ]) → Nat) → Nat) → Nat =
-  Λα fix f' → fun x → x (fun n →
-    case (n:μα X [ Z | S of X ]) of
+type SN(α) = μα X [ Z | S of X ]
+
+val rec f' : ∀α ((SN(α) → Nat) → Nat) → Nat =
+  let α such that _ : ((SN(α) → Nat) → Nat) → Nat in
+  fun x → x (fun n →
+    case (n:SN(α)) of
     | Z   → (Z:Nat)
     | S p → (f' (fun g → x (fun q → add q (g p)))))
-*)

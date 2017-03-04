@@ -2,6 +2,10 @@
 type Pos = μX [Z | S of X]
 type Neg = μX [Z | P of X]
 type Int = [Z | S of Pos | P of Neg]
+type BInt = μX [Z | P of X | S of X]
+
+check Int ⊂ BInt
+
 type PS(α) = μα X [Z | S of X]
 type NS(α) = μα X [Z | P of X]
 type IS(α)  = [Z | S of PS(α) | P of NS(α) ]
@@ -46,10 +50,8 @@ val rec add : Int → Int → Int = fun n m →
   case n of
   | Z → m
   | S n → (case n of Z → suc m | S n →
-      let α such that n:PS(α) in
       add n (suc (suc m)))
   | P n → (case n of Z → pre m | P n →
-      let α such that n:NS(α) in
       add n (pre (pre m)))
 
 val rec[1] add : Int → Int → Int = fun n m →
@@ -58,7 +60,21 @@ val rec[1] add : Int → Int → Int = fun n m →
   | S n → (case n of Z → suc m | S n → add n (suc (suc m)))
   | P n → (case n of Z → pre m | P n → add n (pre (pre m)))
 
-?val rec[2] add : Int → Int → Int = fun n m →
+val rec[1] add : Int → Int → Int = fun n m →
+  case n of
+  | Z → m
+  | S n → (case n of Z → suc m | S n → add n (suc (suc m)))
+  | P n → (case n of Z → pre m | P n → add n (pre (pre m)))
+
+val add : Int → Int → Int =
+  let rec fn : BInt → Int → Int =
+    fun n m → case n of
+    | Z → m
+    | S n → fn n (suc m)
+    | P n → fn n (pre m)
+  in fn
+
+?val rec add : Int → Int → Int = fun n m →
   case n of
   | Z → m
   | S n → add n (suc m)
