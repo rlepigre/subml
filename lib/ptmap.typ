@@ -13,8 +13,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
-include "lib/nat.typ"
-include "lib/natbin.typ"
+include "nat.typ"
+include "natbin.typ"
 
 type Key = Bin
 

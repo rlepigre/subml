@@ -1,4 +1,4 @@
-include "lib/list.typ"
+include "list.typ"
 
 type StreamS(α,A) = να X {} → A × X
 type Stream(A) = StreamS(∞,A)

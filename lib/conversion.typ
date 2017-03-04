@@ -1,6 +1,6 @@
-include "lib/nat.typ"
-include "lib/church/nat.typ"
-include "lib/scott/nat.typ"
+include "nat.typ"
+include "church/nat.typ"
+include "scott/nat.typ"
 
 (* Conversions between Peano numbers and Church numerals. *)
 val rec nat_to_church : Nat → CNat =

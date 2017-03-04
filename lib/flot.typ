@@ -164,7 +164,7 @@ val rec[1] compose32 : UF3 → UF3 → F2 = fun f1 f2 _ →
 
 val compose3' : F3 → F3 → F3 = fun f1 f2 → compose32 f1 f2 {}
 
-include "lib/nat.typ"
+include "nat.typ"
 
 val rec[1] filter_to_nat : UF → Stream(Nat) = fun s _ →
   (case s {} of

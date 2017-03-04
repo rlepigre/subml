@@ -1,4 +1,4 @@
-include "lib/nat.typ"
+include "nat.typ"
 
 (* The santadard type for ordinals, semantics converges in 2^ω,
    even for Ord2, because |Ord| ⊂ Λ remains countable *)

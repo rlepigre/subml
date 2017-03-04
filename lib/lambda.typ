@@ -52,7 +52,7 @@ val rec whnf_step : ∀α∀V TS(α,T(V)) → T(V) = fun t →
 
 val whnf_step : Term → Term = whnf_step
 
-include "lib/nat.typ"
+include "nat.typ"
 
 val rec whnf_steps : Nat → Term → Term = fun n t →
   case n of Z → t | S p → whnf_steps p (whnf_step t)

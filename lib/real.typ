@@ -1,4 +1,4 @@
-include "lib/int.typ"
+include "int.typ"
 
 type D  = [P | Z | S ]
 type I1 = νX {} → D × X
@@ -76,7 +76,7 @@ val rec divI' : I1 → Pos → Int → I1 = fun a n s _ →
 
 val divI : I1 → Pos → I1 = fun a n → divI' a n Z
 
-include "lib/list.typ"
+include "list.typ"
 
 val rec extract : Pos → I1 → {} =
   fun n a → case n of
