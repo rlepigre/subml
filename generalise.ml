@@ -163,7 +163,9 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
     let o = orepr o in
     let res =
       match o with
-      | OLess _ -> let (_, o) = eps_search true o in box o
+      | OLess _ when occ <> Non ->
+         assert(match occ with Reg _ -> false | _ -> true);
+         let (_, o) = eps_search true o in box o
       | OUVar(u,os) -> (* NOTE: avoid looping in flot.typ/compose *)
          if ouvar_use_state self_ord pos u os then
            self_ord o

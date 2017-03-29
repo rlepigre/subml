@@ -31,3 +31,8 @@ latex { we have $#!S1# \subset #!S2#$
 *)
 !check μX [ A of X] ⊂ μX []
 !check μX [] ⊂ ∀X X
+
+type F(X,Y) = [ Z | A of X | B of Y]
+
+check μXνY F(X,Y) ⊂ μXνY F(X,F(X,Y))
+check μXνY F(X,F(X,Y)) ⊂ μXνY F(X,Y)
