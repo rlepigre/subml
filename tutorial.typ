@@ -2,8 +2,9 @@
 (*                              SubML Tutorial                              *)
 (****************************************************************************)
 (*                                                                          *)
-(* This tutorial introduce the SubML language. Like in OCaml or SML,        *)
-(* records and (polymorphic) variants are provided.                         *)
+(* This page contains a typechecker and interpreter for the SubML language, *)
+(* which will be introduced in this tutorial. Like in OCaml or SML, records *)
+(* and (polymorphic) variants are provided.                                 *)
 
 type Boolean = [True | False]
 type Pair    = {fst : Boolean ; snd : Boolean}
@@ -24,6 +25,7 @@ val falsetrue : {fst : [True | False] ; snd : [True | False]} =
 (* In the system, it is possible to define types with parameters.           *)
 
 type Either(A,B) = [InL of A | InR of B]
+
 val inlBool : Boolean → Either(Boolean, Boolean) = fun b → InL b
 
 (* Note that the arrow symbol [→] denotes the function type. In the editor, *)
@@ -43,13 +45,14 @@ val fst : Pair → Boolean = fun p → p.fst
 (* the symbol [∀] (entered using [forall], [\forall] or [/\])  to  quantify *)
 (* over a type variable.                                                    *)
 
+val id : ∀X X → X = fun x → x
+
 type Maybe(A) = [Nothing | Just of A]
+
 val fromJust : ∀A Maybe(A) → A → A = fun m d →
   case m of
   | Nothing → d
   | Just v  → v
-
-val id : ∀X X → X = fun x → x
 
 (* In the system, types are not implicitly recursive. Inductive  types  and *)
 (* coinductive types are defined explicitly using the binders [μ]  and  [ν] *)
@@ -67,8 +70,8 @@ val rec add : Unary → Unary → Unary = fun n m →
   | Zero    → m
   | Succ n' → Succ (add n' m)
 
-(* The buttons [Load] below the editor is used to typecheck the contents of *)
-(* this editor. The result is then displayed in the log at the bottom.      *)
+(* The [Run] button below the editor is used to typecheck its contents. The *)
+(* result is then displayed in the log at the bottom.                       *)
 
 eval add three (add two one)
 eval (fun x y → x) zero two
@@ -78,20 +81,13 @@ eval (fun x y z → x)
 (* obtained value is the displayed in the log. Note than an error is raised *)
 (* if the type of the expression cannot be inferred.                        *)
 
-val idCurry : ∀X X → X = fun x → x
+(* A convenient syntax [A1 × ... × AN] is provided for n-ary product types. *)
+(* They are encoded into record types with numeric labels from [1] to  [N]. *)
+(* The correspondig syntax for tuples is [(a1, ..., aN)].                   *)
 
-(* In the system, type annotations are sometimes to help the  type-checker. *)
-(* Type indications can be given by the used on function arguments  and  on *)
-(* subterms. In terms corresponding to polymorphic types, type abstractions *)
-(* can be used using the symbol [Λ] (obtained using [\Lambda]). The name of *)
-(* the bound type variables should correspond exactly to the  name  of  the *)
-(* corresponding variable in the type.                                      *)
+val pair : ∀A ∀B A → B → A × B = fun a b → (a, b)
 
-(* A syntactic sugar is provided for tuples, using A1 × ... × AN for types  *)
-(* and (a1,...,aN) for values. Tuples are just record with numeric labels   *)
-(* from 1 to N.                                                             *)
-
-val p : ∀A ∀B A → B → A × B = fun a b → (a, b)
+val fst  : ∀A ∀B A × B → A = fun p → p.1
 
 (* Subml allows for sized type, i.e. a type with a size parameter. The size *)
 (* parameter is given next to the μ or ν and represent the maximum size for *)
@@ -104,12 +100,12 @@ val rec map : ∀α ∀A ∀B (A → B) → L(α,A) → L(α,B) = fun f l →
   | Nil        → Nil
   | Cons(a,l') → Cons(f a, map f l')
 
-(* Here L(α,A) is the type of lists of size at most α. Using this type, we  *)
-(* can program the classic map function on lists, with the indication that  *)
+(* Here L(α,A) is the type of lists of size at most α. Using this type,  we *)
+(* can program the classic map function on lists, with the indication  that *)
 (* it preserves the size of lists.                                          *)
 
-(* A syntactic sugar is provided for lists: [] represents Nil and x::l      *)
-(* denotes Cons { hd = x; tl = l; }. This gives the following for lists     *)
+(* A syntax [[]] can be used for the [Nil] constructor, and [x::l]  can  be *)
+(* used for [Cons { hd = x; tl = l; }].                                     *)
 
 type L(α,A) = μα X [ Nil | Cons of { hd : A ; tl : X } ]
 
@@ -118,9 +114,9 @@ val rec map : ∀α ∀A ∀B (A → B) → L(α,A) → L(α,B) = fun f l →
   | []      → []
   | a :: l' → f a :: map f l'
 
-(* Subml only allows for terminating programs. The notion of size is this   *)
-(* used to establish termination and size information in function are often *)
-(* essential to prove termination.                                          *)
+(* Subml only allows for terminating programs, and it relies on the  notion *)
+(* of size to establish termination. Size informations on functions is thus *)
+(* often essential to prove termination.                                    *)
 
 val rec mapSucc : ∀α L(α,Unary) → L(α,Unary) = fun l →
   case l of
