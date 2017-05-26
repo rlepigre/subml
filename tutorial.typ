@@ -114,9 +114,9 @@ val rec map : ∀α ∀A ∀B (A → B) → L(α,A) → L(α,B) = fun f l →
   | []      → []
   | a :: l' → f a :: map f l'
 
-(* Subml only allows for terminating programs, and it relies on the  notion *)
-(* of size to establish termination. Size informations on functions is thus *)
-(* often essential to prove termination.                                    *)
+(* Subml only allows for terminating programs, and it relies on ordinals to *)
+(* establish termination. Size informations on functions is thus  essential *)
+(* for proving termination.                                                 *)
 
 val rec mapSucc : ∀α L(α,Unary) → L(α,Unary) = fun l →
   case l of
@@ -140,7 +140,7 @@ val tail : ∀α∀A L(α+2,A) → L(α+1,A) = fun l →
   | []     → []
   | _ :: l → l
 
-(* Subml also allows for local definitions (recursive or not)               *)
+(* Subml also allows local definitions that may be recursive.               *)
 val rev : ∀A L(∞,A) → L(∞,A) =
   let rec aux : ∀A L(∞,A) → L(∞,A) → L(∞,A) = fun l2 l1 →
     case l1 of
@@ -150,12 +150,12 @@ val rev : ∀A L(∞,A) → L(∞,A) =
   let A such that _:L(∞,A) → L(∞,A) in
   aux ([]:L(∞,A))
 
-(* In this example, if in the last line, we use '[]', Subml uses the type   *)
-(* [Nil] and typing fails. To give the necessary typing annotation, one can *)
-(* use 'let A1,...,AN such that x:B in ...' This allows to fetch some types *)
-(* by pattern matching on the type of a variable. On may use '_' to pattern *)
-(* match agains the type of the current term. This construct can also be    *)
-(* used to fetch size annotation by pattern matching.                       *)
+(* In the above example, we cannot use [[]] because the type-checker  would *)
+(* then use the type [[Nil]] and fail. To annotate the program, one can use *)
+(* the syntax [let A1, ..., AN such that x:B in ...] to fetch types using a *)
+(* pattern matching on the type of variables. On may also use [_] to  match *)
+(* against the type of the current term. This construct can also be used to *)
+(* fetch size annotation by pattern matching.                               *)
 
 (* Subml has coinductive types using ν instead of μ. We can also mix them.  *)
 
