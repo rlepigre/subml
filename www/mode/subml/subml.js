@@ -109,7 +109,8 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
 
     setType("keyword")(
       "type", "fun", "val", "case", "of", "include", "fix", "check", "if",
-      "then", "else", "match", "with", "rec", "let", "in", "eval", "not");
+      "then", "else", "match", "with", "rec", "let", "in", "eval", "not",
+      "such", "that");
 
     setType("builtin")(
       "->", "=", ";", ":", "/\\", "\\/", ".", "{", "}", "(", ")", ",",
