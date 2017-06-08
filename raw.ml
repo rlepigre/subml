@@ -181,10 +181,7 @@ let rec kind_variable : occur -> env -> strloc -> pordi array -> pkind array -> 
   let oarity = Array.length os in
   try
     let (k, pos') = List.assoc s.elt env.kinds in
-    if not (isPos (compose2 pos' pos)) then
-      let msg = Printf.sprintf "%s used in a negative position." s.elt in
-      positivity_error s.pos msg
-    else if oarity <> 0 then
+    if oarity <> 0 then
       arity_error s.pos (s.elt ^ " does not expect ordinal arguments.")
     else if karity <> 0 then
       arity_error s.pos (s.elt ^ " does not expect kind arguments.")
