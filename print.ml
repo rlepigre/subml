@@ -985,8 +985,13 @@ let print_epsilon_tbls ff =
                 (print_ordi true) o
                 newline
     ) ordi_tbl;
-  List.iter (fun line ->
-      fprintf ff "%s" line) !output
+  match (!print_mode, !output) with
+  | (TeX, _::_) -> let rev  = List.rev !output in
+                   let lst  = List.hd rev in
+                   let fsts = List.rev (List.tl rev) in
+                   List.iter (fun line -> fprintf ff "%s" line) fsts;
+                   fprintf ff "%s" (String.sub lst 0 (String.length lst - 3))
+  | _           -> List.iter (fun line -> fprintf ff "%s" line) !output
 
 exception Find_tdef of kdef
 
