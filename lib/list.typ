@@ -49,8 +49,8 @@ val rec map2 : ∀A ∀B ∀C ∀α ((A → B → C) → SList(α,A) → SList(�
             | [] → []
             | y::l2 → f x y :: map2 f l1 l2)
 
-(* This does not works, would need max, or the knowled that omega is enough
-   for the fixpoint in list to converge. The problem is that l1' and l2' to not
+(* This does not works, would need max, or the knowledge that omega is enough
+   for the fixpoint in list to converge. The problem is that l1' and l2' do not
    have the same size in the induction. If we used convergence to omega, they could
    both have size (α-1) *)
 ?val rec mapKeep2 : ∀A ∀α ((A → A → A) → SList(α,A) → SList(α,A) → SList(α,A)) = fun f l1 l2 →
