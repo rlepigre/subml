@@ -116,63 +116,52 @@ let add_call ctxt fnum os is_rec =
   let call = build_call ctxt fnum os is_rec in
   Sct.add_call ctxt.call_graphs call
 
-(** If w = Some w': construction of an ordinal < o such that w
-    If w = None: find an ordinal o' < o *)
-let rec opred : ordi -> ord_wit option -> ordi = fun o w ->
+(** construction of an ordinal < o such that w *)
+let rec opred : ordi -> ord_wit -> ordi = fun o w ->
   let o = orepr o in
-  match o, w with
-  | OSucc o', _ -> o'
-  | OUVar({uvar_state = {contents = Unset (None,None)}; uvar_arity = a} as p, os), _ ->
+  match o with
+  | OSucc o' -> o'
+  | OUVar({uvar_state = {contents = Unset (None,None)}; uvar_arity = a} as p, os) ->
      let o' = OUVar(new_ouvara a,os) in
      assert (safe_set_ouvar [] p os (OSucc o')); o'
-  | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os), _
+  | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os)
                                                    when not (ouvar_mbind_occur p o' os) ->
      set_ouvar p o'; opred o w
-  | OConv, None -> OConv
-  | OMaxi, _ -> assert false
-  | (OLess _ | OUVar _) as o, None -> new_ouvar ~upper:(constant_mbind 0 o) ()
-  | OUVar _, Some w ->
+  | OUVar _ ->
      subtype_error "opred fails"; (* FIXME: can we do better ? OLess(o,w)
      has an invariant that o is itself OLess or OConv ? *)
-  | (OConv | OLess _ as o), Some w ->
+  | (OConv | OLess _ as o) ->
      OLess(o, w)
-  | (OVari _ | OVars _), _ -> assert false
+  | OMaxi | OVari _ | OVars _ -> assert false
 
-(** give a list of positive ordinals that may be equal to o.
-    This list is of legth >= 2 only if o is an OUVar *)
-let possible_positive ctxt o =
+(** find an ordinal o' < o *)
+let rec ofindpred : ctxt -> ordi -> ordi = fun ctxt o ->
+  let o = orepr o in
   let pos = ctxt.non_zero in
-  let res = match orepr o with
-  | OConv    -> [OConv]
-  | OMaxi    -> assert false
-  | OSucc o' -> [o]
+  match o with
+  | OSucc o' -> o'
+  | OConv -> o
+  | OLess _ as o ->
+     if is_positive pos o then new_ouvar ~upper:(constant_mbind 0 o) ()
+                          else raise Not_found
   | OUVar(u,os) ->
-     let l = List.filter
-       (fun o ->
-         Io.log_sub "testing %a\n%!" (print_ordi false) o;
-         Timed.pure_apply (less_opt_ordi pos o (uvar_state u)) os) ctxt.non_zero
-     in
-     let l =
-       if l = [] then
-         let o' = OSucc (new_ouvar ()) in
-         if Timed.pure_apply (less_opt_ordi pos o' (uvar_state u)) os then
-           [o']
-         else []
-       else l
-     in
-     let l =
-       if Timed.pure_apply (less_opt_ordi pos OConv (uvar_state u)) os then
-         l @ [OConv]
-       else l
-     in
-     l
-  | OLess _ as o -> if is_positive ctxt.non_zero o then [o] else []
-  | OVari _ | OVars _ -> assert false
-  in
-  Io.log_sub "possible positive: %a ==> %a\n%!" (print_ordi false) o
-    (print_list (print_ordi false) ",") res
-  ;
-  res
+    (** find a positive ordinal that may be equal to an OUVar(u,os) *)
+    let o' =
+      try List.find
+            (fun o ->
+              Io.log_sub "testing %a\n%!" (print_ordi false) o;
+              Timed.pure_apply (less_opt_ordi pos o (uvar_state u)) os) pos
+      with Not_found ->
+        let o' = OSucc (new_ouvar ()) in
+        if Timed.pure_apply (less_opt_ordi pos o' (uvar_state u)) os then
+          o'
+        else if Timed.pure_apply (less_opt_ordi pos OConv (uvar_state u)) os then
+          OConv
+        else raise Not_found
+    in
+    set_ouvar u (obind_ordis os o');
+    ofindpred ctxt o
+  | OMaxi | OVari _ | OVars _ -> assert false
 
 let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->

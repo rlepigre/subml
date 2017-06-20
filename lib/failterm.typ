@@ -187,8 +187,12 @@ val rec p : ∀α∀β Hungry2(α,NS(β+1)) → Hungry2(α,NS(β)) =
      let β such that n : NS(β+1) in
      p (h (S n))
 
-val rec h : ∀α NS(α) → Hungry2(α,NS(α)) =
-  fun _ n → s (h (pred n))
+val rec h : ∀α∀β NS(α) → Hungry2(α,NS(α)) =
+  fun _ n →
+    let α such that n : NS(α) in
+    let β such that _ : Hungry2(β,NS(α)) in
+    let hp : Hungry2(β,NS(α)) = h (pred n) in (* take β < α if we do not annotate *)
+    (s hp) : Hungry2(β,NS(α+1)) : Hungry2(β,NS(α))
 
 !val rec[1] tr : Hungry2(∞,N) → ∀X X =
    fun h → tr (p (h (S Z)))

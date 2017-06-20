@@ -392,7 +392,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
              let g = bind mk_free_o (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixN(o,f)) o))
              in
-             let o' = opred o (Some (NotIn(t,unbox g))) in
+             let o' = opred o (NotIn(t,unbox g)) in
              let ctxt = add_positive ctxt o in
              o', ctxt
         in
@@ -412,7 +412,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
              let g = bind mk_free_o (binder_name f) (fun o ->
                bind_apply (Bindlib.box f) (box_apply (fun o -> KFixM(o,f)) o))
              in
-             let o' = opred o (Some (In(t,unbox g))) in
+             let o' = opred o (In(t,unbox g)) in
              let ctxt = add_positive ctxt o in
              o', ctxt
         in
@@ -426,54 +426,24 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
 
     (* μr and νl rules. *)
     | (KFixN(o,f)  , _           ) ->
-       (* TODO; better to have multi valued ordinals than backtracking *)
-       let some_prf = ref None in
-       let rec fn = function
-         | [] ->
-            (match !some_prf with
-            | Some p -> Sub_FixM_r(p)
-            | None   -> subtype_error "Subtyping clash (no rule apply for left nu).")
-         | o'::l ->
-            assert (is_positive ctxt.non_zero o');
-            let save = Timed.Time.save () in
-            try
-              (match orepr o with
-               | OUVar(p,os) ->
-                  if not (safe_set_ouvar ctxt.non_zero p os o') then raise Not_found
-               | _ -> ());
-              let o'' = opred o' None in
-              let a = if o' = OConv then a else KFixN(o'',f) in
-              let p = subtype ctxt t (subst f a) b0 in
-              remember_first some_prf p; check_sub_proof p;
-              Sub_FixN_l(p)
-            with Not_found | Error _ -> Timed.Time.rollback save; fn l
+       let o' = try
+           ofindpred ctxt o
+         with Not_found ->
+           subtype_error "Subtyping clash (no rule apply for left nu)."
        in
-       fn (possible_positive ctxt o)
+       let a = if o' = OConv then a else KFixN(o',f) in
+       let p = subtype ctxt t (subst f a) b0 in
+       Sub_FixN_l(p)
 
     | (_           , KFixM(o,f)  ) ->
-       (* TODO; better to have multi valued ordinals than backtracking *)
-       let some_prf = ref None in
-       let rec fn = function
-         | [] ->
-            (match !some_prf with
-            | Some p -> Sub_FixM_r(p)
-            | None   -> subtype_error "Subtyping clash (no rule apply for right mu).")
-         | o'::l ->
-            assert (is_positive ctxt.non_zero o');
-            let save = Timed.Time.save () in
-            try
-              (match orepr o with
-               | OUVar(p,os) ->
-                  if not (safe_set_ouvar ctxt.non_zero p os o') then raise Not_found
-               | _ -> ());
-              let o'' = opred o' None in
-              let b = if o' = OConv then b else KFixM(o'',f) in
-              let p = subtype ctxt t a0 (subst f b) in
-              remember_first some_prf p; check_sub_proof p;
-              Sub_FixM_r(p)
-            with Not_found | Error _ -> Timed.Time.rollback save; fn l
+       let o' = try
+           ofindpred ctxt o
+         with Not_found ->
+           subtype_error "Subtyping clash (no rule apply for right mu)."
        in
-       fn (possible_positive ctxt o)
+       let b = if o' = OConv then b else KFixM(o',f) in
+       let p = subtype ctxt t a0 (subst f b) in
+       Sub_FixM_r(p)
 
     (* quantification rule introducing unification variable last *)
     | (KKAll(f)    , _           ) ->
