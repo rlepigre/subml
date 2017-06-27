@@ -768,7 +768,11 @@ let is_refl : sub_prf -> bool = fun (_,_,a,b,_) -> strict_eq_kind a b
 
 let mkSchema ?(ord_name="α") schema =
   let ord i = ord_name^"_{"^string_of_int i^"}" in
-  let osnames = Array.init (mbinder_arity schema.sch_judge) ord in
+  let arity = mbinder_arity schema.sch_judge in
+  (*
+  let osnames = if arity = 1 then [|ord_name|] else Array.init arity ord in
+  *)
+  let osnames = Array.init arity ord in
   let os = Array.map (fun s -> OVars s) osnames in
   let osnames = String.concat "," (Array.to_list osnames) in
 
