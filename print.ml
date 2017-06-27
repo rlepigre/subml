@@ -312,15 +312,17 @@ let rec print_ordi unfold unfolded_Y ff o =
           let (k1,k2) = msubst f os in
           let os' = Array.mapi (fun i _ -> try os.(List.assoc i r)
                                            with Not_found -> OMaxi) os in
-          match k1 with
-          | SchTerm t ->
-             fprintf ff "ε^%d_{%a%t%a}(%a ∉ %a)"
-               (i+1) (print_array pordi ",") os lt (print_array pordi ",") os'
-               (print_term false false None) (Pos.none (TFixY(None,0,t))) pkind k2
-          | SchKind k1 ->
-             fprintf ff "ε^%d_{%a%t%a}(%a \\not\\subset %a)"
-               (i+1) (print_array pordi ",") os lt (print_array pordi ",") os'
-               pkind k1 pkind k2
+          let eps = if Array.length os > 1 then "{\\vec{ε}" else "ε" in
+          fprintf ff "%s_{%a%t%a}" eps (print_array pordi ",") os lt
+            (print_array pordi ",") os';
+          begin
+            match k1 with
+            | SchTerm t  -> fprintf ff "(%a∉%a)" (print_term false false None)
+                              (Pos.none (TFixY(None,0,t))) pkind k2
+            | SchKind k1 -> fprintf ff "(%a \\not\\subset %a)" pkind k1
+                              pkind k2
+          end;
+          if Array.length os > 1 then fprintf ff "}_%d" (i+1)
      end
   | _ ->
     let o' = search_ordi_tbl o in pordi ff o'
