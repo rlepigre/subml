@@ -564,7 +564,13 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p2 = type_check ctxt v a in
          Typ_DSum_i(p1, p2)
       | TCase(t,l,d) ->
-         let ts = List.map (fun (c,_) -> (c, new_kuvar ())) l in
+         let f (c,t) =
+           let k = match t.elt with TAbst(Some k, _, _) -> k
+                                  | _ -> new_kuvar ()
+           in
+           (c,k)
+         in
+         let ts = List.map f l in
          let k =
            match d with
            | None -> KDSum ts
