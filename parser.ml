@@ -194,6 +194,8 @@ let parser comma  : unit grammar = ","
 let parser subset : unit grammar = "⊂" | "⊆" | "<"
 let parser infty  : unit grammar = "∞"
 let parser eps    : unit grammar = "ε"
+let parser kuvar  : unit grammar = "?"
+let parser ouvar  : unit grammar = "¿"
 
 let parser mem    : bool grammar =
   | "∈" -> true
@@ -216,6 +218,7 @@ let parser ordi =
   | infty?               -> in_pos _loc PConv
   | s:lgident            -> in_pos _loc (PVari s)
   | o:ordi '+' n:int_lit -> padd _loc o n
+  | ouvar                -> in_pos _loc POVar
 
 (* Entry point for kinds. *)
 let parser kind : pkind grammar = (pkind `Fun)
@@ -246,6 +249,7 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | kind_atm                   when p = `Prd
   | kind_prd                   when p = `Fun
   | eps w:epsilon              when p = `Atm -> in_pos _loc w
+  | kuvar                      when p = `Atm -> in_pos _loc PUVar
 
 and epsilon = id:uident '(' t:term m:mem a:kind ')' ->
   if m then PECst(t,id,a) else PUCst(t,id,a)

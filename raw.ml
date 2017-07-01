@@ -12,6 +12,7 @@ and pordi' =
   | PConv
   | PSucc of pordi
   | PVari of string
+  | POVar
 
 type pkind = pkind' loc
 and pkind' =
@@ -29,6 +30,7 @@ and pkind' =
   | PDPrj of strloc * string
   | PUCst of pterm * string * pkind
   | PECst of pterm * string * pkind
+  | PUVar
 
 and pterm  = pterm' loc
 and pterm' =
@@ -217,6 +219,7 @@ and unsugar_ordinal : ?pos:occur -> env -> pordi -> obox = fun ?(pos=sPos) env p
   | PConv   -> oconv
   | PVari s -> ordinal_variable pos env (Pos.make po.pos s)
   | PSucc o -> osucc (unsugar_ordinal ~pos env o)
+  | POVar   -> box (new_ouvar ())
 
 and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   fun ?(pos=sPos) (env:env) pk ->
@@ -260,6 +263,7 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                     kucst x (unsugar_term env t) f
   | PECst(t,x,k) -> let f xk = unsugar_kind ~pos:All (add_kind x xk Non env) k in
                     kecst x (unsugar_term env t) f
+  | PUVar        -> box (new_kuvar ())
 
 and unsugar_term : env -> pterm -> tbox = fun env pt ->
   match pt.elt with
