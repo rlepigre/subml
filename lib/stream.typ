@@ -19,3 +19,25 @@ val rec group : ∀A Stream(A) → Stream(A×A) =
     let (a,s1) = s {} in
     let (b,s2) = s {} in
     ((a,b), group s2)
+
+val map2 : ∀A ∀B ∀C (A → B → C) → ∀α S(α,A) → S(α,B) → S(α,C) =
+  fun f →
+    let rec aux = fun sa sb _ →
+      let (a,sa') = sa {} in
+      let (b,sb') = sb {} in
+      (f a b, aux sa' sb')
+    in aux
+
+include "nat.typ"
+
+val stream_add = map2 add
+
+val stream_add0 : Stream(Nat) → Stream(Nat) → Stream(Nat) = stream_add
+
+val rec stream_mul : ∀α S(α,Nat) → S(α,Nat) → S(α,Nat) =
+  fun sa sb _ →
+    let (a,sa') = sa {} in
+    let (b,sb') = sb {} in
+    (mul a b, stream_add (stream_mul sa sb') (stream_mul sa' sb))
+
+val stream_mul0 : Stream(Nat) → Stream(Nat) → Stream(Nat) = stream_mul
