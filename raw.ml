@@ -183,6 +183,7 @@ let rec kind_variable : occur -> env -> strloc -> pordi array -> pkind array -> 
   let oarity = Array.length os in
   try
     let (k, pos') = List.assoc s.elt env.kinds in
+    let _ = compose2 pos' pos in
     if oarity <> 0 then
       arity_error s.pos (s.elt ^ " does not expect ordinal arguments.")
     else if karity <> 0 then
