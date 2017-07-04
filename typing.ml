@@ -586,11 +586,13 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          in
          let p2s = List.map check l in
          let p3 =
-           match d, k with
+           match d, full_repr k with
            | None, _ -> None
            | Some f, KUVar({ uvar_state = { contents = Unset (DSum ts) }}, os)  ->
               let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
               let ts = List.map (fun (c,k) -> (c, msubst k os)) ts in
+              Some (type_check ctxt f (KFunc(KDSum ts,c)))
+           | Some f, KDSum ts ->
               Some (type_check ctxt f (KFunc(KDSum ts,c)))
            | _ -> assert false
          in
