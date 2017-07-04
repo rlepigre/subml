@@ -68,6 +68,12 @@ val rec lift : ∀α STerm(α) → Nat → STerm(α) = fun t n →
   | Var p → if geq p n then Var (S p) else t
   | App(t,u) → App(lift t n, lift u n)
 
+val rec unlift : ∀α STerm(α) → Nat → STerm(α) = fun t n →
+  case t of
+  | Lam(ty,t) →  Lam(ty, unlift t (S n))
+  | Var p → if gt p n then Var (pred p) else t
+  | App(t,u) → App(unlift t n, unlift u n)
+
 
 val rec rebuild : ∀α Term → SList(α,Term) → Term = fun t l →
   case l of
@@ -103,7 +109,7 @@ val rec subst : ∀α ∀β STerm(α) → STy(β) → Nat → Term → List(Term
                (case ty of
                 | Atm _ → none
                 | Arr(ty1,ty2) →
-                  (case subst t' ty1 p v [] of
+                  (case subst t' ty1 Z v [] of
                    | None → none
                    | Some u → subst (Var Z) ty2 Z u stack)))
         | u → Some(rebuild u stack))
@@ -143,7 +149,16 @@ val deux : Term = Lam(Arr(Atm 0,Atm 0),Lam(Atm 0,App(Var 1,App(Var 1,Var 0))))
 val nat : Ty = Arr(Arr(Atm 0,Atm 0),Arr(Atm 0,Atm 0))
 val add : Term = Lam(nat,Lam(nat,Lam(Arr(Atm 0,Atm 0),Lam(Atm 0,
      App(App(Var 2,Var 1),App(App(Var 3,Var 1),Var 0))))))
+val mul : Term = Lam(nat,Lam(nat,Lam(Arr(Atm 0,Atm 0),
+     App(Var 1, App(Var 2, Var 0)))))
+
 eval type_check [] deux
 eval type_check [] add
+eval type_check [] mul
 
-eval norm (App(App(add,deux),deux))
+val quatre = App(App(add,deux),deux)
+val seize = App(App(mul,quatre),quatre)
+
+eval norm deux
+eval norm quatre
+eval norm seize

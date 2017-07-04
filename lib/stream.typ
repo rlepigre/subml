@@ -41,3 +41,17 @@ val rec stream_mul : ∀α S(α,Nat) → S(α,Nat) → S(α,Nat) =
     (mul a b, stream_add (stream_mul sa sb') (stream_mul sa' sb))
 
 val stream_mul0 : Stream(Nat) → Stream(Nat) → Stream(Nat) = stream_mul
+
+val rec forget : Nat → Stream(Nat) → Stream(Nat) = fun n s →
+  case n of
+  | Z → s
+  | S p →
+    let (a,s') = s {} in
+    forget p s'
+
+val tom : (Nat → Nat) → Stream(Nat) → Stream(Nat) = fun f s →
+  let rec aux : Nat → Stream(Nat) → Stream(Nat) = fun n s _ →
+    let (a,s') = s {} in
+    (a, aux (S n) (forget (f n) s'))
+  in
+  aux Z s
