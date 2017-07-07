@@ -464,11 +464,11 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
 
     | (KNRec(ptr, a), _          )
         when Subset.test (eq_ordi ctxt.non_zero) ptr ctxt.non_zero ->
-       Sub_And_l(subtype ctxt t a b0)
+       Sub_Or_l(subtype ctxt t a b0)
 
     | (_           , KMRec(ptr, b))
         when Subset.test (eq_ordi ctxt.non_zero) ptr ctxt.non_zero ->
-       Sub_Or_r(subtype ctxt t a0 b)
+       Sub_And_r(subtype ctxt t a0 b)
 
     (* Subtype clash. *)
     | (_           , _           ) ->
