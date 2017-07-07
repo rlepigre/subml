@@ -2,53 +2,40 @@
 include "nat.typ"
 include "list.typ"
 
-type STy(α) = μα Ty [ Atm of Nat | Arr of Ty × Ty ]
+type STy(α) = μα T [ Atm of Nat | Arr of T × T ]
 type Ty = STy(∞)
 
-type STerm(α) = μα Term
-  [ Var of Nat | App of Term × Term | Lam of Ty × Term ]
-
+type FTerm(A) = [ Var of Nat | App of A × A | Lam of Ty × A ]
+type STerm(α) = μα T FTerm(T)
+(** STerm(α) means F(F(...F(∀X X))) α times *)
 type Term = STerm(∞)
+(** Term = FTerm(Term) *)
 
-(*
-type PSNeutral(α,S) = μα N
-  [ Var of Nat | App of N × S ]
-
-type SNormal(α,β) = μβ S [ Lam of Ty × S | Neu of PSNeutral(α,S) ]
-
-type SNeutral(α,β) = PSNeutral(α+1,SNormal(α,β))
-
-type Neutral = SNeutral(∞,∞)
-type Normal = SNormal(∞,∞)
-
-check Normal ⊂ Term
-check Neutral ⊂ Normal
-val test : ∀α∀β SNeutral(α,β) → SNormal(α,β+1) = λx. x
-*)
-
+(** Equality on types *)
 val rec eq_type : Ty → Ty → Bool = fun t1 t2 →
   case t1 of
   | Atm n1 →
     (case t2 of
      | Atm n2 → eq n1 n2
-     | Arr _ → fls)
+     | Arr _ → Fls)
   | Arr(t1',t1'') →
     (case t2 of
-     | Atm _ → fls
+     | Atm _ → Fls
      | Arr(t2',t2'') → and (eq_type t1' t2') (eq_type t1'' t2''))
 
-val rec type_check : ∀α List(Ty) → STerm(α) → Option(Ty) = fun ctxt t →
+(** Type inference function *)
+val rec type_infer : ∀α List(Ty) → STerm(α) → Option(Ty) = fun ctxt t →
   (case t of
   | Var n → nth ctxt n
   | Lam (t1, t) →
-      (case type_check (t1::ctxt) t of
+      (case type_infer (t1::ctxt) t of
        | None → None
        | Some t2 → Some(Arr(t1,t2)))
   | App (t, u) →
-      (case type_check ctxt u of
+      (case type_infer ctxt u of
        | None → None
        | Some t1 →
-        (case type_check ctxt t of
+        (case type_infer ctxt t of
         | None → None
         | Some t2 →
          (case t2 of
@@ -57,33 +44,30 @@ val rec type_check : ∀α List(Ty) → STerm(α) → Option(Ty) = fun ctxt t �
              if eq_type t1 t1' then Some(tr) else None))))
 
 
-val test = type_check [] (Lam(Atm 0,Var 0))
+val test = type_infer [] (Lam(Atm 0,Var 0))
 
 eval test
 
-
+(** Lifting of Free Debrujn variable by one *)
 val rec lift : ∀α STerm(α) → Nat → STerm(α) = fun t n →
   case t of
   | Lam(ty,t) →  Lam(ty, lift t (S n))
   | Var p → if geq p n then Var (S p) else t
   | App(t,u) → App(lift t n, lift u n)
 
-val rec unlift : ∀α STerm(α) → Nat → STerm(α) = fun t n →
-  case t of
-  | Lam(ty,t) →  Lam(ty, unlift t (S n))
-  | Var p → if gt p n then Var (pred p) else t
-  | App(t,u) → App(unlift t n, unlift u n)
-
-
-val rec rebuild : ∀α Term → SList(α,Term) → Term = fun t l →
+(** napp a sequence of applications from a list *)
+val rec napp : ∀α Term → SList(α,Term) → Term = fun t l →
   case l of
   | [] → t
-  | x::l → rebuild (App(t,x)) l
-
-val none : Option(Term) = None
+  | x::l → napp (App(t,x)) l
 
 type Nat0 = [ H | Z | S of Nat ]
 
+(** cmp n m return →
+   H if n = m
+   m if m < n (variable below the substitude variable)
+   m-1 if m > n (free variable needs to decrease by one)
+*)
 val rec cmp : Nat → Nat → Nat0 = fun n m →
   case n of
   | Z →
@@ -95,56 +79,58 @@ val rec cmp : Nat → Nat → Nat0 = fun n m →
      | Z → Z
      | S m' → (case cmp n' m' of H → H | n → S n))
 
-val rec subst : ∀α ∀β STerm(α) → STy(β) → Nat → Term → List(Term) → Option(Term) =
+(** subst t ty v u stack:
+   - t, u and the term in the stack must all be normal
+   - substitute the variable v by u in t and applies the result
+     to the stack and normalises it.
+   - ty must be the type of v and u
+
+   - abort if untyped of if the argument are not normal
+   - termininates by lex order (|ty|,|t|), this is R David proofs
+     when the terms are not normal as they should.
+*)
+val rec subst : ∀α ∀β STerm(α) → STy(β) → Nat → Term → List(Term) → Term =
   fun t ty p u stack →
     (case t of
     | Var n →
-    (case cmp p n of
-    | H →
-       (case u:Term of
-        | Lam(_,t') →
+      (case cmp p n of
+      | H →
+         (case u:Term of
+         | Lam(_,t') →
             (case stack:List(Term) of
-             | [] → Some u
+             | [] → u
              | v::stack →
-               (case ty of
-                | Atm _ → none
+                (case ty of
+                | Atm _ → print("untyped\n"); abort
                 | Arr(ty1,ty2) →
-                  (case subst t' ty1 Z v [] of
-                   | None → none
-                   | Some u → subst (Var Z) ty2 Z u stack)))
-        | u → Some(rebuild u stack))
-      | p → Some(rebuild (Var p) stack))
+                  let t'' = subst t' ty1 Z v [] in
+                  subst (Var Z) ty2 Z t'' stack))
+        | u → napp u stack)
+      | p → napp (Var p) stack)
   | App(t1,t2) →
-        (case subst t2 ty p u [] of
-         | None → none
-         | Some c →
-            subst t1 ty p u (c::stack))
+        let t2' = subst t2 ty p u [] in
+        subst t1 ty p u (t2'::stack)
   | Lam(ty0, t) →
      (case stack of
       | [] →
-        (case subst t ty (S p) (lift u Z) [] of
-        | None → none
-        | Some t → Some(Lam(ty0,t)))
-      | _::_ → none))
+        let t' = subst t ty (S p) (lift u Z) [] in
+        Lam(ty0,t')
+      | _::_ → print("not normal in subst\n"); abort))
 
-
-val rec norm : Term → Option(Term) = fun t →
+(** normalisation is easy using subst *)
+val rec[1] norm : Term → Term = fun t →
   (case t of
-  | Lam(ty,t) →
-     (case (norm t):Option(Term) of
-      | None → none
-      | Some t → Some((Lam(ty, t)):Term))
   | App(t1,t2) →
-     (case (norm t2):Option(Term) of
-      | None → none
-      | Some v → (case (norm t1):Option(Term) of
-         | None → none
-         | Some w →
-             (case w of
-             | Lam(ty,t) → subst t ty Z v []
-             | w → Some(App(w,v)))))
-  | Var n → Some(Var n))
+     (let t2' = norm t2 in
+     let t1' = norm t1 in
+     case t1' of
+       | Lam(ty,t) → subst t ty Z t2' []
+       | App(j,k) → App(App(j,k),t2')
+       | Var(k) → App(Var(k),t2'))
+  | Lam(ty,t) → Lam(ty, norm t)
+  | Var n → Var n)
 
+(** testing *)
 val deux : Term = Lam(Arr(Atm 0,Atm 0),Lam(Atm 0,App(Var 1,App(Var 1,Var 0))))
 val nat : Ty = Arr(Arr(Atm 0,Atm 0),Arr(Atm 0,Atm 0))
 val add : Term = Lam(nat,Lam(nat,Lam(Arr(Atm 0,Atm 0),Lam(Atm 0,
@@ -152,12 +138,12 @@ val add : Term = Lam(nat,Lam(nat,Lam(Arr(Atm 0,Atm 0),Lam(Atm 0,
 val mul : Term = Lam(nat,Lam(nat,Lam(Arr(Atm 0,Atm 0),
      App(Var 1, App(Var 2, Var 0)))))
 
-eval type_check [] deux
-eval type_check [] add
-eval type_check [] mul
+eval type_infer [] deux
+eval type_infer [] add
+eval type_infer [] mul
 
-val quatre = App(App(add,deux),deux)
-val seize = App(App(mul,quatre),quatre)
+val quatre : Term = App(App(add,deux),deux)
+val seize : Term = App(App(mul,quatre),quatre)
 
 eval norm deux
 eval norm quatre
