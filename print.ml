@@ -785,12 +785,12 @@ let mkSchema ?(ord_name="α") schema =
                           (List.map (fun i -> ord i) schema.sch_posit) in
   let r2s =
     if schema.sch_relat = [] then ""
-    else ", " ^
+    else
       String.concat "∧"
          (List.map (fun (i,j) -> ord i^lts ()^ ord j) schema.sch_relat)
       ^ "⇒"
   in
-  sprintf "∀%s %s (%s ⊢ %s %s %s)" osnames r2s o2s s rel (kind_to_string false b)
+  sprintf "∀%s (%s ⊢ %s %s %s %s)" osnames o2s r2s s rel (kind_to_string false b)
 
 let print_schema ?(ord_name="α") ch schema =
   fprintf ch "%s" (mkSchema ~ord_name schema)
