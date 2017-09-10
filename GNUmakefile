@@ -1,27 +1,17 @@
 include Makefile.config
 
+MLFILES = $(wildcard *.ml *.mli) config.ml
+
 all: subml.byte subml.native
 
-.PHONY: www
-www: subml.js clean tutorial.typ subml-latest.tar.gz
-	rm -rf www/subml/*
-	cp -r lib www/subml/lib
-	cp tutorial.typ www/subml
-	cd genex && make && ./genex ../lib/all.typ > ../www/examples.html
-	cp subml.js www/subml
-	cp subml-latest.tar.gz www/docs/
-
-LOGIN:=raffalli
-ifeq ($(shell whoami), rodolphe)
-	LOGIN:=rlepi
-endif
-
-.PHONY: deploy
-deploy: www
-	ssh $(LOGIN)@lama.univ-savoie.fr rm -rf /home/rlepi/WWW/subml/*
-	scp -r www/* $(LOGIN)@lama.univ-savoie.fr:/home/rlepi/WWW/subml
-
-MLFILES=$(wildcard *.ml *.mli) config.ml
+.PHONY: update_docs
+update_docs: subml.js tutorial.typ subml-latest.tar.gz
+	rm -rf docs/subml/*
+	cp -r lib docs/subml/lib
+	cp tutorial.typ docs/subml
+	cd genex && make && ./genex ../lib/all.typ > ../docs/examples.html
+	cp subml.js docs/subml
+	cp subml-latest.tar.gz docs/docs/
 
 doc: config.ml
 	ocamlbuild -use-ocamlfind -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
@@ -36,7 +26,7 @@ subml.byte: $(MLFILES) subml.ml
 	ocamlbuild -use-ocamlfind -cflags -g,-w,-3-30 $@
 
 config.ml: config.tmpl
-	sed -e 's!_PATH_!\"$(LIBDIR)\"!' $< > $@
+	sed -e 's!_PATH_!\"$(LIBDIR)/subml\"!' $< > $@
 
 submljs.byte: $(MLFILES) submljs.ml
 	ocamlbuild -cflags -w,-3-30 -use-ocamlfind $@
@@ -69,19 +59,18 @@ clean:
 
 distclean: clean
 	rm -f config.ml
-	rm -f *~ lib/*~
+	find -type f -name "*~" -exec rm {} \;
 	rm -rf subml-latest subml-latest.tar.gz
 	rm -f subml.js
-	rm -f www/examples.html
 	cd genex && make distclean
 
 install: all
 	install ./subml.native $(BINDIR)/subml
-	install -d $(LIBDIR) $(LIBDIR)/church $(LIBDIR)/scott $(LIBDIR)/munu
-	install ./lib/*.typ	$(LIBDIR)
-	install ./lib/church/*.typ	$(LIBDIR)/church
-	install ./lib/scott/*.typ	$(LIBDIR)/scott
-	install ./lib/munu/*.typ	$(LIBDIR)/munu
+	install -d $(LIBDIR)/subml $(LIBDIR)/subml/church $(LIBDIR)/subml/scott $(LIBDIR)/subml/munu
+	install ./lib/*.typ	$(LIBDIR)/subml
+	install ./lib/church/*.typ	$(LIBDIR)/subml/church
+	install ./lib/scott/*.typ	$(LIBDIR)/subml/scott
+	install ./lib/munu/*.typ	$(LIBDIR)/subml/munu
 
 subml-latest.tar.gz: $(MLFILES)
 	rm -rf subml-latest
