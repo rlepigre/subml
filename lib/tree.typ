@@ -1,5 +1,5 @@
 (* A type for binary trees. *)
-type SNode(A,T) = {value : A; left : T; right : T; …}
+type SNode(A,T) = {value : A; left : T; right : T }
 type Tree(A) = μX [Leaf | Node of SNode(A,X)]
 type STree(α,A) = μα X [Leaf | Node of SNode(A,X)]
 

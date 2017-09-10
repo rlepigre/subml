@@ -40,8 +40,10 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
   fkind occ k map_kind map_ordi (
     function
     | KFunc(a,b)   -> kfunc (map_kind ~occ:(neg occ) a) (map_kind ~occ b)
-    | KProd(fs,e)  -> kprod e (List.map (fun (l,a) -> (l, map_kind ~occ a)) fs)
-    | KDSum(cs)    -> kdsum (List.map (fun (c,a) -> (c, map_kind ~occ a)) cs)
+    | KProd(s,a,b) -> kprod s (map_kind ~occ a) (map_kind ~occ b)
+    | KUnit        -> kunit
+    | KDSum(s,a,b) -> kdsum s (map_kind ~occ a) (map_kind ~occ b)
+    | KZero        -> kzero
     | KKAll(f)     -> kkall (binder_name f) (fun x -> map_kind ~occ (subst f (KVari x)))
     | KKExi(f)     -> kkexi (binder_name f) (fun x -> map_kind ~occ (subst f (KVari x)))
     | KOAll(f)     -> koall (binder_name f) (fun x -> map_kind ~occ (subst f (OVari x)))

@@ -20,11 +20,40 @@ type ind =
   | New of (schema * kind * kind * (ordi * ordi) list) option
   (** The given induction hypothesis has been registered. *)
 
+type subinfo =
+  { left  : (string * kind) list
+  ; right : (string * kind) list
+  ; both  : string list
+  }
+
+let sempty = { left = []; right = []; both = [] }
+
+type subctxt =
+  | Free
+  | SSum of subinfo
+  | SPro of subinfo
+
+let is_free sctxt = match sctxt with
+  | Free -> true
+  | SSum sc -> sc.left = []
+  | SPro sc -> sc.right = []
+
+let sc_of_pro sctxt = match sctxt with
+  | SPro sc -> sc
+  | Free -> sempty
+  | _ -> assert false
+
+let sc_of_sum sctxt = match sctxt with
+  | SSum sc -> sc
+  | Free -> sempty
+  | _ -> assert false
+
 (** [check_rec ctxt t a b] checks whether a given pointed subtyping relation
     can be derived in the current context using an induction hypothesis. If
     not, the current schema is registered as an induction hypothesis so that
     it can be used in a later call to [check_rec]. *)
-let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
+let check_rec : subctxt -> ctxt -> term -> kind -> kind -> ind * ctxt
+  = fun sctxt ctxt t a b ->
   (* HEURISTIC avoiding loops by unifying ordinal variables. When variables
      are kept, the program loops on useful examples. *)
   let _ =
@@ -35,14 +64,16 @@ let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
   in
 
   (* HEURISTIC obtained by trial and error. *)
-  if (match a with
-      | KFixM _ -> false
-      | KFixN _ -> has_leading_exists a
-      | _       -> true)
-  && (match b with
-      | KFixM _ -> has_leading_forall b
-      | KFixN _ -> false
-      | _       -> true)
+  if sctxt <> Free || (
+    (match a with
+     | KFixM _ -> false
+     | KFixN _ -> has_leading_exists a
+     | _       -> true)
+    &&
+      (match b with
+       | KFixM _ -> has_leading_forall b
+       | KFixN _ -> false
+       | _       -> true))
   then (New None, ctxt) else
 
   (* Actual start of the function. *)
@@ -138,79 +169,65 @@ let check_fix type_check subtype prfptr ctxt t manual depth f c =
       Timed.(prfptr := Unroll(sch,tros, prf))
 
 
-let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 ->
-  Io.log_sub "%a\n  ∈ %a\n  ⊂ %a\n  %a\n\n%!" Print.term t0 Print.kind a0
+let print_sctxt ff sctxt =
+  let fn ff = List.iter (fun (s,k) ->
+                  Format.fprintf ff "(%s : %a) " s Print.kind k)
+  in
+  let gn ff =  List.iter (Format.fprintf ff "%s ")
+  in
+  match sctxt with
+  | Free -> ()
+  | SPro sc ->
+     Format.fprintf ff "{ left = %a; both = %a; right = %a }\n"
+                    fn sc.left gn sc.both fn sc.right
+  | SSum sc ->
+     Format.fprintf ff "[ left = %a; both = %a; right = %a ]\n"
+                    fn sc.left gn sc.both fn sc.right
+
+let rec subtype : subctxt -> ctxt -> term -> kind -> kind -> sub_prf
+  = fun sctxt ctxt0 t0 a0 b0 ->
+  Io.log_sub "%a%a  ∈ %a\n  ⊂ %a\n  %a\n\n%!" print_sctxt sctxt Print.term t0 Print.kind a0
     Print.kind b0 print_nz ctxt0;
   let a = full_repr a0 in
   let b = full_repr b0 in
-  if eq_kind ctxt0.non_zero a b then
+  if is_free sctxt && eq_kind ctxt0.non_zero a b then
     (ctxt0.non_zero, t0, a0, b0, Sub_Lower)
   else try try
     let rule = match (a, b) with
     | (KMRec(ptr,a), _           ) ->
-       Sub_And_l(subtype ctxt0 t0 a b0)
+       Sub_And_l(subtype sctxt ctxt0 t0 a b0)
 
     | (_           , KNRec(ptr,b))->
-       Sub_Or_r(subtype ctxt0 t0 a0 b)
+       Sub_Or_r(subtype sctxt ctxt0 t0 a0 b)
 
     | (KNRec(ptr,a), KUVar _     )
         when Subset.test (eq_ordi ctxt0.non_zero) ptr ctxt0.non_zero ->
-       Sub_Or_l(subtype ctxt0 t0 a b0)
+       Sub_Or_l(subtype sctxt ctxt0 t0 a b0)
 
     | (KUVar _     , KMRec(ptr,b))
         when Subset.test (eq_ordi ctxt0.non_zero) ptr ctxt0.non_zero ->
-       Sub_And_r(subtype ctxt0 t0 a0 b)
+       Sub_And_r(subtype sctxt ctxt0 t0 a0 b)
 
-    (* unification. (sum and product special) *)
-    | (KUVar(ua,os), KProd(l,true))
-       when (match uvar_state ua with DSum _ -> false | _ -> true) ->
-       let l0 = match uvar_state ua with
-         | Free   -> []
-         | Prod l -> l
-         | DSum _ -> assert false
-       in
-       let l1 = ref l0 in
-       let res = ref [] in
-       List.iter (fun (s,k) ->
-         let t' = Pos.none (TProj(t0,s)) in
-         try
-           let prf = subtype ctxt0 t' (msubst (List.assoc s l0) os) k  in
-           res := (s,prf) :: !res
-         with
-           Not_found ->
-             let f = bind_ordis os k in
-             l1 := (s,f)::!l1;
-             let prf = subtype ctxt0 t' (msubst f os) k  in
-             res := (s,prf) :: !res) l;
-       Timed.(ua.uvar_state := Unset (Prod !l1));
-       Sub_Prod(!res)
+    (* quantification rule introducing witness before induction *)
+    | (_           , KKAll(f)    ) ->
+        let p = subtype sctxt ctxt0 t0 a0 (subst f (KUCst(t0,f,true))) in
+        Sub_KAll_r(p)
 
-    | (KDSum(l)   , KUVar(ub,os))
-       when (match uvar_state ub with Prod _ -> false | _ -> true) ->
-       let l0 = match uvar_state ub with
-         | Free   -> []
-         | DSum l -> l
-         | Prod _ -> assert false
-       in
-       let l1 = ref l0 in
-       let res = ref [] in
-       List.iter (fun (s,k) ->
-         let t' = unbox (tcase None (box t0) [(s, idt)] None) in
-         try
-           let prf = subtype ctxt0 t' k (msubst (List.assoc s l0) os)  in
-           res := (s,prf) :: !res
-         with
-           Not_found ->
-             let f = bind_ordis os k in
-             l1 := (s,f)::!l1;
-             let prf = subtype ctxt0 t' k (msubst f os) in
-             res := (s,prf) :: !res) l;
-       Timed.(ub.uvar_state := Unset (DSum !l1));
-       Sub_DSum(!res)
+    | (KKExi(f)    , _           ) ->
+        let p = subtype sctxt ctxt0 t0 (subst f (KECst(t0,f,true))) b0 in
+        Sub_KExi_l(p)
+
+    | (_           , KOAll(f)    ) ->
+        let p = subtype sctxt ctxt0 t0 a0 (subst f (OLess(OMaxi, NotIn(t0,f)))) in
+        Sub_OAll_r(p)
+
+    | (KOExi(f)    , _           ) ->
+        let p = subtype sctxt ctxt0 t0 (subst f (OLess(OMaxi, In(t0,f)))) b0 in
+        Sub_OExi_l(p)
 
     (* Handling of unification variables, same variable different
        parameters: keep the common one only. *)
-    | (KUVar(ua,osa),KUVar(ub,osb)) when eq_uvar ua ub ->
+    | (KUVar(ua,osa),KUVar(ub,osb)) when eq_uvar ua ub && is_free sctxt ->
        let osal = Array.to_list osa in
        let osbl = Array.to_list osb in
        let (_,os) = List.fold_left2 (fun (i,acc) o1 o2 ->
@@ -227,92 +244,71 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
            box_apply (fun os -> KUVar(u,os)) (box_array (Array.init new_len (fun i ->
              x.(os.(i)))))))
          in
-         (* this will use the uvar_state if it is not Free, we could try
-            to delay this *)
-         safe_set_kuvar sNeg ua f osa);
-       let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
+         if is_unset ua then safe_set_kuvar sNeg ua f osa);
+       let (_,_,_,_,r) = subtype sctxt ctxt0 t0 a0 b0 in r
 
-    (* Handling of unification variables (immitation). *)
-    | ((KUVar(ua,osa) as a),(KUVar(ub,osb) as b)) ->
-       begin (* make the correct choice, depending if DSum or Prod *)
-          match (uvar_state ua, uvar_state ub) with
-          | _, DSum _ -> safe_set_kuvar sNeg ua (bind_ordis osa b) osa
-          | Prod _, _ -> safe_set_kuvar sPos ub (bind_ordis osb a) osb
-          | _ ->
-               let osal = Array.to_list osa in
-               let osbl = Array.to_list osb in
-               let os = List.fold_left (fun acc o ->
-                 if List.exists (strict_eq_ordi o) acc then acc
-                 else
-                   if   (List.exists (strict_eq_ordi o) osal &&
-                         List.exists (strict_eq_ordi o) osbl)
-                     || (List.exists (strict_eq_ordi o) osal
-                         && not (kuvar_ord_occur ub o))
-                     || (List.exists (strict_eq_ordi o) osbl
-                         && not (kuvar_ord_occur ua o))
-                   then o::acc
-                   else acc) [] (osal @ osbl)
-               in
-               let os = Array.of_list os in
-               let new_len = Array.length os in
-               let state =
-                 match (uvar_state ua, uvar_state ub) with
-                 | Free, Free -> Free
-                 | DSum l, _ ->
-                    DSum (List.map (fun (s,f) ->
-                      (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
-                        bind_fn os x (msubst f osa))))) l)
-                 | _, Prod l ->
-                    Prod (List.map (fun (s,f) ->
-                      (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
-                        bind_fn os x (msubst f osb))))) l)
-                 | _ -> assert false
-               in
-               let u = new_kuvara ~state new_len in
-               let k = KUVar(u,os) in
-               (* NOTE: the call to  bind_fn above may (very rarely) instanciate
+    | (KUVar(ua,osa),KUVar(ub,osb)) when is_free sctxt ->
+       let osal = Array.to_list osa in
+       let osbl = Array.to_list osb in
+       let os = List.fold_left (fun acc o ->
+                    if List.exists (strict_eq_ordi o) acc then acc
+                    else
+                      if   (List.exists (strict_eq_ordi o) osal &&
+                              List.exists (strict_eq_ordi o) osbl)
+                           || (List.exists (strict_eq_ordi o) osal
+                               && not (kuvar_ord_occur ub o))
+                           || (List.exists (strict_eq_ordi o) osbl
+                               && not (kuvar_ord_occur ua o))
+                      then o::acc
+                      else acc) [] (osal @ osbl)
+       in
+       let os = Array.of_list os in
+       let new_len = Array.length os in
+       let u = new_kuvara new_len in
+       let k = KUVar(u,os) in
+       (* NOTE: the call to  bind_fn above may (very rarely) instanciate
                   ua or ub, so we added a test to avoid an assert false  *)
-               if is_unset ua then (
-                 Timed.(ua.uvar_state := Unset Free);
-                 safe_set_kuvar sNeg ua (bind_ordis osa k) osa);
-               if is_unset ub then (
-                 Timed.(ub.uvar_state := Unset Free);
-                 safe_set_kuvar sPos ub (bind_ordis osb k) osb);
-        end;
-        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
+       if is_unset ua then
+         safe_set_kuvar sNeg ua (bind_ordis osa k) osa;
+       if is_unset ub then
+         safe_set_kuvar sPos ub (bind_ordis osb k) osb;
+       let (_,_,_,_,r) = subtype sctxt ctxt0 t0 a0 b0 in r
 
-    (* quantification rule introducing witness before induction *)
-    | (_           , KKAll(f)    ) ->
-        let p = subtype ctxt0 t0 a0 (subst f (KUCst(t0,f,true))) in
-        Sub_KAll_r(p)
+    | (KUVar(ua,os), b            ) when
+           (match sctxt with SSum sc -> sc.left = [] | _ -> true) ->
+       let b' = match sctxt with
+         | Free -> b0
+         | SPro sc ->  (* TODO: b0 without sc.both *)
+            List.fold_left (fun acc (s, k) ->
+                KProd(s,k,acc)) b0 sc.right
+         | SSum sc ->  (* TODO: delay *)
+            let ls = List.filter (fun (_,k) -> kuvar_occur ua k = Non) sc.right in
+            List.fold_left (fun acc (s, k) -> KDSum(s,k,acc)) b0 ls
+       in
+       let bb = bind_ordis os b' in
+       if is_unset ua then safe_set_kuvar sNeg ua bb os;
+       let (_,_,_,_,r) = subtype sctxt ctxt0 t0 a0 b0 in r
 
-    | (KKExi(f)    , _           ) ->
-        let p = subtype ctxt0 t0 (subst f (KECst(t0,f,true))) b0 in
-        Sub_KExi_l(p)
-
-    | (_           , KOAll(f)    ) ->
-        let p = subtype ctxt0 t0 a0 (subst f (OLess(OMaxi, NotIn(t0,f)))) in
-        Sub_OAll_r(p)
-
-    | (KOExi(f)    , _           ) ->
-        let p = subtype ctxt0 t0 (subst f (OLess(OMaxi, In(t0,f)))) b0 in
-        Sub_OExi_l(p)
-
-    | (KUVar(ua,os), b            ) -> (* NOTE: deal with KProd(_,true) and
-                                          may be too much incomplete in this case *)
-        let bb = bind_ordis os b0 in (* NOTE: may instanciate ua *)
-        if is_unset ua then safe_set_kuvar sNeg ua bb os;
-        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
-
-    | (a           ,(KUVar(ub,os)))  ->
-        let aa = bind_ordis os a0 in (* NOTE: may instanciate ub *)
-        if is_unset ub then safe_set_kuvar sPos ub aa os;
-        let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
+    | (a           , KUVar(ub,os)) when
+           (match sctxt with SPro sc -> sc.right = [] | _ -> true) ->
+       let a' = match sctxt with
+         | Free -> a0
+         | SPro sc -> (* TODO: delay *)
+            let ls = List.filter (fun (_,k) -> kuvar_occur ub k = Non) sc.left in
+            List.fold_left (fun acc (s, k) ->
+                KProd(s,k,acc)) a0 ls
+         | SSum sc -> (* TODO: a0 without sc.both *)
+            List.fold_left (fun acc (s, k) ->
+                KDSum(s,k,acc)) a0 sc.left
+       in
+       let aa = bind_ordis os a' in
+       if is_unset ub then safe_set_kuvar sPos ub aa os;
+       let (_,_,_,_,r) = subtype sctxt ctxt0 t0 a0 b0 in r
 
     | _ -> raise Exit
   in (ctxt0.non_zero, t0, a0, b0, rule)
   with Exit ->
-  let (ind_res, ctxt) = check_rec ctxt0 t0 a b in
+  let (ind_res, ctxt) = check_rec sctxt ctxt0 t0 a b in
   match ind_res with
   | Use schema  -> (ctxt.non_zero, t0, a0, b0, Sub_Ind schema)
   | New ind_ref ->
@@ -327,7 +323,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
   let rule =
     match (a,b) with
     (* Arrow type. *)
-    | (KFunc(a1,b1), KFunc(a2,b2)) ->
+    | (KFunc(a1,b1), KFunc(a2,b2)) when sctxt = Free ->
        let wit =
          let f x = tappl None (box t) (box_apply Pos.none x) in
          let bnd = unbox (bind mk_free_tvari "x" f) in
@@ -336,52 +332,46 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         (* NOTE: the heuristic below works well for Church like encoding *)
        if has_uvar b1 then
          let wit =
-           if strict_eq_kind a2 kunit then tunit
+           if strict_eq_kind a2 KUnit then tunit
            else wit
          in
-         let p2 = subtype ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
-         let p1 = subtype ctxt wit a2 a1 in
+         let p2 = subtype Free ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
+         let p1 = subtype Free ctxt wit a2 a1 in
          Sub_Func(p1, p2)
        else
-         let p1 = subtype ctxt wit a2 a1 in
+         let p1 = subtype Free ctxt wit a2 a1 in
          let wit =
-           if strict_eq_kind a2 kunit then tunit
+           if strict_eq_kind a2 KUnit then tunit
            else wit
          in
-         let p2 = subtype ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
+         let p2 = subtype Free ctxt (Pos.none (TAppl(t, wit))) b1 b2 in
          Sub_Func(p1, p2)
 
-    (* Product type. *)
-    | (KProd(fsa,ea), KProd(fsb,eb)) ->
-        if ea && not eb then  subtype_error ("Extensible product mismatch.");
-        let check_field (l,b) =
-          let a =
-            try List.assoc l fsa
-            with Not_found -> subtype_error ("Product field clash: " ^ l)
-          in
-          (l, subtype ctxt (Pos.none (TProj(t,l))) a b)
-        in
-        let ps = List.map check_field fsb in
-        if not eb then begin
-          try
-            let (l,_) = List.find (fun (l,_) -> not (List.mem_assoc l fsb)) fsa in
-            subtype_error ("Product extra field: " ^ l)
-          with Not_found -> ()
-        end;
-        Sub_Prod(ps)
+    | (KUnit, KUnit) ->
+       begin
+         match sctxt with
+         | SPro sc ->
+            let l  = List.map fst sc.right in
+            let ls = String.concat ", " l in
+            if l <> [] then subtype_error ("Product field clash: " ^ ls);
+            Sub_Lower
+         | SSum _ ->
+            subtype_error ("Mixing sums and product")
+         | _ -> Sub_Lower
+       end
 
-    (* Sum type. *)
-    | (KDSum(csa)  , KDSum(csb)  ) ->
-        let check_variant (c,a) =
-          let t = unbox (tcase None (box t) [(c, idt)] None) in
-          let b =
-            try List.assoc c csb
-            with Not_found -> subtype_error ("Constructor clash: " ^ c)
-          in
-          (c, subtype ctxt t a b)
-        in
-        let ps = List.map check_variant csa in
-        Sub_DSum(ps)
+    | (KZero, KZero) ->
+       begin
+         match sctxt with
+         | SSum sc ->
+            let l  = List.map fst sc.left in
+            let ls = String.concat ", " l in
+            if l <> [] then subtype_error ("Varant clash: " ^ ls);
+            Sub_Lower
+         | SPro _ ->
+            subtype_error ("Mixing sums and product")
+         | _ -> Sub_Lower
+       end
 
     (* μl and νr rules. *)
     | (_           , KFixN(o,f)  ) ->
@@ -401,7 +391,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         Io.log_sub "creating %a < %a\n%!"
           (print_ordi true) o' (print_ordi true) o;
         let cst = KFixN(o', f) in
-        let prf = subtype ctxt t a0 (subst f cst) in
+        let prf = subtype sctxt ctxt t a0 (subst f cst) in
         Sub_FixN_r prf
 
     | (KFixM(o,f)   , _          ) ->
@@ -421,7 +411,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         Io.log_sub "creating %a < %a\n%!"
           (print_ordi true) o' (print_ordi true) o;
         let cst = KFixM(o', f) in
-        let prf = subtype ctxt t (subst f cst) b0 in
+        let prf = subtype sctxt ctxt t (subst f cst) b0 in
         Sub_FixM_l prf
 
     (* μr and νl rules. *)
@@ -432,7 +422,7 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
            subtype_error "Subtyping clash (no rule apply for left nu)."
        in
        let a = if o' = OConv then a else KFixN(o',f) in
-       let p = subtype ctxt t (subst f a) b0 in
+       let p = subtype sctxt ctxt t (subst f a) b0 in
        Sub_FixN_l(p)
 
     | (_           , KFixM(o,f)  ) ->
@@ -442,33 +432,105 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
            subtype_error "Subtyping clash (no rule apply for right mu)."
        in
        let b = if o' = OConv then b else KFixM(o',f) in
-       let p = subtype ctxt t a0 (subst f b) in
+       let p = subtype sctxt ctxt t a0 (subst f b) in
        Sub_FixM_r(p)
 
     (* quantification rule introducing unification variable last *)
     | (KKAll(f)    , _           ) ->
-        let p = subtype ctxt t (subst f (new_kuvar ())) b0 in
+        let p = subtype sctxt ctxt t (subst f (new_kuvar ())) b0 in
         Sub_KAll_l(p)
 
     | (_           , KKExi(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (new_kuvar ())) in
+        let p = subtype sctxt ctxt t a0 (subst f (new_kuvar ())) in
         Sub_KExi_r(p)
 
     | (KOAll(f)    , _           ) ->
-       let p = subtype ctxt t (subst f (new_ouvar ())) b0 in
+       let p = subtype sctxt ctxt t (subst f (new_ouvar ())) b0 in
        Sub_OAll_l(p)
 
     | (_           , KOExi(f)    ) ->
-        let p = subtype ctxt t a0 (subst f (new_ouvar ())) in
+        let p = subtype sctxt ctxt t a0 (subst f (new_ouvar ())) in
         Sub_OExi_r(p)
 
     | (KNRec(ptr, a), _          )
         when Subset.test (eq_ordi ctxt.non_zero) ptr ctxt.non_zero ->
-       Sub_Or_l(subtype ctxt t a b0)
+       Sub_Or_l(subtype sctxt ctxt t a b0)
 
     | (_           , KMRec(ptr, b))
         when Subset.test (eq_ordi ctxt.non_zero) ptr ctxt.non_zero ->
-       Sub_And_r(subtype ctxt t a0 b)
+       Sub_And_r(subtype sctxt ctxt t a0 b)
+
+    | (KProd(s,a,e), _) when (match sctxt with SSum _ -> false | _ -> true) ->
+       let sc = sc_of_pro sctxt in
+       if List.mem s sc.both then Sub_Prod(None, subtype sctxt ctxt t0 e b)
+       else
+         begin
+           try
+             let b' = List.assoc s sc.right in
+             let sctxt = SPro { sc with both = s::sc.both
+                                      ; right = rem_assoc s sc.right }
+             in
+             Sub_Prod(Some (subtype Free ctxt t0 a b'),
+                            subtype sctxt ctxt t0 e b)
+           with
+             Not_found ->
+             let sctxt = SPro { sc with left = (s,a)::sc.left } in
+             Sub_Prod(None,subtype sctxt ctxt t0 e b)
+         end
+
+    | (_, KProd(s,b,e)) when (match sctxt with SSum _ -> false | _ -> true) ->
+       let sc = sc_of_pro sctxt in
+       if List.mem s sc.both then Sub_Prod(None, subtype sctxt ctxt t0 a e)
+       else
+         begin
+           try
+             let a' = List.assoc s sc.left in
+             let sctxt = SPro { sc with both = s::sc.both
+                                       ; left = rem_assoc s sc.left }
+             in
+             Sub_Prod(Some(subtype Free ctxt t0 a' b),
+                           subtype sctxt ctxt t0 a e)
+           with
+             Not_found ->
+             let sctxt = SPro { sc with right = (s,b)::sc.right } in
+             Sub_Prod(None,subtype sctxt ctxt t0 a e)
+         end
+
+    | (KDSum(s,a,e), _) when (match sctxt with SPro _ -> false | _ -> true) ->
+       let sc = sc_of_sum sctxt in
+       if List.mem s sc.both then Sub_DSum(None,subtype sctxt ctxt t0 e b)
+       else
+         begin
+           try
+             let b' = List.assoc s sc.right in
+             let sctxt = SSum { sc with both = s::sc.both
+                                      ; right = rem_assoc s sc.right }
+             in
+             Sub_DSum(Some(subtype Free ctxt t0 a b'),
+                           subtype sctxt ctxt t0 e b)
+           with
+             Not_found ->
+             let sctxt = SSum { sc with left = (s,a)::sc.left } in
+             Sub_DSum(None,subtype sctxt ctxt t0 e b)
+         end
+
+    | (_, KDSum(s,b,e)) when (match sctxt with SPro _ -> false | _ -> true) ->
+       let sc = sc_of_sum sctxt in
+       if List.mem s sc.both then Sub_DSum(None, subtype sctxt ctxt t0 a e) (* FIXME *)
+       else
+         begin
+           try
+             let a' = List.assoc s sc.left in
+             let sctxt = SSum { sc with both = s::sc.both
+                                      ; left = rem_assoc s sc.left }
+             in
+             Sub_DSum(Some(subtype Free ctxt t0 a' b),
+                           subtype sctxt ctxt t0 a e)
+           with
+             Not_found ->
+             let sctxt = SSum { sc with right = (s,b)::sc.right } in
+             Sub_DSum(None,subtype sctxt ctxt t0 a e) (* FIXME *)
+         end
 
     (* Subtype clash. *)
     | (_           , _           ) ->
@@ -485,7 +547,7 @@ let is_subtype ctxt t a b =
     (** protect the call graph, because we don't need the proof we only
         want to instantiate some unification variables *)
     let ctxt = { ctxt with call_graphs = Sct.copy ctxt.call_graphs} in
-    let prf = subtype ctxt t a b in
+    let prf = subtype Free ctxt t a b in
     try check_sub_proof prf; true with Error _ -> false) ()
 
 let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
@@ -495,7 +557,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     try
       match t.elt with
       | TCoer(t,a) ->
-         let p1 = subtype ctxt t a c in
+         let p1 = subtype Free ctxt t a c in
          let p2 = type_check ctxt t a in
          Typ_Coer(p1, p2)
       | TMLet(bk,x,bt) ->
@@ -523,47 +585,51 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let b = new_kuvar () in
          let ptr = Subset.create ctxt.non_zero in
          let c' = KNRec(ptr,KFunc(a,b)) in
-         let p1 = subtype ctxt t c' c in
+         let p1 = subtype Free ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let wit = unbox (tcnst f (box a) (box b)) in
          let p2 = type_check ctxt (subst f wit.elt) b in
          Typ_Func_i(p1, p2)
       | TAppl(f,u) when is_neutral f && not (is_neutral u)->
-         let a = if strict_eq_term u tunit then kunit else new_kuvar () in
+         let a = if strict_eq_term u tunit then KUnit else new_kuvar () in
          let ptr = Subset.create ctxt.non_zero in
          let p2 = type_check ctxt f (KMRec(ptr,KFunc(a,c))) in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let p1 = type_check ctxt u a in
          Typ_Func_e(p1, p2)
       | TAppl(t,u) ->
-         let a = if strict_eq_term u tunit then kunit else new_kuvar () in
+         let a = if strict_eq_term u tunit then KUnit else new_kuvar () in
          let p1 = type_check ctxt u a in
          let p2 = type_check ctxt t (KFunc(a,c)) in
          Typ_Func_e(p1, p2)
       | TReco(fs) ->
          let ts = List.map (fun (l,_) -> (l, new_kuvar ())) fs in
-         let c' = KProd(ts,false) in
+         let c' = List.fold_left (fun acc (l,k) -> KProd(l, k, acc)) KUnit ts in
          let ptr = Subset.create ctxt.non_zero in
          let c' =  if is_normal t then KNRec(ptr,c') else c' in
-         let p1 = subtype ctxt t c' c in
+         let p1 = subtype Free ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let check (l,t) = type_check ctxt t (List.assoc l ts) in
          let p2s = List.map check fs in
          Typ_Prod_i(p1, p2s)
       | TProj(t,l) ->
-         let c' = new_kuvar ~state:(Prod [(l,constant_mbind 0 c)]) () in
+         let c' = KProd(l, c, new_kuvar ()) in
          let p = type_check ctxt t c' in
          Typ_Prod_e(p)
       | TCons(d,v) ->
          let a = new_kuvar () in
-         let c' = new_kuvar ~state:(DSum [(d,constant_mbind 0 a)]) () in
+         let c' = KDSum(d, a, new_kuvar ()) in
          let ptr = Subset.create ctxt.non_zero in
          let c' = if is_normal t then KNRec(ptr,c') else c' in
-         let p1 = subtype ctxt t c' c in
+         let p1 = subtype Free ctxt t c' c in
          let ctxt = add_positives ctxt (Subset.get ptr) in
          let p2 = type_check ctxt v a in
          Typ_DSum_i(p1, p2)
       | TCase(t,l,d) ->
+         let k0 = match d with
+           | None -> KZero
+           | Some t -> new_kuvar ()
+         in
          let f (c,t) =
            let k = match t.elt with TAbst(Some k, _, _) -> k
                                   | _ -> new_kuvar ()
@@ -571,12 +637,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
            (c,k)
          in
          let ts = List.map f l in
-         let k =
-           match d with
-           | None -> KDSum ts
-           | _    -> let fn (c,_) = (c, constant_mbind 0 (List.assoc c ts)) in
-                     new_kuvar ~state:(DSum (List.map fn l)) ()
-         in
+         let k = List.fold_left (fun acc (l,k) -> KDSum(l, k, acc)) k0 ts in
          let ptr = Subset.create ctxt.non_zero in
          let p1 = type_check ctxt t (KMRec(ptr,k)) in
          let ctxt = add_positives ctxt (Subset.get ptr) in
@@ -586,34 +647,35 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          in
          let p2s = List.map check l in
          let p3 =
-           match d, full_repr k with
-           | None, _ -> None
-           | Some f, KUVar({ uvar_state = { contents = Unset (DSum ts) }}, os)  ->
-              let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
-              let ts = List.map (fun (c,k) -> (c, msubst k os)) ts in
-              Some (type_check ctxt f (KFunc(KDSum ts,c)))
-           | Some f, KDSum ts ->
-              Some (type_check ctxt f (KFunc(KDSum ts,c)))
-           | _ -> assert false
+           match d with
+           | None -> None
+           | Some f ->
+              Some (type_check ctxt f (KFunc(k0,c)))
          in
          Typ_DSum_e(p1, p2s, p3)
       | TDefi(v) ->
-         let p = subtype ctxt v.value v.ttype c in
+         let p = subtype Free ctxt v.value v.ttype c in
          Typ_Defi(p)
       | TPrnt(_) ->
-         let p = subtype ctxt t kunit c in
+         let p = subtype Free ctxt t KUnit c in
          Typ_Prnt(p)
       | TFixY(manual,depth,f) ->
          let prf = ref Todo in
-         let check () = check_fix type_check subtype prf ctxt t manual depth f c in
+         let check () = check_fix type_check (subtype Free) prf ctxt t manual depth f c in
          Timed.(ctxt.fix_todo := check :: !(ctxt.fix_todo));
          Typ_YGen prf
       | TCnst(_,a,b) ->
-         let p = subtype ctxt t a c in
+         let p = subtype Free ctxt t a c in
          Typ_Cnst(p)
       | TAbrt        ->
          Typ_Abrt
-      | TVari _ | TVars _ -> assert false
+      | TCaco        ->
+         let a = new_kuvar () in
+         let b = new_kuvar () in
+         let peirce = KFunc(KFunc(KFunc(a,b),a),a) in
+         let _p = subtype Free ctxt t peirce c in
+         Typ_Abrt (* FIXME *)
+      | TVari _ | TVars _ | TStck _ -> assert false
     with
     | Subtype_error msg (* FIXME: could we avoid Subtype_error in typing.
                            It not, should use the same exception *)
@@ -630,7 +692,7 @@ let subtype : term option -> kind -> kind -> sub_prf * Sct.t = fun t a b ->
   let t = from_opt t (unbox (generic_tcnst (box a) (box b))) in
   let ctxt = empty_ctxt () in
   try
-    let p = subtype ctxt t a b in
+    let p = subtype Free ctxt t a b in
     let call_graphs = Sct.inline ctxt.call_graphs in
     if not (Sct.sct call_graphs) then loop_error None;
     check_sub_proof p;
@@ -657,7 +719,7 @@ let type_check : term -> kind option -> kind * typ_prf * Sct.t = fun t k ->
     with e -> reset_all (); raise e
   in
   (* Generalisation. *)
-  let fn (v, os) = is_unset v && not (uvar_use_state v os) in
+  let fn (v, os) = is_unset v in
   let kvs = List.filter fn (kuvar_list k) in
   let ovs = ouvar_list k in
   let kfn acc v = KKAll (bind_kuvar (fst v) acc) in

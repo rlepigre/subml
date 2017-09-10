@@ -135,9 +135,9 @@ let unsugar_pattern cons oname s t =
 let has_kvar : kind -> bool = fun k ->
   let rec fn k =
     match repr k with
+    | KProd(_,a,b)
+    | KDSum(_,a,b)
     | KFunc(a,b) -> fn a; fn b
-    | KProd(ls,_)
-    | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)   -> fn (subst f kdummy)
     | KFixM(o,f) -> gn o; fn (subst f kdummy)
@@ -151,7 +151,9 @@ let has_kvar : kind -> bool = fun k ->
     | KVari _    -> raise Exit
     | KUCst(_,f,cl)
     | KECst(_,f,cl) -> fn (subst f kdummy)
-    | KPrnt _    -> ()
+    | KPrnt _
+    | KUnit
+    | KZero -> ()
   and gn o = match orepr o with
     | OUVar _ -> ()
     | OConv -> ()
@@ -167,26 +169,18 @@ let has_kvar : kind -> bool = fun k ->
     Exit -> true
 
 (** Matching kind and ordinals, used for printing only,
-    in order to factorise definittion. *)
+    in order to factorise definition. *)
 let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
   = fun kuvars ouvars p k ->
   let res = match full_repr p, full_repr k with
-    | KUVar(ua,[||]), k when List.memq ua kuvars ->
+  | k1, k2 when k1 == k2 -> true
+  | KUVar(ua,[||]), k when List.memq ua kuvars ->
      set_kuvar ua (constant_mbind 0 k); not (has_kvar p) (* NOTE: to avoid capture *)
   | KFunc(p1,p2), KFunc(k1,k2) ->
      match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
-  | KDSum(ps1), KDSum(ps2) ->
-     List.length ps1 = List.length ps2 &&
-     let ps1 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps1 in
-     let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
-     List.for_all2 (fun (s1,p1) (s2,k1) ->
-       s1 = s2 && match_kind kuvars ouvars p1 k1) ps1 ps2
-  | KProd(ps1,e1), KProd(ps2,e2) ->
-     e1 = e2 && List.length ps1 = List.length ps2 &&
-     let ps1 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps1 in
-     let ps2 = List.sort (fun (s1,_) (s2,_) -> compare s1 s2) ps2 in
-     List.for_all2 (fun (s1,p1) (s2,k1) ->
-       s1 = s2 && match_kind kuvars ouvars p1 k1) ps1 ps2
+  | KDSum(s1,p1,p2), KDSum(s2,k1,k2) (* FIXME: can do better *)
+  | KProd(s1,p1,p2), KProd(s2,k1,k2) ->
+     s1 = s2 && match_kind kuvars ouvars p1 k1 && match_kind kuvars ouvars p2 k2
   | KKAll(f), KKAll(g)
   | KKExi(f), KKExi(g) ->
      let v = new_kvari (binder_name f) in
@@ -349,41 +343,60 @@ and print_kind unfold wrap unfolded_Y ff t =
      if wrap then pp_print_string ff "(";
      fprintf ff "%a → %a" pkindw a pkind b;
      if wrap then pp_print_string ff ")"
-  | KProd(fs,e) ->
-     if not e && is_tuple fs && List.length fs > 0 then begin
+  | KProd(_) | KUnit ->
+     let rec fn acc k = match repr k with
+       | KProd(s,k1,k2) -> fn ((s,k1)::acc) k2
+       | KUnit -> None, acc
+       | k -> Some k, acc
+     in
+     let default, fs = fn [] t in
+     if default = None && is_tuple fs && List.length fs > 0 then begin
        if wrap then pp_print_string ff "(";
        for i = 1 to List.length fs do
          if i >= 2 then fprintf ff " × ";
          fprintf ff "%a" pkindw (List.assoc (string_of_int i) fs)
        done;
        if wrap then pp_print_string ff ")"
-     end else
-       let ext = if e then (if latex_mode () then ";\\ldots" else ";…") else "" in
+       end else
+       let pr_def ff = function
+         | None -> ()
+         | Some k -> fprintf ff "%a with " pkind k
+       in
        if !break_hint = 0 then begin
          let pfield ff (l,a) =
            fprintf ff (if latex_mode () then "\\mathrm{%s} : %a" else "%s : %a")
              l pkind a
          in
-         fprintf ff (if latex_mode () then "\\{%a%s\\}" else "{%a%s}")
-           (print_list pfield "; ") fs ext
+         fprintf ff (if latex_mode () then "\\{%a%a\\}" else "{%a%a}")
+           pr_def default (print_list pfield "; ") fs
        end else begin
          decr break_hint;
          let pfield ff (l,a) = fprintf ff "\\mathrm{%s} &: %a" l pkind a in
-         fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
+         fprintf ff "%a \\left\\{\\setlength{\\arraycolsep}{0.2em}" pr_def default;
          fprintf ff "\\begin{array}{ll}%a" (print_list pfield ";\\\\\n") fs;
-         fprintf ff "\\end{array}%s\\right\\}" ext;
+         fprintf ff "\\end{array}\\right\\}";
          incr break_hint
        end
-  | KDSum(cs) ->
+  | KDSum(_) | KZero ->
+     let rec fn acc k = match repr k with
+       | KDSum(s,k1,k2) -> fn ((s,k1)::acc) k2
+       | KZero -> None, acc
+       | k -> Some k, acc
+     in
+     let default, cs = fn [] t in
       let pvariant ff (c,a) =
        match repr a with
-       | KProd([],false) ->
+       | KUnit ->
           fprintf ff (if latex_mode () then "\\mathrm{%s}" else "%s") c
        | _        ->
           fprintf ff (if latex_mode () then "\\mathrm{%s} \\of %a" else "%s of %a")
             c pkind a
       in
-      fprintf ff "[%a]" (print_list pvariant " \\st ") cs
+      let pr_def ff = function
+         | None -> ()
+         | Some k -> fprintf ff " + %a" pkind k
+      in
+      fprintf ff "[%a%a]" (print_list pvariant " \\st ") cs pr_def default
   | KKAll(f)  ->
       let x = new_prvar f in
       fprintf ff "∀%s.%a" (binder_name f) pkind (subst f x)
@@ -680,6 +693,8 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      | _ ->
         fprintf ff (if latex_mode () then "\\mathrm{%s}" else "%s") x)
   | TAbrt        -> fprintf ff "Abort"
+  | TCaco        -> fprintf ff "CC"
+  | TStck _      -> fprintf ff "STACK"
   | TCnst(f,a,b) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
@@ -723,10 +738,12 @@ let rec sub_used_ind (_, _, _, _, r) =
   | Sub_And_r  p
   | Sub_Or_l   p
   | Sub_Or_r   p
-  | Sub_Gen(_,_,p)      -> sub_used_ind p
+  | Sub_Prod   (None, p)
+  | Sub_DSum   (None, p)
+  | Sub_Gen    (_,_,p)  -> sub_used_ind p
+  | Sub_Prod   (Some p1, p2)
+  | Sub_DSum   (Some p1, p2)
   | Sub_Func   (p1, p2) -> sub_used_ind p1 @ sub_used_ind p2
-  | Sub_Prod   ps
-  | Sub_DSum   ps       -> List.fold_left (fun acc (l,p) -> acc @ sub_used_ind p) [] ps
   | Sub_Ind sch         -> [sch.sch_index]
   | Sub_Lower
   | Sub_Error _         -> []
@@ -871,8 +888,10 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   | Sub_Delay(pr)     -> sub2proof !pr
   | Sub_Lower         -> axiomSN "=" c
   | Sub_Func(p1,p2)   -> binarySN "→" c (sub2proof p1) (sub2proof p2)
-  | Sub_Prod(ps)      -> n_arySN "×" c (List.map (fun (l,p) -> sub2proof p) ps)
-  | Sub_DSum(ps)      -> n_arySN "+" c (List.map (fun (l,p) -> sub2proof p) ps)
+  | Sub_Prod(Some p1,p2) -> binarySN "×" c (sub2proof p1) (sub2proof p2)
+  | Sub_DSum(Some p1,p2) -> binarySN "+" c (sub2proof p1) (sub2proof p2)
+  | Sub_Prod(None,p2) -> unarySN ". ×" c (sub2proof p2)
+  | Sub_DSum(None,p2) -> unarySN ". +" c (sub2proof p2)
   | Sub_KAll_r(p)     -> unarySN "∀_r" c (sub2proof p)
   | Sub_KAll_l(p)     -> unarySN "∀_l" c (sub2proof p)
   | Sub_KExi_l(p)     -> unarySN "∃_l" c (sub2proof p)

@@ -35,9 +35,6 @@ exception Occur_check
 (** Set kuvar with kind.
     - use the previous function 'make_safe'
     - does the occur check
-    - if the kuvar_state is not Free, is uses the state and ignore the
-      argumemt. Therefore it is not safe to assume that the unification
-      variables is related to k after seting
 *)
 let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
   fun side v k os ->
@@ -45,13 +42,6 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
       (* side = Pos means we are checking k < KUVar(u,os)
          side = Neg means we are chacking KUVar(u,os) < k
          side <> Pos and Neg means we not in the previous cases *)
-    let k =
-      match uvar_state v with
-      | Free -> k
-        (* TODO: on jette k ... normal mais bof, devrait être mieux traité *)
-      | DSum l -> mbind_assoc kdsum v.uvar_arity l
-      | Prod l -> mbind_assoc eprod v.uvar_arity l
-    in
     assert (mbinder_arity k = v.uvar_arity);
     let k =
       match kuvar_occur ~safe_ordis:os v (msubst k (Array.make v.uvar_arity OConv)) with
@@ -65,32 +55,6 @@ let safe_set_kuvar : occur -> kuvar -> kind from_ordis -> ordi array -> unit =
          | _ -> raise Occur_check
     in
     set_kuvar v k
-
-(****************************************************************************)
-(**{2         instanciate type unification variables from state            }*)
-(****************************************************************************)
-
-(** Force a type unification variable to use its state. Return true if
-    the variable is changed *)
-let uvar_use_state : kuvar -> ordi array -> bool = fun v os ->
-  (* TODO: maybe we should not trust safe_set and call subtype ? *)
-  try
-    match !(v.uvar_state) with
-    | Set _ -> false
-    | Unset Free   -> false
-    | Unset (DSum  l) ->
-       let fk = mbind_assoc kdsum v.uvar_arity l in
-       if is_unset v then (
-         Timed.(v.uvar_state := Unset Free);
-         safe_set_kuvar All v fk os);
-       true
-    | Unset (Prod l) ->
-       let fk = mbind_assoc eprod v.uvar_arity l in
-       if is_unset v then (
-         Timed.(v.uvar_state := Unset Free);
-         safe_set_kuvar All v fk os);
-       true
-  with Occur_check -> false
 
 (****************************************************************************)
 (**{2               bindings of ordinals in type and ordinals              }*)
@@ -134,35 +98,12 @@ let rec bind_both ?(from_generalise=false) os x =
        if os'' = [] then
          kuvar u (Array.map self_ord os')
        else
-         (* If the variable state is recursive, we fix its value
-            or produce occur_check error now, otherwise it would loop *)
-         let is_recursive =
-           match uvar_state u with
-           | Free -> Non
-           | DSum l | Prod l -> List.fold_left (fun acc (_,k) ->
-             combine acc (kuvar_occur u (msubst k os'))) Non l
-         in
-         if is_recursive <> Non then
-           if uvar_use_state u os' then self_kind k else raise Occur_check
-       else
          (* General case, we extend the list of parameters and set the
             value of u with v applied to more parameters. *)
          let os'' = Array.of_list os'' in
          let new_ords = Array.append os' os'' in
          let new_len = u.uvar_arity + Array.length os'' in
-         let state =
-           match uvar_state u with
-           | Free -> Free
-           | DSum l -> assert (not from_generalise);
-              DSum (List.map (fun (s,f) ->
-                (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
-                  bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
-           | Prod l -> assert (not from_generalise);
-              Prod (List.map (fun (s,f) ->
-                (s, unbox (mbind mk_free_o (Array.make new_len "α") (fun x ->
-                  bind_fn ~from_generalise new_ords x (msubst f os'))))) l)
-         in
-         let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
+         let v = new_kuvara (u.uvar_arity + Array.length os'') in
          let new_ords = Array.map self_ord new_ords in
          (** Avoid seting v with a third variable w ...
              TODO: check why this is necessary *)

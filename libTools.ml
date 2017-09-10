@@ -34,6 +34,9 @@ let assoc_gen : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b =
     in
     fn l
 
+let rem_assoc : 'a ->  ('a * 'b) list -> ('a * 'b) list =
+  fun s l -> List.filter (fun (s',_) -> s <> s') l
+
 (** iteration over a reference on list.
     [list_ref_iter fn r] ensure that [fn] has been called on
     all initial elements of !r and all elements that are member

@@ -222,8 +222,8 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
     k1 == k2 || match (full_repr k1, full_repr k2) with
     | (KVari(x1)   , KVari(x2)   ) -> eq_vars x1 x2
     | (KFunc(a1,b1), KFunc(a2,b2)) -> eq_kind a1 a2 && eq_kind b1 b2
-    | (KProd(s1,e1), KProd(s2,e2)) -> e1 = e2 && eq_assoc eq_kind s1 s2
-    | (KDSum(cs1)  , KDSum(cs2)  ) -> eq_assoc eq_kind cs1 cs2
+    | (KProd(s,e,f), KProd(t,g,h)) -> s = t && eq_kind e g && eq_kind f h
+    | (KDSum(s,e,f), KDSum(t,g,h)) -> s = t && eq_kind e g && eq_kind f h
     | (KKAll(b1)   , KKAll(b2)   )
     | (KKExi(b1)   , KKExi(b2)   ) -> eq_kbinder pos b1 b2
     | (KOAll(b1)   , KOAll(b2)   )
@@ -236,12 +236,10 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
     | (KNRec(p,a1) , KNRec(q,a2) ) -> p == q && eq_kind a1 a2
     | (KUVar(u1,o1), KUVar(u2,o2)) -> eq_uvar u1 u2 && eq_ordis pos o1 o2
     | (KUVar(u1,o1), b           ) when not !eq_strict &&
-                                        kuvar_occur ~safe_ordis:o1 u1 b = Non
-                                        && uvar_state u1 = Free ->
+                                        kuvar_occur ~safe_ordis:o1 u1 b = Non ->
        set_kuvar u1 (!fbind_ordis o1 b); eq_kind k1 k2
     | (a           , KUVar(u2,o2)) when not !eq_strict &&
-                                        kuvar_occur ~safe_ordis:o2 u2 a = Non
-                                        && uvar_state u2 = Free ->
+                                        kuvar_occur ~safe_ordis:o2 u2 a = Non ->
        set_kuvar u2 (!fbind_ordis o2 a); eq_kind k1 k2
     | (KPrnt s1    , KPrnt s2    ) -> s1 = s2
     | (_           , _           ) -> false
@@ -343,9 +341,9 @@ and gen_occur :
     adone_k := k :: !adone_k;
     match k with
     | KVari(x)   -> acc
+    | KProd(_,a,b)
+    | KDSum(_,a,b)
     | KFunc(a,b) -> aux (neg occ) (aux occ acc b ) a
-    | KProd(ks,_)
-    | KDSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
     | KKAll(f)
     | KKExi(f)   -> aux occ acc (subst f kdummy)
     | KOAll(f)
@@ -366,6 +364,7 @@ and gen_occur :
        if kuvar u then combine acc occ else acc
     | KMRec(_,k) (* NOTE: safe to ignore ordis as they are not used in unif var *)
     | KNRec(_,k) -> aux occ acc k
+    | KUnit | KZero -> acc
     | KPrnt _ -> assert false)
   and aux2 acc t =
     if List.memq t.elt !adone_t then acc else (
@@ -384,6 +383,8 @@ and gen_occur :
        let acc = match d with None -> acc | Some t -> aux2 acc t in
        List.fold_left (fun acc (_,t) -> aux2 acc t) (aux2 acc t) l
     | TAbrt
+    | TCaco
+    | TStck(_)
     | TVari(_)
     | TVars(_)
     | TDefi(_)

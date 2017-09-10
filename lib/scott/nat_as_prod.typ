@@ -1,12 +1,12 @@
 (* Unary natural with sums encoded using records *)
 
-type Nat = μK ∀X { z : X ; s : K -> X ; …} -> X
+type Nat = μK ∀X { z : X ; s : K -> X } -> X
 
 val 0 : Nat = fun r → r.z
 val succ : Nat → Nat = fun n r → r.s n
 
 (* test du sous-typage *)
-type Rel = μK ∀X { z : X ; s : K -> X ; p : K -> X; …} -> X
+type Rel = μK ∀X { z : X ; s : K -> X ; p : K -> X } -> X
 
 check Nat ⊂ Rel
 
