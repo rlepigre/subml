@@ -26,9 +26,10 @@ type occur =
 type kind =
   | KVari of kind var             (** Free type variable. *)
   | KFunc of kind * kind          (** Arrow type. *)
-  | KProd of (string * kind) list (** Record (or product) type.*)
-             * bool               (** if true: the record is extensible *)
-  | KDSum of (string * kind) list (** Sum (of Variant) type. *)
+  | KProd of string * kind * kind (** Record (or product) type.*)
+  | KUnit
+  | KDSum of string * kind * kind (** Variant (or sum) type. *)
+  | KZero
   | KKAll of kkbinder             (** Universal quantifier over a type. *)
   | KKExi of kkbinder             (** Corresponding existential quantifier. *)
   | KOAll of okbinder             (** Universal quantifier over an ordinal. *)
@@ -98,14 +99,7 @@ and ('a,'b) uvar =
 and ('a, 'b) uvar_state = Set of 'a from_ordis | Unset of 'b
 
 (** Unification variable for a kind. *)
-and kuvar = (kind, kuvar_state) uvar
-
-(** State of a unification variable for kinds, useful for the inference of sum
-    types and product types. *)
-and kuvar_state =
-  | Free                                    (** No constraint. *)
-  | DSum of (string * kind from_ordis) list (** Has the given constructors. *)
-  | Prod of (string * kind from_ordis) list (** Has the given fields. *)
+and kuvar = (kind, unit) uvar
 
 (** Abstract syntax tree for ordinals. *)
 and ordi =
@@ -154,6 +148,10 @@ and sugar =
   | SgRec of string list
   | SgTpl of int
 
+and stack =
+  | Empty
+  | Frame of (term -> stack -> term) * stack
+
 (** Abstract syntax tree for terms. *)
 and term' =
   (* Main term constructors. *)
@@ -171,6 +169,8 @@ and term' =
       hypothesis. The boolean indicates if contravariant Conv must not be
       replaced by ordinal parameters *)
   | TAbrt                                               (** Error. *)
+  | TCaco                                               (** Call-continuation *)
+  | TStck of stack                                      (** Saved stack *)
   (* Type annotations. They are not part of the semantics, and they are only
      used to guide the type-checking algorithm. *)
 
@@ -220,8 +220,8 @@ and sub_rule =
   | Sub_Delay  of sub_prf ref
   | Sub_Lower
   | Sub_Func   of sub_prf * sub_prf
-  | Sub_Prod   of (string * sub_prf) list
-  | Sub_DSum   of (string * sub_prf) list
+  | Sub_Prod   of sub_prf option * sub_prf
+  | Sub_DSum   of sub_prf option * sub_prf
   | Sub_KAll_r of sub_prf
   | Sub_KAll_l of sub_prf
   | Sub_KExi_l of sub_prf
@@ -274,7 +274,7 @@ let eq_uvar = fun o1 o2 -> o1.uvar_key = o2.uvar_key
 
 let tdummy = TReco []
 let pdummy = Pos.none tdummy
-let kdummy = KProd([],false)
+let kdummy = KUnit
 let odummy = OConv
 
 (**{2 Unfolding unification variables indirections and definitions.
@@ -431,18 +431,13 @@ let kvari : string -> kbox =
 let kfunc : kbox -> kbox -> kbox =
   box_apply2 (fun t u -> KFunc(t,u))
 
-let kprod : bool -> (string * kbox) list -> kbox =
-  fun b fs ->
-    let fs = List.map (fun (l,t) -> box_pair (box l) t) fs in
-    box_apply (fun fs -> KProd(fs,b)) (box_list fs)
-let sprod = kprod false
-let eprod = kprod true
-let kunit = KProd([], false)
+let kprod : string -> kbox -> kbox -> kbox =
+  fun s k1 k2 -> box_apply2 (fun k1 k2 -> KProd(s,k1,k2)) k1 k2
+let kunit = box KUnit
 
-let kdsum : (string * kbox) list -> kbox =
-  fun cs ->
-    let cs = List.map (fun (c,t) -> box_pair (box c) t) cs in
-    box_apply (fun cs -> KDSum(cs)) (box_list cs)
+let kdsum : string -> kbox -> kbox -> kbox =
+  fun s k1 k2 -> box_apply2 (fun k1 k2 -> KDSum(s,k1,k2)) k1 k2
+let kzero = box KZero
 
 let kkall : string -> (kvar -> kbox) -> kbox =
   fun x f ->
@@ -494,14 +489,12 @@ let kecst : string -> tbox -> (kvar -> kbox) -> kbox =
 (** Unification variable management. Useful for typing. *)
 let (new_kuvar, new_kuvara, reset_all, new_ouvara, new_ouvar) =
   let c = ref 0 in
-  let new_kuvara ?(state=Free) n : kuvar = {
+  let new_kuvara n : kuvar = {
     uvar_key = (incr c; !c);
-    uvar_state = ref (Unset state);
+    uvar_state = ref (Unset ());
     uvar_arity = n
-  } in
-  let new_kuvar ?(state=Free) () =
-    KUVar(new_kuvara ~state 0, [||])
-  in
+    } in
+  let new_kuvar () = KUVar(new_kuvara 0, [||]) in
   let reset_all () = c := 0 in
   let new_ouvara ?lower ?upper n : ouvar = {
     uvar_key = (incr c; !c);
@@ -565,6 +558,9 @@ let tprnt : Pos.popt -> string -> tbox =
 
 let tabrt : Pos.popt -> tbox =
   fun p -> box (Pos.make p TAbrt)
+
+let tcaco : Pos.popt -> tbox =
+  fun p -> box (Pos.make p TCaco)
 
 let tfixy : Pos.popt -> int -> Pos.strloc -> (tvar -> tbox) -> tbox =
   fun p n x f ->

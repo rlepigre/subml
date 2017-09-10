@@ -18,8 +18,8 @@ type pkind = pkind' loc
 and pkind' =
   | PTVar of string * pordi list * pkind list
   | PFunc of pkind * pkind
-  | PProd of (string * pkind) list * bool
-  | PDSum of (string * pkind option) list
+  | PProd of (string * pkind) list * pkind option
+  | PDSum of (string * pkind option) list * pkind option
   | PKAll of string * pkind
   | PKExi of string * pkind
   | POAll of string * pkind
@@ -46,6 +46,8 @@ and pterm' =
   | PPrnt of string
   | PFixY of strloc * int * pterm
   | PAbrt
+  | PCaco
+
 and ppat =
   | NilPat
   | Simple of (strloc * pkind option) option
@@ -59,11 +61,11 @@ let list_cons _loc t l =
   in_pos _loc (PCons("Cons", Some c))
 
 let unit_var _loc =
-  (Pos.make _loc "", Some(Pos.none (PProd([],false))))
+  (Pos.make _loc "", Some(Pos.none (PProd([],None))))
 
 (* "t; u" := "(fun (_ : unit) ↦ u) t" *)
 let sequence _loc t u =
-  let dum = (in_pos _loc "_", Some(in_pos _loc (PProd([], false)))) in
+  let dum = (in_pos _loc "_", Some(in_pos _loc (PProd([], None)))) in
   (* TODO: a desugaring info for printing could be used here *)
   in_pos _loc (PAppl(in_pos _loc (PLAbs(dum,u,SgNop)), t))
 
@@ -250,13 +252,23 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
                     let f xk =
                       unsugar_kind ~pos (add_kind x xk pos env) k
                     in kfixn x o f
-  | PProd(fs,e)  -> let f (l,k) = (l, unsugar_kind ~pos env k) in
-                    kprod e (List.map f fs)
-  | PDSum(cs)    -> let f (c,ko) =
-                      match ko with
-                      | None   -> (c, box kunit)
-                      | Some k -> (c, unsugar_kind ~pos env k)
-                    in kdsum (List.map f cs)
+  | PProd(fs,e)  -> let f acc (l,k) = kprod l (unsugar_kind ~pos env k) acc in
+                    let e = match e with
+                      | None -> kunit
+                      | Some e -> unsugar_kind ~pos env e
+                    in
+                    List.fold_left f e fs
+  | PDSum(fs,e)  -> let f acc (l,k) =
+                      let k = match k with
+                        | None -> kunit
+                        | Some k -> unsugar_kind ~pos env k
+                      in
+                      kdsum l k acc in
+                    let e = match e with
+                      | None -> kzero
+                      | Some e -> unsugar_kind ~pos env e
+                    in
+                    List.fold_left f e fs
   | PWith(a,s,b) -> with_clause (unsugar_kind ~pos env a)
                               s (unsugar_kind ~pos env b)
   | PDPrj(x,s)   -> dot_proj (term_variable env x) s
@@ -304,3 +316,4 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
   | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in
                    tfixy pt.pos n x f
   | PAbrt       -> tabrt pt.pos
+  | PCaco       -> tcaco pt.pos

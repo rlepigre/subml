@@ -188,8 +188,6 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
       (* TODO: should not open definition if the definition has no mu/nu *)
     | KUCst(t,f,cl) | KECst(t,f,cl) ->
        if cl then box k else map_kind k (* NOTE: no generalization in witness *)
-    | KUVar(v,os) as k -> (* FIXME: duplicated code in type_infer *)
-       if uvar_use_state v os then self_kind k else def_kind k
     | k -> def_kind k
 
   in
@@ -299,9 +297,9 @@ let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
     if List.memq k !adone then () else (
     adone := k::!adone;
     match k with
+    | KProd(_,a,b)
+    | KDSum(_,a,b)
     | KFunc(a,b)   -> fn a; fn b
-    | KProd(ls,_)
-    | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)     -> fn (subst f kdummy)
     | KFixM(o,f)
@@ -309,18 +307,14 @@ let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
     | KOAll(f)
     | KOExi(f)     -> fn (subst f odummy)
     | KUVar(u,os)  ->
-       begin
-         match uvar_state u with
-         | Free -> ()
-         | DSum l | Prod l ->
-            List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) odummy))) l
-       end;
        if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
          r := (u,os) :: !r
     | KDefi(d,_,a) -> Array.iter fn a
     | KMRec _
     | KNRec _      -> assert false
-    | KVari _      -> ()
+    | KVari _
+    | KUnit
+    | KZero     -> ()
     | KUCst(_,f,cl)
     | KECst(_,f,cl) -> fn (subst f kdummy)
     | KPrnt _ -> assert false)
@@ -337,9 +331,9 @@ let ouvar_list : kind -> ouvar list = fun k ->
     adone := k::!adone;
     match k with
     | KUVar(_,_)   -> () (* ignore ordinals, will be constant *)
+    | KProd(_,a,b)
+    | KDSum(_,a,b)
     | KFunc(a,b)   -> fn a; fn b
-    | KProd(ls,_)
-    | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)     -> fn (subst f kdummy)
     | KFixM(o,f)
@@ -349,6 +343,8 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | KDefi(d,o,a) -> Array.iter gn o;  Array.iter fn a
     | KMRec _
     | KNRec _      -> assert false
+    | KUnit
+    | KZero
     | KVari _      -> ()
     | KUCst(_,f,cl)
     | KECst(_,f,cl)-> fn (subst f kdummy)

@@ -15,6 +15,8 @@ let is_normal : term -> bool = fun t ->
     | TAbst(_)    -> true
     | TCnst _     -> true
     | TAbrt       -> true
+    | TCaco       -> true
+    | TStck _     -> true
 
     | TFixY(_)    -> false
     | TAppl(a,b)  -> false
@@ -47,6 +49,8 @@ let is_neutral : term -> bool = fun t ->
     | TPrnt _     -> true
 
     | TAbrt       -> false
+    | TCaco       -> false
+    | TStck _     -> false
     | TCons(s,a)  -> false
     | TAbst(_)    -> false
     | TFixY(_)    -> false

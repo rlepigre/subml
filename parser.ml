@@ -169,6 +169,7 @@ let else_kw = new_keyword "else"
 let with_kw = new_keyword "with"
 let type_kw = new_keyword "type"
 let abrt_kw = new_keyword "abort"
+let caco_kw = new_keyword "cc"
 
 let unfold_kw  = new_keyword "unfold"
 let clear_kw   = new_keyword "clear"
@@ -239,9 +240,11 @@ and parser pkind (p : [`Atm | `Prd | `Fun]) =
   | exists id:lgident a:kind   when p = `Fun -> in_pos _loc (POExi(id,a))
   | mu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixM(o,id,a))
   | nu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixN(o,id,a))
-  | "{" fs:kind_reco e:ext"}"  when p = `Atm -> in_pos _loc (PProd(fs,e))
-  | fs:kind_prod               when p = `Prd -> in_pos _loc (PProd(fs,false))
-  | "[" fs:kind_dsum "]"       when p = `Atm -> in_pos _loc (PDSum(fs))
+  | "{" k:{kind _:"∩"}? fs:kind_reco "}"
+                               when p = `Atm -> in_pos _loc (PProd(fs,k))
+  | fs:kind_prod               when p = `Prd -> in_pos _loc (PProd(fs,None))
+  | "[" k:{kind _:"∪"}? fs:kind_dsum "]"
+                               when p = `Atm -> in_pos _loc (PDSum(fs,k))
   | a:kind_atm (s,b):with_eq   when p = `Atm -> in_pos _loc (PWith(a,s,b))
   | id:llident '.' s:uident    when p = `Atm -> in_pos _loc (PDPrj(id,s))
   (* Parenthesis and coercions. *)
@@ -299,6 +302,7 @@ and parser pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | t:tapp "::" u:tseq$           when p = `Seq -> list_cons _loc t u
 
   | abrt_kw                       when p = `Atm -> in_pos _loc PAbrt
+  | caco_kw                       when p = `Atm -> in_pos _loc PCaco
   (* Parenthesis and coercions. *)
   | "(" term ")" when p = `Atm
   | tapp when p = `Seq

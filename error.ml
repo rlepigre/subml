@@ -44,10 +44,12 @@ let rec check_sub_proof (p, t, k1, k2, r) =
     | Sub_And_r  p
     | Sub_Or_l   p
     | Sub_Or_r   p
+    | Sub_Prod   (None, p)
+    | Sub_DSum   (None, p)
     | Sub_Gen(_,_,p)       -> check_sub_proof p
+    | Sub_Prod   (Some p1, p2)
+    | Sub_DSum   (Some p1, p2)
     | Sub_Func   (p1, p2) -> check_sub_proof p1 &&& check_sub_proof p2
-    | Sub_Prod   ps
-    | Sub_DSum   ps       -> for_all (fun (l,p) -> check_sub_proof p) ps
     | Sub_Lower
     | Sub_Ind _           -> None
     | Sub_Error msg       -> Some [ Msg msg ]

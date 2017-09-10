@@ -198,9 +198,9 @@ let add_positives ctxt gamma =
 let has_leading_ord_quantifier : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
+    | KProd(_,a,b)
+    | KDSum(_,a,b) -> fn a || fn b
     | KFunc(a,b) -> fn b
-    | KProd(ls,_)
-    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KOAll(f)
     | KOExi(f)   -> true
     | KKAll(f)
@@ -217,9 +217,9 @@ let has_leading_ord_quantifier : kind -> bool = fun k ->
 let has_leading_exists : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
+    | KProd(_,a,b)
+    | KDSum(_,a,b) -> fn a || fn b
     | KFunc(a,b) -> false
-    | KProd(ls,_)
-    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KKExi(f)   -> true
     | KOExi(f)   -> true
     | KOAll(f)   -> fn (subst f odummy)
@@ -235,9 +235,9 @@ let has_leading_exists : kind -> bool = fun k ->
 let has_leading_forall : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
+    | KProd(_,a,b)
+    | KDSum(_,a,b) -> fn a || fn b
     | KFunc(a,b) -> false
-    | KProd(ls,_)
-    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
     | KKAll(f)   -> true
     | KOAll(f)   -> true
     | KOExi(f)   -> fn (subst f odummy)
@@ -253,9 +253,9 @@ let has_leading_forall : kind -> bool = fun k ->
 let has_uvar : kind -> bool = fun k ->
   let rec fn k =
     match repr k with
+    | KProd(_,a,b)
+    | KDSum(_,a,b) -> fn a; fn b
     | KFunc(a,b) -> fn a; fn b
-    | KProd(ls,_)
-    | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)   -> fn (subst f kdummy)
     | KFixM(o,f) -> fn (subst f kdummy)
@@ -266,6 +266,8 @@ let has_uvar : kind -> bool = fun k ->
     | KDefi(d,o,a) -> Array.iter fn a
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
+    | KUnit
+    | KZero
     | KVari _    -> ()
     | KUCst(_,f,cl)
     | KECst(_,f,cl) -> fn (subst f kdummy)
