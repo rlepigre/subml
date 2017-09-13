@@ -63,7 +63,7 @@ let set_kuvar v k =
     Io.log_uni "set ?%d <- %a\n\n%!"
       v.uvar_key (!fprint_kind false)
       (msubst k (Array.init v.uvar_arity
-                   (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) ;
+                   (fun i -> mk_free_o (new_ovari ("a_"^string_of_int i))))) ;
     Timed.(v.uvar_state := Set k))
 
 (** function to set ordi variables *)
@@ -71,7 +71,7 @@ let set_ouvar ?(msg="") v o =
   Io.log_uni "set %d <- %a (%s)\n\n%!"
     v.uvar_key (!fprint_ordi false)
     (msubst o (Array.init v.uvar_arity
-                 (fun i -> free_of (new_ovari ("a_"^string_of_int i))))) msg;
+                 (fun i -> mk_free_o (new_ovari ("a_"^string_of_int i))))) msg;
   assert (is_unset v);
   Timed.(v.uvar_state := Set o)
 
@@ -98,7 +98,7 @@ let rec eq_ordis =
       Exit -> false
 
 and eq_obinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_ovari "o") in
+  let i = mk_free_o (new_ovari "o") in
   eq_kind pos (subst f1 i) (subst f2 i)
 
 and optpr ff = function
@@ -151,7 +151,7 @@ and eq_schema s1 s2 =
   && (let f1 = s1.sch_judge and f2 = s2.sch_judge in
       f1 == f2 ||
         mbinder_arity f1 == mbinder_arity f2 &&
-        let os = Array.init (mbinder_arity f1) (fun _ -> free_of (new_ovari "o")) in
+        let os = Array.init (mbinder_arity f1) (fun _ -> mk_free_o (new_ovari "o")) in
         let (k1,k1') = msubst f1 os in
         let (k2,k2') = msubst f2 os in
         let pos = List.map (fun i -> os.(i)) s1.sch_posit  in
@@ -250,11 +250,11 @@ and eq_kind : ordi list -> kind -> kind -> bool = fun pos k1 k2 ->
 
 
 and eq_kbinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_kvari "X") in
+  let i = mk_free_k (new_kvari "X") in
   eq_kind pos (subst f1 i) (subst f2 i)
 
 and eq_tkbinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_tvari "t") in
+  let i = mk_free_t (new_tvari "t") in
   eq_kind pos (subst f1 i) (subst f2 i)
 
 (****************************************************************************)
@@ -288,7 +288,7 @@ and eq_term : ordi list -> term -> term -> bool = fun pos t1 t2 ->
   in eq_term t1 t2
 
 and eq_tbinder pos f1 f2 = f1 == f2 ||
-  let i = free_of (new_tvari "x") in
+  let i = mk_free_t (new_tvari "x") in
   eq_term pos (subst f1 i) (subst f2 i)
 
 and eq_tcnst pos f1 a1 b1 f2 a2 b2 =
