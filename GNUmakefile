@@ -59,7 +59,7 @@ clean:
 
 distclean: clean
 	rm -f config.ml
-	find -type f -name "*~" -exec rm {} \;
+	find -type f \( -name "*~" -o -name "#*#" -o -name ".#*" \) -exec rm {} \;
 	rm -rf subml-latest subml-latest.tar.gz
 	rm -f subml.js
 	cd genex && make distclean
