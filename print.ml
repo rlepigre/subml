@@ -184,16 +184,16 @@ let rec match_kind : kuvar list -> ouvar list -> kind -> kind -> bool
   | KKAll(f), KKAll(g)
   | KKExi(f), KKExi(g) ->
      let v = new_kvari (binder_name f) in
-     match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
+     match_kind kuvars ouvars (subst f (mk_free_k v)) (subst g (mk_free_k v))
   | KOAll(f), KOAll(g)
   | KOExi(f), KOExi(g) ->
      let v = new_ovari (binder_name f) in
-     match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
+     match_kind kuvars ouvars (subst f (mk_free_o v)) (subst g (mk_free_o v))
   | KFixM(o1,f), KFixM(o2,g)
   | KFixN(o1,f), KFixN(o2,g) ->
      let v = new_kvari (binder_name f) in
      match_ordi ouvars o1 o2 &&
-       match_kind kuvars ouvars (subst f (free_of v)) (subst g (free_of v))
+       match_kind kuvars ouvars (subst f (mk_free_k v)) (subst g (mk_free_k v))
   | KVari(v1), KVari(v2) -> compare_vars v1 v2 = 0
   | p, k -> strict_eq_kind p k
   in
@@ -498,10 +498,10 @@ and pkind_def unfold ff kd =
   let pkind = print_kind unfold false None in
   let onames = mbinder_names kd.tdef_value in
   let os = new_mvar mk_free_o onames in
-  let k = msubst kd.tdef_value (Array.map free_of os) in
+  let k = msubst kd.tdef_value (Array.map mk_free_o os) in
   let knames = mbinder_names k in
   let ks = new_mvar mk_free_k knames in
-  let k = msubst k (Array.map free_of ks) in
+  let k = msubst k (Array.map mk_free_k ks) in
   assert(Array.length knames = Array.length kd.tdef_kvariance);
   assert(Array.length onames = Array.length kd.tdef_ovariance);
   let onames = Array.mapi (fun i n -> (n, kd.tdef_ovariance.(i))) onames in
@@ -535,8 +535,8 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      if wrap then fprintf ff ")"
   | TMLet(b,x,bt)->
      let (onames, knames) = mmbinder_names bt odummy in
-     let ovars = Array.map (fun n -> free_of (new_ovari n)) onames in
-     let kvars = Array.map (fun n -> free_of (new_kvari n)) knames in
+     let ovars = Array.map (fun n -> mk_free_o (new_ovari n)) onames in
+     let kvars = Array.map (fun n -> mk_free_k (new_kvari n)) knames in
      let t = mmsubst bt ovars kvars in
      let k = mmsubst b ovars kvars in
      let print_name ff = fprintf ff "%s" in
@@ -648,7 +648,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
          | TAbst(_,f,s) ->
             let x0 = binder_name f in
             begin
-              let t = subst f (free_of (new_tvari x0)) in
+              let t = subst f (mk_free_t (new_tvari x0)) in
               let (pat, t) = unsugar_pattern c x0 s t in
               fprintf ff "%s %s → %a" !bar pat pterm t;
             end;
@@ -660,7 +660,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
          | None -> ()
          | Some({elt = TAbst(_,f,_)}) ->
             let x = binder_name f in
-            let t = subst f (free_of (new_tvari x)) in
+            let t = subst f (mk_free_t (new_tvari x)) in
             fprintf ff "%s%s → %a" !bar x pterm t;
          | Some b           -> assert false
        in
@@ -989,7 +989,7 @@ let print_epsilon_tbls ff =
   list_ref_iter (fun (t,(t0,name,index)) ->
     match t.elt with
     | TCnst(f,a,b) when name <> "" ->
-       let x = free_of (new_tvari (binder_name f)) in
+       let x = mk_free_t (new_tvari (binder_name f)) in
        let t = subst f x in
        add_out "%s_{%d} %s ε_{%a ∈ %a}(%a ∉ %a)%s"
                name index

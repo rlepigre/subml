@@ -326,7 +326,7 @@ let rec subtype : subctxt -> ctxt -> term -> kind -> kind -> sub_prf
     | (KFunc(a1,b1), KFunc(a2,b2)) when sctxt = Free ->
        let wit =
          let f x = tappl None (box t) (box_apply Pos.none x) in
-         let bnd = unbox (bind mk_free_tvari "x" f) in
+         let bnd = unbox (bind mk_free_t "x" f) in
          unbox (tcnst bnd (box a2) (box b2))
        in
         (* NOTE: the heuristic below works well for Church like encoding *)

@@ -391,11 +391,11 @@ let new_kvari : string -> kind var =
   new_var mk_free_k
 
 (** Term variable management. *)
-let mk_free_tvari : term' var -> term' =
+let mk_free_t : term' var -> term' =
   fun x -> TVari(x)
 
 let new_tvari : string -> term' var =
-  new_var mk_free_tvari
+  new_var mk_free_t
 
 (** Ordinal variable management. *)
 let mk_free_o : ovar -> ordi =
@@ -521,7 +521,7 @@ let tvari : Pos.popt -> term' var -> tbox =
 let tabst : Pos.popt -> kbox option -> Pos.strloc -> sugar ->
             (tvar -> tbox) -> tbox =
   fun p ko x s f ->
-    let b = vbind mk_free_tvari Pos.(x.elt) f in
+    let b = vbind mk_free_t Pos.(x.elt) f in
     box_apply2 (fun ko b -> Pos.make p (TAbst(ko,b,s))) (box_opt ko) b
 
 let tappl : Pos.popt -> tbox -> tbox -> tbox =
@@ -564,7 +564,7 @@ let tcaco : Pos.popt -> tbox =
 
 let tfixy : Pos.popt -> int -> Pos.strloc -> (tvar -> tbox) -> tbox =
   fun p n x f ->
-    let b = vbind mk_free_tvari Pos.(x.elt) f in
+    let b = vbind mk_free_t Pos.(x.elt) f in
     box_apply (fun b -> Pos.make p (TFixY(None,n,b))) b
 
 let tmlet : Pos.popt -> string array -> string array ->
@@ -597,7 +597,7 @@ let idt : tbox =
 
 let generic_tcnst : kbox -> kbox -> tbox =
   fun a b ->
-    let f = bind mk_free_tvari "x" (fun x -> box_apply Pos.none x) in
+    let f = bind mk_free_t "x" (fun x -> box_apply Pos.none x) in
     tcnst (unbox f) a b
 
 (****************************************************************************)

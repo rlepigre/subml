@@ -174,7 +174,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
       | OConv when occ = sNeg && not manual ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
-         res := (free_of v, (n, v, ref true)) :: !res; box_of_var v
+         res := (mk_free_o v, (n, v, ref true)) :: !res; box_of_var v
       | o -> def_ord o
     in
     res
