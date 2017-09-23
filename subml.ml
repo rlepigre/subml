@@ -46,7 +46,10 @@ let spec = Arg.align
                    's': subtyping
                    'u': unification
                    'y': size change principle
-                   'm': sct matrix coefficient" )
+       'm': sct matrix coefficient" )
+  ; ( "--debug-parser"
+    , Arg.Set_int Earley.debug_lvl
+    , "i  Set the debug lvl of earley" )
   ; ( "-I"
     , Arg.String (fun s -> Config.path := s :: ! Config.path)
     , "s  Add the given directory to the path")
