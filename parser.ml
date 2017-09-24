@@ -646,7 +646,7 @@ let handle_exception : ('a -> 'b) -> 'a -> bool = fun fn v ->
     | Sys.Break              -> Io.err "\n[Interrupted]\n%!"
     | Arity_error(p,m)       -> Io.err "%a: %s\n%!" pp p m
     | Positivity_error(p,m)  -> Io.err "%a: %s\n%!" pp p m
-    | Parse_error(buf,pos,_) -> Io.err "%a: syntax error.\n%!" pp
+    | Parse_error(buf,pos)   -> Io.err "%a: syntax error.\n%!" pp
                                   (Some (Pos.locate buf pos buf (pos+1)))
     | Unclosed(b,p)          -> Io.err "%a: unclosed %scomment.\n%!" pp p
                                   (if b then "string in a " else "")
