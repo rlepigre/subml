@@ -224,10 +224,10 @@ let parser ordi =
 (* Entry point for kinds. *)
 let parser kind : pkind grammar = (pkind `Fun)
 
-and kind_atm = (pkind `Atm)
-and kind_prd = (pkind `Prd)
+and parser kind_atm = (pkind `Atm)
+and parser kind_prd = (pkind `Prd)
 
-and pkind (p : [`Atm | `Prd | `Fun]) =
+and parser pkind (p : [`Atm | `Prd | `Fun]) =
   | a:kind_prd arrow b:kind    when p = `Fun -> in_pos _loc (PFunc(a,b))
   | id:uident (o,k):kind_args$ when p = `Atm -> in_pos _loc (PTVar(id,o,k))
   | forall id:uident a:kind    when p = `Fun -> in_pos _loc (PKAll(id,a))
@@ -250,32 +250,32 @@ and pkind (p : [`Atm | `Prd | `Fun]) =
   | eps w:epsilon              when p = `Atm -> in_pos _loc w
   | kuvar                      when p = `Atm -> in_pos _loc PUVar
 
-and epsilon = id:uident '(' t:term m:mem a:kind ')' ->
+and parser epsilon = id:uident '(' t:term m:mem a:kind ')' ->
   if m then PECst(t,id,a) else PUCst(t,id,a)
 
-and kind_args =
+and parser kind_args =
   | EMPTY                           -> ([], [])
   | "(" ks:(list_sep' kind ",") ")" -> ([], ks)
   | "(" os:(list_sep' ordi ",") ks:{"," ks:(list_sep kind ",")}?[[]] ")"
 
-and kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
-and kind_dsum = (list_sep (parser uident a:{_:of_kw kind}?) "|")
-and kind_reco = (list_sep (parser lident ":" kind) ";")
-and with_eq   = _:with_kw s:uident "=" b:kind_atm
+and parser kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
+and parser kind_dsum = (list_sep (parser uident a:{_:of_kw kind}?) "|")
+and parser kind_reco = (list_sep (parser lident ":" kind) ";")
+and parser with_eq   = _:with_kw s:uident "=" b:kind_atm
 
 (****************************************************************************
  *                              Parsers for terms                           *
  ****************************************************************************)
 
 (* Entry point for terms. *)
-and term : pterm grammar = (pterm `Lam)
+and parser term : pterm grammar = (pterm `Lam)
 
-and tapp = (pterm `App)
-and tseq = (pterm `Seq)
-and tcol = (pterm `Col)
-and tatm = (pterm `Atm)
+and parser tapp = (pterm `App)
+and parser tseq = (pterm `Seq)
+and parser tcol = (pterm `Col)
+and parser tatm = (pterm `Atm)
 
-and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
+and parser pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | lambda xs:fpat+ dot t:term$   when p = `Lam -> plabs _loc xs t
   | fun_kw xs:fpat+ arrow t:term$ when p = `Lam -> plabs _loc xs t
   | t:tapp u:tcol                 when p = `App -> pappl _loc t u
@@ -306,15 +306,15 @@ and pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | tatm when p = `Col
   | tcol when p = `App
 
-and var =
+and parser var =
   | id:loptident                    -> (in_pos _loc_id id, None)
   | "(" id:loptident ":" k:kind ")" -> (in_pos _loc_id id, Some k)
 
-and let_var =
+and parser let_var =
   | id:loptident            -> (in_pos _loc_id id, None)
   | id:loptident ":" k:kind -> (in_pos _loc_id id, Some k)
 
-and term_llet = let_kw r:is_rec n:{'[' n:int_lit ']'}? pat:rpat "=" t:term in_kw u:term ->
+and parser term_llet = let_kw r:is_rec n:{'[' n:int_lit ']'}? pat:rpat "=" t:term in_kw u:term ->
   let t =
     if not r then
       match pat with Simple (Some(_,Some k)) -> in_pos _loc_t (PCoer(t,k))
@@ -325,49 +325,49 @@ and term_llet = let_kw r:is_rec n:{'[' n:int_lit ']'}? pat:rpat "=" t:term in_kw
   in
   in_pos _loc (PAppl(apply_rpat "_" pat u, t))
 
-and ords_kinds =
+and parser ords_kinds =
   | EMPTY                     -> ([], [])
   | ks:(list_sep' uident ",") -> ([], ks)
   | os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")}?[[]]
 
-and term_mlet = let_kw (os,ks):ords_kinds
+and parser term_mlet = let_kw (os,ks):ords_kinds
                   such_kw that_kw id:loptident ':' k:kind in_kw u:term ->
   in_pos _loc (PMLet(os,ks,k,id,u))
 
-and term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
+and parser term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
   pcond _loc c t e
 
-and term_reco = (list_sep field ";") _:";"?
-and term_prod = l:(glist_sep'' term comma) -> build_prod l
+and parser term_reco = (list_sep field ";") _:";"?
+and parser term_prod = l:(glist_sep'' term comma) -> build_prod l
 
-and field = l:lident k:{ ":" kind }?$ "=" t:tapp$ ->
+and parser field = l:lident k:{ ":" kind }?$ "=" t:tapp$ ->
   (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
 
-and term_list =
+and parser term_list =
   | EMPTY                  -> list_nil _loc
   | t:term "," l:term_list -> list_cons _loc t l
 
-and pats = _:"|"? ps:(list_sep case "|")
+and parser pats = _:"|"? ps:(list_sep case "|")
 
-and fpat =
+and parser fpat =
   | x:let_var                          -> Simple (Some x)
   | "(" x:let_var ")"                  -> Simple (Some x)
   | "{" ls:(list_sep (parser l:lident "=" x:var) ";") "}"
                                        -> Record ls
   | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)
 
-and rpat =
+and parser rpat =
   | EMPTY -> Simple None
   | fpat
 
-and pattern =
+and parser pattern =
   | c:uident x:rpat -> (c,x)
   | "[" "]"         -> ("Nil", NilPat)
   | x:var"::"y:var  -> ("Cons", Record [("hd",x) ; ("tl",y)])
 
-and case = (c,x):pattern arrow t:term -> (c, x, t)
+and parser case = (c,x):pattern arrow t:term -> (c, x, t)
 
-and default = '|' x:let_var arrow t:term -> (Simple (Some x), t)
+and parser default = '|' x:let_var arrow t:term -> (Simple (Some x), t)
 
 (****************************************************************************
  *                                LaTeX parser                              *
@@ -384,14 +384,14 @@ let tex_simple = parser s:{#[^}{@#]+#} -> s.(0)
 
 (* Simple LaTeX text (without specific annotations. *)
 let parser tex_name = '{' l:tex_name_aux* '}' -> String.concat "" l
-and tex_name_aux =
+and parser tex_name_aux =
   | s:tex_simple            -> s
   | "{" l:tex_name_aux* "}" -> "{" ^ (String.concat "" l) ^ "}"
 
 (* LaTeX text with annotations to generate proofs and stuff. *)
 let parser tex_text = "{" l:latex_atom* "}" -> Latex.List l
 
-and latex_atom =
+and parser latex_atom =
   | hash "witnesses" "#" ->
       Latex.Witnesses
   | hash br:int_lit?[0] u:"!"? k:(change_layout kind subml_blank) "#" ->
@@ -440,7 +440,7 @@ and latex_atom =
       Latex.Sch (List.nth schemas i, ordname)
 
 
-and sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
+and parser sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
 
 (* Entry points. *)
 let tex_name = change_layout tex_name no_blank
@@ -603,14 +603,14 @@ let parser command top =
   | _:clear_kw                    when top     -> LibTools.clear ()
   | {quit_kw | exit_kw}           when top     -> raise End_of_file
 
-and kind_def = tex_name? uident kind_def_args "=" kind
+and parser kind_def = tex_name? uident kind_def_args "=" kind
 
-and kind_def_args =
+and parser kind_def_args =
   | EMPTY                             -> ([], [])
   | "(" ks:(list_sep' uident ",") ")" -> ([], ks)
   | "(" os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")}?[[]] ")"
 
-and val_def =
+and parser val_def =
   | r:is_rec n:{'[' int_lit ']'}? tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
       let t =
         if not r then t else pfixY (in_pos _loc_id id, None) _loc_t n t
