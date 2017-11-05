@@ -849,7 +849,7 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
        | TAbst(_,f,_) when binder_name f = "" -> typ2proof p2
        | _ -> binaryT "→_i" c p1 (typ2proof p2)
      end
-  | Typ_Func_e(p1,p2) -> binaryN "→_e" c (typ2proof p1) (typ2proof p2)
+  | Typ_Func_e(p1,p2) -> binaryN "→_e" c (typ2proof p2) (typ2proof p1)
   | Typ_Prod_i(p,ps)  -> n_aryN "×_i" c (sub2proof p :: List.map typ2proof ps)
   | Typ_Prod_e(p)     -> unaryN "×_e" c (typ2proof p)
   | Typ_DSum_i(p1,p2) -> binaryT "+_i" c p1 (typ2proof p2)
