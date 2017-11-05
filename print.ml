@@ -383,7 +383,8 @@ and print_kind unfold wrap unfolded_Y ff t =
           fprintf ff (if latex_mode () then "\\mathrm{%s} \\of %a" else "%s of %a")
             c pkind a
       in
-      fprintf ff "[%a]" (print_list pvariant " \\st ") cs
+      let st = if latex_mode () then " \\st " else " | " in
+      fprintf ff "[%a]" (print_list pvariant st) cs
   | KKAll(f)  ->
       let x = new_prvar f in
       fprintf ff "∀%s.%a" (binder_name f) pkind (subst f x)
