@@ -23,10 +23,6 @@ val 10: CNat = s 9
 val add : CNat → CNat → CNat = fun n m f x → n f (m f x)
 val mul : CNat → CNat → CNat = fun n m f → n (m f)
 
-(* Printing function. *)
-val print_nat : CNat → {} = fun n →
-  n (print("S"); (fun x -> x)) (print("Z\n"); {})
-
 (* Predecessor. *)
 val pred : CNat → CNat = fun n →
   n (fun p x y → p (s x) x) (fun x y → y) z z
@@ -56,6 +52,7 @@ val inf : CNat -> CNat -> CNat = fun n m →
   in
   n a (λp.z) m
 
+(* Printing function. *)
 val printCNat : CNat → {} = fun n →
   n (fun f _ → print("S"); f {}) (fun _ → print("0")) {}
 

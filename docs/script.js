@@ -106,6 +106,10 @@ $(function() {
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u00D7 ");
                 break;
+              case "\\infty" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\U221E ");
+                break;
               case "\\alpha" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03B1 ");
