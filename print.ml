@@ -383,8 +383,8 @@ and print_kind unfold wrap unfolded_Y ff t =
           fprintf ff (if latex_mode () then "\\mathrm{%s} \\of %a" else "%s of %a")
             c pkind a
       in
-      let sep = if latex_mode () then " \\st " else " | " in
-      fprintf ff "[%a]" (print_list pvariant sep) cs
+      let st = if latex_mode () then " \\st " else " | " in
+      fprintf ff "[%a]" (print_list pvariant st) cs
   | KKAll(f)  ->
       let x = new_prvar f in
       fprintf ff "∀%s %a" (binder_name f) pkind (subst f x)
@@ -850,7 +850,7 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
        | TAbst(_,f,_) when binder_name f = "" -> typ2proof p2
        | _ -> binaryT "→_i" c p1 (typ2proof p2)
      end
-  | Typ_Func_e(p1,p2) -> binaryN "→_e" c (typ2proof p1) (typ2proof p2)
+  | Typ_Func_e(p1,p2) -> binaryN "→_e" c (typ2proof p2) (typ2proof p1)
   | Typ_Prod_i(p,ps)  -> n_aryN "×_i" c (sub2proof p :: List.map typ2proof ps)
   | Typ_Prod_e(p)     -> unaryN "×_e" c (typ2proof p)
   | Typ_DSum_i(p1,p2) -> binaryT "+_i" c p1 (typ2proof p2)
