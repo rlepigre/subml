@@ -43,6 +43,7 @@ include "church/state.typ"
 include "church/stream.typ"
 
 (* Scott encoding *)
+include "scott/nat.typ"
 include "scott/natrec.typ"
 include "scott/natbin.typ"
 include "scott/list.typ"

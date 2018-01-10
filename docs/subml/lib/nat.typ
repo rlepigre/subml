@@ -62,6 +62,12 @@ val gt  : Nat → Nat → Bool = fun n m →
 val geq : Nat → Nat → Bool = fun n m →
   case compare n m of Ls → fls | Eq → tru | Gt → tru
 
+val min : Nat → Nat → Nat = fun n m →
+  if leq n m then n else m
+
+val max : Nat → Nat → Nat = fun n m →
+  if leq n m then m else n
+
 val rec iter : Nat → (Nat → Nat) → Nat → Nat =
   fun n f a → case n of
   | Z    → a
