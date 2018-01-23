@@ -859,7 +859,7 @@ let rec typ2proof : Sct.index list -> typ_prf -> string Proof.proof
   | Typ_Nope(p)       -> typ2proof p
   | Typ_Defi(p)       -> unaryT "" c p
   | Typ_Prnt(p)       -> unaryT "\\mathrm{Pr}" c p
-  | Typ_Cnst(p)       -> unaryT "\\mathrm{Ax}" c p
+  | Typ_Cnst(p)       -> unaryT "ε" c p
   | Typ_Func_i(p1,p2) ->
      begin
        match t.elt with
