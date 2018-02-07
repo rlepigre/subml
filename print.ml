@@ -895,14 +895,19 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
                                  else "[%s]_{%d}")
                                 (mkSchema sch) (Sct.int_of_index sch.sch_index)
                          in
-                         let name = sprintf "\\IP{%i}" (Sct.int_of_index sch.sch_index) in
-                         unarySN "\\GP" c (hypN name p0)
+                         let name = sprintf "\\I{%i}" (Sct.int_of_index sch.sch_index) in
+                         let c' = sprintf "%s ⊢ %s ⊂ %s"
+                                    o2s (k2s a) (k2s b) in
+                         unarySN "\\S" c (unarySN "\\G" c' (hypN name p0))
   | Sub_Error(msg)    -> axiomSN (sprintf "ERROR(%s)" msg) c
   | Sub_Gen(sch,tros,((os0,t0,_,_,_) as p)) ->
      if List.mem sch.sch_index used_ind then (
        let c0 = mkSchema sch in
-       unarySN "\\GP" c
-         (unarySN (sprintf "\\IP{%i}" (Sct.int_of_index sch.sch_index)) c0 (sub2proof p)))
+       let c' = sprintf "%s ⊢ %s ⊂ %s"
+                  o2s (k2s a) (k2s b) in
+       unarySN "\\S" c (
+         unarySN "\\G" c'
+         (unarySN (sprintf "\\I{%i}" (Sct.int_of_index sch.sch_index)) c0 (sub2proof p))))
      else (
          ordi_tbl := List.map (fun (o1,o2) -> (o1,(o2,true))) tros @ !ordi_tbl;
          epsilon_term_tbl := (t0,(t,"",-1)) :: !epsilon_term_tbl;
