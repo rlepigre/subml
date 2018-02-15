@@ -387,16 +387,16 @@ and print_kind unfold wrap unfolded_Y ff t =
       fprintf ff "[%a]" (print_list pvariant st) cs
   | KKAll(f)  ->
       let x = new_prvar f in
-      fprintf ff "∀%s %a" (binder_name f) pkind (subst f x)
+      fprintf ff "∀%s. %a" (binder_name f) pkind (subst f x)
   | KKExi(f)  ->
       let x = new_prvar f in
-      fprintf ff "∃%s %a" (binder_name f) pkind (subst f x)
+      fprintf ff "∃%s. %a" (binder_name f) pkind (subst f x)
   | KOAll(f)  ->
       let x = OVars (binder_name f) in
-      fprintf ff "∀%s %a" (binder_name f) pkind (subst f x)
+      fprintf ff "∀%s. %a" (binder_name f) pkind (subst f x)
   | KOExi(f)  ->
       let x = OVars (binder_name f) in
-      fprintf ff "∃%s %a" (binder_name f) pkind (subst f x)
+      fprintf ff "∃%s. %a" (binder_name f) pkind (subst f x)
   | KFixM(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
