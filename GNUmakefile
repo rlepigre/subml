@@ -14,7 +14,7 @@ VERSION  = devel
 VIMDIR   = $(HOME)/.vim
 EMACSDIR = $(PREFIX)/share/emacs/site-lisp
 
-OBUILD   = ocamlbuild -use-ocamlfind -cflags -w,-3-30 -quiet
+OBUILD   = ocamlbuild -use-ocamlfind -quiet
 
 #### Main target #############################################################
 
