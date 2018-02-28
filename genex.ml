@@ -1,3 +1,5 @@
+(** Generate HTML menu for the SubML library using "lib/all.typ". *)
+
 let is_empty : string -> bool = fun str ->
   String.trim str = ""
 
