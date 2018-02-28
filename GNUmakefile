@@ -1,17 +1,20 @@
-VERSION = devel
-PREFIX  = /usr/local
-VIMDIR  = $(HOME)/.vim
-LIBDIR  = $(PREFIX)/lib
-BINDIR  = $(PREFIX)/bin
-OBUILD  = ocamlbuild -use-ocamlfind -cflags -w,-3-30 -quiet
-
-#### Override config if opam is installed ####################################
-
 HAS_OPAM := $(shell which opam 2> /dev/null)
+
 ifdef HAS_OPAM
+PREFIX := $(shell opam config var prefix)
 LIBDIR := $(shell opam config var share)
 BINDIR := $(shell opam config var bin)
+else
+PREFIX := /usr/local
+LIBDIR := $(PREFIX)/lib
+BINDIR : = $(PREFIX)/bin
 endif
+
+VERSION  = devel
+VIMDIR   = $(HOME)/.vim
+EMACSDIR = $(PREFIX)/share/emacs/site-lisp
+
+OBUILD   = ocamlbuild -use-ocamlfind -cflags -w,-3-30 -quiet
 
 #### Main target #############################################################
 
@@ -126,6 +129,9 @@ ifneq ($(wildcard $(VIMDIR)/.),)
 	rm -rf $(VIMDIR)/syntax/subml.vim
 	rm -rf $(VIMDIR)/ftdetect/subml.vim
 endif
+ifneq ($(wildcard $(EMACSDIR)/.),)
+	rm -rf $(EMACSDIR)/subml
+endif
 
 .PHONY: install
 install: _build/src/subml.native
@@ -152,5 +158,16 @@ ifneq ($(wildcard $(VIMDIR)/.),)
 else
 	@echo -e "\e[36mWill not install vim mode.\e[39m"
 endif
+
+.PHONY: install_emacs
+install_emacs: editors/emacs/subml-mode.el
+ifneq ($(wildcard $(EMACSDIR)/.),)
+	install -m 755 -d $(EMACSDIR)/subml
+	install -m 644 editors/emacs/subml-mode.el $(EMACSDIR)/subml
+	@echo -e "\e[36mEmacs mode installed.\e[39m"
+else
+	@echo -e "\e[36mWill not install emacs mode.\e[39m"
+endif
+
 
 
