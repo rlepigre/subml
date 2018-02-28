@@ -9,8 +9,8 @@ MLFILES = $(wildcard src/*.ml src/*.mli) src/config.ml
 
 all: _build/src/subml.native
 
-.PHONY: update_docs
-update_docs: docs/subml.js tutorial.typ _build/src/subml.docdir/index.html
+.PHONY: www
+www: docs/subml/subml.js tutorial.typ _build/src/subml.docdir/index.html
 	@rm -rf docs/subml/*
 	@rm -rf docs/ocamldoc/*
 	@cp -r lib docs/subml/lib
@@ -39,7 +39,7 @@ src/config.ml:
 	@echo 'let default_path = ["."; "./lib"; "$(LIBDIR)/subml"]' > $@
 	@echo 'let version = "$(VERSION)"' >> $@
 
-docs/subml.js: _build/src/submljs.byte
+docs/subml/subml.js: _build/src/submljs.byte
 	@echo "[JSO] $@"
 	@js_of_ocaml --pretty --noinline +weak.js -o $@ $<
 
