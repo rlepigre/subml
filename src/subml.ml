@@ -8,51 +8,51 @@ let files   = ref []
 let spec = Arg.align
   [ ( "--verbose"
     , Arg.Set Ast.verbose
-    , "  Display the defined types and values" )
+    , " Display the defined types and values" )
   ; ( "--quit"
     , Arg.Set quit
-    , "  Quit after evaluating the files" )
+    , " Quit after evaluating the files" )
   ; ( "--no-prelude"
     , Arg.Clear prelude
-    , "  Do not load the prelude" )
+    , " Do not load the prelude" )
   ; ( "--gml-file"
     , Arg.String Io.set_gml_file
-    , "fn  Choose the GraphMl output file" )
+    , "fn Choose the GraphMl output file" )
   ; ( "--tex-file"
     , Arg.String Io.set_tex_file
-    , "fn  Choose the TeX output file" )
+    , "fn Choose the TeX output file" )
   ; ( "--out-file"
     , Arg.String Io.(fun s -> fmts.out <- fmt_of_file s)
-    , "fn  Choose the standard output file" )
+    , "fn Choose the standard output file" )
   ; ( "--err-file"
     , Arg.String Io.(fun s -> fmts.err <- fmt_of_file s)
-    , "fn  Choose the error output file" )
+    , "fn Choose the error output file" )
   ; ( "--log-file"
     , Arg.String Io.(fun s -> fmts.log <- fmt_of_file s)
-    , "fn  Choose the log output file" )
+    , "fn Choose the log output file" )
   ; ( "--no-inline"
     , Arg.Clear Sct.do_inline
-    , "  Do not optimize the SCP call graph by inlining" )
+    , " Do not optimize the SCP call graph by inlining" )
   ; ( "--no-contr"
     , Arg.Clear Ast.contract_mu
-    , "  Do not contract the fixpoints" )
+    , " Do not contract the fixpoints" )
   ; ( "--fix-depth"
     , Arg.Set_int Raw.fixpoint_depth
-    , "i  Set the maximal unrolling depth for fixpoints" )
+    , "i Set the maximal unrolling depth for fixpoints" )
   ; ( "--debug"
     , Arg.String Io.set_debug
-    , "s  Display the debugging informations
-                   't': typing
-                   's': subtyping
-                   'u': unification
-                   'y': size change principle
-       'm': sct matrix coefficient" )
+    , "s Display the debugging informations
+                     't': typing
+                     's': subtyping
+                     'u': unification
+                     'y': size change principle
+                     'm': sct matrix coefficient" )
   ; ( "--debug-parser"
     , Arg.Set_int Earley.debug_lvl
-    , "i  Set the debug lvl of earley" )
+    , "i Set the debug lvl of earley" )
   ; ( "-I"
     , Arg.String (fun s -> Io.path := s :: !Io.path)
-    , "s  Add the given directory to the path")
+    , "s Add the given directory to the path")
   ]
 
 let _ =
