@@ -32,5 +32,6 @@ directory is accessible) if you did not install `subml`.
 
 ### Documentation
 
+ - See file `tutorial.typ` for in introduction to the language and its syntax
  - Online interpreter: https://rlepigre.github.io/subml/
  - OCamlDoc: https://rlepigre.github.io/subml/ocamldoc/
