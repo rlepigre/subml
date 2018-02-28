@@ -1,87 +1,98 @@
-include Makefile.config
+LIBDIR=$(shell opam config var share)
+BINDIR=$(shell opam config var bin)
 
-MLFILES = $(wildcard *.ml *.mli) config.ml
+VERSION=devel
 
-all: subml.byte subml.native
+OBUILD = ocamlbuild -use-ocamlfind -cflags -w,-3-30 -quiet
+
+MLFILES = $(wildcard src/*.ml src/*.mli) src/config.ml
+
+all: _build/src/subml.native
 
 .PHONY: update_docs
-update_docs: subml.js tutorial.typ subml-latest.tar.gz
-	rm -rf docs/subml/*
-	cp -r lib docs/subml/lib
-	cp tutorial.typ docs/subml
-	cd genex && make && ./genex ../lib/all.typ > ../docs/examples.html
-	cp subml.js docs/subml
-	cp subml-latest.tar.gz docs/docs/
+update_docs: docs/subml.js tutorial.typ _build/src/subml.docdir/index.html
+	@rm -rf docs/subml/*
+	@rm -rf docs/ocamldoc/*
+	@cp -r lib docs/subml/lib
+	@cp -r _build/src/subml.docdir/* docs/ocamldoc
+	@cp tutorial.typ docs/subml
+	@ocaml genex.ml lib/all.typ > docs/example.html
 
-doc: config.ml
-	ocamlbuild -use-ocamlfind -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
+_build/src/subml.docdir/index.html: src/config.ml
+	@echo "[DOC] $@"
+	@$(OBUILD) -ocamldoc 'ocamldoc -charset utf8' src/subml.docdir/index.html
 
-subml.native: $(MLFILES) subml.ml
-	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
+_build/src/subml.native: $(MLFILES)
+	@echo "[OPT] $@"
+	@$(OBUILD) src/subml.native
 
-subml.p.native: $(MLFILES) subml.ml
-	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
+_build/src/subml.p.native: $(MLFILES)
+	@echo "[OPT] $@"
+	@$(OBUILD) src/subml.p.native
 
-subml.byte: $(MLFILES) subml.ml
-	ocamlbuild -use-ocamlfind -cflags -g,-w,-3-30 $@
+_build/src/submljs.byte: $(MLFILES)
+	@echo "[BYT] $@"
+	@$(OBUILD) src/submljs.byte
 
-config.ml: config.tmpl
-	sed -e 's!_PATH_!\"$(LIBDIR)/subml\"!' $< > $@
+src/config.ml:
+	@echo "[GEN] $@"
+	@echo 'let default_path = ["."; "./lib"; "$(LIBDIR)/subml"]' > $@
+	@echo 'let version = "$(VERSION)"' >> $@
 
-submljs.byte: $(MLFILES) submljs.ml
-	ocamlbuild -cflags -w,-3-30 -use-ocamlfind $@
-
-subml.js: submljs.byte
-	js_of_ocaml --pretty --noinline +weak.js submljs.byte -o subml.js
+docs/subml.js: _build/src/submljs.byte
+	@echo "[JSO] $@"
+	@js_of_ocaml --pretty --noinline +weak.js -o $@ $<
 
 run: all
 	ledit ./subml.native --verbose
 
-validate: clean
-	@ wc -L *.ml *.mli
+validate: src/config.ml
+	@ wc -L $(MLFILES)
 	@ echo ""
-	@ grep -n -P '\t' *.ml *.mli || exit 0
+	@ grep -n -P '\t' $(MLFILES) || exit 0
 
 test: all
 	@ echo normal test
 	./subml.native --quit lib/all.typ
-	@ echo -n "Lines with a tabulation in .ml: "
-	@ grep -P '\t' *.ml *.mli | wc -l
+	@ echo -n "Lines with a tabulation in .ml : "
+	@ grep -P '\t' src/*.ml src/*.mli | wc -l
 	@ echo -n "Lines with a tabulation in .typ: "
 	@ grep -P '\t' lib/*.typ lib/*/*.typ | wc -l
 	@ echo -n "Longest line:           "
-	@ wc -L *.ml *.mli | tail -n 1 | colrm 1 3 | colrm 4 10
-	@ echo "(Use \"grep -n -P '\t' *.ml *.mli\" to find the tabulations...)"
-	@ echo "(Use \"wc -L *.ml *.mli\" to find longest line stats on all files...)"
+	@ wc -L src/*.ml src/*.mli | tail -n 1 | colrm 1 3 | colrm 4 10
+	@ echo "(Use \"grep -n -P '\t' src/*.ml src/*.mli\" to find the tabulations...)"
+	@ echo "(Use \"wc -L src/*.ml src/*.mli\" to find longest line stats on all files...)"
 
+#### Cleaning targets ########################################################
+
+.PHONY: clean
 clean:
-	ocamlbuild -clean
+	@$(OBUILD) -clean
 
+.PHONY: distclean
 distclean: clean
-	rm -f config.ml
-	find -type f \( -name "*~" -o -name "#*#" -o -name ".#*" \) -exec rm {} \;
-	rm -rf subml-latest subml-latest.tar.gz
-	rm -f subml.js
-	cd genex && make distclean
+	@rm -f src/config.ml
+	@find -type f -name "*~"  -exec rm {} \;
+	@find -type f -name "#*#" -exec rm {} \;
+	@find -type f -name ".#*" -exec rm {} \;
 
-install: all
-	install ./subml.native $(BINDIR)/subml
-	install -d $(LIBDIR)/subml $(LIBDIR)/subml/church $(LIBDIR)/subml/scott $(LIBDIR)/subml/munu
-	install ./lib/*.typ	$(LIBDIR)/subml
-	install ./lib/church/*.typ	$(LIBDIR)/subml/church
-	install ./lib/scott/*.typ	$(LIBDIR)/subml/scott
-	install ./lib/munu/*.typ	$(LIBDIR)/subml/munu
+#### Installation targets ####################################################
 
-subml-latest.tar.gz: $(MLFILES)
-	rm -rf subml-latest
-	mkdir subml-latest
-	pa_ocaml --ascii parser.ml > subml-latest/parser.ml
-	cp io.ml timed.ml ast.ml eval.ml print.ml subml-latest
-	cp subml.ml latex.ml proof.ml sct.ml raw.ml typing.ml subml-latest
-	cp Makefile_minimum subml-latest/Makefile
-	cp _tags subml-latest
-	rm -f lib/*~
-	cp -r lib subml-latest
-	cp README subml-latest
-	tar zcvf subml-latest.tar.gz subml-latest
-	rm -r subml-latest
+.PHONY: uninstall
+uninstall:
+	rm -f  $(BINDIR)/subml
+	rm -rf $(LIBDIR)/subml
+
+.PHONY: install
+install: _build/src/subml.native
+	install -m 755 -d $(BINDIR)
+	install -m 755 -d $(LIBDIR)
+	install -m 755 -d $(LIBDIR)/subml
+	install -m 755 -d $(LIBDIR)/subml/church
+	install -m 755 -d $(LIBDIR)/subml/scott
+	install -m 755 -d $(LIBDIR)/subml/munu
+	install -m 755 $^ $(BINDIR)/subml
+	install -m 644 ./lib/*.typ        $(LIBDIR)/subml
+	install -m 644 ./lib/church/*.typ $(LIBDIR)/subml/church
+	install -m 644 ./lib/scott/*.typ  $(LIBDIR)/subml/scott
+	install -m 644 ./lib/munu/*.typ   $(LIBDIR)/subml/munu

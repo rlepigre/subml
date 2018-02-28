@@ -22,10 +22,12 @@ let log ff = fprintf  fmts.log ff
 let tex ff = fprintf  fmts.tex ff
 let nul ff = ifprintf fmts.log ff
 
+let path : string list ref = ref Config.default_path
+
 let read_file : (string -> Input.buffer) ref =
   let read_file fn =
     let add_fn dir = Filename.concat dir fn in
-    let fs = fn :: (List.map add_fn !Config.path) in
+    let fs = fn :: (List.map add_fn !path) in
     let rec find = function
       | []     -> err "File %S not found.\n%!" fn; exit 1
       | fn::fs -> if Sys.file_exists fn then Input.from_file fn

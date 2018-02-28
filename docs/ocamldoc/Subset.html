@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Subml.html">
+<link rel="next" href="Term.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="AstMap" rel="Chapter" href="AstMap.html">
+<link title="Ast" rel="Chapter" href="Ast.html">
+<link title="Binding" rel="Chapter" href="Binding.html">
+<link title="Compare" rel="Chapter" href="Compare.html">
+<link title="Config" rel="Chapter" href="Config.html">
+<link title="Error" rel="Chapter" href="Error.html">
+<link title="Eval" rel="Chapter" href="Eval.html">
+<link title="Generalise" rel="Chapter" href="Generalise.html">
+<link title="Graph" rel="Chapter" href="Graph.html">
+<link title="Io" rel="Chapter" href="Io.html">
+<link title="Latex" rel="Chapter" href="Latex.html">
+<link title="LibTools" rel="Chapter" href="LibTools.html">
+<link title="Parser" rel="Chapter" href="Parser.html">
+<link title="Pos" rel="Chapter" href="Pos.html">
+<link title="Print" rel="Chapter" href="Print.html">
+<link title="Proof" rel="Chapter" href="Proof.html">
+<link title="Raw" rel="Chapter" href="Raw.html">
+<link title="Sct" rel="Chapter" href="Sct.html">
+<link title="Submljs" rel="Chapter" href="Submljs.html">
+<link title="Subml" rel="Chapter" href="Subml.html">
+<link title="Subset" rel="Chapter" href="Subset.html">
+<link title="Term" rel="Chapter" href="Term.html">
+<link title="Timed" rel="Chapter" href="Timed.html">
+<link title="TypingBase" rel="Chapter" href="TypingBase.html">
+<link title="Typing" rel="Chapter" href="Typing.html"><title>Subset</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Subml.html" title="Subml">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Term.html" title="Term">Next</a>
+</div>
+<h1>Module <a href="type_Subset.html">Subset</a></h1>
+
+<pre><span class="keyword">module</span> Subset: <code class="code">sig</code> <a href="Subset.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Implementattionofmutablesetsviasubsetconstraints">      Implementattion of mutable sets via subset constraints         </h3><br>
+</div>
+<hr width="100%">
+
+<pre><code><span id="TYPEelts"><span class="keyword">type</span> <code class="type">'a</code> elts</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTelts.Finite"><span class="constructor">Finite</span></span> <span class="keyword">of</span> <code class="type">'a list</code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTelts.CoFinite"><span class="constructor">CoFinite</span></span> <span class="keyword">of</span> <code class="type">'a list</code></code></td>
+
+</tr></table>
+
+
+
+<pre><code><span id="TYPEset"><span class="keyword">type</span> <code class="type">'a</code> set</span> = {</code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTset.set">set</span>&nbsp;: <code class="type">'a <a href="Subset.html#TYPEelts">elts</a></code>;</code></td>
+<td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
+The current value of the set.<br>
+</div>
+</td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTset.frozen">frozen</span>&nbsp;: <code class="type">bool</code>;</code></td>
+<td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
+if true, the set is frozen and will not change anymore<br>
+</div>
+</td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
+</tr></table>
+}
+
+
+
+<pre><span id="VALcreate"><span class="keyword">val</span> create</span> : <code class="type">'a list -> 'a <a href="Subset.html#TYPEset">set</a></code></pre>
+<pre><span id="VALtest"><span class="keyword">val</span> test</span> : <code class="type">('a -> 'a -> bool) -> 'a <a href="Subset.html#TYPEset">set</a> -> 'a list -> bool</code></pre><div class="info ">
+test if a set is contained in a list for the given equality.
+    if the set is not frozen, it will decrease<br>
+</div>
+
+<pre><span id="VALis_empty"><span class="keyword">val</span> is_empty</span> : <code class="type">'a <a href="Subset.html#TYPEset">set</a> -> bool</code></pre><div class="info ">
+check if a set is empty<br>
+</div>
+
+<pre><span id="VALget"><span class="keyword">val</span> get</span> : <code class="type">'a <a href="Subset.html#TYPEset">set</a> -> 'a list</code></pre><div class="info ">
+get the current value of a set and froze it<br>
+</div>
+
+<pre><span id="VALunsafe_get"><span class="keyword">val</span> unsafe_get</span> : <code class="type">'a <a href="Subset.html#TYPEset">set</a> -> 'a list</code></pre><div class="info ">
+get the current value of a set without frozing it.
+    should only be used for printing. Return [] for CoFinite<br>
+</div>
+</body></html>

@@ -3,7 +3,7 @@
     2001). It is used by PML to check that typing and subtyping proofs are
     well-founded. *)
 
-(** Representation of the set {-1, 0, ∞} *)
+(** Representation of the set with three elements: -1, 0 and ∞. *)
 type cmp = Min1 | Zero | Infi
 
 (** [cmp_to_string c] returns a string representation of the given [cmp]

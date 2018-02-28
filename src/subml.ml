@@ -51,7 +51,7 @@ let spec = Arg.align
     , Arg.Set_int Earley.debug_lvl
     , "i  Set the debug lvl of earley" )
   ; ( "-I"
-    , Arg.String (fun s -> Config.path := s :: ! Config.path)
+    , Arg.String (fun s -> Io.path := s :: !Io.path)
     , "s  Add the given directory to the path")
   ]
 
