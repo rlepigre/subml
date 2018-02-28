@@ -1,5 +1,6 @@
 VERSION = devel
 PREFIX  = /usr/local
+VIMDIR  = $(HOME)/.vim
 LIBDIR  = $(PREFIX)/lib
 BINDIR  = $(PREFIX)/bin
 OBUILD  = ocamlbuild -use-ocamlfind -cflags -w,-3-30 -quiet
@@ -121,6 +122,10 @@ distclean: clean
 uninstall:
 	rm -f  $(BINDIR)/subml
 	rm -rf $(LIBDIR)/subml
+ifneq ($(wildcard $(VIMDIR)/.),)
+	rm -rf $(VIMDIR)/syntax/subml.vim
+	rm -rf $(VIMDIR)/ftdetect/subml.vim
+endif
 
 .PHONY: install
 install: _build/src/subml.native
@@ -130,8 +135,22 @@ install: _build/src/subml.native
 	install -m 755 -d $(LIBDIR)/subml/church
 	install -m 755 -d $(LIBDIR)/subml/scott
 	install -m 755 -d $(LIBDIR)/subml/munu
-	install -m 755 $^ $(BINDIR)/subml
+	install -m 755 $< $(BINDIR)/subml
 	install -m 644 ./lib/*.typ        $(LIBDIR)/subml
 	install -m 644 ./lib/church/*.typ $(LIBDIR)/subml/church
 	install -m 644 ./lib/scott/*.typ  $(LIBDIR)/subml/scott
 	install -m 644 ./lib/munu/*.typ   $(LIBDIR)/subml/munu
+
+.PHONY: install_vim
+install_vim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim
+ifneq ($(wildcard $(VIMDIR)/.),)
+	install -m 755 -d $(VIMDIR)/syntax
+	install -m 755 -d $(VIMDIR)/ftdetect
+	install -m 644 editors/vim/syntax/subml.vim $(VIMDIR)/syntax
+	install -m 644 editors/vim/ftdetect/subml.vim $(VIMDIR)/ftdetect
+	@echo -e "\e[36mVim mode installed.\e[39m"
+else
+	@echo -e "\e[36mWill not install vim mode.\e[39m"
+endif
+
+

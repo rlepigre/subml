@@ -48,9 +48,3 @@ syntax match PMLOperator display "⊆"
 syntax match PMLOperator display "≡"
 syntax match PMLOperator display "✂"
 hi link PMLOperator Special
-
-" [Usage] :
-"   1) move this file to the folder "$HOME/.vim/syntax",
-"   2) append the following two lines to your ".vimrc".
-"        au BufRead,BufNewFile *.typ set filetype=subml
-"        au! Syntax subml source $HOME/.vim/syntax/subml.vim
