@@ -1,20 +1,36 @@
 ### Dependencies
 
-The only dependency is OCaml (version >= 4.01). However, you will need
-ocamlbuild and GNU Make to compile.
+To install `subml`, you will need `OCaml >= 4.03` with:
+ - `ocamlbuild` (build)
+ - `ocamlfind` (build)
+ - `earley` (https://github.com/rlepigre/ocaml-earley)
+ - `earley-ocaml` (https://github.com/rlepigre/ocaml-earley-ocaml)
+ - `bindlib` (https://github.com/rlepigre/ocaml-bindlib)
+ - `GNU make` and other standard utilities
 
-### Compiling from a terminal
+Obtaining the dependencies with `opam`:
 
-Simply type "make". No need to install.
+```bash
+opam switch 4.06 # or whatever version >= 4.03
+opam install ocamlbuild ocamlfind bindlib earley earley-ocaml
+```
 
-### Run the program
+Compilation:
 
-Type "./subml.native" to run the interpreter.
-Type "./subml.native lib/nat.typ" to load the file "lib/nat.typ".
+```bash
+make
+make install # optional
+```
 
-Note that you MUST run the program in the main directory (where the
-"lib" directory can be accessed).
+### Running the program
+
+Run the command `subml` (or `./subml.native` if you did not install)
+Type `subml lib/nat.typ` to load the file `lib/nat.typ`.
+
+**Note:** you must run the program in the main directory (where the `lib`
+directory is accessible) if you did not install `subml`.
 
 ### Documentation
 
-See online: https://rlepigre.github.io/subml/
+ - Online interpreter: https://rlepigre.github.io/subml/
+ - OCamlDoc: https://rlepigre.github.io/subml/ocamldoc/
