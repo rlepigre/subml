@@ -1,8 +1,18 @@
 VERSION = devel
 PREFIX  = /usr/local
-LIBDIR  = $(shell opam config var share)
-BINDIR  = $(shell opam config var bin)
+LIBDIR  = $(PREFIX)/lib
+BINDIR  = $(PREFIX)/bin
 OBUILD  = ocamlbuild -use-ocamlfind -cflags -w,-3-30 -quiet
+
+#### Override config if opam is installed ####################################
+
+HAS_OPAM := $(shell which opam 2> /dev/null)
+ifdef HAS_OPAM
+LIBDIR := $(shell opam config var share)
+BINDIR := $(shell opam config var bin)
+endif
+
+#### Main target #############################################################
 
 all: depchecks _build/src/subml.native
 
@@ -19,7 +29,6 @@ HAS_EARLEY     := $(shell ocamlfind query -format %p earley 2> /dev/null)
 
 .PHONY: depchecks
 depchecks:
-	@echo "$(LIBDIR) $(BINDIR)"
 ifndef HAS_OCAMLBUILD
 	$(error "The ocamlbuild program is required...")
 endif
