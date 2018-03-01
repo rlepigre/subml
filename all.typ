@@ -2,6 +2,7 @@
 include "tutorial.typ"
 
 (* Standard library *)
+include "prelude.typ"
 include "nat.typ"
 include "list.typ"
 include "applist.typ"

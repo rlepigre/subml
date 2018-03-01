@@ -84,7 +84,7 @@ validate: src/config.ml
 .PHONY: tests
 tests: _build/src/subml.native validate
 	@echo "Running tests... "
-	@./$< --quit lib/all.typ > /dev/null
+	@./$< --quit all.typ > /dev/null
 	@echo "All tests succeeded!"
 
 #### Documentation and webpage ###############################################
@@ -96,7 +96,7 @@ www: docs/subml.js _build/src/subml.docdir/index.html
 	@cp -r lib docs/subml/lib
 	@cp -r _build/src/subml.docdir/* docs/ocamldoc
 	@cp tutorial.typ docs/subml
-	@ocaml genex.ml lib/all.typ > docs/example.html
+	@ocaml genex.ml all.typ > docs/example.html
 
 docs/subml.js: _build/src/submljs.byte
 	@echo "[JSO] $@"
