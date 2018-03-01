@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/rlepigre/subml.svg?branch=master)](https://travis-ci.org/rlepigre/subml)
+
 ### Dependencies
 
 To install `subml`, you will need `OCaml >= 4.03` with:
