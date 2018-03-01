@@ -24,7 +24,6 @@ before_install:
   - eval `opam config env`
   - opam install ocamlbuild ocamlfind bindlib earley earley-ocaml
   - make
-  - make www
 install:
   - make install
 script:
