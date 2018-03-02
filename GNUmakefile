@@ -81,11 +81,21 @@ validate: src/config.ml
 	@echo -n "Longest line           : "
 	@wc -L src/*.ml src/*.mli | tail -n 1 | colrm 1 4 | colrm 4 10
 
+GENERATED_TESTS = tests/munu2.typ tests/munu3.typ
+
+tests/munu2.typ: tests/munu.ml
+	@ocaml $^ 2 > $@
+
+tests/munu3.typ: tests/munu.ml
+	@ocaml $^ 3 > $@
+
 .PHONY: tests
-tests: _build/src/subml.native validate
+tests: _build/src/subml.native $(GENERATED_TESTS) validate
+	@echo "Running libraries and examples... "
+	@./$< --quit all_libs.typ > /dev/null
 	@echo "Running tests... "
-	@./$< --quit all.typ > /dev/null
-	@echo "All tests succeeded!"
+	@./$< --quit all_tests.typ > /dev/null
+	@echo "All good!"
 
 #### Documentation and webpage ###############################################
 
@@ -97,7 +107,7 @@ www: docs/subml.js docs/examples.html _build/src/subml.docdir/index.html
 	@cp -r _build/src/subml.docdir/* docs/ocamldoc
 	@cp tutorial.typ docs/subml
 
-docs/examples.html: all.typ genex.ml
+docs/examples.html: all_libs.typ genex.ml
 	@ocaml genex.ml $< > $@
 
 docs/subml.js: _build/src/submljs.byte
@@ -117,6 +127,7 @@ clean:
 .PHONY: distclean
 distclean: clean
 	@rm -f src/config.ml
+	@rm -f $(GENERATED_TESTS)
 	@find -type f -name "*~"  -exec rm {} \;
 	@find -type f -name "#*#" -exec rm {} \;
 	@find -type f -name ".#*" -exec rm {} \;

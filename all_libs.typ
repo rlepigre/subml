@@ -15,16 +15,13 @@ include "tree23.typ"
 include "int.typ"
 include "real.typ"
 
-(* Mixed induction and coinduction *)
-include "munu/munu2.typ"
-include "munu/munu3.typ"
-
 (* Sorting *)
 include "insert_sort.typ"
 include "quick_sort.typ"
 include "heap.typ"
 
 (* Miscellaneous *)
+include "munu.typ"
 include "size.typ"
 include "hard.typ"
 include "lazy_nat.typ"
