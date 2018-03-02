@@ -90,13 +90,15 @@ tests: _build/src/subml.native validate
 #### Documentation and webpage ###############################################
 
 .PHONY: www
-www: docs/subml.js _build/src/subml.docdir/index.html
+www: docs/subml.js docs/examples.html _build/src/subml.docdir/index.html
 	@rm -rf docs/subml/*
 	@rm -rf docs/ocamldoc/*
 	@cp -r lib docs/subml/lib
 	@cp -r _build/src/subml.docdir/* docs/ocamldoc
 	@cp tutorial.typ docs/subml
-	@ocaml genex.ml all.typ > docs/example.html
+
+docs/examples.html: all.typ genex.ml
+	@ocaml genex.ml $< > $@
 
 docs/subml.js: _build/src/submljs.byte
 	@echo "[JSO] $@"
