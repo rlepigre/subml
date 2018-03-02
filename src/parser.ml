@@ -391,54 +391,29 @@ and parser tex_name_aux =
 let parser tex_text = "{" l:latex_atom* "}" -> Latex.List l
 
 and parser latex_atom =
-  | hash "witnesses" "#" ->
-      Latex.Witnesses
-  | hash br:int_lit?[0] u:"!"? k:(change_layout kind subml_blank) "#" ->
-      Latex.Kind (br, u <> None, unbox (unsugar_kind empty_env k))
-  | "@" br:int_lit?[0] u:"!"? t:(change_layout term subml_blank) "@" ->
-      Latex.Term (br, u <> None, unbox (unsugar_term empty_env t))
-  | t:tex_simple$ ->
-      Latex.Text t
-  | tex_text
-  | hash "check" (a,b):sub "#" ->
-      let a = unbox (unsugar_kind empty_env a) in
-      let b = unbox (unsugar_kind empty_env b) in
-      let (prf, cg) = subtype None a b in
-      Latex.SProof (prf, cg)
-  | hash br:int_lit?[0] ":" id:lid "#" ->
-      (try
-         Latex.Kind (br, false, (Hashtbl.find val_env id).ttype)
-       with
-         Not_found -> raise (Unbound(id,Some _loc_id)))
-  | hash br:int_lit?[0] "?" id:uid "#" ->
-      (try
-         Latex.KindDef (br, Hashtbl.find typ_env id)
-       with
-         Not_found -> raise (Unbound(id,Some _loc_id)))
-  | "##" id:lid "#" ->
-      (try
-         Latex.TProof (Hashtbl.find val_env id).proof
-       with
-         Not_found -> raise (Unbound(id,Some _loc_id)))
-  | hash "!" id:lid "#" ->
-      (try
-         Latex.Sct (Hashtbl.find val_env id).calls_graph
-       with
-         Not_found -> raise (Unbound(id,Some _loc_id)))
+  | hash "witnesses" "#"
+      -> Latex.Witnesses
+  | hash br:int_lit?[0] u:"!"? k:(change_layout kind subml_blank) "#"
+      -> Latex.Kind (br, u <> None, k)
+  | "@" br:int_lit?[0] u:"!"? t:(change_layout term subml_blank) "@"
+      -> Latex.Term (br, u <> None, t)
+  | t:tex_simple$
+      -> Latex.Text t
+  | l:tex_text
+      -> l
+  | hash "check" (a,b):sub "#"
+      -> Latex.SProof (a,b)
+  | hash br:int_lit?[0] ":" id:lid "#"
+      -> Latex.KindOf (br, in_pos _loc_id id)
+  | hash br:int_lit?[0] "?" id:uid "#"
+      -> Latex.KindDef (br, in_pos _loc_id id)
+  | "##" br:int_lit?[0] id:lid "#"
+      -> Latex.Term(br,false, in_pos _loc_id (PLVar(id)))
+  | hash "!" id:lid "#"
+      -> Latex.Sct(in_pos _loc_id id)
   | hash "?" id:lid "." name:lid i:{"." int_lit}?[0]
-      ordname:{"~" lgid}?["α"]  "#" ->
-      let prf =
-        try
-          (Hashtbl.find val_env id).proof
-        with Not_found -> raise (Unbound(id,Some _loc_id))
-      in
-      let schemas =
-        try
-          Latex.search_schemas name prf
-        with Not_found -> raise (Unbound(name,Some _loc_name))
-      in
-      Latex.Sch (List.nth schemas i, ordname)
-
+             ordname:{"~" lgid}?["α"]  "#"
+      -> Latex.Sch(in_pos _loc_id id,in_pos _loc_name name,i,ordname)
 
 and parser sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
 
@@ -589,19 +564,57 @@ let parser flag =
   | '!'   -> MustFail
   | '?'   -> CanFail
 
+type vset =
+  | Verbose of bool
+  | TeXFile of string
+  | GmlFile of string
+
+let do_vset = function
+  | Verbose b  -> verbose := b
+  | TeXFile fn -> Io.set_tex_file fn
+  | GmlFile fn -> Io.set_gml_file fn
+
+type command =
+  | Type of string option * string * (string list * string list) * pkind
+  | Defi of flag * (string option * string) * pkind option * pterm
+  | Eval of pterm
+  | Chck of pos * flag * pkind * pkind
+  | Incl of string
+  | GrMl of string loc
+  | LaTX of Latex.latex_output
+  | VSet of vset
+  | Clr
+  | Quit
+
+let execute = function
+  | Type(tn,n,args,k) -> new_type (tn,n) args k
+  | Eval(t)           -> eval_term t
+  | Defi(f,n,k,t)     -> new_val f n k t
+  | Chck(pos,f,a,b)   -> check_sub (Some pos) f a b
+  | Incl(fn)          -> include_file fn
+  | GrMl(id)          -> output_graphml id
+  | LaTX(t)           -> Io.tex "%a%!" Latex.output t
+  | VSet(s)           -> do_vset s
+  | Clr               -> LibTools.clear ()
+  | Quit              -> raise End_of_file (* FIXME *)
+
+let parser vset top =
+  | "verbose" b:enables               -> Verbose(b)
+  | "texfile" fn:str_lit when not top -> TeXFile(fn)
+  | "gmlfile" fn:str_lit when not top -> GmlFile(fn)
+
 let parser command top =
-  | type_kw (tn,n,args,k):kind_def$            -> new_type (tn,n) args k
-  | eval_kw t:term$                            -> eval_term t
-  | f:flag val_kw (n,k,t):val_def$             -> new_val f n k t
-  | f:flag check_kw a:kind$ _:subset b:kind$   -> check_sub (Some _loc) f a b
-  | _:include_kw fn:str_lit$                   -> include_file fn
-  | _:graphml_kw id:llid$                      -> output_graphml id
-  | latex_kw t:tex_text$          when not top -> Io.tex "%a%!" Latex.output t
-  | _:set_kw "verbose" b:enables               -> verbose := b
-  | _:set_kw "texfile" fn:str_lit when not top -> Io.set_tex_file fn
-  | _:set_kw "gmlfile" fn:str_lit when not top -> Io.set_gml_file fn
-  | _:clear_kw                    when top     -> LibTools.clear ()
-  | {quit_kw | exit_kw}           when top     -> raise End_of_file
+  | type_kw (tn,n,args,k):kind_def$            -> Type(tn,n,args,k)
+  | eval_kw t:term$                            -> Eval(t)
+  | f:flag val_kw (n,k,t):val_def$             -> Defi(f, n, k, t)
+  | f:flag check_kw a:kind$ _:subset b:kind$   -> Chck(_loc,f,a,b)
+  | _:include_kw fn:str_lit$                   -> Incl(fn)
+  | _:graphml_kw id:llid$                      -> GrMl(id)
+  | latex_kw t:tex_text$          when not top -> LaTX(t)
+  | set_kw s:(vset top)                        -> VSet(s)
+  | _:clear_kw                    when top     -> Clr
+  | {quit_kw | exit_kw}           when top     -> Quit
+
 
 and parser kind_def = tex_name? uid kind_def_args "=" kind
 
@@ -621,20 +634,21 @@ and parser val_def =
  *                       High-level parsing functions                       *
  ****************************************************************************)
 
-let toplevel_of_string : string -> unit =
+let toplevel_of_string : string -> command =
   parse_string (command true) subml_blank
 
-let full_of_string : string -> string -> unit = fun filename ->
-  parse_string ~filename (parser _:(command false)*) subml_blank
-
-let full_of_buffer : Input.buffer -> unit =
-  parse_buffer (parser _:(command false)*) subml_blank
+let eval_string : string -> string -> unit = fun filename input ->
+  let commands =
+    parse_string ~filename (parser (command false)*) subml_blank input
+  in
+  List.iter execute commands
 
 let eval_file =
   let eval_file fn =
     let buf = Io.file fn in
     if !verbose then Io.out "## loading file %S\n%!" fn;
-    parse_buffer (parser _:(command false)*) subml_blank buf
+    let commands = parse_buffer (parser (command false)*) subml_blank buf in
+    List.iter execute commands
   in
   read_file := eval_file; eval_file
 

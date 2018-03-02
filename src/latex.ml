@@ -8,21 +8,23 @@ open Print
 open Pos
 open Compare
 open LibTools
+open Raw
 
 (****************************************************************************
  *                              Proof printing                              *
  ****************************************************************************)
 
 type latex_output =
-  | Kind    of int * bool * kind
-  | KindDef of int * kdef
-  | Term    of int * bool * term
+  | Kind    of int * bool * pkind
+  | KindDef of int * string loc
+  | Term    of int * bool * pterm
+  | KindOf  of int * string loc
   | Text    of string
   | List    of latex_output list
-  | SProof  of sub_prf * Sct.t
+  | SProof  of pkind * pkind
   | TProof  of typ_prf
-  | Sch     of schema * string
-  | Sct     of Sct.t
+  | Sch     of string loc * string loc * int * string
+  | Sct     of string loc
   | Witnesses
 
 let rec search_schemas name p =
@@ -75,25 +77,44 @@ let rec to_string = function
 
 let rec output toplevel ch =
   let output = output false in function
-  | Kind(n,ufd,k) -> break_hint := n; print_kind ufd ch k; break_hint := 0
-  | Term(n,ufd,t) -> break_hint := n; print_term ufd ch t; break_hint := 0
+  | Kind(n,ufd,k) -> let k = unbox (unsugar_kind empty_env k) in
+                     break_hint := n; print_kind ufd ch k; break_hint := 0
+  | Term(n,ufd,t) -> let t = unbox (unsugar_term empty_env t) in
+                     break_hint := n; print_term ufd ch t; break_hint := 0
   | Text(t)       -> fprintf ch "%s" t
   | List(l)       ->
      if toplevel then
        fprintf ch "%a" (fun ch -> List.iter (output ch)) l
      else
        fprintf ch "{%a}" (fun ch -> List.iter (output ch)) l
-  | SProof (p,calls) ->
+  | SProof (a,b) ->
      let save = !ignore_witness in
      ignore_witness := false;
-     print_subtyping_proof ch p;
+     let a = unbox (unsugar_kind empty_env a) in
+     let b = unbox (unsugar_kind empty_env b) in
+     let (prf, calls) = Typing.subtype None a b in
+     print_subtyping_proof ch prf;
      fprintf ch "\\begin{center}\n";
      if Sct.is_empty calls then Sct.latex_print_calls ch calls;
      fprintf ch "\\end{center}\n%!";
      ignore_witness := save
   | TProof p      -> print_typing_proof ch p
   | Witnesses     -> print_epsilon_tbls ch; reset_epsilon_tbls ()
-  | KindDef(n,t)  ->
+  | KindOf(n,id)  ->
+     let t =
+       try
+         Hashtbl.find val_env id.elt
+       with
+         Not_found -> raise (Unbound(id.elt,id.pos))
+     in
+     break_hint := n; print_kind false ch t.ttype; break_hint := 0
+  | KindDef(n,id)  ->
+     let t =
+       try
+         Hashtbl.find typ_env id.elt
+       with
+         Not_found -> raise (Unbound(id.elt,id.pos))
+     in
      let name = t.tdef_tex_name in
      let f = t.tdef_value in
      let oargs = mbinder_names f in
@@ -111,9 +132,27 @@ let rec output toplevel ch =
      fprintf ch fmt name
        (print_strarray ",") oargs (print_strarray ",") kargs (print_kind true) k;
      break_hint := 0
-  | Sct calls ->
+  | Sct id ->
+     let calls =
+       try
+         (Hashtbl.find val_env id.elt).calls_graph
+       with
+         Not_found -> raise (Unbound(id.elt,id.pos))
+     in
      Sct.latex_print_calls ch calls
-  | Sch (sch,ord_name) -> print_schema ~ord_name ch sch
+  | Sch (id,name,i,ord_name) ->
+     let prf =
+       try
+         (Hashtbl.find val_env id.elt).proof
+       with Not_found -> raise (Unbound(id.elt,id.pos))
+     in
+     let schemas =
+       try
+         search_schemas name.elt prf
+       with Not_found -> raise (Unbound(name.elt, name.pos))
+     in
+     let sch = List.nth schemas i in
+     print_schema ~ord_name ch sch
 
 let output ff tex =
   let save_mode = !print_mode in

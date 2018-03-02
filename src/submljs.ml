@@ -10,7 +10,7 @@ let syncload  = Js.Unsafe.variable "syncloadsubmlfile"
 let onmessage event =
   let fname = Js.to_string event##data##fname in
   let args = Js.to_string event##data##args in
-  if handle_exception (full_of_string fname) args then
+  if handle_exception (eval_string fname) args then
     Io.log "(* [LOG] Editor content loaded. *)\n%!"
   else
     Io.log "(* [LOG] AN ERROR OCCURED! *)\n%!"
