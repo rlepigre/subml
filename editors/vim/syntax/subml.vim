@@ -20,6 +20,10 @@ hi link CommentTags Todo
 syntax match PMLSpecial "set [a-z]* [a-z]*"
 highlight link PMLSpecial Include
 
+" Latex
+syn include @tex syntax/tex.vim
+syn region texCode matchgroup=Include start="latex\s*{" end="}" contains=@tex
+
 " Keywords
 syntax keyword PMLKeyword val rec type eval include check such that
 syntax keyword PMLKeyword fun case of fix if then else match with let in

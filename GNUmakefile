@@ -128,6 +128,7 @@ clean:
 distclean: clean
 	@rm -f src/config.ml
 	@rm -f $(GENERATED_TESTS)
+	@rm -f tests/latex_generation.tex
 	@find -type f -name "*~"  -exec rm {} \;
 	@find -type f -name "#*#" -exec rm {} \;
 	@find -type f -name ".#*" -exec rm {} \;

@@ -11,3 +11,6 @@ include "tests/max_missing_feature.typ"
 
 (* Examples that must fail. *)
 include "tests/delta3_must_fail.typ"
+
+(* Feature tests. *)
+include "tests/latex_generation.typ"
