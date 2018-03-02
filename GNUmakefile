@@ -153,12 +153,10 @@ install: _build/src/subml.native
 	install -m 755 -d $(LIBDIR)/subml
 	install -m 755 -d $(LIBDIR)/subml/church
 	install -m 755 -d $(LIBDIR)/subml/scott
-	install -m 755 -d $(LIBDIR)/subml/munu
 	install -m 755 $< $(BINDIR)/subml
 	install -m 644 ./lib/*.typ        $(LIBDIR)/subml
 	install -m 644 ./lib/church/*.typ $(LIBDIR)/subml/church
 	install -m 644 ./lib/scott/*.typ  $(LIBDIR)/subml/scott
-	install -m 644 ./lib/munu/*.typ   $(LIBDIR)/subml/munu
 
 .PHONY: install_vim
 install_vim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim
