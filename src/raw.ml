@@ -20,10 +20,10 @@ and pkind' =
   | PFunc of pkind * pkind
   | PProd of (string * pkind) list * bool
   | PDSum of (string * pkind option) list
-  | PKAll of string * pkind
-  | PKExi of string * pkind
-  | POAll of string * pkind
-  | POExi of string * pkind
+  | PKAll of string list * pkind
+  | PKExi of string list * pkind
+  | POAll of string list * pkind
+  | POExi of string list * pkind
   | PFixM of pordi * string * pkind
   | PFixN of pordi * string * pkind
   | PWith of pkind * string * pkind
@@ -224,24 +224,28 @@ and unsugar_ordinal : ?pos:occur -> env -> pordi -> obox = fun ?(pos=sPos) env p
 
 and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
   fun ?(pos=sPos) (env:env) pk ->
+  let binds fn add env xs k =
+    let rec f env =
+      function
+      | []    -> unsugar_kind ~pos env k
+      | x::xs ->
+         let g xk =
+           f (add x xk Non env) xs
+         in
+         fn x g
+    in
+    f env xs
+  in
   match pk.elt with
   | PFunc(a,b)   ->
      kfunc (unsugar_kind ~pos:(neg pos) env a) (unsugar_kind ~pos env b)
   | PTVar(s,os,ks) ->
      kind_variable pos env (Pos.make pk.pos s)
        (Array.of_list os) (Array.of_list ks)
-  | PKAll(x,k)   -> let f xk =
-                      unsugar_kind ~pos (add_kind x xk Non env) k
-                    in kkall x f
-  | PKExi(x,k)   -> let f xk =
-                      unsugar_kind (add_kind x xk Non env) k
-                    in kkexi x f
-  | POAll(o,k)   -> let f xo =
-                      unsugar_kind (add_ordi o xo Non env) k
-                    in koall o f
-  | POExi(o,k)   -> let f xo =
-                      unsugar_kind (add_ordi o xo Non env) k
-                    in koexi o f
+  | PKAll(xs,k)  -> binds kkall add_kind env xs k
+  | PKExi(xs,k)  -> binds kkexi add_kind env xs k
+  | POAll(os,k)  -> binds koall add_ordi env os k
+  | POExi(os,k)  -> binds koexi add_ordi env os k
   | PFixM(o,x,k) -> let o = unsugar_ordinal ~pos env o in
                     let f xk =
                       unsugar_kind ~pos (add_kind x xk pos env) k

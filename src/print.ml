@@ -386,25 +386,49 @@ and print_kind unfold wrap unfolded_Y ff t =
       in
       let st = if latex_mode () then " \\st " else " | " in
       fprintf ff "[%a]" (print_list pvariant st) cs
-  | KKAll(f)  ->
-      let x = new_prvar f in
-      if wrap then pp_print_string ff "(";
-      fprintf ff "∀%s.%a" (binder_name f) pkind (subst f x);
+  | KKAll(_)  ->
+     if wrap then pp_print_string ff "(";
+      let rec fn prefix ch = function
+        | KKAll(f) ->
+           let x = new_prvar f in
+           let npr = if latex_mode () then "\\," else " " in
+           fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
+        | t        -> fprintf ff ". %a" pkind t
+      in
+      fn "∀" ff t;
       if wrap then pp_print_string ff ")"
-  | KKExi(f)  ->
-      let x = new_prvar f in
+  | KKExi(_)  ->
       if wrap then pp_print_string ff "(";
-      fprintf ff "∃%s.%a" (binder_name f) pkind (subst f x);
+      let rec fn prefix ch = function
+        | KKExi(f) ->
+           let x = new_prvar f in
+           let npr = if latex_mode () then "\\," else " " in
+           fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
+        | t        -> fprintf ff ". %a" pkind t
+      in
+      fn "∃" ff t;
       if wrap then pp_print_string ff ")"
-  | KOAll(f)  ->
-      let x = OVars (binder_name f) in
+  | KOAll(_)  ->
+     if wrap then pp_print_string ff "(";
+     let rec fn prefix ch = function
+        | KOAll(f) ->
+           let x = OVars (binder_name f) in
+           let npr = if latex_mode () then "\\," else " " in
+           fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
+        | t        -> fprintf ff ". %a" pkind t
+      in
+      fn "∀" ff t;
       if wrap then pp_print_string ff "(";
-      fprintf ff "∀%s.%a" (binder_name f) pkind (subst f x);
-      if wrap then pp_print_string ff ")"
-  | KOExi(f)  ->
-      let x = OVars (binder_name f) in
-      if wrap then pp_print_string ff "(";
-      fprintf ff "∃%s.%a" (binder_name f) pkind (subst f x);
+  | KOExi(_)  ->
+     if wrap then pp_print_string ff "(";
+     let rec fn prefix ch = function
+        | KOExi(f) ->
+           let x = OVars (binder_name f) in
+           let npr = if latex_mode () then "\\," else " " in
+           fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
+        | t        -> fprintf ff ". %a" pkind t
+      in
+      fn "∃" ff t;
       if wrap then pp_print_string ff ")"
   | KFixM(o,b) ->
       let x = new_prvar b in
