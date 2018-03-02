@@ -2,8 +2,6 @@
 (**{3                                 Main file                            }*)
 (****************************************************************************)
 let quit    = ref false
-let prelude = ref true
-let files   = ref []
 
 let spec = Arg.align
   [ ( "--verbose"
@@ -12,9 +10,6 @@ let spec = Arg.align
   ; ( "--quit"
     , Arg.Set quit
     , " Quit after evaluating the files" )
-  ; ( "--no-prelude"
-    , Arg.Clear prelude
-    , " Do not load the prelude" )
   ; ( "--gml-file"
     , Arg.String Io.set_gml_file
     , "fn Choose the GraphMl output file" )
@@ -60,8 +55,11 @@ let _ =
 
   (* Reading the command lien arguments and gathering the files. *)
   let usage = Printf.sprintf "Usage: %s [ARGS] [FILES]" Sys.argv.(0) in
-  Arg.parse spec (fun fn -> files := !files @ [fn]) usage;
-  let files = if !prelude then "prelude.typ" :: !files else !files in
+  let files =
+    let files = ref [] in
+    Arg.parse spec (fun fn -> files := !files @ [fn]) usage;
+    !files
+  in
 
   (* Handle the files given on the command line. *)
   let eval = Parser.handle_exception Parser.eval_file in

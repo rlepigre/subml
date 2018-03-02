@@ -48,7 +48,4 @@ let _ =
   fmts.tex <- output "tex";
   Io.read_file := input;
   (* Register callback. *)
-  Js.Unsafe.set js_self (Js.string "onmessage") onmessage;
-  (* Load the prelude. *)
-  ignore (handle_exception full_of_buffer (Io.file "prelude.typ"));
-  Io.log "File \"prelude.typ\" loaded\n%!"
+  Js.Unsafe.set js_self (Js.string "onmessage") onmessage
