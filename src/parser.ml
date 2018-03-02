@@ -232,7 +232,7 @@ and parser ext =
 
 and parser pkind (p : [`Atm | `Prd | `Fun]) =
   | a:kind_prd arrow b:kind     when p = `Fun -> in_pos _loc (PFunc(a,b))
-  | id:uid (o,k):kind_args$     when p = `Atm -> in_pos _loc (PTVar(id,o,k))
+  | id:uid (o,k):kind_args      when p = `Atm -> in_pos _loc (PTVar(id,o,k))
   | forall id:uid* "." a:kind   when p = `Fun -> in_pos _loc (PKAll(id,a))
   | exists id:uid* "." a:kind   when p = `Fun -> in_pos _loc (PKExi(id,a))
   | forall id:lgid* "." a:kind  when p = `Fun -> in_pos _loc (POAll(id,a))
@@ -277,26 +277,26 @@ and parser tcol = (pterm `Col)
 and parser tatm = (pterm `Atm)
 
 and parser pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
-  | lambda xs:fpat+ dot t:term$   when p = `Lam -> plabs _loc xs t
-  | fun_kw xs:fpat+ arrow t:term$ when p = `Lam -> plabs _loc xs t
+  | lambda xs:fpat+ dot t:term    when p = `Lam -> plabs _loc xs t
+  | fun_kw xs:fpat+ arrow t:term  when p = `Lam -> plabs _loc xs t
   | t:tapp u:tcol                 when p = `App -> pappl _loc t u
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
   | "print(" - s:str_lit - ")"    when p = `Atm -> in_pos _loc (PPrnt(s))
   | c:uid                         when p = `Atm -> in_pos _loc (PCons(c,None))
   | t:tatm "." l:lid              when p = `Atm -> in_pos _loc (PProj(t,l))
-  | case_kw t:term of_kw ps:pats d:default? $
+  | case_kw t:term of_kw ps:pats d:default?
                                   when p = `Lam -> in_pos _loc (PCase(t,ps,d))
   | "{" fs:term_reco "}"          when p = `Atm -> in_pos _loc (PReco(fs))
   | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
   | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
   | id:lid                        when p = `Atm -> in_pos _loc (PLVar(id))
-  | fix_kw n:{'[' n:int_lit ']'}? x:var arrow u:term$
+  | fix_kw n:{'[' n:int_lit ']'}? x:var arrow u:term
                                   when p = `Lam -> pfixY x _loc_u n u
   | "[" term_list "]"             when p = `Atm
   | term_llet                     when p = `Lam
   | term_mlet                     when p = `Lam
   | term_cond                     when p = `Atm
-  | t:tapp "::" u:tseq$           when p = `Seq -> list_cons _loc t u
+  | t:tapp "::" u:tseq            when p = `Seq -> list_cons _loc t u
 
   | abrt_kw                       when p = `Atm -> in_pos _loc PAbrt
   (* Parenthesis and coercions. *)
@@ -340,7 +340,7 @@ and parser term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
 and parser term_reco = (list_sep field ";") _:";"?
 and parser term_prod = l:(glist_sep'' term comma) -> build_prod l
 
-and parser field = l:lid k:{ ":" kind }?$ "=" t:tapp$ ->
+and parser field = l:lid k:{ ":" kind }? "=" t:tapp$ ->
   (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
 
 and parser term_list =
@@ -397,7 +397,7 @@ and parser latex_atom =
       -> Latex.Kind (br, u <> None, k)
   | "@" br:int_lit?[0] u:"!"? t:(change_layout term subml_blank) "@"
       -> Latex.Term (br, u <> None, t)
-  | t:tex_simple$
+  | t:tex_simple
       -> Latex.Text t
   | l:tex_text
       -> l
@@ -604,13 +604,13 @@ let parser vset top =
   | "gmlfile" fn:str_lit when not top -> GmlFile(fn)
 
 let parser command top =
-  | type_kw (tn,n,args,k):kind_def$            -> Type(tn,n,args,k)
-  | eval_kw t:term$                            -> Eval(t)
-  | f:flag val_kw (n,k,t):val_def$             -> Defi(f, n, k, t)
-  | f:flag check_kw a:kind$ _:subset b:kind$   -> Chck(_loc,f,a,b)
-  | _:include_kw fn:str_lit$                   -> Incl(fn)
-  | _:graphml_kw id:llid$                      -> GrMl(id)
-  | latex_kw t:tex_text$          when not top -> LaTX(t)
+  | type_kw (tn,n,args,k):kind_def             -> Type(tn,n,args,k)
+  | eval_kw t:term                             -> Eval(t)
+  | f:flag val_kw (n,k,t):val_def              -> Defi(f, n, k, t)
+  | f:flag check_kw a:kind _:subset b:kind    -> Chck(_loc,f,a,b)
+  | _:include_kw fn:str_lit                    -> Incl(fn)
+  | _:graphml_kw id:llid                       -> GrMl(id)
+  | latex_kw t:tex_text           when not top -> LaTX(t)
   | set_kw s:(vset top)                        -> VSet(s)
   | _:clear_kw                    when top     -> Clr
   | {quit_kw | exit_kw}           when top     -> Quit
