@@ -1,12 +1,27 @@
-(* The error monad: *)
-type Err(K) = ∀X ((K → X) → X → X)
+(* Church-encoded  error monad (option type). *)
 
-val error : ∀K Err(K) = λok err.err
-val unit    : ∀K (K → Err(K)) = λn ok err.(ok n)
-val bind : ∀K∀K' (Err(K) → (K → Err(K')) → Err(K'))
-  = fun n f → n (λx. f x) error
-val catch : ∀K∀K' (Err(K) → (K → K') → K' → K')
-  = fun e f g → e (λx. f x) g
+type Err(A) = ∀X ((A → X) → X → X)
 
-val printErr : ∀K (K → {}) → Err(K) → {}
-  = fun pr x → x (fun x _ → pr x) (fun _ → print("Error\n")) {}
+val error : ∀A Err(A) =
+  fun _ err → err
+
+(* Monadic operations. *)
+
+val unit : ∀A A → Err(A) =
+  fun n ok err → ok n
+
+val bind : ∀A ∀B Err(A) → (A → Err(B)) → Err(B) =
+  fun n f → n (fun x → f x) error
+
+(* Default value in case of error. *)
+
+val catch : ∀A ∀B Err(A) → (A → B) → B → B =
+  fun e f d → e f d
+
+(* Printing functions. *)
+
+val printErr : ∀A (A → {}) → Err(A) → {} =
+  fun pelt x → x (fun x _ → pelt x) (fun _ → print("Error")) {}
+
+val printlnErr : ∀A (A → {}) → Err(A) → {} =
+  fun pelt x → printErr pelt x; print("\n")

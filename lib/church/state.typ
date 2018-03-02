@@ -1,15 +1,32 @@
-(* state monad, using Church encoding for pairs *)
+(* State monad using Church-encoded pairs. *)
 
 include "church/data.typ"
 
-type State(V,X) = V → Pair(V,X)
-type Unit = ∀X (X → X)
+type State(S,A) = S → Pair(S,A)
 
-val unit : ∀X∀V(X → State(V,X)) = fun x v → pair v x
-val bind : ∀X∀Y∀V (State(V,X) → (X → State(V,Y)) → State(V,Y)) =
-  λn f v. n v (λv x. (f x v))
-val read : ∀V∀X (State(V,X) → State(V,V)) =
-  λn v.pair (pi1 (n v)) (pi1 (n v))
-val write : ∀V (V → State(V,Unit)) =
-  λx v. pair x (λx.x)
-val run : ∀V∀X (State(V,X) → V  → X) = λn v. pi2 (n v)
+(* Monadic operations. *)
+
+val unit : ∀S ∀A A → State(S,A) =
+  fun e s → pair s e
+
+val bind : ∀S ∀A ∀B State(S,A) → (A → State(S,B)) → State(S,B) =
+  fun a f s → a s (fun s e → f e s)
+
+(* Unit type. *)
+
+type U = ∀X (X → X)
+
+val u : U = fun x → x
+
+(* Read / write operations. *)
+
+val read : ∀S ∀A State(S,A) → State(S,S) =
+  fun a s → (fun v → pair v v) (pi1 (a s))
+
+val write : ∀S S → State(S,U) =
+  fun s _ → pair s u
+
+(* Evaluation function. *)
+
+val run : ∀S ∀A State(S,A) → S  → A =
+  fun a s → pi2 (a s)

@@ -1,32 +1,47 @@
-(* list using Church encoding *)
+(* Church-encoded lists. *)
 
-include "church/nat.typ"
+include "prelude.typ"
 include "church/bool.typ"
 include "church/data.typ"
 include "church/error.typ"
+include "church/nat.typ"
 
-type List(A) = ∀X ((A → X → X) → X → X)
+type CList(A) = ∀X ((A → X → X) → X → X)
 
-val nil = (λcs nl.nl) : ∀A List(A)
-val cons : ∀A (A → List(A) → List(A)) = fun a l → λcs nl. cs a (l cs nl)
+val nil : ∀A CList(A) =
+  fun c n → n
 
-val car : ∀A (List(A) → Err(A)) =
-  fun l → let A such that l:List(A) in l (λx y.unit x) error
+val cns : ∀A A → CList(A) → CList(A) =
+  fun e l c n → c e (l c n)
 
-val cdr : ∀A (List(A) → List(A)) =
-  fun l → let A such that l:List(A) in
-    l (λa p x y.p (cons a x) x)
-      (λx y.y) (nil:List(A)) (nil:List(A))
+(* Head and tail functions. *)
 
+val car : ∀A CList(A) → Err(A) =
+  fun l → l (fun e _ → unit e) error
 
-val sum = λl.l:List(CNat) add 0
+val cdr : ∀A CList(A) → CList(A) =
+  fun l →
+    let A such that l : CList(A) in
+    l (fun a p x y → p (cns a x) x) snd (nil : CList(A)) (nil : CList(A))
 
-val assoc : ∀A∀B (A → A → CBool) → A → List(Pair(A,B)) → Err(B) = λeq x l. (l
-  (λy ys. cond (eq x (pi1 y)) (unit (pi2 y)) ys) error)
+val cdr : ∀A CList(A) → Err(CList(A)) =
+  fun l → l (fun _ _ → unit (cdr l)) error
 
+(* Sum of all the element of a list. *)
 
-val l = cons (pair 3 4) (cons (pair 5 6) nil)
+val sum : CList(CNat) → CNat =
+  fun l → l add 0
 
-eval printErr printCNat (assoc eq 3 l)
-eval printErr printCNat (assoc eq 5 l)
-eval printErr printCNat (assoc eq 4 l)
+val assoc : ∀A ∀B (A → A → CBool) → A → CList(Pair(A,B)) → Err(B) =
+  fun eq k l → (l (fun y ys → cond (eq k (pi1 y)) (unit (pi2 y)) ys) error)
+
+(* Some tests. *)
+
+val l : CList(Pair(CNat,CNat)) =
+  cns (pair 3 4) (cns (pair 5 6) nil)
+
+(*
+eval printlnErr printCNat (assoc eq 3 l)
+eval printlnErr printCNat (assoc eq 5 l)
+eval printlnErr printCNat (assoc eq 4 l)
+*)

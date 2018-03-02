@@ -73,10 +73,13 @@ let _ =
     if String.trim line <> "" then Parser.toplevel_of_string line
   in
   if not !quit && ok then
-    begin try while true do
-      Printf.printf ">> %!";
-      ignore (Parser.handle_exception handle_line ())
-    done with End_of_file -> () end;
+    begin
+      Ast.verbose := true;
+      try while true do
+        Printf.printf ">> %!";
+        ignore (Parser.handle_exception handle_line ())
+      done with End_of_file -> ()
+    end;
 
   (* Close opened file and exit. *)
   Io.close_files ();
