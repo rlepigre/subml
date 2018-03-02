@@ -81,12 +81,12 @@ validate: src/config.ml
 	@echo -n "Longest line           : "
 	@wc -L src/*.ml src/*.mli | tail -n 1 | colrm 1 4 | colrm 4 10
 
-GENERATED_TESTS = tests/munu2.typ tests/munu3.typ
+GENERATED_TESTS = tests/munu2_generated.typ tests/munu3_generated.typ
 
-tests/munu2.typ: tests/munu.ml
+tests/munu2_generated.typ: tests/munu.ml
 	@ocaml $^ 2 > $@
 
-tests/munu3.typ: tests/munu.ml
+tests/munu3_generated.typ: tests/munu.ml
 	@ocaml $^ 3 > $@
 
 .PHONY: tests
@@ -179,6 +179,3 @@ ifneq ($(wildcard $(EMACSDIR)/.),)
 else
 	@echo -e "\e[36mWill not install emacs mode.\e[39m"
 endif
-
-
-
