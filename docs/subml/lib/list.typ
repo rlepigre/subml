@@ -31,18 +31,18 @@ val rec nth : ∀A.List(A) → Nat → Option(A) = fun l n →
   | Z   → hd l
   | S x → (case l of [] → None | a::l → nth l x)
 
-val rec map : ∀A.∀B.∀α.((A → B) → SList(α,A) → SList(α,B)) = fun f l →
+val rec map : ∀A B.∀α.((A → B) → SList(α,A) → SList(α,B)) = fun f l →
   case l of
   | []   → []
   | x::l → f x :: map f l
 
 (* Check that the above type is general enough *)
-val map' : ∀A.∀B.(A → B) → List(A) → List(B) = map
+val map' : ∀A B.(A → B) → List(A) → List(B) = map
 
 (* map2 works,
    mainly because it has type SList(α,A) → SList(β,B) → SList(α,C)) *)
 
-val rec map2 : ∀A.∀B.∀C.∀α.(A → B → C) → SList(α,A) → SList(α,B) → SList(α,C) = fun f l1 l2 →
+val rec map2 : ∀A B C.∀α.(A → B → C) → SList(α,A) → SList(α,B) → SList(α,C) = fun f l1 l2 →
   case l1 of
   | []   → []
   | x::l1 → (case l2 of
@@ -80,12 +80,12 @@ val rec concat : ∀A.(List(List(A)) → List(A)) = fun l →
   | []      → []
   | x::l → append x (concat l)
 
-val rec fold_left : ∀A.∀B.((B → A → B) → B → List(A) → B) = fun f e l →
+val rec fold_left : ∀A B.((B → A → B) → B → List(A) → B) = fun f e l →
   case l of
   | []      → e
   | x::l → fold_left f (f e x) l
 
-val rec assoc : ∀A.∀B.(A → Bool) → List(A × B) → Option(B) = fun f l →
+val rec assoc : ∀A B.(A → Bool) → List(A × B) → Option(B) = fun f l →
   case l of
   | []      → None
   | x::l → if f x.1 then Some x.2 else (assoc f l)
