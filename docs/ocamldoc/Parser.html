@@ -197,11 +197,111 @@
 <pre><span id="VALinclude_file"><span class="keyword">val</span> include_file</span> : <code class="type">string -> unit</code></pre>
 <pre><span id="VALoutput_graphml"><span class="keyword">val</span> output_graphml</span> : <code class="type"><a href="Pos.html#TYPEstrloc">Pos.strloc</a> -> unit</code></pre>
 <pre><span id="VALflag"><span class="keyword">val</span> flag</span> : <code class="type"><a href="Parser.html#TYPEflag">flag</a> Earley.grammar</code></pre>
+<pre><code><span id="TYPEvset"><span class="keyword">type</span> <code class="type"></code>vset</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTvset.Verbose"><span class="constructor">Verbose</span></span> <span class="keyword">of</span> <code class="type">bool</code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTvset.TeXFile"><span class="constructor">TeXFile</span></span> <span class="keyword">of</span> <code class="type">string</code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTvset.GmlFile"><span class="constructor">GmlFile</span></span> <span class="keyword">of</span> <code class="type">string</code></code></td>
+
+</tr></table>
+
+
+
+<pre><span id="VALdo_vset"><span class="keyword">val</span> do_vset</span> : <code class="type"><a href="Parser.html#TYPEvset">vset</a> -> unit</code></pre>
+<pre><code><span id="TYPEcommand"><span class="keyword">type</span> <code class="type"></code>command</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.Type"><span class="constructor">Type</span></span> <span class="keyword">of</span> <code class="type">string option * string * (string list * string list) * <a href="Raw.html#TYPEpkind">Raw.pkind</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.Defi"><span class="constructor">Defi</span></span> <span class="keyword">of</span> <code class="type"><a href="Parser.html#TYPEflag">flag</a> * (string option * string) * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option * <a href="Raw.html#TYPEpterm">Raw.pterm</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.Eval"><span class="constructor">Eval</span></span> <span class="keyword">of</span> <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.Chck"><span class="constructor">Chck</span></span> <span class="keyword">of</span> <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> * <a href="Parser.html#TYPEflag">flag</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.Incl"><span class="constructor">Incl</span></span> <span class="keyword">of</span> <code class="type">string</code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.GrMl"><span class="constructor">GrMl</span></span> <span class="keyword">of</span> <code class="type">string <a href="Pos.html#TYPEloc">Pos.loc</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.LaTX"><span class="constructor">LaTX</span></span> <span class="keyword">of</span> <code class="type"><a href="Latex.html#TYPElatex_output">Latex.latex_output</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.VSet"><span class="constructor">VSet</span></span> <span class="keyword">of</span> <code class="type"><a href="Parser.html#TYPEvset">vset</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.Clr"><span class="constructor">Clr</span></span></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcommand.Quit"><span class="constructor">Quit</span></span></code></td>
+
+</tr></table>
+
+
+
+<pre><span id="VALexecute"><span class="keyword">val</span> execute</span> : <code class="type"><a href="Parser.html#TYPEcommand">command</a> -> unit</code></pre>
 <pre><span id="VALkind_def"><span class="keyword">val</span> kind_def</span> : <code class="type">(string option * string * (string list * string list) * <a href="Raw.html#TYPEpkind">Raw.pkind</a>)<br>       Earley.grammar</code></pre>
 <pre><span id="VALkind_def_args"><span class="keyword">val</span> kind_def_args</span> : <code class="type">(string list * string list) Earley.grammar</code></pre>
-<pre><span id="VALval_def"><span class="keyword">val</span> val_def</span> : <code class="type">(<a href="Parser.html#TYPEname">name</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley.grammar</code></pre>
-<pre><span id="VALtoplevel_of_string"><span class="keyword">val</span> toplevel_of_string</span> : <code class="type">string -> unit</code></pre>
-<pre><span id="VALfull_of_string"><span class="keyword">val</span> full_of_string</span> : <code class="type">string -> string -> unit</code></pre>
-<pre><span id="VALfull_of_buffer"><span class="keyword">val</span> full_of_buffer</span> : <code class="type">Input.buffer -> unit</code></pre>
+<pre><span id="VALval_def"><span class="keyword">val</span> val_def</span> : <code class="type">((string option * string) * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley.grammar</code></pre>
+<pre><span id="VALtoplevel_of_string"><span class="keyword">val</span> toplevel_of_string</span> : <code class="type">string -> <a href="Parser.html#TYPEcommand">command</a></code></pre>
+<pre><span id="VALeval_string"><span class="keyword">val</span> eval_string</span> : <code class="type">string -> string -> unit</code></pre>
 <pre><span id="VALeval_file"><span class="keyword">val</span> eval_file</span> : <code class="type">string -> unit</code></pre>
 <pre><span id="VALhandle_exception"><span class="keyword">val</span> handle_exception</span> : <code class="type">('a -> 'b) -> 'a -> bool</code></pre></body></html>

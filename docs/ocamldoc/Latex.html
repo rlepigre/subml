@@ -55,21 +55,28 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTlatex_output.Kind"><span class="constructor">Kind</span></span> <span class="keyword">of</span> <code class="type">int * bool * <a href="Ast.html#TYPEkind">Ast.kind</a></code></code></td>
+<code><span id="TYPEELTlatex_output.Kind"><span class="constructor">Kind</span></span> <span class="keyword">of</span> <code class="type">int * bool * <a href="Raw.html#TYPEpkind">Raw.pkind</a></code></code></td>
 
 </tr>
 <tr>
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTlatex_output.KindDef"><span class="constructor">KindDef</span></span> <span class="keyword">of</span> <code class="type">int * <a href="Ast.html#TYPEkdef">Ast.kdef</a></code></code></td>
+<code><span id="TYPEELTlatex_output.KindDef"><span class="constructor">KindDef</span></span> <span class="keyword">of</span> <code class="type">int * string <a href="Pos.html#TYPEloc">Pos.loc</a></code></code></td>
 
 </tr>
 <tr>
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTlatex_output.Term"><span class="constructor">Term</span></span> <span class="keyword">of</span> <code class="type">int * bool * <a href="Ast.html#TYPEterm">Ast.term</a></code></code></td>
+<code><span id="TYPEELTlatex_output.Term"><span class="constructor">Term</span></span> <span class="keyword">of</span> <code class="type">int * bool * <a href="Raw.html#TYPEpterm">Raw.pterm</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTlatex_output.KindOf"><span class="constructor">KindOf</span></span> <span class="keyword">of</span> <code class="type">int * string <a href="Pos.html#TYPEloc">Pos.loc</a></code></code></td>
 
 </tr>
 <tr>
@@ -90,7 +97,7 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTlatex_output.SProof"><span class="constructor">SProof</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> * <a href="Sct.html#TYPEt">Sct.t</a></code></code></td>
+<code><span id="TYPEELTlatex_output.SProof"><span class="constructor">SProof</span></span> <span class="keyword">of</span> <code class="type"><a href="Raw.html#TYPEpkind">Raw.pkind</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a></code></code></td>
 
 </tr>
 <tr>
@@ -104,14 +111,14 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTlatex_output.Sch"><span class="constructor">Sch</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEschema">Ast.schema</a> * string</code></code></td>
+<code><span id="TYPEELTlatex_output.Sch"><span class="constructor">Sch</span></span> <span class="keyword">of</span> <code class="type">string <a href="Pos.html#TYPEloc">Pos.loc</a> * string <a href="Pos.html#TYPEloc">Pos.loc</a> * int * string</code></code></td>
 
 </tr>
 <tr>
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTlatex_output.Sct"><span class="constructor">Sct</span></span> <span class="keyword">of</span> <code class="type"><a href="Sct.html#TYPEt">Sct.t</a></code></code></td>
+<code><span id="TYPEELTlatex_output.Sct"><span class="constructor">Sct</span></span> <span class="keyword">of</span> <code class="type">string <a href="Pos.html#TYPEloc">Pos.loc</a></code></code></td>
 
 </tr>
 <tr>
