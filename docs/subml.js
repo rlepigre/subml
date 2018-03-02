@@ -2495,7 +2495,7 @@
        [11,caml_new_string("\\{"),[15,[2,0,[11,caml_new_string("\\}"),0]]]],
        caml_new_string("\\{%a%s\\}")],
      _tG_=[0,[12,123,[15,[2,0,[12,125,0]]]],caml_new_string("{%a%s}")],
-     _tM_=[0,caml_new_string("src/print.ml"),372,9],
+     _tM_=[0,caml_new_string("src/print.ml"),370,9],
      _tI_=
       [0,
        [11,caml_new_string("\\left\\{\\setlength{\\arraycolsep}{0.2em}"),0],
@@ -2517,10 +2517,8 @@
      _t0_=caml_new_string("("),
      _t1_=
       [0,
-       [11,
-        caml_new_string("\xe2\x88\x80"),
-        [2,0,[11,caml_new_string(". "),[15,0]]]],
-       caml_new_string("\xe2\x88\x80%s. %a")],
+       [11,caml_new_string("\xe2\x88\x80"),[2,0,[12,46,[15,0]]]],
+       caml_new_string("\xe2\x88\x80%s.%a")],
      _t2_=caml_new_string(")"),
      _t3_=caml_new_string("("),
      _t4_=
@@ -2637,8 +2635,8 @@
      _uV_=caml_new_string("R"),
      _uX_=[0,[2,0,[15,0]],caml_new_string("%s%a")],
      _uW_=[0,[11,caml_new_string("type "),[2,0,0]],caml_new_string("type %s")],
-     _u4_=[0,caml_new_string("src/print.ml"),539,2],
-     _u3_=[0,caml_new_string("src/print.ml"),540,2],
+     _u4_=[0,caml_new_string("src/print.ml"),537,2],
+     _u3_=[0,caml_new_string("src/print.ml"),538,2],
      _uY_=caml_new_string(","),
      _uZ_=[0,[11,caml_new_string(" = "),[15,0]],caml_new_string(" = %a")],
      _u0_=
@@ -2660,14 +2658,14 @@
       [0,
        [2,0,[2,0,[11,caml_new_string(" \xe2\x86\x92 "),[15,0]]]],
        caml_new_string("%s%s \xe2\x86\x92 %a")],
-     _vT_=[0,caml_new_string("src/print.ml"),699,31],
+     _vT_=[0,caml_new_string("src/print.ml"),697,31],
      _vQ_=
       [0,
        [2,0,[12,32,[2,0,[11,caml_new_string(" \xe2\x86\x92 "),[15,0]]]]],
        caml_new_string("%s %s \xe2\x86\x92 %a")],
      _vR_=caml_new_string(""),
      _vS_=caml_new_string("\xe2\x88\xa3"),
-     _vP_=[0,caml_new_string("src/print.ml"),691,12],
+     _vP_=[0,caml_new_string("src/print.ml"),689,12],
      _vt_=caml_new_string(":"),
      _vu_=
       [0,
@@ -2992,7 +2990,7 @@
        caml_new_string
         ("%s_{%d} %s \xce\xb5_{%a \xe2\x88\x88 %a}(%a \xe2\x88\x89 %a)%s")],
      _xZ_=caml_new_string(""),
-     _x0_=[0,caml_new_string("src/print.ml"),1036,11],
+     _x0_=[0,caml_new_string("src/print.ml"),1034,11],
      _xV_=caml_new_string("\xe2\x88\x88"),
      _xY_=caml_new_string("\xe2\x88\x89"),
      _xW_=[0,0],

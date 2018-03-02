@@ -337,8 +337,6 @@ and print_index_ordi ff = function
 
 and new_prvar f = KPrnt(FreeVr(binder_name f))
 
-and kall_fmt () = if latex_mode () then "∀%s. %a" else "∀%s %a"
-
 and print_kind unfold wrap unfolded_Y ff t =
   let pkind = print_kind false false unfolded_Y in
   let pordi = print_ordi false unfolded_Y in
@@ -391,7 +389,7 @@ and print_kind unfold wrap unfolded_Y ff t =
   | KKAll(f)  ->
       let x = new_prvar f in
       if wrap then pp_print_string ff "(";
-      fprintf ff "∀%s. %a" (binder_name f) pkind (subst f x);
+      fprintf ff "∀%s.%a" (binder_name f) pkind (subst f x);
       if wrap then pp_print_string ff ")"
   | KKExi(f)  ->
       let x = new_prvar f in
