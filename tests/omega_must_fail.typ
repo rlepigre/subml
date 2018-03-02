@@ -1,6 +1,6 @@
 (* Examples that must obviously fail. *)
 
-val delta : ∀X (∀X X) → X = fun x → x x
+val delta : ∀X.(∀X.X) → X = fun x → x x
 
 !val omega = delta delta
 !val omega = (fun x -> x x) (fun x -> x x)
@@ -9,13 +9,13 @@ val delta : ∀X (∀X X) → X = fun x → x x
 
 (* Inductive type not satisfying the usual positivity cryterion. *)
 
-type A = μX [C of X → X]
+type A = μX.[C of X → X]
 
 !val delta : A → A = fun x → case x of C (f : A → A) → f x
 
 (* Coinductive type not satisfying the usual positivity cryterion. *)
 
-type B = νX [C of X → X]
+type B = νX.[C of X → X]
 
 val delta : B → B = fun x → case x of C (f : B → B) → f x
 

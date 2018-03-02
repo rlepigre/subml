@@ -1,10 +1,10 @@
 (* Typical example of function that cannot be shown terminating by means of
    the size-change principle (normalisation of binary decision diagrams). *)
 
-type BDD(A)  = μX [ Var of A | If of {c : X; t : X; f : X}]
+type BDD(A)  = μX.[ Var of A | If of {c : X; t : X; f : X}]
 
 (* Type-checks, but termination checker fails. *)
-?val rec norm : ∀A BDD(A) → BDD(A) = fun t →
+?val rec norm : ∀A.BDD(A) → BDD(A) = fun t →
   case t of
   | Var v → Var v
   | If c  →

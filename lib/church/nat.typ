@@ -3,7 +3,7 @@
 include "church/bool.typ"
 include "church/data.typ"
 
-type CNat = ∀X (X → X) → X → X
+type CNat = ∀X.(X → X) → X → X
 
 val z : CNat =
   fun _ x → x

@@ -2,11 +2,11 @@ include "nat.typ"
 
 (* The santadard type for ordinals, semantics converges in 2^ω,
    even for Ord2, because |Ord| ⊂ Λ remains countable *)
-type O(X) = μ O [ Z | S of O | L of X → O ]
-type Ord = O(Nat)
+type O(X) = μO.[ Z | S of O | L of X → O ]
+type Ord  = O(Nat)
 type Ord2 = O(Ord)
 
-val rec add : ∀X O(X) → O(X) → O(X) = fun n m →
+val rec add : ∀X.O(X) → O(X) → O(X) = fun n m →
   case n of
   | Z   → m
   | S x → S(add x m)
@@ -14,7 +14,7 @@ val rec add : ∀X O(X) → O(X) → O(X) = fun n m →
 
 (* A better definition for ordinals, semantics converges in 2^(2^ω).
    Not sur that in does not converge before. *)
-type Ord0 = μO [ Z | S of O | L of ∃X (X → O) ]
+type Ord0 = μO.[Z | S of O | L of ∃X.X → O]
 
 check O(Ord) ⊂ Ord0
 !check Ord0 ⊂ O(Ord)

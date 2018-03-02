@@ -34,7 +34,7 @@ val inlBool : Boolean → Either(Boolean, Boolean) = fun b → InL b
 (* macro name ([\to] in the case of [→]). Usual projections for records and *)
 (* (shallow) pattern matching are provided.                                 *)
 
-val cond : ∀X Boolean → X → X → X = fun c t e →
+val cond : ∀X.Boolean → X → X → X = fun c t e →
   case c of
   | True  → t
   | False → e
@@ -45,11 +45,11 @@ val fst : Pair → Boolean = fun p → p.fst
 (* the symbol [∀] (entered using [forall], [\forall] or [/\])  to  quantify *)
 (* over a type variable.                                                    *)
 
-val id : ∀X X → X = fun x → x
+val id : ∀X.X → X = fun x → x
 
 type Maybe(A) = [Nothing | Just of A]
 
-val fromJust : ∀A Maybe(A) → A → A = fun m d →
+val fromJust : ∀A.Maybe(A) → A → A = fun m d →
   case m of
   | Nothing → d
   | Just v  → v
@@ -58,7 +58,7 @@ val fromJust : ∀A Maybe(A) → A → A = fun m d →
 (* coinductive types are defined explicitly using the binders [μ]  and  [ν] *)
 (* (entered using [\mu] or [!], and [\nu] or [?] respectively).             *)
 
-type Unary = μN [Zero | Succ of N]
+type Unary = μN.[Zero | Succ of N]
 
 val zero  : Unary = Zero
 val one   : Unary = Succ Zero
@@ -85,17 +85,17 @@ eval (fun x y z → x)
 (* They are encoded into record types with numeric labels from [1] to  [N]. *)
 (* The correspondig syntax for tuples is [(a1, ..., aN)].                   *)
 
-val pair : ∀A ∀B A → B → A × B = fun a b → (a, b)
+val pair : ∀A.∀B.A → B → A × B = fun a b → (a, b)
 
-val fst  : ∀A ∀B A × B → A = fun p → p.1
+val fst  : ∀A.∀B.A × B → A = fun p → p.1
 
 (* Subml allows for sized type, i.e. a type with a size parameter. The size *)
 (* parameter is given next to the μ or ν and represent the maximum size for *)
 (* inductive types and the minimum size for coinductive types.              *)
 
-type L(α,A) = μα X [ Nil | Cons of A × X ]
+type L(α,A) = μα X.[ Nil | Cons of A × X ]
 
-val rec map : ∀α ∀A ∀B (A → B) → L(α,A) → L(α,B) = fun f l →
+val rec map : ∀α.∀A.∀B.(A → B) → L(α,A) → L(α,B) = fun f l →
   case l of
   | Nil        → Nil
   | Cons(a,l') → Cons(f a, map f l')
@@ -107,9 +107,9 @@ val rec map : ∀α ∀A ∀B (A → B) → L(α,A) → L(α,B) = fun f l →
 (* A syntax [[]] can be used for the [Nil] constructor, and [x::l]  can  be *)
 (* used for [Cons { hd = x; tl = l; }].                                     *)
 
-type L(α,A) = μα X [ Nil | Cons of { hd : A ; tl : X } ]
+type L(α,A) = μα X.[ Nil | Cons of { hd : A ; tl : X } ]
 
-val rec map : ∀α ∀A ∀B (A → B) → L(α,A) → L(α,B) = fun f l →
+val rec map : ∀α.∀A.∀B.(A → B) → L(α,A) → L(α,B) = fun f l →
   case l of
   | []      → []
   | a :: l' → f a :: map f l'
@@ -118,7 +118,7 @@ val rec map : ∀α ∀A ∀B (A → B) → L(α,A) → L(α,B) = fun f l →
 (* establish termination. Size informations on functions is thus  essential *)
 (* for proving termination.                                                 *)
 
-val rec mapSucc : ∀α L(α,Unary) → L(α,Unary) = fun l →
+val rec mapSucc : ∀α.L(α,Unary) → L(α,Unary) = fun l →
   case l of
   | []      → []
   | a :: l' → a :: mapSucc (map (fun x → Succ x) l')
@@ -127,7 +127,7 @@ eval mapSucc (Zero::Zero::Zero::[])
 
 (* Size can use +1, +2, ... to indicate variation of sizes.                 *)
 
-val tail : ∀α∀A L(α+1,A) → L(α,A) = fun l →
+val tail : ∀α.∀A.L(α+1,A) → L(α,A) = fun l →
   case l of
   | []     → abort
   | _ :: l → l
@@ -135,14 +135,14 @@ val tail : ∀α∀A L(α+1,A) → L(α,A) = fun l →
 (* Remark: one must use abort to have the given type, because de empty list *)
 (* is of size one not zero. Without abort, we can only do the following.    *)
 
-val tail : ∀α∀A L(α+2,A) → L(α+1,A) = fun l →
+val tail : ∀α.∀A.L(α+2,A) → L(α+1,A) = fun l →
   case l of
   | []     → []
   | _ :: l → l
 
 (* Subml also allows local definitions that may be recursive.               *)
-val rev : ∀A L(∞,A) → L(∞,A) =
-  let rec aux : ∀A L(∞,A) → L(∞,A) → L(∞,A) = fun l2 l1 →
+val rev : ∀A.L(∞,A) → L(∞,A) =
+  let rec aux : ∀A.L(∞,A) → L(∞,A) → L(∞,A) = fun l2 l1 →
     case l1 of
     | []     → l2
     | x::l1' → aux (x::l2) l1'
@@ -159,9 +159,9 @@ val rev : ∀A L(∞,A) → L(∞,A) =
 
 (* Subml has coinductive types using ν instead of μ. We can also mix them.  *)
 
-type Bits(α) = να X {} → [Zero of X | One of X]
+type Bits(α) = να X.{} → [Zero of X | One of X]
 
-val rec bitneg : ∀α Bits(α) → Bits(α) = fun s _ →
+val rec bitneg : ∀α.Bits(α) → Bits(α) = fun s _ →
   case s {} of
   | Zero s' → One  (bitneg s')
   | One  s' → Zero (bitneg s')
@@ -169,7 +169,7 @@ val rec bitneg : ∀α Bits(α) → Bits(α) = fun s _ →
 (* Bits represents the type of an infinite sequence of bits (Zero of One).  *)
 (* The size α, denotes a minimum number of bits that must be present.       *)
 
-type Real = νX μY {} → [Zero of X | One of Y ]
+type Real = νX.μY.{} → [Zero of X | One of Y ]
 
 check Real ⊂ Bits(∞)
 

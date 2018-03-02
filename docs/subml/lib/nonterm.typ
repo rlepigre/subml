@@ -1,21 +1,21 @@
-type Stream(A) = νX {} → A × X
-type F = νX {} → [ R of X | K of X ]
+type Stream(A) = νX.{} → A × X
+type F = νX.{} → [ R of X | K of X ]
 
-!val rec[2] filter : ∀A F → Stream(A) → Stream(A) =
+!val rec[2] filter : ∀A.F → Stream(A) → Stream(A) =
   fun f s →
     let (hd, tl) = s {} in
     case f {} of
     | R f' → filter f' tl
     | K f' → fun _ → (hd, filter f' tl)
 
-!val rec[3] filter : ∀A F → Stream(A) → Stream(A) =
+!val rec[3] filter : ∀A.F → Stream(A) → Stream(A) =
   fun f s →
     let (hd, tl) = s {} in
     case f {} of
     | R f' → filter f' tl
     | K f' → fun _ → (hd, filter f' tl)
 
-type Nat = μX [Z | S of X]
+type Nat = μX.[Z | S of X]
 
 !val rec add : Nat → Nat → Nat = fun n m →
   case n of

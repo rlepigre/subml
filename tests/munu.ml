@@ -84,8 +84,8 @@ let _ =
     List.iter aux p;
     Printf.printf " = ";
     let aux = function
-      | (i, true ) -> Printf.printf "μ%c " uppercase.(i)
-      | (i, false) -> Printf.printf "ν%c " uppercase.(i)
+      | (i, true ) -> Printf.printf "μ%c." uppercase.(i)
+      | (i, false) -> Printf.printf "ν%c." uppercase.(i)
     in
     List.iter aux p;
     Printf.printf "%s\n%!" cstrs

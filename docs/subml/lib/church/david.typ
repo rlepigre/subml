@@ -10,19 +10,19 @@ type B    = CBool
 type N    = CNat
 type L(A) = CList(A)
 
-type N_Star(O) = ∀X (((X → O) → (X → O)) → (X → O) → (X → O))
+type N_Star(O) = ∀X.(((X → O) → (X → O)) → (X → O) → (X → O))
 
-val nstore : ∀O N_Star(O) → (N → O) → O =
+val nstore : ∀O.N_Star(O) → (N → O) → O =
   fun n → n (fun x y → x (fun z → y (s z))) (fun f → f z)
 
-type B_Star(O) = ∀X ((X → O) → (X → O) → (X → O))
+type B_Star(O) = ∀X.((X → O) → (X → O) → (X → O))
 
-val bstore : ∀O (B_Star(O) → (B → O) → O) =
+val bstore : ∀O.(B_Star(O) → (B → O) → O) =
   fun b → b (fun f → f ctru) (fun f → f cfls)
 
-type L_Star(A,O) = ∀X ((A → (X → O) → (X → O)) → (X → O) → (X → O))
+type L_Star(A,O) = ∀X.((A → (X → O) → (X → O)) → (X → O) → (X → O))
 
-val lstore : ∀O L_Star(B,O) → (L(B) → O) → O =
+val lstore : ∀O.L_Star(B,O) → (L(B) → O) → O =
   fun l → l
     (fun a → bstore a (fun b r f → r (fun z → f (cns b z))))
     (fun f → f nil)

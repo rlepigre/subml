@@ -1,21 +1,21 @@
 include "list.typ"
 include "nat.typ"
 
-type T(A) = μX List(A × X)
+type T(A) = μX.List(A × X)
 
-val rec length : ∀A T(A) → Nat = fun t →
+val rec length : ∀A.T(A) → Nat = fun t →
    case t of
    | []   → Z
    | x::l → add (length x.2) (length l)
 
 (*
-type Key = μK [Atom of Nat | Pair of K × K ]
-type Trie(A) = (μK ∃A [Nil | Branch of List(Nat × A) × (K with A = (K with A = A))]) with A = A
+type Key = μK.[Atom of Nat | Pair of K × K ]
+type Trie(A) = (μK.∃A.[Nil | Branch of List(Nat × A) × (K with A = (K with A = A))]) with A = A
 type A = [A]
 
 check Trie(A) ⊂ [Nil | Branch of List(Nat × A) × Trie(Trie(A))]
 
-val rec find : ∀A T(A) → Key → Option(A) = ΛA fun t k →
+val rec find : ∀A.T(A) → Key → Option(A) = ΛA fun t k →
   case t of
   | []       → None
   | Branch c →

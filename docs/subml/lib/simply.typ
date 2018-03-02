@@ -1,13 +1,12 @@
-
 include "nat.typ"
 include "list.typ"
 
-type STy(α) = μα T [ Atm of Nat | Arr of T × T ]
+type STy(α) = μα T.[Atm of Nat | Arr of T × T]
 type Ty = STy(∞)
 
-type FTerm(A) = [ Var of Nat | App of A × A | Lam of Ty × A ]
-type STerm(α) = μα T FTerm(T)
-(** STerm(α) means F(F(...F(∀X X))) α times *)
+type FTerm(A) = [Var of Nat | App of A × A | Lam of Ty × A]
+type STerm(α) = μα T.FTerm(T)
+(** STerm(α) means F(F(...F(∀X.X))) α times *)
 type Term = STerm(∞)
 (** Term = FTerm(Term) *)
 
@@ -24,7 +23,7 @@ val rec eq_type : Ty → Ty → Bool = fun t1 t2 →
      | Arr(t2',t2'') → and (eq_type t1' t2') (eq_type t1'' t2''))
 
 (** Type inference function *)
-val rec type_infer : ∀α List(Ty) → STerm(α) → Option(Ty) = fun ctxt t →
+val rec type_infer : ∀α.List(Ty) → STerm(α) → Option(Ty) = fun ctxt t →
   (case t of
   | Var n → nth ctxt n
   | Lam (t1, t) →
@@ -49,14 +48,14 @@ val test = type_infer [] (Lam(Atm 0,Var 0))
 eval test
 
 (** Lifting of Free Debrujn variable by one *)
-val rec lift : ∀α STerm(α) → Nat → STerm(α) = fun t n →
+val rec lift : ∀α.STerm(α) → Nat → STerm(α) = fun t n →
   case t of
   | Lam(ty,t) →  Lam(ty, lift t (S n))
   | Var p → if geq p n then Var (S p) else t
   | App(t,u) → App(lift t n, lift u n)
 
 (** napp a sequence of applications from a list *)
-val rec napp : ∀α Term → SList(α,Term) → Term = fun t l →
+val rec napp : ∀α.Term → SList(α,Term) → Term = fun t l →
   case l of
   | [] → t
   | x::l → napp (App(t,x)) l
@@ -89,7 +88,7 @@ val rec cmp : Nat → Nat → Nat0 = fun n m →
    - termininates by lex order (|ty|,|t|), this is R David proofs
      when the terms are not normal as they should.
 *)
-val rec subst : ∀α ∀β STerm(α) → STy(β) → Nat → Term → List(Term) → Term =
+val rec subst : ∀α.∀β.STerm(α) → STy(β) → Nat → Term → List(Term) → Term =
   fun t ty p u stack →
     (case t of
     | Var n →

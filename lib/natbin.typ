@@ -1,6 +1,6 @@
 (* Binary coding of natural numbers using inductive types and native sums *)
 
-type FBin(α) = μα K [ End | Zero of K | One of K ] (* allowed trailing zero *)
+type FBin(α) = μα K.[ End | Zero of K | One of K ] (* allowed trailing zero *)
 type Bin  = FBin(∞)
 type RBin = [ Minus of Bin | End | Zero of Bin | One of Bin ] (*relative numbers*)
 
@@ -23,7 +23,7 @@ val 8  : Bin = succ 7
 val 9  : Bin = succ 8
 val 10 : Bin = succ 9
 
-val times2 : ∀α FBin(α) → FBin(α+1) = fun x →
+val times2 : ∀α.FBin(α) → FBin(α+1) = fun x →
   case x of | End      → End
             | x        → Zero x
 
@@ -39,25 +39,25 @@ val rec is_zero : Bin → Bool = fun x →
   | One _  → fls
   | Zero x → is_zero x
 
-val rec complement : ∀α FBin(α) → FBin(α) = fun x →
+val rec complement : ∀α.FBin(α) → FBin(α) = fun x →
   case x of
   | End    → End
   | One  x → Zero (complement x)
   | Zero x → One  (complement x)
 
-val rec carryless_incr : ∀α FBin(α) → FBin(α) = fun x →
+val rec carryless_incr : ∀α.FBin(α) → FBin(α) = fun x →
   case x of
   | End    → End
   | One  x → One (carryless_incr x)
   | Zero x → One x
 
-val rec carryless_decr : ∀α FBin(α) → FBin(α) = fun x →
+val rec carryless_decr : ∀α.FBin(α) → FBin(α) = fun x →
   case x of
   | End    → End
   | Zero x → (case x of End → Zero End | _ → One (carryless_decr x))
   | One  x → Zero x
 
-val rec normalise : ∀α FBin(α) → FBin(α) = fun x →
+val rec normalise : ∀α.FBin(α) → FBin(α) = fun x →
   case x of
   | End    → End
   | One x  → One (normalise x)
@@ -65,7 +65,7 @@ val rec normalise : ∀α FBin(α) → FBin(α) = fun x →
 
 type BitFun = [Z|O] → [Z|O] → [Z|O]
 
-val rec bitmap : ∀α ([Z|O] → [Z|O]) → FBin(α) → FBin(α) = fun f x →
+val rec bitmap : ∀α.([Z|O] → [Z|O]) → FBin(α) → FBin(α) = fun f x →
   case x of
   | End    → End
   | Zero x → (case f Z of
@@ -76,8 +76,8 @@ val rec bitmap : ∀α ([Z|O] → [Z|O]) → FBin(α) → FBin(α) = fun f x →
               | O → One  (bitmap f x))
 
 (* FIXME should work with these type ? Need a max on ordinals ? *)
-(* val rec bitwise : BitFun → ∀α FBin(α) → FBin(α) → FBin(α) = fun f x0 y0 → *)
-(* val rec bitwise : ∀α BitFun → FBin(α) → FBin(α) → FBin(α) = fun f x0 y0 → *)
+(* val rec bitwise : BitFun → ∀α.FBin(α) → FBin(α) → FBin(α) = fun f x0 y0 → *)
+(* val rec bitwise : ∀α.BitFun → FBin(α) → FBin(α) → FBin(α) = fun f x0 y0 → *)
 val rec bitwise : BitFun → Bin → Bin → Bin = fun f x0 y0 →
   let x0 = normalise x0 in
   let y0 = normalise y0 in
@@ -194,16 +194,16 @@ val add_bin : Bin → Bin → Bin = add_aux Zero
 type EBin = Option(Bin)
 type EFBin(α) = Option(FBin(α))
 
-val eOne : ∀α EFBin(α) → EFBin(α+1) = fun o → map_option (fun x → One x) o
+val eOne : ∀α.EFBin(α) → EFBin(α+1) = fun o → map_option (fun x → One x) o
 
-val rec epred : ∀α FBin(α) → EFBin(α) =
+val rec epred : ∀α.FBin(α) → EFBin(α) =
 fun x →
   case x of
   | End    → None
   | One n  → Some (times2 n)
   | Zero n → eOne (epred n)
 
-val rec sub_aux : ∀α∀β Carry → FBin(α) → FBin(β) → EFBin(α) = fun c x y →
+val rec sub_aux : ∀α.∀β.Carry → FBin(α) → FBin(β) → EFBin(α) = fun c x y →
   case y of
   | End → (
     case c of
@@ -232,7 +232,7 @@ val rec sub_aux : ∀α∀β Carry → FBin(α) → FBin(β) → EFBin(α) = fun
       | Zero → map_option times2 (sub_aux Zero x' y')
       | One  → eOne (sub_aux One x' y')))
 
-val sub : ∀α∀β FBin(α) → FBin(β) → EFBin(α) = sub_aux Zero
+val sub : ∀α.∀β. FBin(α) → FBin(β) → EFBin(α) = sub_aux Zero
 
 val 20 = add_bin 10 10
 
@@ -260,7 +260,7 @@ val rec divmod : Bin → Bin → Bin × Bin =
 val div : Bin → Bin → Bin = fun x p → (divmod x p).1
 val mod : Bin → Bin → Bin = fun x p → (divmod x p).2
 
-val rec min_aux : ∀α∀β FBin(α) → FBin(β) → FBin(α) × Bool = fun x y →
+val rec min_aux : ∀α.∀β.FBin(α) → FBin(β) → FBin(α) × Bool = fun x y →
   case x of
   | Zero x →
     (case y of
@@ -274,7 +274,7 @@ val rec min_aux : ∀α∀β FBin(α) → FBin(β) → FBin(α) × Bool = fun x 
      | End → (End, fls))
   | End → (End, tru)
 
-val min : ∀α FBin(α) → FBin(α) → FBin(α) = fun x y → (min_aux x y).1
+val min : ∀α.FBin(α) → FBin(α) → FBin(α) = fun x y → (min_aux x y).1
 
 val rec gcd : Bin → Bin → EBin =
   fun x y →

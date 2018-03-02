@@ -1,13 +1,12 @@
-
-type Pos = μX [Z | S of X]
-type Neg = μX [Z | P of X]
+type Pos = μX.[Z | S of X]
+type Neg = μX.[Z | P of X]
 type Int = [Z | S of Pos | P of Neg]
-type BInt = μX [Z | P of X | S of X]
+type BInt = μX.[Z | P of X | S of X]
 
 check Int ⊂ BInt
 
-type PS(α) = μα X [Z | S of X]
-type NS(α) = μα X [Z | P of X]
+type PS(α) = μα X.[Z | S of X]
+type NS(α) = μα X.[Z | P of X]
 type IS(α)  = [Z | S of PS(α) | P of NS(α) ]
 
 val 0 : Pos = Z

@@ -1,8 +1,8 @@
 include "int.typ"
 
 type D  = [P | Z | S ]
-type I1 = νX {} → D × X
-type IS(α) = να X {} → D × X
+type I1 = νX.{} → D × X
+type IS(α) = να X.{} → D × X
 
 val d2i : D → Int = fun n →
   case n of
@@ -10,7 +10,7 @@ val d2i : D → Int = fun n →
   | S →  1
   | P → n1
 
-val rec average' : ∀α Int → IS(α+2) → IS(α+2) → IS(α+1) = fun c a b _ →
+val rec average' : ∀α.Int → IS(α+2) → IS(α+2) → IS(α+1) = fun c a b _ →
   (*let _ = print("c=");print_int c;print("\n") in*)
   let (a0,a') = a {} in
   let (b0,b') = b {} in
@@ -30,7 +30,7 @@ val rec average' : ∀α Int → IS(α+2) → IS(α+2) → IS(α+1) = fun c a b 
     let c' = sub d' (dbl (d2i e)) in
     (e, average' c' a' b')
 
-val average : ∀α IS(α+2) → IS(α+2) → IS(α+1) = average' Z
+val average : ∀α.IS(α+2) → IS(α+2) → IS(α+1) = average' Z
 
 val oppD : D → D = fun a1 →
   case a1 of
@@ -38,7 +38,7 @@ val oppD : D → D = fun a1 →
   | S → P
   | P → S
 
-val rec oppI : ∀α IS(α) → IS(α) = fun b _ →
+val rec oppI : ∀α.IS(α) → IS(α) = fun b _ →
   let (b0,b') = b {} in
   (oppD b0, oppI b')
 
@@ -48,7 +48,7 @@ val mulD : D → D → D = fun a1 b1 →
   | S → b1
   | P → oppD b1
 
-val rec mulDI : ∀α D → IS(α) → IS(α) = fun a1 b _ →
+val rec mulDI : ∀α.D → IS(α) → IS(α) = fun a1 b _ →
   let (b1,b') = b {} in
   (mulD a1 b1, mulDI a1 b')
 
@@ -152,7 +152,7 @@ val dbl : R → R =
 
 (* FIXME: the type of half is not precide enough
    to use it in add below *)
-val hlf : ∀α RS(∞,α+2) → RS(∞,α+1) =
+val hlf : ∀α.RS(∞,α+2) → RS(∞,α+1) =
   fun x →
     case x.e of
     | Z → { m = (fun _ → (Z,x.m)); e = Z }

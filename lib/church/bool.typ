@@ -2,7 +2,7 @@
 
 (* The type of booleans and the two constants. *)
 
-type CBool = ∀X (X → X → X)
+type CBool = ∀X.(X → X → X)
 
 val ctru : CBool =
   fun x y → x
@@ -12,7 +12,7 @@ val cfls : CBool =
 
 (* Conditional. *)
 
-val cond : ∀X (CBool → X → X → X) =
+val cond : ∀X.(CBool → X → X → X) =
   fun c t e → c t e
 
 (* Basic operations. *)

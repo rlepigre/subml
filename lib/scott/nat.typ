@@ -3,8 +3,8 @@
 include "prelude.typ"
 
 (* The type of Scott naturals is encoded using an inductive type. *)
-type FSNat(K) = ∀X (K → X) → X → X
-type SNat = μK FSNat(K)
+type FSNat(K) = ∀X.(K → X) → X → X
+type SNat = μK.FSNat(K)
 
 val z : SNat = fun f x → x
 val s : SNat → SNat = fun n f x → f n
@@ -13,13 +13,13 @@ val s : SNat → SNat = fun n f x → f n
 val pred : SNat → SNat = fun n → n (fun p → p) z
 
 (* Iterator. *)
-type U(P) = ∀Y Y → P
-type T(P) = ∀Y (Y → U(P) → Y → P) → Y → P
-type SNat' = ∀P T(P) → U(P) → T(P) → P
+type U(P) = ∀Y.Y → P
+type T(P) = ∀Y.(Y → U(P) → Y → P) → Y → P
+type SNat' = ∀P.T(P) → U(P) → T(P) → P
 
 check SNat ⊂ SNat'
 
-val iter : ∀P P → (P → P) → SNat → P = fun a f n →
+val iter : ∀P.P → (P → P) → SNat → P = fun a f n →
   let P such that a : P in
   (n : SNat')
     (fun p r → f (p r (fun r → a) r)):T(P)
@@ -49,32 +49,32 @@ val 40 = add 30 10
 val 100 = mul 10 10
 
 (* Recursor. *)
-type U(P) = ∀Y Y → SNat → P
-type T(P) = ∀Y (Y → U(P) → Y → SNat → P) → Y → SNat → P
+type U(P) = ∀Y.Y → SNat → P
+type T(P) = ∀Y.(Y → U(P) → Y → SNat → P) → Y → SNat → P
 
-val recu : ∀P P → (SNat → P → P) → SNat → P = fun a f n →
+val recu : ∀P.P → (SNat → P → P) → SNat → P = fun a f n →
   let P such that a : P in
-  (n : ∀P T(P) → U(P) → T(P) → SNat → P)
+  (n : ∀P.T(P) → U(P) → T(P) → SNat → P)
      (fun p r q → f q (p r (fun r q → a) r (pred q))):T(P)
      (fun r q → a)
      (fun p r q → f q (p r (fun r q → a) r (pred q))):T(P)
      (pred n)
 
 (* Specialized fixpoint. *)
-type G(P) = ∀K (K → P) → FSNat(K) → P
-type U(P) = ∀K K → P
-type T(P) = ∀K (K → U(P) → K → P) → K → P
+type G(P) = ∀K.(K → P) → FSNat(K) → P
+type U(P) = ∀K.K → P
+type T(P) = ∀K.(K → U(P) → K → P) → K → P
 
-val z' : FSNat(∀K K) = fun f x → x
-val s' : ∀K K → FSNat(K) = fun n f x → f n
+val z' : FSNat(∀K.K) = fun f x → x
+val s' : ∀K.K → FSNat(K) = fun n f x → f n
 
-val zz : ∀P G(P) → U(P) = fun f r → f (fun x → x) z'
-val sc : ∀P ∀K G(P) -> T(P) = fun f p r →
+val zz : ∀P.G(P) → U(P) = fun f r → f (fun x → x) z'
+val sc : ∀P.∀K.G(P) -> T(P) = fun f p r →
   f (fun s → p r (zz f) r) (s' p)
 
-val fixp : ∀P ∀K G(P) → SNat → P = fun f n →
+val fixp : ∀P.∀K.G(P) → SNat → P = fun f n →
   let P such that _ : P in
-  (n : ∀P T(P) → U(P) → T(P) → P) (sc f) (zz f) (sc f)
+  (n : ∀P.T(P) → U(P) → T(P) → P) (sc f) (zz f) (sc f)
 
 (* recursive functions on scotts numerals *)
 

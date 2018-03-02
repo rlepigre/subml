@@ -4,8 +4,8 @@ include "church/bool.typ"
 include "church/data.typ"
 include "church/error.typ"
 
-type FBin(K) = ∀X((K → X) → (K → X) → X → X)
-type Bin = μK FBin(K)
+type FBin(K) = ∀X.((K → X) → (K → X) → X → X)
+type Bin = μK.FBin(K)
 
 (* Binary representation with lower bits first *)
 val end : Bin = λz o e.e        (* end of the representation *)

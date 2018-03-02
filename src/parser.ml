@@ -134,14 +134,14 @@ let str_lit =
 
 let parser int_lit = i:{#[-]?[0-9]+#} -> int_of_string i.(0)
 
-let parser lident = id:{#[_a-z0-9][_a-zA-Z0-9]*[']*#}[group.(0)] ->
+let parser lid = id:{#[_a-z0-9][_a-zA-Z0-9]*[']*#}[group.(0)] ->
   if id = "_" then give_up (); check_not_keyword id; id
 
-let parser uident = id:{#[A-Z][_a-zA-Z0-9]*[']*#}[group.(0)] ->
+let parser uid = id:{#[A-Z][_a-zA-Z0-9]*[']*#}[group.(0)] ->
   check_not_keyword id; id
 
-let parser loptident = lident | "_" -> ""
-let parser llident = id:lident -> in_pos _loc id
+let parser loptident = lid | "_" -> ""
+let parser llident = id:lid -> in_pos _loc id
 
 let parser greek = "α" -> "α" | "β" -> "β" | "γ" -> "γ" | "δ" -> "δ"
 
@@ -231,27 +231,27 @@ and parser ext =
   | ';' {"..." | "…"} -> true
 
 and parser pkind (p : [`Atm | `Prd | `Fun]) =
-  | a:kind_prd arrow b:kind    when p = `Fun -> in_pos _loc (PFunc(a,b))
-  | id:uident (o,k):kind_args$ when p = `Atm -> in_pos _loc (PTVar(id,o,k))
-  | forall id:uident a:kind    when p = `Fun -> in_pos _loc (PKAll(id,a))
-  | exists id:uident a:kind    when p = `Fun -> in_pos _loc (PKExi(id,a))
-  | forall id:lgident a:kind   when p = `Fun -> in_pos _loc (POAll(id,a))
-  | exists id:lgident a:kind   when p = `Fun -> in_pos _loc (POExi(id,a))
-  | mu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixM(o,id,a))
-  | nu o:ordi id:uident a:kind when p = `Fun -> in_pos _loc (PFixN(o,id,a))
-  | "{" fs:kind_reco e:ext"}"  when p = `Atm -> in_pos _loc (PProd(fs,e))
-  | fs:kind_prod               when p = `Prd -> in_pos _loc (PProd(fs,false))
-  | "[" fs:kind_dsum "]"       when p = `Atm -> in_pos _loc (PDSum(fs))
-  | a:kind_atm (s,b):with_eq   when p = `Atm -> in_pos _loc (PWith(a,s,b))
-  | id:llident '.' s:uident    when p = `Atm -> in_pos _loc (PDPrj(id,s))
+  | a:kind_prd arrow b:kind      when p = `Fun -> in_pos _loc (PFunc(a,b))
+  | id:uid (o,k):kind_args$      when p = `Atm -> in_pos _loc (PTVar(id,o,k))
+  | forall id:uid "." a:kind     when p = `Fun -> in_pos _loc (PKAll(id,a))
+  | exists id:uid "." a:kind     when p = `Fun -> in_pos _loc (PKExi(id,a))
+  | forall id:lgident "." a:kind when p = `Fun -> in_pos _loc (POAll(id,a))
+  | exists id:lgident "." a:kind when p = `Fun -> in_pos _loc (POExi(id,a))
+  | mu o:ordi id:uid "." a:kind  when p = `Fun -> in_pos _loc (PFixM(o,id,a))
+  | nu o:ordi id:uid "." a:kind  when p = `Fun -> in_pos _loc (PFixN(o,id,a))
+  | "{" fs:kind_reco e:ext"}"    when p = `Atm -> in_pos _loc (PProd(fs,e))
+  | fs:kind_prod                 when p = `Prd -> in_pos _loc (PProd(fs,false))
+  | "[" fs:kind_dsum "]"         when p = `Atm -> in_pos _loc (PDSum(fs))
+  | a:kind_atm (s,b):with_eq     when p = `Atm -> in_pos _loc (PWith(a,s,b))
+  | id:llident '.' s:uid         when p = `Atm -> in_pos _loc (PDPrj(id,s))
   (* Parenthesis and coercions. *)
-  | "(" kind ")"               when p = `Atm
-  | kind_atm                   when p = `Prd
-  | kind_prd                   when p = `Fun
-  | eps w:epsilon              when p = `Atm -> in_pos _loc w
-  | kuvar                      when p = `Atm -> in_pos _loc PUVar
+  | "(" kind ")"                 when p = `Atm
+  | kind_atm                     when p = `Prd
+  | kind_prd                     when p = `Fun
+  | eps w:epsilon                when p = `Atm -> in_pos _loc w
+  | kuvar                        when p = `Atm -> in_pos _loc PUVar
 
-and parser epsilon = id:uident '(' t:term m:mem a:kind ')' ->
+and parser epsilon = id:uid '(' t:term m:mem a:kind ')' ->
   if m then PECst(t,id,a) else PUCst(t,id,a)
 
 and parser kind_args =
@@ -260,9 +260,9 @@ and parser kind_args =
   | "(" os:(list_sep' ordi ",") ks:{"," ks:(list_sep kind ",")}?[[]] ")"
 
 and parser kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
-and parser kind_dsum = (list_sep (parser uident a:{_:of_kw kind}?) "|")
-and parser kind_reco = (list_sep (parser lident ":" kind) ";")
-and parser with_eq   = _:with_kw s:uident "=" b:kind_atm
+and parser kind_dsum = (list_sep (parser uid a:{_:of_kw kind}?) "|")
+and parser kind_reco = (list_sep (parser lid ":" kind) ";")
+and parser with_eq   = _:with_kw s:uid "=" b:kind_atm
 
 (****************************************************************************
  *                              Parsers for terms                           *
@@ -282,14 +282,14 @@ and parser pterm (p : [`Lam | `Seq | `App | `Col | `Atm]) =
   | t:tapp u:tcol                 when p = `App -> pappl _loc t u
   | t:tapp ";" u:tseq             when p = `Seq -> sequence _loc t u
   | "print(" - s:str_lit - ")"    when p = `Atm -> in_pos _loc (PPrnt(s))
-  | c:uident                      when p = `Atm -> in_pos _loc (PCons(c,None))
-  | t:tatm "." l:lident           when p = `Atm -> in_pos _loc (PProj(t,l))
+  | c:uid                         when p = `Atm -> in_pos _loc (PCons(c,None))
+  | t:tatm "." l:lid              when p = `Atm -> in_pos _loc (PProj(t,l))
   | case_kw t:term of_kw ps:pats d:default? $
                                   when p = `Lam -> in_pos _loc (PCase(t,ps,d))
   | "{" fs:term_reco "}"          when p = `Atm -> in_pos _loc (PReco(fs))
   | "(" fs:term_prod ")"          when p = `Atm -> in_pos _loc (PReco(fs))
   | t:tcol ":" k:kind$            when p = `Col -> in_pos _loc (PCoer(t,k))
-  | id:lident                     when p = `Atm -> in_pos _loc (PLVar(id))
+  | id:lid                        when p = `Atm -> in_pos _loc (PLVar(id))
   | fix_kw n:{'[' n:int_lit ']'}? x:var arrow u:term$
                                   when p = `Lam -> pfixY x _loc_u n u
   | "[" term_list "]"             when p = `Atm
@@ -326,9 +326,9 @@ and parser term_llet = let_kw r:is_rec n:{'[' n:int_lit ']'}? pat:rpat "=" t:ter
   in_pos _loc (PAppl(apply_rpat "_" pat u, t))
 
 and parser ords_kinds =
-  | EMPTY                     -> ([], [])
-  | ks:(list_sep' uident ",") -> ([], ks)
-  | os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")}?[[]]
+  | EMPTY                  -> ([], [])
+  | ks:(list_sep' uid ",") -> ([], ks)
+  | os:(list_sep' lgident ",") ks:{"," (list_sep uid ",")}?[[]]
 
 and parser term_mlet = let_kw (os,ks):ords_kinds
                   such_kw that_kw id:loptident ':' k:kind in_kw u:term ->
@@ -340,7 +340,7 @@ and parser term_cond = if_kw c:term then_kw t:term else_kw e:term$ ->
 and parser term_reco = (list_sep field ";") _:";"?
 and parser term_prod = l:(glist_sep'' term comma) -> build_prod l
 
-and parser field = l:lident k:{ ":" kind }?$ "=" t:tapp$ ->
+and parser field = l:lid k:{ ":" kind }?$ "=" t:tapp$ ->
   (l, match k with None -> t | Some k -> in_pos _loc (PCoer(t,k)))
 
 and parser term_list =
@@ -352,8 +352,7 @@ and parser pats = _:"|"? ps:(list_sep case "|")
 and parser fpat =
   | x:let_var                          -> Simple (Some x)
   | "(" x:let_var ")"                  -> Simple (Some x)
-  | "{" ls:(list_sep (parser l:lident "=" x:var) ";") "}"
-                                       -> Record ls
+  | "{" ls:(list_sep (parser l:lid "=" x:var) ";") "}" -> Record ls
   | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)
 
 and parser rpat =
@@ -361,9 +360,9 @@ and parser rpat =
   | fpat
 
 and parser pattern =
-  | c:uident x:rpat -> (c,x)
-  | "[" "]"         -> ("Nil", NilPat)
-  | x:var"::"y:var  -> ("Cons", Record [("hd",x) ; ("tl",y)])
+  | c:uid x:rpat   -> (c,x)
+  | "[" "]"        -> ("Nil", NilPat)
+  | x:var"::"y:var -> ("Cons", Record [("hd",x) ; ("tl",y)])
 
 and parser case = (c,x):pattern arrow t:term -> (c, x, t)
 
@@ -406,27 +405,28 @@ and parser latex_atom =
       let b = unbox (unsugar_kind empty_env b) in
       let (prf, cg) = subtype None a b in
       Latex.SProof (prf, cg)
-  | hash br:int_lit?[0] ":" id:lident "#" ->
+  | hash br:int_lit?[0] ":" id:lid "#" ->
       (try
          Latex.Kind (br, false, (Hashtbl.find val_env id).ttype)
        with
          Not_found -> raise (Unbound(id,Some _loc_id)))
-  | hash br:int_lit?[0] "?" id:uident "#" ->
+  | hash br:int_lit?[0] "?" id:uid "#" ->
       (try
          Latex.KindDef (br, Hashtbl.find typ_env id)
        with
          Not_found -> raise (Unbound(id,Some _loc_id)))
-  | "##" id:lident "#" ->
+  | "##" id:lid "#" ->
       (try
          Latex.TProof (Hashtbl.find val_env id).proof
        with
          Not_found -> raise (Unbound(id,Some _loc_id)))
-  | hash "!" id:lident "#" ->
+  | hash "!" id:lid "#" ->
       (try
          Latex.Sct (Hashtbl.find val_env id).calls_graph
        with
          Not_found -> raise (Unbound(id,Some _loc_id)))
-  | hash "?" id:lident "." name:lident i:{"." int_lit}?[0] ordname:{"~" lgident}?["α"]  "#" ->
+  | hash "?" id:lid "." name:lid i:{"." int_lit}?[0]
+      ordname:{"~" lgident}?["α"]  "#" ->
       let prf =
         try
           (Hashtbl.find val_env id).proof
@@ -603,15 +603,16 @@ let parser command top =
   | _:clear_kw                    when top     -> LibTools.clear ()
   | {quit_kw | exit_kw}           when top     -> raise End_of_file
 
-and parser kind_def = tex_name? uident kind_def_args "=" kind
+and parser kind_def = tex_name? uid kind_def_args "=" kind
 
 and parser kind_def_args =
-  | EMPTY                             -> ([], [])
-  | "(" ks:(list_sep' uident ",") ")" -> ([], ks)
-  | "(" os:(list_sep' lgident ",") ks:{"," (list_sep uident ",")}?[[]] ")"
+  | EMPTY                          -> ([], [])
+  | "(" ks:(list_sep' uid ",") ")" -> ([], ks)
+  | "(" os:(list_sep' lgident ",") ks:{"," (list_sep uid ",")}?[[]] ")"
 
 and parser val_def =
-  | r:is_rec n:{'[' int_lit ']'}? tex:tex_name? id:lident k:{":" kind}? "=" t:term ->
+  | r:is_rec n:{'[' int_lit ']'}? tex:tex_name? id:lid k:{":" kind}?
+    "=" t:term ->
       let t =
         if not r then t else pfixY (in_pos _loc_id id, None) _loc_t n t
       in ((tex,id), k, t)
