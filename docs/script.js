@@ -9,10 +9,7 @@ function loadsubmlfile(fn) {
     type     : "GET",
     url      : dir + fn,
     dataType : 'text',
-    success  :
-      function (data) {
-	  edit.setValue(data);
-    }
+    success  : function (data) {edit.setValue(data);}
   });
 }
 
@@ -186,19 +183,14 @@ function add_to_term(s) {
 }
 
 worker.onmessage =
-    function (m) {
-	if (m.data.typ != 'result') {
-	    add_to_term(m.data.result);
-	} else {
-	    console.log("[ASYNCH] back from " + m.data.fname);
-	    add_to_term(m.data.result);
-	}
-    }
+  function (m) {
+    if (m.data.typ != 'result') add_to_term(m.data.result);
+    else add_to_term(m.data.result);
+  }
 
 function ASYNCH (action_name, action_args, cont) {
   worker_handler[action_name] = cont;
   worker.postMessage ({fname: action_name, args: action_args});
-  console.log ("[ASYNCH] " + action_name);
 }
 
 function subml_eval() {

@@ -10,15 +10,10 @@ let syncload  = Js.Unsafe.variable "syncloadsubmlfile"
 let onmessage event =
   let fname = Js.to_string event##data##fname in
   let args = Js.to_string event##data##args in
-  let res = handle_exception (full_of_string fname) args in
-  Io.log "Editor content loaded\n%!";
-  let result = Js.string (if res then "OK" else "ERROR") in
-  let response = jsnew js_object () in
-  Js.Unsafe.set response (Js.string "typ")    (Js.string "result");
-  Js.Unsafe.set response (Js.string "fname")  fname;
-  Js.Unsafe.set response (Js.string "result") result;
-  let arg = Js.Unsafe.inject response in
-  Js.Unsafe.call post_msg js_self [|arg|]
+  if handle_exception (full_of_string fname) args then
+    Io.log "(* [LOG] Editor content loaded. *)\n%!"
+  else
+    Io.log "(* [LOG] AN ERROR OCCURED! *)\n%!"
 
 let output : string -> formatter = fun chname ->
   let buf = Buffer.create 256 in
@@ -50,4 +45,4 @@ let _ =
   (* Register callback. *)
   Js.Unsafe.set js_self (Js.string "onmessage") onmessage;
   (* Print a message. *)
-  Io.log "Ready.\n%!"
+  Io.log "(* [LOG] Ready! *)\n%!"
