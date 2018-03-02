@@ -10,9 +10,11 @@ set texfile "tests/latex_generation.tex"
 
 latex {
   \documentclass{article}
-  \setlength{\pdfpagewidth}{32000pt}
-  \setlength{\paperwidth}{32000pt}
-  \usepackage{unicode-math}
+  \setlength{\pdfpagewidth}{10000pt}
+  \setlength{\paperwidth}{10000pt}
+  \usepackage{amssymb,amsmath,amsthm} %must be before unicode-math
+  \usepackage[mathletters]{ucs}
+  \usepackage[utf8x]{inputenc}
   \usepackage{bussproofs}
   \include{macros}
   \begin{document}
