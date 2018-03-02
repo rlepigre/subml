@@ -1,4 +1,7 @@
 (* Unary natural number library. *)
+
+include "prelude.typ"
+
 type Nat = μX [Z | S of X]
 
 val pred : Nat → Nat = fun n →
