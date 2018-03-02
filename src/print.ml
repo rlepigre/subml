@@ -391,41 +391,57 @@ and print_kind unfold wrap unfolded_Y ff t =
   | KKAll(f)  ->
       let x = new_prvar f in
       let dot = if latex_mode () then "." else "" in
-      fprintf ff "∀%s%s %a" (binder_name f) dot pkind (subst f x)
+      if wrap then pp_print_string ff "(";
+      fprintf ff "∀%s%s %a" (binder_name f) dot pkind (subst f x);
+      if wrap then pp_print_string ff ")"
   | KKExi(f)  ->
       let x = new_prvar f in
       let dot = if latex_mode () then "." else "" in
-      fprintf ff "∃%s%s %a" (binder_name f) dot pkind (subst f x)
+      if wrap then pp_print_string ff "(";
+      fprintf ff "∃%s%s %a" (binder_name f) dot pkind (subst f x);
+      if wrap then pp_print_string ff ")"
   | KOAll(f)  ->
       let x = OVars (binder_name f) in
       let dot = if latex_mode () then "." else "" in
-      fprintf ff "∀%s%s %a" (binder_name f) dot pkind (subst f x)
+      if wrap then pp_print_string ff "(";
+      fprintf ff "∀%s%s %a" (binder_name f) dot pkind (subst f x);
+      if wrap then pp_print_string ff ")"
   | KOExi(f)  ->
       let x = OVars (binder_name f) in
       let dot = if latex_mode () then "." else "" in
-      fprintf ff "∃%s%s %a" (binder_name f) dot pkind (subst f x)
+      if wrap then pp_print_string ff "(";
+      fprintf ff "∃%s%s %a" (binder_name f) dot pkind (subst f x);
+      if wrap then pp_print_string ff ")"
   | KFixM(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
       if strict_eq_ordi o OConv then
         let dot = if latex_mode () then "." else "" in
-        fprintf ff "μ%s%s %a" (binder_name b) dot pkindw a
+        if wrap then pp_print_string ff "(";
+        fprintf ff "μ%s%s %a" (binder_name b) dot pkindw a;
+        if wrap then pp_print_string ff ")"
       else
         let fmt = format_of_string (
           if latex_mode () then "μ_{%a}%s. %a" else "μ %a %s %a")
         in
-        fprintf ff fmt print_index_ordi o (binder_name b) pkindw a
+        if wrap then pp_print_string ff "(";
+        fprintf ff fmt print_index_ordi o (binder_name b) pkindw a;
+        if wrap then pp_print_string ff ")"
   | KFixN(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
       if strict_eq_ordi o OConv then
         let dot = if latex_mode () then "." else "" in
-        fprintf ff "ν%s%s %a" (binder_name b) dot pkindw a
+        if wrap then pp_print_string ff "(";
+        fprintf ff "ν%s%s %a" (binder_name b) dot pkindw a;
+        if wrap then pp_print_string ff ")"
       else
         let fmt = format_of_string (
           if latex_mode () then "ν_{%a}%s. %a" else "ν %a %s %a")
         in
-        fprintf ff fmt print_index_ordi o (binder_name b) pkindw a
+        if wrap then pp_print_string ff "(";
+        fprintf ff fmt print_index_ordi o (binder_name b) pkindw a;
+        if wrap then pp_print_string ff ")"
   | KDefi(td,os,ks) ->
      let name = if latex_mode () then td.tdef_tex_name else td.tdef_name in
      if unfold then
