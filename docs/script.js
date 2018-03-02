@@ -180,6 +180,7 @@ function add_to_term(s) {
     var line = doc.getLine(cursor.line); // get the line contents
     if (line.length > 0) { cursor.ch = line.length; }
     doc.replaceRange(s, cursor); // adds a new line
+    term.scrollIntoView(doc.getCursor());
 }
 
 worker.onmessage =
