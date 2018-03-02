@@ -48,4 +48,6 @@ let _ =
   fmts.tex <- output "tex";
   Io.read_file := input;
   (* Register callback. *)
-  Js.Unsafe.set js_self (Js.string "onmessage") onmessage
+  Js.Unsafe.set js_self (Js.string "onmessage") onmessage;
+  (* Print a message. *)
+  Io.log "Ready.\n%!"
