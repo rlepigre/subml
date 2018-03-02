@@ -387,30 +387,42 @@ and print_kind unfold wrap unfolded_Y ff t =
       fprintf ff "[%a]" (print_list pvariant st) cs
   | KKAll(f)  ->
       let x = new_prvar f in
-      fprintf ff "∀%s. %a" (binder_name f) pkind (subst f x)
+      let dot = if latex_mode () then "." else "" in
+      fprintf ff "∀%s%s %a" (binder_name f) dot pkind (subst f x)
   | KKExi(f)  ->
       let x = new_prvar f in
-      fprintf ff "∃%s. %a" (binder_name f) pkind (subst f x)
+      let dot = if latex_mode () then "." else "" in
+      fprintf ff "∃%s%s %a" (binder_name f) dot pkind (subst f x)
   | KOAll(f)  ->
       let x = OVars (binder_name f) in
-      fprintf ff "∀%s. %a" (binder_name f) pkind (subst f x)
+      let dot = if latex_mode () then "." else "" in
+      fprintf ff "∀%s%s %a" (binder_name f) dot pkind (subst f x)
   | KOExi(f)  ->
       let x = OVars (binder_name f) in
-      fprintf ff "∃%s. %a" (binder_name f) pkind (subst f x)
+      let dot = if latex_mode () then "." else "" in
+      fprintf ff "∃%s%s %a" (binder_name f) dot pkind (subst f x)
   | KFixM(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
       if strict_eq_ordi o OConv then
-        fprintf ff "μ%s.%a" (binder_name b) pkindw a
+        let dot = if latex_mode () then "." else "" in
+        fprintf ff "μ%s%s %a" (binder_name b) dot pkindw a
       else
-        fprintf ff "μ_{%a}%s.%a" print_index_ordi o (binder_name b) pkindw a
+        let fmt : ('a,'b,'c) format =
+          if latex_mode () then "μ_{%a}%s. %a" else "μ %a %s %a"
+        in
+        fprintf ff fmt print_index_ordi o (binder_name b) pkindw a
   | KFixN(o,b) ->
       let x = new_prvar b in
       let a = subst b x in
       if strict_eq_ordi o OConv then
-        fprintf ff "ν%s.%a" (binder_name b) pkindw a
+        let dot = if latex_mode () then "." else "" in
+        fprintf ff "ν%s%s %a" (binder_name b) dot pkindw a
       else
-        fprintf ff "ν_{%a}%s.%a" print_index_ordi o (binder_name b) pkindw a
+        let fmt : ('a,'b,'c) format =
+          if latex_mode () then "ν_{%a}%s. %a" else "ν %a %s %a"
+        in
+        fprintf ff fmt print_index_ordi o (binder_name b) pkindw a
   | KDefi(td,os,ks) ->
      let name = if latex_mode () then td.tdef_tex_name else td.tdef_name in
      if unfold then
@@ -420,10 +432,16 @@ and print_kind unfold wrap unfolded_Y ff t =
      else if Array.length os = 0 then
        fprintf ff "%s(%a)" name (print_array pkind ", ") ks
      else if Array.length ks = 0 then
-       fprintf ff "%s_{%a}" name (print_array pordi ", ") os
+       let fmt : ('aa,'bb,'cc) format =
+         if latex_mode () then "%s_{%a}" else "%s(%a)"
+       in
+       fprintf ff fmt name (print_array pordi ", ") os
      else
-       fprintf ff "%s_{%a}(%a)" name (print_array pordi ", ") os
-          (print_array pkind ", ") ks
+       let fmt : ('aaa,'bbb,'ccc) format =
+         if latex_mode () then "%s_{%a}(%a)" else "%s(%a,%a)"
+       in
+       fprintf ff fmt name (print_array pordi ", ") os
+         (print_array pkind ", ") ks
   | KUCst(u,f,_)
   | KECst(u,f,_) ->
      let is_exists = match t with KECst(_) -> true | _ -> false in
