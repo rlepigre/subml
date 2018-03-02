@@ -15,7 +15,7 @@ type T(A,P) = ∀Y (P × Y → { car : P × Y → A; cdr : Y; state : P × Y})
 
 type Stream'(A,P) = { car : P × T(A,P) → A; cdr : T(A,P); state : P × T(A,P)}
 
-val id : ∀A∀P Stream'(A,P) → Stream0(A, P × T(A,P)) = λx.x
+val check_id : ∀A∀P Stream'(A,P) → Stream0(A, P × T(A,P)) = λx.x
 
 val coiter_stream : ∀A∀P (P → (P → A) → (P → P) → Stream(A)) =
   fun s0 fcar fnext →

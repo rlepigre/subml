@@ -1,0 +1,62 @@
+<html><head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="AstMap" rel="Chapter" href="AstMap.html">
+<link title="Ast" rel="Chapter" href="Ast.html">
+<link title="Binding" rel="Chapter" href="Binding.html">
+<link title="Compare" rel="Chapter" href="Compare.html">
+<link title="Config" rel="Chapter" href="Config.html">
+<link title="Error" rel="Chapter" href="Error.html">
+<link title="Eval" rel="Chapter" href="Eval.html">
+<link title="Generalise" rel="Chapter" href="Generalise.html">
+<link title="Graph" rel="Chapter" href="Graph.html">
+<link title="Io" rel="Chapter" href="Io.html">
+<link title="Latex" rel="Chapter" href="Latex.html">
+<link title="LibTools" rel="Chapter" href="LibTools.html">
+<link title="Parser" rel="Chapter" href="Parser.html">
+<link title="Pos" rel="Chapter" href="Pos.html">
+<link title="Print" rel="Chapter" href="Print.html">
+<link title="Proof" rel="Chapter" href="Proof.html">
+<link title="Raw" rel="Chapter" href="Raw.html">
+<link title="Sct" rel="Chapter" href="Sct.html">
+<link title="Submljs" rel="Chapter" href="Submljs.html">
+<link title="Subml" rel="Chapter" href="Subml.html">
+<link title="Subset" rel="Chapter" href="Subset.html">
+<link title="Term" rel="Chapter" href="Term.html">
+<link title="Timed" rel="Chapter" href="Timed.html">
+<link title="TypingBase" rel="Chapter" href="TypingBase.html">
+<link title="Typing" rel="Chapter" href="Typing.html"><title>Sct</title>
+</head>
+<body>
+<code class="code"><span class="keyword">sig</span><br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;cmp&nbsp;=&nbsp;<span class="constructor">Min1</span>&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Zero</span>&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Infi</span><br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;cmp_to_string&nbsp;:&nbsp;<span class="constructor">Sct</span>.cmp&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;string<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;matrix&nbsp;=&nbsp;{&nbsp;w&nbsp;:&nbsp;int;&nbsp;h&nbsp;:&nbsp;int;&nbsp;tab&nbsp;:&nbsp;<span class="constructor">Sct</span>.cmp&nbsp;array&nbsp;array;&nbsp;}<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;index<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;int_of_index&nbsp;:&nbsp;<span class="constructor">Sct</span>.index&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;int<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;root&nbsp;:&nbsp;<span class="constructor">Sct</span>.index<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;call&nbsp;=&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;callee&nbsp;:&nbsp;<span class="constructor">Sct</span>.index;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;caller&nbsp;:&nbsp;<span class="constructor">Sct</span>.index;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;matrix&nbsp;:&nbsp;<span class="constructor">Sct</span>.matrix;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;is_rec&nbsp;:&nbsp;bool;<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;call_graph<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;t&nbsp;=&nbsp;<span class="constructor">Sct</span>.call_graph<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;create&nbsp;:&nbsp;unit&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;copy&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;is_empty&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_call&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.call&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;create_symbol&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;string&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;string&nbsp;array&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.index<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;arity&nbsp;:&nbsp;<span class="constructor">Sct</span>.index&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;int<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;do_inline&nbsp;:&nbsp;bool&nbsp;<span class="constructor">Pervasives</span>.ref<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;inline&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;sct&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;latex_print_calls&nbsp;:&nbsp;<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+<span class="keyword">end</span></code></body></html>

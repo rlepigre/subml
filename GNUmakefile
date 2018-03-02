@@ -1,87 +1,175 @@
-include Makefile.config
+HAS_OPAM := $(shell which opam 2> /dev/null)
 
-MLFILES = $(wildcard *.ml *.mli) config.ml
+ifdef HAS_OPAM
+PREFIX := $(shell opam config var prefix)
+LIBDIR := $(shell opam config var share)
+BINDIR := $(shell opam config var bin)
+else
+PREFIX := /usr/local
+LIBDIR := $(PREFIX)/lib
+BINDIR : = $(PREFIX)/bin
+endif
 
-all: subml.byte subml.native
+VERSION  = devel
+VIMDIR   = $(HOME)/.vim
+EMACSDIR = $(PREFIX)/share/emacs/site-lisp
 
-.PHONY: update_docs
-update_docs: subml.js tutorial.typ subml-latest.tar.gz
-	rm -rf docs/subml/*
-	cp -r lib docs/subml/lib
-	cp tutorial.typ docs/subml
-	cd genex && make && ./genex ../lib/all.typ > ../docs/examples.html
-	cp subml.js docs/subml
-	cp subml-latest.tar.gz docs/docs/
+OBUILD   = ocamlbuild -use-ocamlfind -quiet
 
-doc: config.ml
-	ocamlbuild -use-ocamlfind -ocamldoc 'ocamldoc -charset utf8' subml.docdir/index.html
+#### Main target #############################################################
 
-subml.native: $(MLFILES) subml.ml
-	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
+all: depchecks _build/src/subml.native
 
-subml.p.native: $(MLFILES) subml.ml
-	ocamlbuild -use-ocamlfind -cflags -w,-3-30 $@
+#### Checking for dependencies ###############################################
 
-subml.byte: $(MLFILES) subml.ml
-	ocamlbuild -use-ocamlfind -cflags -g,-w,-3-30 $@
+# Check for ocamlfind, ocamlbuild and pa_ocaml on the system.
+HAS_OCAMLFIND  := $(shell which ocamlfind 2> /dev/null)
+HAS_OCAMLBUILD := $(shell which ocamlbuild 2> /dev/null)
+HAS_PA_OCAML   := $(shell which pa_ocaml 2> /dev/null)
 
-config.ml: config.tmpl
-	sed -e 's!_PATH_!\"$(LIBDIR)/subml\"!' $< > $@
+# Check for the bindlib and earley library.
+HAS_BINDLIB    := $(shell ocamlfind query -format %p bindlib 2> /dev/null)
+HAS_EARLEY     := $(shell ocamlfind query -format %p earley 2> /dev/null)
 
-submljs.byte: $(MLFILES) submljs.ml
-	ocamlbuild -cflags -w,-3-30 -use-ocamlfind $@
+.PHONY: depchecks
+depchecks:
+ifndef HAS_OCAMLBUILD
+	$(error "The ocamlbuild program is required...")
+endif
+ifndef HAS_OCAMLFIND
+	$(error "The ocamlfind program is required...")
+endif
+ifndef HAS_PA_OCAML
+	$(error "The pa_ocaml (earley-ocaml) is required...")
+endif
+ifndef HAS_BINDLIB
+	$(error "The bindlib library is required...")
+endif
+ifndef HAS_EARLEY
+	$(error "The earley library is required...")
+endif
 
-subml.js: submljs.byte
-	js_of_ocaml --pretty --noinline +weak.js submljs.byte -o subml.js
+#### Source files and compilation ############################################
 
-run: all
-	ledit ./subml.native --verbose
+MLFILES = $(wildcard src/*.ml src/*.mli) src/config.ml
 
-validate: clean
-	@ wc -L *.ml *.mli
-	@ echo ""
-	@ grep -n -P '\t' *.ml *.mli || exit 0
+src/config.ml:
+	@echo "[GEN] $@"
+	@echo 'let default_path = ["."; "./lib"; "$(LIBDIR)/subml"]' > $@
+	@echo 'let version = "$(VERSION)"' >> $@
 
-test: all
-	@ echo normal test
-	./subml.native --quit lib/all.typ
-	@ echo -n "Lines with a tabulation in .ml: "
-	@ grep -P '\t' *.ml *.mli | wc -l
-	@ echo -n "Lines with a tabulation in .typ: "
-	@ grep -P '\t' lib/*.typ lib/*/*.typ | wc -l
-	@ echo -n "Longest line:           "
-	@ wc -L *.ml *.mli | tail -n 1 | colrm 1 3 | colrm 4 10
-	@ echo "(Use \"grep -n -P '\t' *.ml *.mli\" to find the tabulations...)"
-	@ echo "(Use \"wc -L *.ml *.mli\" to find longest line stats on all files...)"
+_build/src/subml.native: $(MLFILES)
+	@echo "[OPT] $@"
+	@$(OBUILD) src/subml.native
 
+_build/src/subml.p.native: $(MLFILES)
+	@echo "[OPT] $@"
+	@$(OBUILD) src/subml.p.native
+
+_build/src/submljs.byte: $(MLFILES)
+	@echo "[BYT] $@"
+	@$(OBUILD) src/submljs.byte
+
+#### Tests and source code validation ########################################
+
+.PHONY: validate
+validate: src/config.ml
+	@echo -n "Lines with tabs in .ml : "
+	@grep -P '\t' src/*.ml src/*.mli | wc -l
+	@echo -n "Lines with tabs in .typ: "
+	@grep -P '\t' lib/*.typ lib/*/*.typ | wc -l
+	@echo -n "Longest line           : "
+	@wc -L src/*.ml src/*.mli | tail -n 1 | colrm 1 4 | colrm 4 10
+
+.PHONY: tests
+tests: _build/src/subml.native validate
+	@echo "Running tests... "
+	@./$< --quit all.typ > /dev/null
+	@echo "All tests succeeded!"
+
+#### Documentation and webpage ###############################################
+
+.PHONY: www
+www: docs/subml.js docs/examples.html _build/src/subml.docdir/index.html
+	@rm -rf docs/subml/*
+	@rm -rf docs/ocamldoc/*
+	@cp -r lib docs/subml/lib
+	@cp -r _build/src/subml.docdir/* docs/ocamldoc
+	@cp tutorial.typ docs/subml
+
+docs/examples.html: all.typ genex.ml
+	@ocaml genex.ml $< > $@
+
+docs/subml.js: _build/src/submljs.byte
+	@echo "[JSO] $@"
+	@js_of_ocaml --pretty --noinline +weak.js -o $@ $<
+
+_build/src/subml.docdir/index.html: src/config.ml
+	@echo "[DOC] $@"
+	@$(OBUILD) -ocamldoc 'ocamldoc -charset utf8' src/subml.docdir/index.html
+
+#### Cleaning targets ########################################################
+
+.PHONY: clean
 clean:
-	ocamlbuild -clean
+	@$(OBUILD) -clean
 
+.PHONY: distclean
 distclean: clean
-	rm -f config.ml
-	find -type f \( -name "*~" -o -name "#*#" -o -name ".#*" \) -exec rm {} \;
-	rm -rf subml-latest subml-latest.tar.gz
-	rm -f subml.js
-	cd genex && make distclean
+	@rm -f src/config.ml
+	@find -type f -name "*~"  -exec rm {} \;
+	@find -type f -name "#*#" -exec rm {} \;
+	@find -type f -name ".#*" -exec rm {} \;
 
-install: all
-	install ./subml.native $(BINDIR)/subml
-	install -d $(LIBDIR)/subml $(LIBDIR)/subml/church $(LIBDIR)/subml/scott $(LIBDIR)/subml/munu
-	install ./lib/*.typ	$(LIBDIR)/subml
-	install ./lib/church/*.typ	$(LIBDIR)/subml/church
-	install ./lib/scott/*.typ	$(LIBDIR)/subml/scott
-	install ./lib/munu/*.typ	$(LIBDIR)/subml/munu
+#### Installation targets ####################################################
 
-subml-latest.tar.gz: $(MLFILES)
-	rm -rf subml-latest
-	mkdir subml-latest
-	pa_ocaml --ascii parser.ml > subml-latest/parser.ml
-	cp io.ml timed.ml ast.ml eval.ml print.ml subml-latest
-	cp subml.ml latex.ml proof.ml sct.ml raw.ml typing.ml subml-latest
-	cp Makefile_minimum subml-latest/Makefile
-	cp _tags subml-latest
-	rm -f lib/*~
-	cp -r lib subml-latest
-	cp README subml-latest
-	tar zcvf subml-latest.tar.gz subml-latest
-	rm -r subml-latest
+.PHONY: uninstall
+uninstall:
+	rm -f  $(BINDIR)/subml
+	rm -rf $(LIBDIR)/subml
+ifneq ($(wildcard $(VIMDIR)/.),)
+	rm -rf $(VIMDIR)/syntax/subml.vim
+	rm -rf $(VIMDIR)/ftdetect/subml.vim
+endif
+ifneq ($(wildcard $(EMACSDIR)/.),)
+	rm -rf $(EMACSDIR)/subml
+endif
+
+.PHONY: install
+install: _build/src/subml.native
+	install -m 755 -d $(BINDIR)
+	install -m 755 -d $(LIBDIR)
+	install -m 755 -d $(LIBDIR)/subml
+	install -m 755 -d $(LIBDIR)/subml/church
+	install -m 755 -d $(LIBDIR)/subml/scott
+	install -m 755 -d $(LIBDIR)/subml/munu
+	install -m 755 $< $(BINDIR)/subml
+	install -m 644 ./lib/*.typ        $(LIBDIR)/subml
+	install -m 644 ./lib/church/*.typ $(LIBDIR)/subml/church
+	install -m 644 ./lib/scott/*.typ  $(LIBDIR)/subml/scott
+	install -m 644 ./lib/munu/*.typ   $(LIBDIR)/subml/munu
+
+.PHONY: install_vim
+install_vim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim
+ifneq ($(wildcard $(VIMDIR)/.),)
+	install -m 755 -d $(VIMDIR)/syntax
+	install -m 755 -d $(VIMDIR)/ftdetect
+	install -m 644 editors/vim/syntax/subml.vim $(VIMDIR)/syntax
+	install -m 644 editors/vim/ftdetect/subml.vim $(VIMDIR)/ftdetect
+	@echo -e "\e[36mVim mode installed.\e[39m"
+else
+	@echo -e "\e[36mWill not install vim mode.\e[39m"
+endif
+
+.PHONY: install_emacs
+install_emacs: editors/emacs/subml-mode.el
+ifneq ($(wildcard $(EMACSDIR)/.),)
+	install -m 755 -d $(EMACSDIR)/subml
+	install -m 644 editors/emacs/subml-mode.el $(EMACSDIR)/subml
+	@echo -e "\e[36mEmacs mode installed.\e[39m"
+else
+	@echo -e "\e[36mWill not install emacs mode.\e[39m"
+endif
+
+
+

@@ -1,5 +1,12 @@
-true        : -traverse
-true        : package(earley), package(bindlib)
-"parser.ml" : pp(pa_ocaml)
-"submljs.ml": package(lwt.syntax), package(js_of_ocaml), package(js_of_ocaml.syntax), syntax(camlp4o)
-"submljs.byte": package(lwt.syntax), package(js_of_ocaml), package(js_of_ocaml.syntax), syntax(camlp4o)
+"src"             : traverse
+true              : package(earley)
+true              : package(bindlib)
+"src/parser.ml"   : pp(pa_ocaml)
+"src/submljs.ml"  : package(lwt.syntax)
+"src/submljs.ml"  : package(js_of_ocaml)
+"src/submljs.ml"  : package(js_of_ocaml.syntax)
+"src/submljs.ml"  : syntax(camlp4o)
+"src/submljs.byte": package(lwt.syntax)
+"src/submljs.byte": package(js_of_ocaml)
+"src/submljs.byte": package(js_of_ocaml.syntax)
+"src/submljs.byte": syntax(camlp4o)

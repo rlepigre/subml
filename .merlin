@@ -1,6 +1,3 @@
-S bindlib
-S decap
-B _build
-B _build/bindlib
-B _build/decap
-PKG unix str
+S src
+B _build/src
+PKG earley earley-ocaml bindlib

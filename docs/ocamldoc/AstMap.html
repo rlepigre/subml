@@ -1,0 +1,91 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="next" href="Ast.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="AstMap" rel="Chapter" href="AstMap.html">
+<link title="Ast" rel="Chapter" href="Ast.html">
+<link title="Binding" rel="Chapter" href="Binding.html">
+<link title="Compare" rel="Chapter" href="Compare.html">
+<link title="Config" rel="Chapter" href="Config.html">
+<link title="Error" rel="Chapter" href="Error.html">
+<link title="Eval" rel="Chapter" href="Eval.html">
+<link title="Generalise" rel="Chapter" href="Generalise.html">
+<link title="Graph" rel="Chapter" href="Graph.html">
+<link title="Io" rel="Chapter" href="Io.html">
+<link title="Latex" rel="Chapter" href="Latex.html">
+<link title="LibTools" rel="Chapter" href="LibTools.html">
+<link title="Parser" rel="Chapter" href="Parser.html">
+<link title="Pos" rel="Chapter" href="Pos.html">
+<link title="Print" rel="Chapter" href="Print.html">
+<link title="Proof" rel="Chapter" href="Proof.html">
+<link title="Raw" rel="Chapter" href="Raw.html">
+<link title="Sct" rel="Chapter" href="Sct.html">
+<link title="Submljs" rel="Chapter" href="Submljs.html">
+<link title="Subml" rel="Chapter" href="Subml.html">
+<link title="Subset" rel="Chapter" href="Subset.html">
+<link title="Term" rel="Chapter" href="Term.html">
+<link title="Timed" rel="Chapter" href="Timed.html">
+<link title="TypingBase" rel="Chapter" href="TypingBase.html">
+<link title="Typing" rel="Chapter" href="Typing.html"><title>AstMap</title>
+</head>
+<body>
+<div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Ast.html" title="Ast">Next</a>
+</div>
+<h1>Module <a href="type_AstMap.html">AstMap</a></h1>
+
+<pre><span class="keyword">module</span> AstMap: <code class="code">sig</code> <a href="AstMap.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Mappingofkindandordinals">                     Mapping of kind and ordinals                    </h3><br>
+</div>
+<hr width="100%">
+<br>
+Mapping functions allows to apply some treatment to some constructors
+    and use the default treatment to recurse for the other constructor.
+<p>
+
+    The output of Mapping function are bindlib's boxes, so you can
+    use Mapping functions to bind some variables in a kind or ordinal<br>
+
+<pre><span id="TYPEself_kind"><span class="keyword">type</span> <code class="type"></code>self_kind</span> = <code class="type">?occ:<a href="Ast.html#TYPEoccur">Ast.occur</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkbox">Ast.kbox</a></code> </pre>
+
+
+<pre><span id="TYPEself_ord"><span class="keyword">type</span> <code class="type"></code>self_ord</span> = <code class="type">?occ:<a href="Ast.html#TYPEoccur">Ast.occur</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEobox">Ast.obox</a></code> </pre>
+
+
+<pre><span id="TYPEmap_kind"><span class="keyword">type</span> <code class="type"></code>map_kind</span> = <code class="type"><a href="Ast.html#TYPEoccur">Ast.occur</a> -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -><br>       <a href="AstMap.html#TYPEself_kind">self_kind</a> -> <a href="AstMap.html#TYPEself_ord">self_ord</a> -> (<a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkbox">Ast.kbox</a>) -> <a href="Ast.html#TYPEkbox">Ast.kbox</a></code> </pre>
+<div class="info ">
+<code class="code">map_kind</code> and <code class="code">map_ord</code> are the type of the function you need to write
+    to define your own ast mapper. They receive in argument
+    1°) the variance of the current kind/ordinal
+    2°) the kind/ordinal itself
+    3°) the function of type <code class="code">self_kind</code> corresponding to a recursive call
+        for kind
+    4°) the function of type <code class="code">self_ord</code> corresponding to a recursive call
+        for ordinals
+    5°) the function for to call to get the defaut behavious (which copy the
+        Ast.<br>
+</div>
+
+
+<pre><span id="TYPEmap_ord"><span class="keyword">type</span> <code class="type"></code>map_ord</span> = <code class="type"><a href="Ast.html#TYPEoccur">Ast.occur</a> -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> -><br>       <a href="AstMap.html#TYPEself_kind">self_kind</a> -> <a href="AstMap.html#TYPEself_ord">self_ord</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEobox">Ast.obox</a>) -> <a href="Ast.html#TYPEobox">Ast.obox</a></code> </pre>
+
+
+<pre><span id="VALmap_kind"><span class="keyword">val</span> map_kind</span> : <code class="type">?fkind:<a href="AstMap.html#TYPEmap_kind">map_kind</a> -> ?ford:<a href="AstMap.html#TYPEmap_ord">map_ord</a> -> <a href="AstMap.html#TYPEself_kind">self_kind</a></code></pre><div class="info ">
+Mapping for kinds. The default value of the argument would just
+    copy the kind ast.<br>
+</div>
+
+<pre><span id="VALmap_ordi"><span class="keyword">val</span> map_ordi</span> : <code class="type">?fkind:<a href="AstMap.html#TYPEmap_kind">map_kind</a> -> ?ford:<a href="AstMap.html#TYPEmap_ord">map_ord</a> -> <a href="AstMap.html#TYPEself_ord">self_ord</a></code></pre><div class="info ">
+Mapping for ordinals. The default value of the argument would just
+    copy the ordinal ast.<br>
+</div>
+</body></html>

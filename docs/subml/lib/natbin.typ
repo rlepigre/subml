@@ -293,7 +293,7 @@ val rec gcd : Bin → Bin → EBin =
       | End  → Some x
       | One y' →
          (case sub x' y' of
-         | None →  map_option2 (gcd x) (sub y' x')
+         | None   →  bind_option (gcd x) (sub y' x')
          | Some z → gcd z y)
       | Zero y' → gcd x y')
 

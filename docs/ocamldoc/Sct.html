@@ -1,0 +1,246 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Raw.html">
+<link rel="next" href="Submljs.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="AstMap" rel="Chapter" href="AstMap.html">
+<link title="Ast" rel="Chapter" href="Ast.html">
+<link title="Binding" rel="Chapter" href="Binding.html">
+<link title="Compare" rel="Chapter" href="Compare.html">
+<link title="Config" rel="Chapter" href="Config.html">
+<link title="Error" rel="Chapter" href="Error.html">
+<link title="Eval" rel="Chapter" href="Eval.html">
+<link title="Generalise" rel="Chapter" href="Generalise.html">
+<link title="Graph" rel="Chapter" href="Graph.html">
+<link title="Io" rel="Chapter" href="Io.html">
+<link title="Latex" rel="Chapter" href="Latex.html">
+<link title="LibTools" rel="Chapter" href="LibTools.html">
+<link title="Parser" rel="Chapter" href="Parser.html">
+<link title="Pos" rel="Chapter" href="Pos.html">
+<link title="Print" rel="Chapter" href="Print.html">
+<link title="Proof" rel="Chapter" href="Proof.html">
+<link title="Raw" rel="Chapter" href="Raw.html">
+<link title="Sct" rel="Chapter" href="Sct.html">
+<link title="Submljs" rel="Chapter" href="Submljs.html">
+<link title="Subml" rel="Chapter" href="Subml.html">
+<link title="Subset" rel="Chapter" href="Subset.html">
+<link title="Term" rel="Chapter" href="Term.html">
+<link title="Timed" rel="Chapter" href="Timed.html">
+<link title="TypingBase" rel="Chapter" href="TypingBase.html">
+<link title="Typing" rel="Chapter" href="Typing.html"><title>Sct</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Raw.html" title="Raw">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Submljs.html" title="Submljs">Next</a>
+</div>
+<h1>Module <a href="type_Sct.html">Sct</a></h1>
+
+<pre><span class="keyword">module</span> Sct: <code class="code">sig</code> <a href="Sct.html">..</a> <code class="code">end</code></pre><div class="info module top">
+Size change principle. This module implements a decision procedure based
+    on the work of Chin Soon Lee, Neil D. Jones and Amir M. Ben-Amram (POPL
+    2001). It is used by PML to check that typing and subtyping proofs are
+    well-founded.<br>
+</div>
+<hr width="100%">
+
+<pre><code><span id="TYPEcmp"><span class="keyword">type</span> <code class="type"></code>cmp</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcmp.Min1"><span class="constructor">Min1</span></span></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcmp.Zero"><span class="constructor">Zero</span></span></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcmp.Infi"><span class="constructor">Infi</span></span></code></td>
+
+</tr></table>
+
+<div class="info ">
+Representation of the set with three elements: -1, 0 and ∞.<br>
+</div>
+
+
+<pre><span id="VALcmp_to_string"><span class="keyword">val</span> cmp_to_string</span> : <code class="type"><a href="Sct.html#TYPEcmp">cmp</a> -> string</code></pre><div class="info ">
+<code class="code">cmp_to_string c</code> returns a string representation of the given <code class="code">cmp</code>
+    element on one character.<br>
+</div>
+
+<pre><code><span id="TYPEmatrix"><span class="keyword">type</span> <code class="type"></code>matrix</span> = {</code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTmatrix.w">w</span>&nbsp;: <code class="type">int</code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTmatrix.h">h</span>&nbsp;: <code class="type">int</code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTmatrix.tab">tab</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEcmp">cmp</a> array array</code>;</code></td>
+
+</tr></table>
+}
+
+<div class="info ">
+Size change matrix.<br>
+</div>
+
+
+<pre><span id="TYPEindex"><span class="keyword">type</span> <code class="type"></code>index</span> </pre>
+<div class="info ">
+Abstract type used to refer to function symbols.<br>
+</div>
+
+
+<pre><span id="VALint_of_index"><span class="keyword">val</span> int_of_index</span> : <code class="type"><a href="Sct.html#TYPEindex">index</a> -> int</code></pre><div class="info ">
+<code class="code">int_of_index i</code> returns an <code class="code">int</code> corresponding to the index <code class="code">i</code>.<br>
+</div>
+
+<pre><span id="VALroot"><span class="keyword">val</span> root</span> : <code class="type"><a href="Sct.html#TYPEindex">index</a></code></pre><div class="info ">
+Special index denoting the entry point.<br>
+</div>
+
+<pre><code><span id="TYPEcall"><span class="keyword">type</span> <code class="type"></code>call</span> = {</code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcall.callee">callee</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEindex">index</a></code>;</code></td>
+<td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
+Key of the function symbol being called.<br>
+</div>
+</td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcall.caller">caller</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEindex">index</a></code>;</code></td>
+<td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
+Key of the calling function symbol.<br>
+</div>
+</td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcall.matrix">matrix</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEmatrix">matrix</a></code>;</code></td>
+<td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
+Size change matrix of the call.<br>
+</div>
+</td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTcall.is_rec">is_rec</span>&nbsp;: <code class="type">bool</code>;</code></td>
+<td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
+Indicates if this is a recursive call.<br>
+</div>
+</td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
+</tr></table>
+}
+
+<div class="info ">
+A call <code class="code">{callee; caller; matrix; is_rec}</code> represents a call to the
+    function symbol with key <code class="code">callee</code> by the function symbole with the
+    key <code class="code">caller</code>. The <code class="code">matrix</code> gives the relation between the parameters
+    of the caller and the callee. The coefficient <code class="code">matrix.(a).(b)</code> give
+    the relation between the <code class="code">a</code>-th parameter of the caller and the
+    <code class="code">b</code>-th argument of the callee. The boolean <code class="code">is_rec</code> is true when the
+    call is a reccursive call (i.e. a call to a generalised hypothesis
+    lower in the tree. It is <code class="code">false</code> for every call to subtyping in the
+    typing algorithm and the same goes for rules introducing a new
+    induction hypothesis. Every other call refers to a previously
+    introduced induction hypothesis and its boolean is <code class="code">true</code>.<br>
+</div>
+
+
+<pre><span id="TYPEcall_graph"><span class="keyword">type</span> <code class="type"></code>call_graph</span> </pre>
+<div class="info ">
+The representation of the call graph.<br>
+</div>
+
+
+<pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = <code class="type"><a href="Sct.html#TYPEcall_graph">call_graph</a></code> </pre>
+
+
+<pre><span id="VALcreate"><span class="keyword">val</span> create</span> : <code class="type">unit -> <a href="Sct.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">create ()</code> returns a new, empty call graph.<br>
+</div>
+
+<pre><span id="VALcopy"><span class="keyword">val</span> copy</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> <a href="Sct.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">copy g</code> returns a copy of the call graph <code class="code">g</code>.<br>
+</div>
+
+<pre><span id="VALis_empty"><span class="keyword">val</span> is_empty</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">is_empty g</code> indicates whether the call graph <code class="code">g</code> contains calls.<br>
+</div>
+
+<pre><span id="VALadd_call"><span class="keyword">val</span> add_call</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> <a href="Sct.html#TYPEcall">call</a> -> unit</code></pre><div class="info ">
+<code class="code">add_call g c</code> adds the call <code class="code">c</code> to the call graph <code class="code">g</code>.<br>
+</div>
+
+<pre><span id="VALcreate_symbol"><span class="keyword">val</span> create_symbol</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> string -> string array -> <a href="Sct.html#TYPEindex">index</a></code></pre><div class="info ">
+<code class="code">create_symbol g name args</code> creates a new function symbol with the name
+    <code class="code">name</code> and using <code class="code">args</code> as the name of its arguments. Note that the new
+    symbol will have the arity <code class="code">Array.length args</code>. The value returned is
+    the <code class="code">index</code>, which can be used in a <code class="code">call</code>.<br>
+</div>
+
+<pre><span id="VALarity"><span class="keyword">val</span> arity</span> : <code class="type"><a href="Sct.html#TYPEindex">index</a> -> <a href="Sct.html#TYPEt">t</a> -> int</code></pre><div class="info ">
+<code class="code">arity i g</code> returns the arity of the symbol with index <code class="code">i</code> in the call
+    graph <code class="code">g</code>.<br>
+</div>
+
+<pre><span id="VALdo_inline"><span class="keyword">val</span> do_inline</span> : <code class="type">bool Pervasives.ref</code></pre><div class="info ">
+Flag controling inlining. The default value is <code class="code">true</code>.<br>
+</div>
+
+<pre><span id="VALinline"><span class="keyword">val</span> inline</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> <a href="Sct.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">inline g</code> inlines the call graph <code class="code">g</code>, which is useful for printing more
+    consise call graphs, or to store smaller call graphs. Note that if the
+    flag <code class="code">do_inline</code> is set of <code class="code">false</code>, this function returns an unchanged
+    call graph.<br>
+</div>
+
+<pre><span id="VALsct"><span class="keyword">val</span> sct</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">sct g</code> runs the decision procedure on the call graph <code class="code">g</code>.<br>
+</div>
+
+<pre><span id="VALlatex_print_calls"><span class="keyword">val</span> latex_print_calls</span> : <code class="type">Format.formatter -> <a href="Sct.html#TYPEt">t</a> -> unit</code></pre><div class="info ">
+<code class="code">latex_print_calls ff g</code> prints the call graph <code class="code">g</code> using a LaTeX format
+    on the <code class="code">Format.formatter</code> <code class="code">ff</code>.<br>
+</div>
+</body></html>

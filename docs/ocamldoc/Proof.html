@@ -1,0 +1,94 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Print.html">
+<link rel="next" href="Raw.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="AstMap" rel="Chapter" href="AstMap.html">
+<link title="Ast" rel="Chapter" href="Ast.html">
+<link title="Binding" rel="Chapter" href="Binding.html">
+<link title="Compare" rel="Chapter" href="Compare.html">
+<link title="Config" rel="Chapter" href="Config.html">
+<link title="Error" rel="Chapter" href="Error.html">
+<link title="Eval" rel="Chapter" href="Eval.html">
+<link title="Generalise" rel="Chapter" href="Generalise.html">
+<link title="Graph" rel="Chapter" href="Graph.html">
+<link title="Io" rel="Chapter" href="Io.html">
+<link title="Latex" rel="Chapter" href="Latex.html">
+<link title="LibTools" rel="Chapter" href="LibTools.html">
+<link title="Parser" rel="Chapter" href="Parser.html">
+<link title="Pos" rel="Chapter" href="Pos.html">
+<link title="Print" rel="Chapter" href="Print.html">
+<link title="Proof" rel="Chapter" href="Proof.html">
+<link title="Raw" rel="Chapter" href="Raw.html">
+<link title="Sct" rel="Chapter" href="Sct.html">
+<link title="Submljs" rel="Chapter" href="Submljs.html">
+<link title="Subml" rel="Chapter" href="Subml.html">
+<link title="Subset" rel="Chapter" href="Subset.html">
+<link title="Term" rel="Chapter" href="Term.html">
+<link title="Timed" rel="Chapter" href="Timed.html">
+<link title="TypingBase" rel="Chapter" href="TypingBase.html">
+<link title="Typing" rel="Chapter" href="Typing.html"><title>Proof</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Print.html" title="Print">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Raw.html" title="Raw">Next</a>
+</div>
+<h1>Module <a href="type_Proof.html">Proof</a></h1>
+
+<pre><span class="keyword">module</span> Proof: <code class="code">sig</code> <a href="Proof.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Helperfunctiontoprintandbuildprooftree">            Helper function to print and build prooftree             </h3><br>
+</div>
+<hr width="100%">
+
+<pre><code><span id="TYPEproof"><span class="keyword">type</span> <code class="type">'a</code> proof</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTproof.Hyp"><span class="constructor">Hyp</span></span> <span class="keyword">of</span> <code class="type">'a * 'a option</code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTproof.Rule"><span class="constructor">Rule</span></span> <span class="keyword">of</span> <code class="type">'a <a href="Proof.html#TYPEproof">proof</a> list * 'a * 'a option * bool</code></code></td>
+
+</tr></table>
+
+
+
+<pre><span id="VALmap"><span class="keyword">val</span> map</span> : <code class="type">('a -> 'b) -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'b <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALhyp"><span class="keyword">val</span> hyp</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALhypN"><span class="keyword">val</span> hypN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALn_ary"><span class="keyword">val</span> n_ary</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> list -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALaxiom"><span class="keyword">val</span> axiom</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALunary"><span class="keyword">val</span> unary</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALbinary"><span class="keyword">val</span> binary</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALternary"><span class="keyword">val</span> ternary</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALn_aryN"><span class="keyword">val</span> n_aryN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a> list -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALaxiomN"><span class="keyword">val</span> axiomN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALunaryN"><span class="keyword">val</span> unaryN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALbinaryN"><span class="keyword">val</span> binaryN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALternaryN"><span class="keyword">val</span> ternaryN</span> : <code class="type">'a -><br>       'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALn_aryS"><span class="keyword">val</span> n_aryS</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> list -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALaxiomS"><span class="keyword">val</span> axiomS</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALunaryS"><span class="keyword">val</span> unaryS</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALbinaryS"><span class="keyword">val</span> binaryS</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALternaryS"><span class="keyword">val</span> ternaryS</span> : <code class="type">'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALn_arySN"><span class="keyword">val</span> n_arySN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a> list -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALaxiomSN"><span class="keyword">val</span> axiomSN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALunarySN"><span class="keyword">val</span> unarySN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALbinarySN"><span class="keyword">val</span> binarySN</span> : <code class="type">'a -> 'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALternarySN"><span class="keyword">val</span> ternarySN</span> : <code class="type">'a -><br>       'a -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a> -> 'a <a href="Proof.html#TYPEproof">proof</a></code></pre>
+<pre><span id="VALoutput"><span class="keyword">val</span> output</span> : <code class="type">Format.formatter -> string <a href="Proof.html#TYPEproof">proof</a> -> unit</code></pre></body></html>

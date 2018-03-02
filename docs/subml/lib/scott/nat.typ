@@ -1,5 +1,7 @@
 (* Scott naturals. *)
 
+include "prelude.typ"
+
 (* The type of Scott naturals is encoded using an inductive type. *)
 type FSNat(K) = ∀X (K → X) → X → X
 type SNat = μK FSNat(K)
@@ -73,3 +75,13 @@ val sc : ∀P ∀K G(P) -> T(P) = fun f p r →
 val fixp : ∀P ∀K G(P) → SNat → P = fun f n →
   let P such that _ : P in
   (n : ∀P T(P) → U(P) → T(P) → P) (sc f) (zz f) (sc f)
+
+(* recursive functions on scotts numerals *)
+
+(* Equality function (using general recursion). *)
+val rec eq : SNat → SNat → Bool = fun n m →
+  n (fun np → m (fun mp → eq  np mp) fls) (m (fun mp → fls) tru)
+
+(* harder: must guess type of bool *)
+val rec eqN : SNat → SNat → Bool = fun n m →
+  n (fun np → m (fun mp → eqN np mp) Fls) (m (fun mp → Fls) Tru)

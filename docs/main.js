@@ -8,4 +8,4 @@ function syncloadsubmlfile (fn) {
       return(req.responseText);
 }
 
-importScripts("subml/subml.js");
+importScripts("subml.js");
