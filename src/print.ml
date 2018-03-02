@@ -337,6 +337,8 @@ and print_index_ordi ff = function
 
 and new_prvar f = KPrnt(FreeVr(binder_name f))
 
+and kall_fmt () = if latex_mode () then "∀%s. %a" else "∀%s %a"
+
 and print_kind unfold wrap unfolded_Y ff t =
   let pkind = print_kind false false unfolded_Y in
   let pordi = print_ordi false unfolded_Y in
@@ -367,6 +369,7 @@ and print_kind unfold wrap unfolded_Y ff t =
          fprintf ff (if latex_mode () then "\\{%a%s\\}" else "{%a%s}")
            (print_list pfield "; ") fs ext
        end else begin
+         assert (latex_mode ());
          decr break_hint;
          let pfield ff (l,a) = fprintf ff "\\mathrm{%s} &: %a" l pkind a in
          fprintf ff "\\left\\{\\setlength{\\arraycolsep}{0.2em}";
@@ -408,8 +411,8 @@ and print_kind unfold wrap unfolded_Y ff t =
         let dot = if latex_mode () then "." else "" in
         fprintf ff "μ%s%s %a" (binder_name b) dot pkindw a
       else
-        let fmt : ('a,'b,'c) format =
-          if latex_mode () then "μ_{%a}%s. %a" else "μ %a %s %a"
+        let fmt = format_of_string (
+          if latex_mode () then "μ_{%a}%s. %a" else "μ %a %s %a")
         in
         fprintf ff fmt print_index_ordi o (binder_name b) pkindw a
   | KFixN(o,b) ->
@@ -419,8 +422,8 @@ and print_kind unfold wrap unfolded_Y ff t =
         let dot = if latex_mode () then "." else "" in
         fprintf ff "ν%s%s %a" (binder_name b) dot pkindw a
       else
-        let fmt : ('a,'b,'c) format =
-          if latex_mode () then "ν_{%a}%s. %a" else "ν %a %s %a"
+        let fmt = format_of_string (
+          if latex_mode () then "ν_{%a}%s. %a" else "ν %a %s %a")
         in
         fprintf ff fmt print_index_ordi o (binder_name b) pkindw a
   | KDefi(td,os,ks) ->
@@ -432,13 +435,13 @@ and print_kind unfold wrap unfolded_Y ff t =
      else if Array.length os = 0 then
        fprintf ff "%s(%a)" name (print_array pkind ", ") ks
      else if Array.length ks = 0 then
-       let fmt : ('aa,'bb,'cc) format =
-         if latex_mode () then "%s_{%a}" else "%s(%a)"
+       let fmt = format_of_string (
+         if latex_mode () then "%s_{%a}" else "%s(%a)")
        in
        fprintf ff fmt name (print_array pordi ", ") os
      else
-       let fmt : ('aaa,'bbb,'ccc) format =
-         if latex_mode () then "%s_{%a}(%a)" else "%s(%a,%a)"
+       let fmt = format_of_string (
+         if latex_mode () then "%s_{%a}(%a)" else "%s(%a,%a)")
        in
        fprintf ff fmt name (print_array pordi ", ") os
          (print_array pkind ", ") ks
@@ -446,7 +449,10 @@ and print_kind unfold wrap unfolded_Y ff t =
   | KECst(u,f,_) ->
      let is_exists = match t with KECst(_) -> true | _ -> false in
      let name, index =search_type_tbl u f is_exists in
-     fprintf ff "%s_{%d}" name index
+      let fmt = format_of_string (
+       if latex_mode () then "%s_{%d}" else "%s_%d")
+     in
+    fprintf ff fmt name index
   | KUVar(u,os) ->
      if os = [||] then
        fprintf ff "?%i" u.uvar_key
@@ -455,13 +461,21 @@ and print_kind unfold wrap unfolded_Y ff t =
          (print_list print_index_ordi ", ") (Array.to_list os)
   | KMRec(p,a) ->
      if wrap then pp_print_string ff "(";
-     fprintf ff "%a ∧ {%a}" pkindw a
-       (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p);
+     let fmt = format_of_string (
+       if latex_mode () then "%a ∧ {%a}" else "%a ∧ %a")
+     in
+     let sep = if latex_mode () then ", " else " ∧ " in
+     fprintf ff fmt pkindw a
+       (print_list (fun ff o -> pordi ff o) sep) (Subset.unsafe_get p);
      if wrap then pp_print_string ff ")";
   | KNRec(p,a) ->
      if wrap then pp_print_string ff "(";
-     fprintf ff "%a ∨ {%a}" pkindw a
-       (print_list (fun ff o -> pordi ff o) ", ") (Subset.unsafe_get p);
+     let fmt = format_of_string (
+       if latex_mode () then "%a ∨ {%a}" else "%a ∨ %a")
+     in
+     let sep = if latex_mode () then ", " else " ∨ " in
+     fprintf ff fmt pkindw a
+       (print_list (fun ff o -> pordi ff o) sep) (Subset.unsafe_get p);
      if wrap then pp_print_string ff ")";
   | KPrnt x -> match x with
   | FreeVr s -> pp_print_string ff s
