@@ -113,12 +113,11 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
       "such", "that");
 
     setType("builtin")(
-      "->", "=", ";", ":", "/\\", "\\/", ".", "{", "}", "(", ")", ",",
-      "!", "?", "[", "]", "|", "\u03BB" /* lambda */, "\u03BC" /* mu */,
-      "\u03BD" /* nu */, "\u2200" /* forall */, "\u2203" /* exists */,
-      "\u2192" /* right arrow */, "\u21a6" /* mapsto */,
-      "\u039B" /* Lambda */, "\u00d7" /* times */,
-      "\u2282" /* subset */, "\u2286" /* Subset or equal */);
+      "->", "=", ";", ":", ".", "{", "}", "(", ")", ",", "[", "]", "|",
+      "\u03BB" /* lambda */, "\u03BC" /* mu */, "\u03BD" /* nu */,
+      "\u2200" /* forall */, "\u2203" /* exists */, "\u2192" /* arrow */,
+      "\u039B" /* Lambda */, "\u00d7" /* times */, "\u2282" /* subset */,
+      "\u03B5" /* epsilon */, "\u221E" /* infinity */);
 
     var override = modeConfig.overrideKeywords;
     if (override) for (var word in override) if (override.hasOwnProperty(word))

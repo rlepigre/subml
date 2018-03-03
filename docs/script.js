@@ -58,11 +58,6 @@ $(function() {
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u2192 ");
                 break;
-              case "|->" :
-              case "\\mapsto" :
-                instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u21A6 ");
-                break;
               case "forall" :
               case "\\forall" :
               case "/\\" :
@@ -105,27 +100,27 @@ $(function() {
                 break;
               case "\\infty" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\U221E ");
+                instance.replaceSelection("\u221E");
                 break;
               case "\\alpha" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u03B1 ");
+                instance.replaceSelection("\u03B1");
                 break;
               case "\\beta" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u03B2 ");
+                instance.replaceSelection("\u03B2");
                 break;
               case "\\gamma" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u03B3 ");
+                instance.replaceSelection("\u03B3");
                 break;
               case "\\delta" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u03B4 ");
+                instance.replaceSelection("\u03B4");
                 break;
               case "\\epsilon" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u03B5 ");
+                instance.replaceSelection("\u03B5");
                 break;
               default :
                 instance.replaceSelection(" ");
