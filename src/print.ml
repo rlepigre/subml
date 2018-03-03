@@ -393,7 +393,7 @@ and print_kind unfold wrap unfolded_Y ff t =
            let x = new_prvar f in
            let npr = if latex_mode () then "\\," else " " in
            fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
-        | t        -> fprintf ff ". %a" pkind t
+        | t        -> fprintf ff ".%a" pkind t
       in
       fn "∀" ff t;
       if wrap then pp_print_string ff ")"
@@ -404,7 +404,7 @@ and print_kind unfold wrap unfolded_Y ff t =
            let x = new_prvar f in
            let npr = if latex_mode () then "\\," else " " in
            fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
-        | t        -> fprintf ff ". %a" pkind t
+        | t        -> fprintf ff ".%a" pkind t
       in
       fn "∃" ff t;
       if wrap then pp_print_string ff ")"
@@ -415,7 +415,7 @@ and print_kind unfold wrap unfolded_Y ff t =
            let x = OVars (binder_name f) in
            let npr = if latex_mode () then "\\," else " " in
            fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
-        | t        -> fprintf ff ". %a" pkind t
+        | t        -> fprintf ff ".%a" pkind t
       in
       fn "∀" ff t;
       if wrap then pp_print_string ff "(";
@@ -426,7 +426,7 @@ and print_kind unfold wrap unfolded_Y ff t =
            let x = OVars (binder_name f) in
            let npr = if latex_mode () then "\\," else " " in
            fprintf ff "%s%s%a" prefix (binder_name f) (fn npr) (subst f x);
-        | t        -> fprintf ff ". %a" pkind t
+        | t        -> fprintf ff ".%a" pkind t
       in
       fn "∃" ff t;
       if wrap then pp_print_string ff ")"
