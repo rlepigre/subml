@@ -8,7 +8,7 @@ type F_Stream(A,K) = ∃S.S_Stream(S,A,K)
 type Stream(A) = νK.F_Stream(A,K)
 type GStream(A) = ∃S.νK.Triple(S,S→A,S→K)
 
-check GStream([A]) ⊂ Stream([A])
+check GStream([A]) ⊆ Stream([A])
 
 val cons : ∀A.A → Stream(A) → Stream(A) = fun a s →
   let A such that a : A in

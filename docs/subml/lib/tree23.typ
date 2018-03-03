@@ -26,7 +26,7 @@ type ITree23(A,B) = [
 | INode2 of Tree23(A,B) × A × B × Tree23(A,B) (* increase in size *)
 | Node3 of Tree23(A,B) × A × B × Tree23(A,B) × A × B × Tree23(A,B) ]
 
-check Tree23([A],[B]) ⊂ ITree23([A],[B])
+check Tree23([A],[B]) ⊆ ITree23([A],[B])
 
 val node4 : ∀A.∀B.(Tree23(A,B) × A × B ×
                    Tree23(A,B) × A × B ×

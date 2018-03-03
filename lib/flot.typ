@@ -5,8 +5,8 @@ type RK(Y,X) = [ R of Y | K of X ]
 type SF(α,β) = να X.μβ Y.{} → RK(Y,X)
 type F = SF(∞,∞)
 type UF = μ Y.{} → RK(Y,F)
-check F ⊂ UF
-check UF ⊂ F
+check F ⊆ UF
+check UF ⊆ F
 
 val rec[1] filter : ∀A.UF → Stream(A) → Stream(A) =
   fun f s →
@@ -58,8 +58,8 @@ val rec 3 compose : F → F → F = fun f1 f2 _ →
 
 type F2 = νX.{} → μY.[R of Y | K of X]
 type UF2 = {} → μY.[R of Y | K of F2]
-check F2 ⊂ UF2
-check UF2 ⊂ F2
+check F2 ⊆ UF2
+check UF2 ⊆ F2
 type SF2(α,β) = να X.{} → μβ Y.RK(Y,X)
 
 val rec[1] filter2 : ∀A.UF2 → Stream(A) → Stream(A) =
@@ -108,10 +108,10 @@ val rec 3 compose2 : F2 → F2 → F2 = fun f1 f2 _ →
 
 type F3 = νX.μY.[R of Y | K of {} → X]
 type UF3 = μY.[R of Y | K of {} → F3]
-check F3 ⊂ UF3
-check UF3 ⊂ F3
-check F2 ⊂ {} → F3
-check {} → F3 ⊂ F2
+check F3 ⊆ UF3
+check UF3 ⊆ F3
+check F2 ⊆ {} → F3
+check {} → F3 ⊆ F2
 
 val rec[1] filter3 : ∀A.UF3 → Stream(A) → Stream(A) =
   fun f s →

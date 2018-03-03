@@ -171,7 +171,7 @@ val rec bitneg : ∀α.Bits(α) → Bits(α) = fun s _ →
 
 type Real = νX.μY.{} → [Zero of X | One of Y ]
 
-check Real ⊂ Bits(∞)
+check Real ⊆ Bits(∞)
 
 (* The type Real is a subtype of Bits(∞) where ∞ represents a large enough  *)
 (* size to ensure that we reach a fixpoint (Bits(∞+1) = Bits(∞)). This type *)

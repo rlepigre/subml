@@ -32,7 +32,7 @@ val rec squish : ∀γ.∀V.(TS(γ,T(V)) → T(V)) = fun f →
 val subst3 : ∀V.(T(V) → T(T(V))) → T(V) → T(V) =
   fun f → fun t → squish (f t)
 
-check ∀V.(T(V) → T(V)) ⊂ Term → Term
+check ∀V.(T(V) → T(V)) ⊆ Term → Term
 
 val argu : Term → Term =
   ((fun t → case t of App(_,t) → t | t → t) : ∀V.T(V) → T(V))

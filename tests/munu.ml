@@ -101,7 +101,7 @@ let _ =
     let no = if test_permutations p1 p2 then "" else "!" in
     Printf.printf "%scheck T" no;
     List.iter aux p1;
-    Printf.printf " ⊂ T";
+    Printf.printf " ⊆ T";
     List.iter aux p2;
     Printf.printf "\n%!"
   ) permutations) left_perm

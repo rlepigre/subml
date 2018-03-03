@@ -8,13 +8,13 @@ val succ : Nat → Nat = fun n r → r.s n
 (* test du sous-typage *)
 type Rel = μK.∀X.{ z : X ; s : K -> X ; p : K -> X; …} -> X
 
-check Nat ⊂ Rel
+check Nat ⊆ Rel
 
 (* Iterateur sans point fixe *)
 type T(P) = ∀Y.({z : Y → P; s : Y} → Y → P) → Y → P
 type Nat' = ∀P.{s : T(P); z : T(P) → P} → T(P) → P
 
-check Nat ⊂ Nat'
+check Nat ⊆ Nat'
 
 val iter_nat : ∀P.(Nat → P → (P → P) → P) =
   fun n a f →
@@ -32,7 +32,7 @@ val sub : Nat → Nat → Nat = fun n m → iter_nat m n pred
 type T(P) = ∀Y.( { z : Y → Nat → P; s : Y } → Y → Nat → P) → Y → Nat → P
 type Nat' = ∀P.{s : T(P); z : T(P) → Nat → P } → T(P) → Nat → P
 
-check Nat ⊂ Nat'
+check Nat ⊆ Nat'
 
 val rec_nat : ∀P.Nat → P → (Nat → P → P) → P = fun n a f →
   let P such that _ : P in
@@ -43,7 +43,7 @@ type F_Nat(K) = ∀X.{z : X ; s : K -> X} -> X
 type T(P) = ∀Y.({z : Y → P; s : Y} → Y → P) → Y → P
 type Nat' = ∀P.{s : T(P); z : T(P) → P} → T(P) → P
 
-check Nat ⊂ Nat'
+check Nat ⊆ Nat'
 
 val fix_nat : ∀P.(∀K.(K → P) → F_Nat(K) → P) → Nat → P =
   fun f n →

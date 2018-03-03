@@ -45,8 +45,8 @@ val recu : ∀A.∀B.∀P.(A → P) → (Tree(A,B) → P → B → Tree(A,B) →
 type F2_Tree(A,B,K1,K2) = ∀X.((K1 → B → K2 → X) → (A → X) → X)
 type Tree2(A,B) = μK1.μK2.F2_Tree(A,B,K1,K2)
 
-check Tree([A],[B]) ⊂ Tree2([A],[B])
-check Tree2([A],[B]) ⊂ Tree([A],[B])
+check Tree([A],[B]) ⊆ Tree2([A],[B])
+check Tree2([A],[B]) ⊆ Tree([A],[B])
 
 
 type G2(A,B,P) = ∀K1.∀K2.(K1 → P)  → (K2 → P) → F2_Tree(A,B,K1,K2) → P

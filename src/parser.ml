@@ -143,7 +143,11 @@ let parser uid = id:{#[A-Z][_a-zA-Z0-9]*[']*#}[group.(0)] ->
 let parser loptident = lid | "_" -> ""
 let parser llid = id:lid -> in_pos _loc id
 
-let parser greek = "α" -> "α" | "β" -> "β" | "γ" -> "γ" | "δ" -> "δ"
+let parser greek =
+  | {"α" | "<alpha>"} -> "α"
+  | {"β" | "<beta>" } -> "β"
+  | {"γ" | "<gamma>"} -> "γ"
+  | {"δ" | "<delta>"} -> "δ"
 
 let parser lgid = g:greek l:{#[_][0-9]+#}[group.(0)]?[""] -> g ^ l
 
@@ -183,21 +187,22 @@ let graphml_kw = new_keyword "graphml"
 let parser arrow  : unit grammar = "→" | "->"
 let parser forall : unit grammar = "∀" | "/\\"
 let parser exists : unit grammar = "∃" | "\\/"
-let parser mu     : unit grammar = "μ" | "!"
-let parser nu     : unit grammar = "ν" | "?"
+let parser mu     : unit grammar = "μ" | "!" | "<mu>"
+let parser nu     : unit grammar = "ν" | "?" | "<nu>"
 let parser time   : unit grammar = "×" | "*"
-let parser lambda : unit grammar = "λ"
+let parser lambda : unit grammar = "λ" | "\\"
 let parser dot    : unit grammar = "."
 let parser comma  : unit grammar = ","
-let parser subset : unit grammar = "⊂" | "⊆" | "<"
-let parser infty  : unit grammar = "∞"
-let parser eps    : unit grammar = "ε"
+let parser subset : unit grammar = "⊆" | "<"
+let parser infty  : unit grammar = "∞" | "<infty>"
+let parser eps    : unit grammar = "ε" | "<eps>"
 let parser kuvar  : unit grammar = "?"
 let parser ouvar  : unit grammar = "¿"
+let parser dots   : unit grammar = "…" | "..."
 
 let parser mem    : bool grammar =
-  | "∈" -> true
-  | "∉" -> false
+  | {"∈" | "<in>"   } -> true
+  | {"∉" | "<notin>"} -> false
 
 let parser is_rec =
   | EMPTY  -> false
@@ -225,8 +230,8 @@ and parser kind_atm = (pkind `Atm)
 and parser kind_prd = (pkind `Prd)
 
 and parser ext =
-  | EMPTY -> false
-  | ';' {"..." | "…"} -> true
+  | EMPTY    -> false
+  | ';' dots -> true
 
 and parser pkind (p : [`Atm | `Prd | `Fun]) =
   | a:kind_prd arrow b:kind     when p = `Fun -> in_pos _loc (PFunc(a,b))

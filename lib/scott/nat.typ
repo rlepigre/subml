@@ -17,7 +17,7 @@ type U(P) = ∀Y.Y → P
 type T(P) = ∀Y.(Y → U(P) → Y → P) → Y → P
 type SNat' = ∀P.T(P) → U(P) → T(P) → P
 
-check SNat ⊂ SNat'
+check SNat ⊆ SNat'
 
 val iter : ∀P.P → (P → P) → SNat → P = fun a f n →
   let P such that a : P in
