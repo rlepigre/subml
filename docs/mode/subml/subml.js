@@ -140,7 +140,8 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
       "\u03BB" /* lambda */, "\u03BC" /* mu */, "\u03BD" /* nu */,
       "\u2200" /* forall */, "\u2203" /* exists */, "\u2192" /* arrow */,
       "\u00d7" /* times */, "\u2286" /* subseteq */, "\u03B5" /* epsilon */,
-      "\u221E" /* infinity */, "\u2026" /* elipsis */
+      "\u221E" /* infinity */, "\u2026" /* elipsis */, "\u2208" /* element */,
+      "\u2209" /* not an element */
     );
 
     var override = modeConfig.overrideKeywords;

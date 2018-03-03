@@ -123,6 +123,14 @@ $(function() {
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03B5");
                 break;
+              case "in" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u2208");
+                break;
+              case "notin" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u2209");
+                break;
               default :
                 instance.replaceSelection(" ");
             }
