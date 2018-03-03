@@ -40,6 +40,7 @@ include "heap.typ"
 
 (* various tests with subtyping on fixpoint *)
 include "subfix.typ"
+(* various tests with sized type and termination *)
 include "size.typ"
 include "hard.typ"
 include "lazy_nat.typ"
