@@ -1,12 +1,12 @@
 (* Unary natural with sums encoded using records *)
 
-type Nat = μK.∀X.{ z : X ; s : K -> X ; …} -> X
+type Nat = μK.∀X.{ z : X ; s : K → X ; …} → X
 
 val 0 : Nat = fun r → r.z
 val succ : Nat → Nat = fun n r → r.s n
 
 (* test du sous-typage *)
-type Rel = μK.∀X.{ z : X ; s : K -> X ; p : K -> X; …} -> X
+type Rel = μK.∀X.{ z : X ; s : K → X ; p : K → X; …} → X
 
 check Nat ⊆ Rel
 
@@ -39,7 +39,7 @@ val rec_nat : ∀P.Nat → P → (Nat → P → P) → P = fun n a f →
   let delta : T(P) = fun p x q → f q (p { z = (fun x p → a); s = x } x (pred q)) in
   (n : Nat') { z = (fun x p → a); s = delta} delta n
 
-type F_Nat(K) = ∀X.{z : X ; s : K -> X} -> X
+type F_Nat(K) = ∀X.{z : X ; s : K → X} → X
 type T(P) = ∀Y.({z : Y → P; s : Y} → Y → P) → Y → P
 type Nat' = ∀P.{s : T(P); z : T(P) → P} → T(P) → P
 

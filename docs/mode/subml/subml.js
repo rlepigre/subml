@@ -15,7 +15,7 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
     return f(source, setState);
   }
 
-  var smallRE = /[a-z_]/;
+  var smallRE = /[0-9a-z_]/;
   var largeRE = /[A-Z]/;
   var greekRE = /\u03B1|\u03B2|\u03B3|\u03B4/;
   var idRE    = /[a-z_'A-Z0-9]/;

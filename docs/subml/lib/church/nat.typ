@@ -53,7 +53,7 @@ val eq : CNat → CNat → CBool = fun n m →
 
 (* Maurey's inferior function. *)
 
-val inf : CNat -> CNat -> CNat =
+val inf : CNat → CNat → CNat =
   fun n m →
     let a =
       fun u m →

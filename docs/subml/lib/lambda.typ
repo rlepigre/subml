@@ -1,4 +1,4 @@
-type TS(α,V) = μα T.[App of T * T | Lam of V → T | Var of V]
+type TS(α,V) = μα T.[App of T × T | Lam of V → T | Var of V]
 type T(V) = TS(∞,V)
 type Term = ∀V.T(V) (* closed term *)
 

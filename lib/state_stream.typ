@@ -20,7 +20,7 @@ val check_id : ∀A.∀P.Stream'(A,P) → Stream0(A, P × T(A,P)) = λx.x
 val coiter_stream : ∀A.∀P.P → (P → A) → (P → P) → Stream(A) =
   fun s0 fcar fnext →
      let A,P such that fcar : P → A in
-     let fcar : ∀X.P × X -> A = fun s → fcar s.1 in
+     let fcar : ∀X.P × X → A = fun s → fcar s.1 in
      let delta : T(A,P) = fun s → { car = fcar; cdr = s.2; state = (fnext s.1, s.2) } in
      (({ car = fcar; cdr = delta; state = (s0, delta) } : Stream'(A,P)) : Stream0(A, P × T(A,P)))
 

@@ -1,6 +1,6 @@
 (* List using sums encoded as product *)
 
-type List(A) = μK.∀X.{nil : X; cons : A × K -> X} -> X
+type List(A) = μK.∀X.{nil : X; cons : A × K → X} → X
 
 val nil : ∀A.List(A)= λx.x.nil
 
@@ -33,7 +33,7 @@ val rec_list : ∀A.∀P.List(A) → P → (List(A) → P → P) → P =
     let delta : T(A,P) = fun p x l → f l (p.2 { nil = (fun x l → a); cons = x } x (cdr l)) in
     (l : List'(A)) { nil = (fun x l → a); cons = delta} delta l
 
-type F_List(A,K) = ∀X.{ nil : X ; cons : A × K -> X } -> X
+type F_List(A,K) = ∀X.{ nil : X ; cons : A × K → X } → X
 type T(A,P) = ∀Y.A × ({ nil : Y → P; cons : Y } → Y → P ) → Y → P
 type List'(A) = ∀P.{cons : T(A,P) ; nil : T(A,P) → P } → T(A,P) → P
 

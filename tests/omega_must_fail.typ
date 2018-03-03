@@ -3,7 +3,7 @@
 val delta : ∀X.(∀X.X) → X = fun x → x x
 
 !val omega = delta delta
-!val omega = (fun x -> x x) (fun x -> x x)
+!val omega = (fun x → x x) (fun x → x x)
 
 (* NOTE: delta is typable, but cannot be applied. *)
 

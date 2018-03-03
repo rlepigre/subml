@@ -5,5 +5,5 @@ type F = ∀X.∀Y.X → (X → X → Y) → Y
 
 val g : F = fun x y → y x x
 
-!check F ⊆ F -> F -> ∃X.X
+!check F ⊆ F → F → ∃X.X
 !val h = g g g

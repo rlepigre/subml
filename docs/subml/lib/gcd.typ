@@ -48,7 +48,7 @@ val rec gcd : N → N → N = fun n m →
       | S n'' →
       (case m of
       | Z → n
-      | S m' ->
+      | S m' →
          gcd (mod (S m') (S (S n''))) (S (S n''))))
 
 val 0 = Z

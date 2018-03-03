@@ -185,35 +185,35 @@ let split x m =
   fold coll m (empty, None, empty)
 
 let rec min_binding = function
-  | Empty -> raise Not_found
-  | Leaf (k, v) -> (k, v)
-  | Branch (_,_,s,t) ->
+  | Empty → raise Not_found
+  | Leaf (k, v) → (k, v)
+  | Branch (_,_,s,t) →
       let (ks, _) as bs = min_binding s in
       let (kt, _) as bt = min_binding t in
       if ks < kt then bs else bt
 
 let rec max_binding = function
-  | Empty -> raise Not_found
-  | Leaf (k, v) -> (k, v)
-  | Branch (_,_,s,t) ->
+  | Empty → raise Not_found
+  | Leaf (k, v) → (k, v)
+  | Branch (_,_,s,t) →
       let (ks, _) as bs = max_binding s in
       let (kt, _) as bt = max_binding t in
       if ks > kt then bs else bt
 
 let bindings m =
-  fold (fun k v acc -> (k, v) :: acc) m []
+  fold (fun k v acc → (k, v) :: acc) m []
 
 let compare cmp t1 t2 =
   let rec compare_aux t1 t2 = match t1,t2 with
-    | Empty, Empty -> 0
-    | Empty, _ -> -1
-    | _, Empty -> 1
-    | Leaf (k1,x1), Leaf (k2,x2) ->
+    | Empty, Empty → 0
+    | Empty, _ → -1
+    | _, Empty → 1
+    | Leaf (k1,x1), Leaf (k2,x2) →
         let c = compare k1 k2 in
         if c <> 0 then c else cmp x1 x2
-    | Leaf _, Branch _ -> -1
-    | Branch _, Leaf _ -> 1
-    | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) ->
+    | Leaf _, Branch _ → -1
+    | Branch _, Leaf _ → 1
+    | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) →
         let c = compare p1 p2 in
         if c <> 0 then c else
         let c = compare m1 m2 in
@@ -226,18 +226,18 @@ let compare cmp t1 t2 =
 
 let equal eq t1 t2 =
   let rec equal_aux t1 t2 = match t1, t2 with
-    | Empty, Empty -> true
-    | Leaf (k1,x1), Leaf (k2,x2) -> k1 = k2 && eq x1 x2
-    | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) ->
+    | Empty, Empty → true
+    | Leaf (k1,x1), Leaf (k2,x2) → k1 = k2 && eq x1 x2
+    | Branch (p1,m1,l1,r1), Branch (p2,m2,l2,r2) →
         p1 = p2 && m1 = m2 && equal_aux l1 l2 && equal_aux r1 r2
-    | _ -> false
+    | _ → false
   in
   equal_aux t1 t2
 
 let merge f m1 m2 =
-  let ptree_add m k = function None -> m | Some v -> ptree_add k v m in
+  let ptree_add m k = function None → m | Some v → ptree_add k v m in
   let m = fold
-    (fun k1 v1 m -> ptree_add m k1 (f k1 (Some v1) (find_opt k1 m2))) m1 empty in
-  fold (fun k2 v2 m -> if mem k2 m1 then m else ptree_add m k2 (f k2 None (Some v2)))
+    (fun k1 v1 m → ptree_add m k1 (f k1 (Some v1) (find_opt k1 m2))) m1 empty in
+  fold (fun k2 v2 m → if mem k2 m1 then m else ptree_add m k2 (f k2 None (Some v2)))
     m2 m
 *)

@@ -1,4 +1,4 @@
-type T = μX.[ L | N of X * X ]
+type T = μX.[ L | N of X × X ]
 
 ?val rec[1] peigne : T → T = fun t →
   case t of

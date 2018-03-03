@@ -60,10 +60,10 @@ val leaf' : ∀A.∀B.∀K1.∀K2.A → F2_Tree(A,B,K1,K2) =
 val node' : ∀A.∀B.∀K1.∀K2.K1 → B → K2 → F2_Tree(A,B,K1,K2) =
   fun sl b sr → (fun f g → f sl b sr)
 
-val leaf'' : ∀A.∀B.∀P.(G2(A,B,P) -> U(A,P)) =
+val leaf'' : ∀A.∀B.∀P.(G2(A,B,P) → U(A,P)) =
   fun f a r1 r2 → f (fun x → x) (fun x → x) (leaf' a)
 
-val node'' : ∀A.∀B.∀P.(G2(A,B,P) -> T(A,B,P)) =
+val node'' : ∀A.∀B.∀P.(G2(A,B,P) → T(A,B,P)) =
   fun f sl b sr r1 r2 →
     f (fun r1' → sl r1' (leaf'' f) r1' r2) (fun r2' → sr r2' (leaf'' f) r1 r2') (node' r1 b r2)
 
@@ -83,10 +83,10 @@ val leaf' : ∀A.∀B.∀K.A → F_Tree(A,B,K) =
 val node' : ∀A.∀B.∀K.K → B → K → F_Tree(A,B,K) =
   fun sl b sr f g → f sl b sr
 
-val leaf'' : ∀A.∀B.∀P.G(A,B,P) -> U(A,P) =
+val leaf'' : ∀A.∀B.∀P.G(A,B,P) → U(A,P) =
   fun f a r → f (fun x → x) (fun x → x) (leaf' a)
 
-val node'' : ∀A.∀B.∀P.G(A,B,P) -> T(A,B,P) =
+val node'' : ∀A.∀B.∀P.G(A,B,P) → T(A,B,P) =
   fun f sl b sr r → f (sl r (leaf'' f)) (sr r (leaf'' f)) (node' r b r)
 
 val fix1 : ∀A.∀B.∀P.(G(A,B,P) → Tree(A,B) → P) =

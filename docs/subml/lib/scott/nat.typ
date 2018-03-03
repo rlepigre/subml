@@ -69,7 +69,7 @@ val z' : FSNat(∀K.K) = fun f x → x
 val s' : ∀K.K → FSNat(K) = fun n f x → f n
 
 val zz : ∀P.G(P) → U(P) = fun f r → f (fun x → x) z'
-val sc : ∀P.∀K.G(P) -> T(P) = fun f p r →
+val sc : ∀P.∀K.G(P) → T(P) = fun f p r →
   f (fun s → p r (zz f) r) (s' p)
 
 val fixp : ∀P.∀K.G(P) → SNat → P = fun f n →

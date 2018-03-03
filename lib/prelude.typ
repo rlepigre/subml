@@ -45,7 +45,7 @@ val from_option : ∀X.Option(X) → X → X = fun o d →
 
 (* Monadic operations for the “option” type. *)
 
-val unit_option : ∀X.X → Option(X) = fun x ->
+val unit_option : ∀X.X → Option(X) = fun x →
   Some(x)
 
 val bind_option : ∀X.∀Y.(X → Option(Y)) → Option(X) → Option(Y) = fun f o →

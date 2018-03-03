@@ -22,6 +22,6 @@ include "nat.typ"
     | App(u,v) →
        let u = whnf n u in
        (case u of
-       | Lam f -> whnf n (f v)
+       | Lam f → whnf n (f v)
        | _ → App(u,v))
     | _ → t)

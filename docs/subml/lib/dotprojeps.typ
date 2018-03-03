@@ -1,15 +1,15 @@
 (* Expand all dor projection in dotproj.typ *)
 
-val pair : ∀A.∀B.(A → B → A * B) = fun x y → (x, y)
+val pair : ∀A.∀B.(A → B → A × B) = fun x y → (x, y)
 
-val fst : ∀A.∀B.(A * B → A) = fun x → x.1
+val fst : ∀A.∀B.(A × B → A) = fun x → x.1
 
 type FM(X) = { e : X; op : X → X → X }
 type Monoid = ∃X.FM(X)
 
 val prod : Monoid → Monoid → Monoid = fun m1 m2 →
-  { e  : εX(m1∈FM(X)) * εX(m2∈FM(X)) = (m1.e, m2.e);
-    op : εX(m1∈FM(X)) * εX(m2∈FM(X)) →  εX(m1∈FM(X)) * εX(m2∈FM(X)) →  εX(m1∈FM(X)) * εX(m2∈FM(X))
+  { e  : εX(m1∈FM(X)) × εX(m2∈FM(X)) = (m1.e, m2.e);
+    op : εX(m1∈FM(X)) × εX(m2∈FM(X)) →  εX(m1∈FM(X)) × εX(m2∈FM(X)) →  εX(m1∈FM(X)) × εX(m2∈FM(X))
        = (fun z1 z2 → (m1.op z1.1 z2.1, m2.op z1.2 z2.2));
   }
 

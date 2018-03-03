@@ -93,7 +93,7 @@ val rec suc4 : ∀α.NS(α) → NS(α+4) = fun n →
     let α such that n : NS(α) in
     S (suc4 n : NS(α+4))
 
-type G(X) = {} -> [ S of X]
+type G(X) = {} → [ S of X]
 
 val rec idt' : ∀α.(να X.G(X)) → (να X.G(X)) = fun n u →
   case (n {}) of
