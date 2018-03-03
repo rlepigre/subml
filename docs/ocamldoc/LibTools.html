@@ -45,8 +45,9 @@
 </div>
 <h1>Module <a href="type_LibTools.html">LibTools</a></h1>
 
-<pre><span class="keyword">module</span> LibTools: <code class="code">sig</code> <a href="LibTools.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_Generalfunctions">                        General functions                            </h3><br>
+<pre><span id="MODULELibTools"><span class="keyword">module</span> LibTools</span>: <code class="code">sig</code> <a href="LibTools.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_Generalfunctions">                        General functions                            </h4></div>
 </div>
 <hr width="100%">
 
@@ -58,10 +59,12 @@
 <pre><span id="VALmap_snd"><span class="keyword">val</span> map_snd</span> : <code class="type">('a -> 'b) -> ('c * 'a) list -> ('c * 'b) list</code></pre>
 <pre><span id="VALassoc_gen"><span class="keyword">val</span> assoc_gen</span> : <code class="type">('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b</code></pre>
 <pre><span id="VALlist_ref_iter"><span class="keyword">val</span> list_ref_iter</span> : <code class="type">('a -> unit) -> 'a list Pervasives.ref -> unit</code></pre><div class="info ">
-iteration over a reference on list.
+<div class="info-desc">
+<p>iteration over a reference on list.
     <code class="code">list_ref_iter fn r</code> ensure that <code class="code">fn</code> has been called on
     all initial elements of !r and all elements that are member
-    on !r at the end of the call.<br>
+    on !r at the end of the call.</p>
+</div>
 </div>
 
 <pre><span id="TYPEmmbinder"><span class="keyword">type</span> <code class="type">('a, 'b, 'c)</code> mmbinder</span> = <code class="type">('a, ('b, 'c) Bindlib.mbinder) Bindlib.mbinder</code> </pre>
@@ -72,16 +75,22 @@ iteration over a reference on list.
 <pre><span id="VALmmsubst"><span class="keyword">val</span> mmsubst</span> : <code class="type">('a, ('b, 'c) Bindlib.mbinder) Bindlib.mbinder -> 'a array -> 'b array -> 'c</code></pre>
 <pre><span id="VALmmsubst_dummy"><span class="keyword">val</span> mmsubst_dummy</span> : <code class="type">('a, 'b, 'c) <a href="LibTools.html#TYPEmmbinder">mmbinder</a> -> 'a -> 'b -> 'c</code></pre>
 <pre><span id="VALprint_list"><span class="keyword">val</span> print_list</span> : <code class="type">(Format.formatter -> 'a -> unit) -><br>       string -> Format.formatter -> 'a list -> unit</code></pre><div class="info ">
-list printing<br>
+<div class="info-desc">
+<p>list printing</p>
+</div>
 </div>
 
 <pre><span id="VALprint_array"><span class="keyword">val</span> print_array</span> : <code class="type">(Format.formatter -> 'a -> unit) -><br>       string -> Format.formatter -> 'a array -> unit</code></pre><div class="info ">
-array printing<br>
+<div class="info-desc">
+<p>array printing</p>
+</div>
 </div>
 
 <pre><span id="VALprint_strlist"><span class="keyword">val</span> print_strlist</span> : <code class="type">string -> Format.formatter -> string list -> unit</code></pre>
 <pre><span id="VALprint_strarray"><span class="keyword">val</span> print_strarray</span> : <code class="type">string -> Format.formatter -> string array -> unit</code></pre>
 <pre><span id="VALclear"><span class="keyword">val</span> clear</span> : <code class="type">unit -> unit</code></pre><div class="info ">
-clear the terminal<br>
+<div class="info-desc">
+<p>clear the terminal</p>
+</div>
 </div>
 </body></html>
