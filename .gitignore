@@ -1,0 +1,10 @@
+_build/
+config.ml
+src/config.ml
+subml.docdir
+subml.native
+subml.byte
+submljs.byte
+tests/latex_generation.tex
+tests/munu2_generated.typ
+tests/munu3_generated.typ
