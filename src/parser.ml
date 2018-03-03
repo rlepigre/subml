@@ -313,16 +313,19 @@ and parser let_var =
   | id:loptident            -> (in_pos _loc_id id, None)
   | id:loptident ":" k:kind -> (in_pos _loc_id id, Some k)
 
-and parser term_llet = let_kw r:is_rec n:{'[' n:int_lit ']'}? pat:rpat "=" t:term in_kw u:term ->
-  let t =
-    if not r then
-      match pat with Simple (Some(_,Some k)) -> in_pos _loc_t (PCoer(t,k))
-      | _ -> t
-    else
-      match pat with Simple (Some id) -> pfixY id _loc_t n t
-      | _ -> give_up ()
-  in
-  in_pos _loc (PAppl(apply_rpat "_" pat u, t))
+and parser term_llet =
+  let_kw r:is_rec n:{'[' n:int_lit ']'}? pat:rpat "=" t:term in_kw u:term ->
+    let t =
+      if not r then
+        match pat with
+        | Simple (Some(_,Some k)) -> in_pos _loc_t (PCoer(t,k))
+        | _                       -> t
+      else
+        match pat with
+        | Simple (Some id) -> pfixY id _loc_t n t
+        | _                -> give_up ()
+    in
+    in_pos _loc (PAppl(apply_rpat "_" pat u, t))
 
 and parser ords_kinds =
   | EMPTY                  -> ([], [])
