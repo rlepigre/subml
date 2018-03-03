@@ -42,6 +42,7 @@ include "heap.typ"
 include "subfix.typ"
 (* various tests with sized type and termination *)
 include "size.typ"
+(* An accepted function not passing the semi-continuous condition *)
 include "hard.typ"
 include "lazy_nat.typ"
 include "flot.typ"
