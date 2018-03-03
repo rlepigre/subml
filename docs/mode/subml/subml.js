@@ -29,14 +29,32 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
 
     var ch = source.next();
 
+    // Handling of comments.
     if (ch == '(' && source.eat('*')) {
       return switchState(source, setState, ncomment("comment", 1));
     }
 
+    // Handling of string literals.
     if (ch == '"') {
       return switchState(source, setState, stringLiteral);
     }
 
+    // Handling of macros
+    if (ch == '\\') {
+      source.eatWhile(/[a-zA-Z]/);
+      if (source.eol()) return "special";
+      return "error";
+    }
+
+    if (ch == '*' && source.eol()) {
+      return "special";
+    }
+
+    if (ch == '-' && source.eat('>') && source.eol()) {
+      return "special";
+    }
+
+    // Handling of variables and constructors.
     if (largeRE.test(ch)) {
       source.eatWhile(idRE);
       return "variable-2";
@@ -56,6 +74,7 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
       return "variable";
     }
 
+    // Default to error.
     return "error";
   }
 
@@ -111,16 +130,18 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
     }
 
     setType("keyword")(
-      "type", "fun", "val", "case", "of", "include", "fix", "check", "if",
-      "then", "else", "match", "with", "rec", "let", "in", "eval", "not",
-      "such", "that");
+      "type", "fun", "val", "case", "of", "include", "fix", "check", "eval",
+      "if", "then", "else", "with", "rec", "let", "in", "such", "that",
+      "abort"
+    );
 
     setType("builtin")(
-      "->", "=", ";", ":", ".", "{", "}", "(", ")", ",", "[", "]", "|",
+      "=", ";", ":", ".", "{", "}", "(", ")", ",", "[", "]", "|",
       "\u03BB" /* lambda */, "\u03BC" /* mu */, "\u03BD" /* nu */,
       "\u2200" /* forall */, "\u2203" /* exists */, "\u2192" /* arrow */,
-      "\u039B" /* Lambda */, "\u00d7" /* times */, "\u2282" /* subset */,
-      "\u03B5" /* epsilon */, "\u221E" /* infinity */);
+      "\u00d7" /* times */, "\u2286" /* subseteq */, "\u03B5" /* epsilon */,
+      "\u221E" /* infinity */
+    );
 
     var override = modeConfig.overrideKeywords;
     if (override) for (var word in override) if (override.hasOwnProperty(word))

@@ -47,78 +47,79 @@ $(function() {
           line = line.substring(0, pos.ch);
           if(line.length == 0 || line.charAt(line.length - 1) == ' '){
             instance.replaceSelection(" ");
+          } else if(line.charAt(line.length - 1) == '*'){
+            instance.setSelection({line : pos.line, ch : pos.ch - 1}, pos);
+            instance.replaceSelection("\u00D7 ");
+          } else if(line.charAt(line.length - 1) == '\\'){
+            instance.setSelection({line : pos.line, ch : pos.ch - 1}, pos);
+            instance.replaceSelection("\u03BB");
+          } else if(line.charAt(line.length - 1) == '>') {
+            if(line.length >= 2 && line.charAt(line.length - 2) == '-') {
+              instance.setSelection({line : pos.line, ch : pos.ch - 2}, pos);
+              instance.replaceSelection("\u2192 ");
+            } else {
+              instance.replaceSelection(" ");
+            }
           } else {
             var last = line.length - 1;
-            while(last > 0 && line.charAt(last - 1) != ' '){
+            while(last > 0 && line.charAt(last - 1) != '\\'){
               last = last - 1;
             }
-            switch (line.substring(last, line.length)) {
-              case "->" :
-              case "\\to" :
+            last = last - 1;
+            switch (line.substring(last+1, line.length)) {
+              case "to" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u2192 ");
                 break;
               case "forall" :
-              case "\\forall" :
-              case "/\\" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u2200");
                 break;
               case "exists" :
-              case "\\exists" :
-              case "\\/" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u2203");
                 break;
-              case "\\lambda" :
-              case "\\" :
+              case "lambda" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03BB");
                 break;
-              case "\\Lambda" :
-                instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u039B");
-                break;
-              case "\\mu" :
-              case "!" :
+              case "mu" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03BC");
                 break;
-              case "\\nu" :
-              case "?" :
+              case "nu" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03BD");
                 break;
-              case "\\subset" :
-              case "<" :
+              case "sub" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
-                instance.replaceSelection("\u2282 ");
+                instance.replaceSelection("\u2286 ");
                 break;
-              case "*" :
+              case "times" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u00D7 ");
                 break;
-              case "\\infty" :
+              case "infty" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u221E");
                 break;
-              case "\\alpha" :
+              case "alpha" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03B1");
                 break;
-              case "\\beta" :
+              case "beta" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03B2");
                 break;
-              case "\\gamma" :
+              case "gamma" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03B3");
                 break;
-              case "\\delta" :
+              case "delta" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03B4");
                 break;
-              case "\\epsilon" :
+              case "epsilon" :
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u03B5");
                 break;
