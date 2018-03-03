@@ -1,3 +1,5 @@
+(* Tests for the subtyping relation. *)
+
 check ∀X.X ⊆ ∃X.X
 !check ∃X.X ⊆ ∀X.X
 

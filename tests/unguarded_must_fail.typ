@@ -1,4 +1,5 @@
-(* check failure of termination for some unguarder examples *)
+(* Basic checks for the termination checker. *)
+
 type Empty = μX.X
 
 !val rec f : Empty → Empty = fun x → f x
