@@ -38,8 +38,8 @@ include "heap.typ"
 
 (** Miscellaneous *)
 
-(* test of subtyping when alternating mu's and nu's *)
-include "munu.typ"
+(* various tests with subtyping on fixpoint *)
+include "subfix.typ"
 include "size.typ"
 include "hard.typ"
 include "lazy_nat.typ"
