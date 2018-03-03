@@ -36,6 +36,7 @@ let input : string -> Input.buffer = fun filename ->
 
 let _ =
   Ast.verbose := true;
+  Print.show_occur := false;
   (* Setup the IO stuff. *)
   fmts.out <- output "stdout";
   fmts.err <- output "stderr";

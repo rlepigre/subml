@@ -12,6 +12,7 @@ open LibTools
 type print_mode = TeX | Gml | Asc
 
 let print_mode = ref Asc
+let show_occur = ref true
 let latex_mode () = !print_mode = TeX
 let lts () = if !print_mode = Gml then "&lt;" else "<"
 let lt ch = fprintf ch "%s" (lts ())
@@ -562,7 +563,10 @@ and pkind_def unfold ff kd =
   assert(Array.length onames = Array.length kd.tdef_ovariance);
   let onames = Array.mapi (fun i n -> (n, kd.tdef_ovariance.(i))) onames in
   let knames = Array.mapi (fun i n -> (n, kd.tdef_kvariance.(i))) knames in
-  let print_elt ff (n,v) = fprintf ff "%s%a" n print_occur v in
+  let print_elt ff (n,v) =
+    pp_print_string ff n;
+    if !show_occur then print_occur ff v
+  in
   let parray = print_array print_elt "," in
   if Array.length knames = 0 && Array.length onames = 0 then
     fprintf ff " = %a" pkind k
