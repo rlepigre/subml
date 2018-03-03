@@ -131,6 +131,10 @@ $(function() {
                 instance.setSelection({line : pos.line, ch : last}, pos);
                 instance.replaceSelection("\u2209");
                 break;
+              case "dots" :
+                instance.setSelection({line : pos.line, ch : last}, pos);
+                instance.replaceSelection("\u2226");
+                break;
               default :
                 instance.replaceSelection(" ");
             }
