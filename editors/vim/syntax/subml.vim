@@ -34,6 +34,7 @@ highlight link PMLKeyword Keyword
 syntax match PMLOperator display "λ"
 syntax match PMLOperator display "\."
 syntax match PMLOperator display "→"
+syntax match PMLOperator display "×"
 syntax match PMLOperator display "↦"
 syntax match PMLOperator display ";"
 syntax match PMLOperator display ":"
