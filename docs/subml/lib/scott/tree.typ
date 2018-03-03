@@ -20,9 +20,9 @@ val iter : ∀A.∀B.∀P.(A → P) → (P → B → P → P) → Tree(A,B) → 
    let A,B such that t : Tree(A,B) in
    let P such that _ : P in
    (t : ∀P.T(A,B,P) → U(A,P) → T(A,B,P) → P)
-     (fun sl b sr r → g (sl r (fun a r → f a):U(A,P) r) b (sr r (fun a r → f a):U(A,P) r)) : T(A,B,P)
-     (fun a r → f a):U(A,P)
-     (fun sl b sr r → g (sl r (fun a r → f a):U(A,P) r) b (sr r (fun a r → f a):U(A,P) r)) : T(A,B,P)
+     (fun sl b sr r → g (sl r (fun a r → f a : U(A,P)) r) b (sr r (fun a r → f a : U(A,P)) r) : T(A,B,P))
+     (fun a r → f a : U(A,P))
+     (fun sl b sr r → g (sl r (fun a r → f a : U(A,P)) r) b (sr r (fun a r → f a : U(A,P)) r) : T(A,B,P))
 
 type U(A,B,P) = ∀Y.(A → Y → Tree(A,B) → P)
 type T(A,B,P) = ∀Y.((Y → U(A,B,P) → Y → Tree(A,B) → P) → B → (Y → U(A,B,P) → Y → Tree(A,B) → P) → Y → Tree(A,B) → P)
@@ -32,13 +32,13 @@ val recu : ∀A.∀B.∀P.(A → P) → (Tree(A,B) → P → B → Tree(A,B) →
     let A,B such that t : Tree(A,B) in
     let P such that _ : P in
     (t : ∀P.T(A,B,P) → U(A,B,P) → T(A,B,P) → Tree(A,B) → P)
-      (fun sl b sr r tt →
-        tt (fun slt bt srt → g slt (sl r (fun a r tt → f a):U(A,B,P) r slt) b srt (sr r (fun a r tt → f a):U(A,B,P) r srt))
-          (fun at → f at (*impossible*))) : T(A,B,P)
-      (fun a r tt → f a):U(A,B,P)
-      (fun sl b sr r tt →
-        tt (fun slt bt srt → g slt (sl r (fun a r tt → f a):U(A,B,P) r slt) b srt (sr r (fun a r tt → f a):U(A,B,P) r srt))
-           (fun at → f at (*impossible*))) : T(A,B,P)
+      (fun sl b sr r tt → tt (fun slt bt srt → g slt (sl r (fun a r tt →
+        f a : U(A,B,P)) r slt) b srt (sr r (fun a r tt → f a : U(A,B,P)) r srt))
+        (fun at → f at (*impossible*)) : T(A,B,P))
+      (fun a r tt → f a : U(A,B,P))
+      (fun sl b sr r tt → tt (fun slt bt srt → g slt (sl r (fun a r tt →
+        f a : U(A,B,P)) r slt) b srt (sr r (fun a r tt → f a : U(A,B,P)) r srt))
+        (fun at → f at (*impossible*)) : T(A,B,P))
       t
 
 

@@ -78,6 +78,11 @@ let pfixY (id, ko) _loc n t =
   | None   -> in_pos _loc (PFixY(id, abs n, t))
   | Some k -> in_pos _loc (PCoer(in_pos _loc (PFixY(id, abs n, t)), k))
 
+let pcoer _loc t ko =
+  match ko with
+  | None   -> t
+  | Some k -> in_pos _loc (PCoer(t,k))
+
 let rec padd _loc o n =
   if n <= 0 then o else in_pos _loc (PSucc(padd _loc o (n-1)))
 

@@ -94,9 +94,9 @@ val rec subst : ∀α.∀β.STerm(α) → STy(β) → Nat → Term → List(Term
     | Var n →
       (case cmp p n of
       | H →
-         (case u:Term of
+         (case (u:Term) of
          | Lam(_,t') →
-            (case stack:List(Term) of
+            (case (stack:List(Term)) of
              | [] → u
              | v::stack →
                 (case ty of

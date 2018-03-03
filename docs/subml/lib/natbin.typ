@@ -130,7 +130,7 @@ val rec lor : Bin → Bin → Bin = fun x y →
   let x = normalise x in
   let y = normalise y in
   case x of
-  | End    → End : Bin
+  | End    → (End : Bin)
   | One x  → (case y of
               | End    → One x
               | One y  → One (lor x y)

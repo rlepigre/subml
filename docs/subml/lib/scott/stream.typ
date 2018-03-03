@@ -12,7 +12,7 @@ check GStream([A]) ⊂ Stream([A])
 
 val cons : ∀A.A → Stream(A) → Stream(A) = fun a s →
   let A such that a : A in
-  (triple (pair a s) pi1 pi2) : S_Stream(Pair(A,Stream(A)),A,Stream(A))
+  (triple (pair a s) pi1 pi2 : S_Stream(Pair(A,Stream(A)),A,Stream(A)))
 
 val head : ∀A.Stream(A) → A = fun s → s (λs1 a f.a s1)
 
@@ -25,20 +25,19 @@ type Stream0(P,A) = Triple(Pair(P,T(A,P)),U(A,P),T(A,P))
 val test  : ∀A.∀P.Stream0(P,A) → Stream(A) =
   fun x →
     let A,P such that x : Stream0(P,A) in
-    x:(GStream(A) with S = Pair(P,T(A,P)))
+    (x : GStream(A) with S = Pair(P,T(A,P)))
 
 val coiter : ∀S.∀A.(S → Pair(S,A)) → S → Stream(A) =
   fun f n →
     let A,S such that f : S → Pair(S,A) in
-    (triple (pair n
-            (fun c → triple (pair (pi1 (f (pi1 c))) (pi2 c))
-                       (fun c → pi2 (f (pi1 c))) (pi2 c)):T(A,S))
-         (fun c → pi2 (f (pi1 c))):U(A,S)
-         (fun c → triple (pair (pi1 (f (pi1 c))) (pi2 c))
-                    (fun c → pi2 (f (pi1 c))) (pi2 c)):T(A,S))
-     : Stream0(S,A)
-     : GStream(A) with S = Pair(S,T(A,S))
-
+    (((triple
+      (pair n (fun c → triple (pair (pi1 (f (pi1 c))) (pi2 c))
+                       (fun c → pi2 (f (pi1 c))) (pi2 c):T(A,S)))
+      (fun c → pi2 (f (pi1 c)) : U(A,S))
+      (fun c → triple (pair (pi1 (f (pi1 c))) (pi2 c))
+        (fun c → pi2 (f (pi1 c))) (pi2 c) :T(A,S)))
+     : Stream0(S,A))
+     : GStream(A) with S = Pair(S,T(A,S)))
 
 type G(A,P) = ∀K.((P → K) → (P → F_Stream(A,K)))
 
@@ -52,8 +51,8 @@ val tail'' : ∀P.∀A.G(A,P) → T(A,P) = fun f c →
 val corec : ∀P.∀A.G(A,P) → P → Stream(A) =
   fun f n →
     let A,P such that f : G(A,P) in
-    (triple (pair n (tail'' f)) (head'' f) (tail'' f))
-      : Stream0(P,A) : GStream(A) with S = Pair(P,T(A,P))
+    (((triple (pair n (tail'' f)) (head'' f) (tail'' f))
+      : Stream0(P,A)) : GStream(A) with S = Pair(P,T(A,P)))
 
 val map : ∀A.∀B.(A → B) → Stream(A) → Stream(B) = fun f →
   coiter (fun s → pair (tail s) (f (head s)))

@@ -20,7 +20,7 @@ val iter_nat : ∀P.(Nat → P → (P → P) → P) =
   fun n a f →
     let P such that _ : P in
     let delta : T(P) = fun p x → f (p { z = (fun x → a); s = x } x) in
-    n:Nat' {z = (fun x → a); s = delta} delta
+    (n : Nat') {z = (fun x → a); s = delta} delta
 
 (* Tests *)
 val add : Nat → Nat → Nat = fun n m → iter_nat n m succ
@@ -37,7 +37,7 @@ check Nat ⊂ Nat'
 val rec_nat : ∀P.Nat → P → (Nat → P → P) → P = fun n a f →
   let P such that _ : P in
   let delta : T(P) = fun p x q → f q (p { z = (fun x p → a); s = x } x (pred q)) in
-   n:Nat' { z = (fun x p → a); s = delta} delta n
+  (n : Nat') { z = (fun x p → a); s = delta} delta n
 
 type F_Nat(K) = ∀X.{z : X ; s : K -> X} -> X
 type T(P) = ∀Y.({z : Y → P; s : Y} → Y → P) → Y → P
@@ -51,7 +51,7 @@ val fix_nat : ∀P.(∀K.(K → P) → F_Nat(K) → P) → Nat → P =
      let z' : ∀Y.Y → P = fun r → f (fun x → x) (λx.x.z) in
      let s' : T(P) = (* FIXME: z = r below give an error on f above ??? *)
            fun p r → f (fun s → p { z = z'; s = r } r) (λx.x.s p) in
-     n:Nat' { z = z'; s = s'} s'
+     (n : Nat') { z = z'; s = s'} s'
 
 val 1 = succ 0
 

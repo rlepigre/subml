@@ -24,7 +24,7 @@ val rec succ  : ∀α.NS(α) → NS(α+1) = fun n →
 val rec idt2 : ∀α.NS(α) → NS(α) = fun n →
   case n of
   | Z    → Z
-  | S(p) → let β such that p : NS(β) in S(idt2:(NS(β) → NS(β)) p)
+  | S(p) → let β such that p : NS(β) in S((idt2 : NS(β) → NS(β)) p)
 
 val idt3 : ∀α.F(NS(α)) → F(NS(α)) = idt
 val idt4 : ∀α.NS(α+1) → NS(α+1) = idt
@@ -67,7 +67,7 @@ val rec suc2 : ∀α.NS(α) → NS(α+2) = fun n →
   | Z  → S (S Z)
   | S n →
     let α such that n : NS(α) in
-    S (suc2 n) : NS(α+2)
+    S (suc2 n : NS(α+2))
 
 ?val rec[1] suc2 : ∀α.NS(α) → NS(α+2) = fun n →
   case n of
@@ -84,14 +84,14 @@ val rec suc3 : ∀α.NS(α) → NS(α+3) = fun n →
   | Z  → S (S (S Z))
   | S n →
     let α such that n : NS(α) in
-    S (suc3 n) : NS(α+3)
+    S (suc3 n : NS(α+3))
 
 val rec suc4 : ∀α.NS(α) → NS(α+4) = fun n →
   case n of
   | Z  → S (S (S (S Z)))
   | S n →
     let α such that n : NS(α) in
-    S (suc4 n) : NS(α+4)
+    S (suc4 n : NS(α+4))
 
 type G(X) = {} -> [ S of X]
 
@@ -179,10 +179,10 @@ val rec partition : ∀A B.(A → Bool) → ∀α.L(α,A) → L(α,A) × L(α,A)
 
 type L(A) = μX.[Nil | Cons of { hd : A; tl : X}]
 
-val map' = map : ∀A B.(A → B) → L(A) → L(B)
+val map' : ∀A B.(A → B) → L(A) → L(B) = map
 
-val filter' = filter : ∀A.(A → Bool) → L(A) → L(A)
-val partition' = partition : ∀A.(A → Bool) → L(A) → L(A) × L(A)
+val filter' : ∀A.(A → Bool) → L(A) → L(A) = filter
+val partition' : ∀A.(A → Bool) → L(A) → L(A) × L(A) = partition
 
 type S(α,A) = να X.{} → {car : A; cdr : X}
 
@@ -193,6 +193,6 @@ val cons : ∀A.∀α.A → S(α,A) → S(α+1,A) =
   fun a s _ →  { car = a; cdr = s }
 
 type S(A) = νX.{} → { car : A ; cdr : X }
-val maps' = maps : ∀A B.(A → B) → S(A) → S(B)
+val maps' : ∀A B.(A → B) → S(A) → S(B) = maps
 
-val cons' = cons :∀A.A → S(A) → S(A)
+val cons' : ∀A.A → S(A) → S(A) = cons

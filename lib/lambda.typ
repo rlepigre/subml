@@ -34,11 +34,11 @@ val subst3 : ∀V.(T(V) → T(T(V))) → T(V) → T(V) =
 
 check ∀V.(T(V) → T(V)) ⊂ Term → Term
 
-val argu : Term → Term = (fun t →
-  case t of App(_,t) → t | t → t) : ∀V.(T(V) → T(V))
+val argu : Term → Term =
+  ((fun t → case t of App(_,t) → t | t → t) : ∀V.T(V) → T(V))
 
-val func : Term → Term = (fun t →
-  case t of App(t,_) → t | t → t) : ∀V.(T(V) → T(V))
+val func : Term → Term =
+  ((fun t → case t of App(t,_) → t | t → t) : ∀V.T(V) → T(V))
 
 val rec whnf_step : ∀α.∀V.TS(α,T(V)) → T(V) = fun t →
   case t of

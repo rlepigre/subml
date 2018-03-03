@@ -15,13 +15,9 @@ type VSpace(X) = ∃V.{r:Ring(X); mul:X → V → V; add:V → V → V}
 
 val vprod : ∀X.VSpace(X) → VSpace(X) → VSpace(X) = fun vs1 vs2 →
   let X such that _ : VSpace(X) in
-  {
-  r = vs1.r;
-  mul = (fun x v → (vs1.mul x v.1, vs2.mul x v.2)
-      : vs1.V * vs2.V);
-  add = (fun v1 v2 → (vs1.add v1.1 v2.1, vs2.add v1.2 v2.2)
-      : vs1.V * vs2.V)
-  }
+  { r   = vs1.r
+  ; mul = (fun x v → ((vs1.mul x v.1, vs2.mul x v.2) : vs1.V × vs2.V))
+  ; add = (fun v1 v2 → ((vs1.add v1.1 v2.1, vs2.add v1.2 v2.2) : vs1.V * vs2.V)) }
 
 type Cat = ∃O.∃M.{dom : M → O; cod : M → O; cmp : M → M → M}
 

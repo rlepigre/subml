@@ -94,12 +94,12 @@ val pred : ∀α.(N → O(α+2)) → N → O(α+1) = fun f n → case f (S n) of
         (case y of
         | S y →
           (case y of
-          | S _ → deep (M (L (pred f), f (S (S (S Z))) : N))
-          | _ → Z:N)
-        | _ → Z:N)
-      | _ → Z:N)
-    | _ → Z:N)
-  | _ → Z:N
+          | S _ → deep (M (L (pred f), f (S (S (S Z)) : N)))
+          | _ → (Z:N))
+        | _ → (Z:N))
+      | _ → (Z:N))
+    | _ → (Z:N))
+  | _ → (Z:N)
 
 !val rec[2] deep : ∀α.O(α) → N = fun o →
   case o of
@@ -111,12 +111,12 @@ val pred : ∀α.(N → O(α+2)) → N → O(α+1) = fun f n → case f (S n) of
         (case y of
         | S y →
           (case y of
-          | S _ → deep (M (L (pred f), f (S (S (S Z))) : N))
-          | _ → Z:N)
-        | _ → Z:N)
-      | _ → Z:N)
-    | _ → Z:N)
-  | _ → Z:N
+          | S _ → deep (M (L (pred f), f (S (S (S Z)) : N)))
+          | _ → (Z:N))
+        | _ → (Z:N))
+      | _ → (Z:N))
+    | _ → (Z:N))
+  | _ → (Z:N)
 
 !val rec[3] deep : ∀α.O(α) → N = fun o →
   case o of
@@ -128,12 +128,12 @@ val pred : ∀α.(N → O(α+2)) → N → O(α+1) = fun f n → case f (S n) of
         (case y of
         | S y →
           (case y of
-          | S _ → deep (M (L (pred f), f (S (S (S Z))) : N))
-          | _ → Z:N)
-        | _ → Z:N)
-      | _ → Z:N)
-    | _ → Z:N)
-  | _ → Z:N
+          | S _ → deep (M (L (pred f), f (S (S (S Z)) : N)))
+          | _ → (Z:N))
+        | _ → (Z:N))
+      | _ → (Z:N))
+    | _ → (Z:N))
+  | _ → (Z:N)
 
 (* Examples from Abel2007 *)
 type NS(α) = μα X.[Z | S of X]
@@ -192,7 +192,7 @@ val rec h : ∀α.∀β.NS(α) → Hungry2(α,NS(α)) =
     let α such that n : NS(α) in
     let β such that _ : Hungry2(β,NS(α)) in
     let hp : Hungry2(β,NS(α)) = h (pred n) in (* take β < α if we do not annotate *)
-    (s hp) : Hungry2(β,NS(α+1)) : Hungry2(β,NS(α))
+    (((s hp) : Hungry2(β,NS(α+1))) : Hungry2(β,NS(α)))
 
 !val rec[1] tr : Hungry2(∞,N) → ∀X.X =
    fun h → tr (p (h (S Z)))

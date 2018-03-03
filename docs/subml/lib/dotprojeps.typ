@@ -19,13 +19,11 @@ type VSpace(X) = ∃V.FVS(X,V)
 
 val vprod : ∀X.VSpace(X) → VSpace(X) → VSpace(X) = fun vs1 vs2 →
   let X such that _ : VSpace(X) in
-  {
-  r = vs1.r;
-  mul = (fun x v → (vs1.mul x v.1, vs2.mul x v.2)
-      : (εV(vs1∈FVS(X,V))  * εV(vs2∈FVS(X,V))));
-  add = (fun v1 v2 → (vs1.add v1.1 v2.1, vs2.add v1.2 v2.2)
-      : (εV(vs1∈FVS(X,V))  * εV(vs2∈FVS(X,V))));
-  }
+  { r   = vs1.r
+  ; mul = (fun x v → ((vs1.mul x v.1, vs2.mul x v.2)
+                     : (εV(vs1∈FVS(X,V)) × εV(vs2∈FVS(X,V)))))
+  ; add = (fun v1 v2 → ((vs1.add v1.1 v2.1, vs2.add v1.2 v2.2)
+                       : (εV(vs1∈FVS(X,V)) × εV(vs2∈FVS(X,V))))) }
 
 type FC(O,M) = { dom : M → O; cod : M → O; cmp : M → M → M }
 type Cat = ∃M.∃O.FC(O,M)
