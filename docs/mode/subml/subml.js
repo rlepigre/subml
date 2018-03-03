@@ -16,22 +16,21 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
   }
 
   var smallRE = /[a-z_]/;
-  var largeRE = /[A-Z]|\u03B1|\u03B2|\u03B3|\u03B4/;
-  var idRE = /[a-z_'A-Z0-9]/;
-  var whiteCharRE = /[ \t\v\f]/; // newlines are handled in tokenizer
-  var symbolRE = /[-!#$%&*+.\/<=>?@\\^|~:]/;
+  var largeRE = /[A-Z]/;
+  var greekRE = /\u03B1|\u03B2|\u03B3|\u03B4/;
+  var idRE    = /[a-z_'A-Z0-9]/;
+  var intRE   = /[0-9]/;
+  var whiteRE = /[ \t\v\f]/; // newlines are handled in tokenizer
 
   function normal(source, setState) {
-    if (source.eatWhile(whiteCharRE)) {
+    if (source.eatWhile(whiteRE)) {
       return null;
     }
 
     var ch = source.next();
+
     if (ch == '(' && source.eat('*')) {
       return switchState(source, setState, ncomment("comment", 1));
-    }
-
-    if (ch == '-' && source.eat('>')) {
     }
 
     if (ch == '"') {
@@ -43,13 +42,17 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
       return "variable-2";
     }
 
-    if (smallRE.test(ch)) {
-      source.eatWhile(idRE);
-      return "variable";
+    if (greekRE.test(ch)){
+      source.eatWhile(whiteRE);
+      if (source.eat('+')) {
+        source.eatWhile(whiteRE);
+        source.eatWhile(intRE);
+      }
+      return "variable-2";
     }
 
-    if (symbolRE.test(ch)) {
-      source.eatWhile(symbolRE);
+    if (smallRE.test(ch)) {
+      source.eatWhile(idRE);
       return "variable";
     }
 
