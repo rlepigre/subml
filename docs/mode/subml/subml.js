@@ -16,7 +16,7 @@ CodeMirror.defineMode("subml", function(_config, modeConfig) {
   }
 
   var smallRE = /[a-z_]/;
-  var largeRE = /[A-Z]/;
+  var largeRE = /[A-Z]|\u03B1|\u03B2|\u03B3|\u03B4/;
   var idRE = /[a-z_'A-Z0-9]/;
   var whiteCharRE = /[ \t\v\f]/; // newlines are handled in tokenizer
   var symbolRE = /[-!#$%&*+.\/<=>?@\\^|~:]/;
