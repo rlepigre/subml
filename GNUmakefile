@@ -107,8 +107,8 @@ www: docs/subml.js docs/examples.html _build/src/subml.docdir/index.html
 	@cp -r _build/src/subml.docdir/* docs/ocamldoc
 	@cp tutorial.typ docs/subml
 
-docs/examples.html: all_libs.typ genex.ml
-	@ocaml genex.ml $< > $@
+docs/examples.html: genex.ml all_libs.typ
+	@ocaml $^ > $@
 
 docs/subml.js: _build/src/submljs.byte
 	@echo "[JSO] $@"
