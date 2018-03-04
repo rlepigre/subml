@@ -107,7 +107,7 @@ www: docs/subml.js docs/examples.html _build/src/subml.docdir/index.html
 	@cp -r _build/src/subml.docdir/* docs/ocamldoc
 	@cp tutorial.typ docs/subml
 
-docs/examples.html: genex.ml all_libs.typ
+docs/examples.html: gen_list.ml all_libs.typ
 	@ocaml $^ > $@
 
 docs/subml.js: _build/src/submljs.byte
