@@ -87,11 +87,14 @@ include "lambda.typ"
 include "simply.typ"
 (* red-black trees as a subtype of binary trees *)
 include "tree.typ"
+(* illustration of the dot-projection for abstract types *)
+include "dotproj.typ"
+(* other formulation of the dot projection using epsilons *)
+include "dotprojeps.typ"
+(* addition function with permuted arguments (interesting for termination) *)
+include "permute.typ"
 
 (* various tests with sized type and termination *)
 include "size.typ"
-include "dotproj.typ"
-include "dotprojeps.typ"
 include "polyrec.typ"
-include "permutte.typ"
 include "failterm.typ"
