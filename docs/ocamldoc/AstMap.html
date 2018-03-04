@@ -43,16 +43,17 @@
 </div>
 <h1>Module <a href="type_AstMap.html">AstMap</a></h1>
 
-<pre><span id="MODULEAstMap"><span class="keyword">module</span> AstMap</span>: <code class="code">sig</code> <a href="AstMap.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<h4 id="3_Mappingofkindandordinals">                     Mapping of kind and ordinals                    </h4></div>
+<pre><span class="keyword">module</span> AstMap: <code class="code">sig</code> <a href="AstMap.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Mappingofkindandordinals">                     Mapping of kind and ordinals                    </h3><br>
 </div>
 <hr width="100%">
-<p>Mapping functions allows to apply some treatment to some constructors
-    and use the default treatment to recurse for the other constructor.</p>
+<br>
+Mapping functions allows to apply some treatment to some constructors
+    and use the default treatment to recurse for the other constructor.
+<p>
 
-<p>The output of Mapping function are bindlib's boxes, so you can
-    use Mapping functions to bind some variables in a kind or ordinal</p>
+    The output of Mapping function are bindlib's boxes, so you can
+    use Mapping functions to bind some variables in a kind or ordinal<br>
 
 <pre><span id="TYPEself_kind"><span class="keyword">type</span> <code class="type"></code>self_kind</span> = <code class="type">?occ:<a href="Ast.html#TYPEoccur">Ast.occur</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkbox">Ast.kbox</a></code> </pre>
 
@@ -62,8 +63,7 @@
 
 <pre><span id="TYPEmap_kind"><span class="keyword">type</span> <code class="type"></code>map_kind</span> = <code class="type"><a href="Ast.html#TYPEoccur">Ast.occur</a> -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -><br>       <a href="AstMap.html#TYPEself_kind">self_kind</a> -> <a href="AstMap.html#TYPEself_ord">self_ord</a> -> (<a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkbox">Ast.kbox</a>) -> <a href="Ast.html#TYPEkbox">Ast.kbox</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p><code class="code">map_kind</code> and <code class="code">map_ord</code> are the type of the function you need to write
+<code class="code">map_kind</code> and <code class="code">map_ord</code> are the type of the function you need to write
     to define your own ast mapper. They receive in argument
     1°) the variance of the current kind/ordinal
     2°) the kind/ordinal itself
@@ -72,8 +72,7 @@
     4°) the function of type <code class="code">self_ord</code> corresponding to a recursive call
         for ordinals
     5°) the function for to call to get the defaut behavious (which copy the
-        Ast.</p>
-</div>
+        Ast.<br>
 </div>
 
 
@@ -81,16 +80,12 @@
 
 
 <pre><span id="VALmap_kind"><span class="keyword">val</span> map_kind</span> : <code class="type">?fkind:<a href="AstMap.html#TYPEmap_kind">map_kind</a> -> ?ford:<a href="AstMap.html#TYPEmap_ord">map_ord</a> -> <a href="AstMap.html#TYPEself_kind">self_kind</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>Mapping for kinds. The default value of the argument would just
-    copy the kind ast.</p>
-</div>
+Mapping for kinds. The default value of the argument would just
+    copy the kind ast.<br>
 </div>
 
 <pre><span id="VALmap_ordi"><span class="keyword">val</span> map_ordi</span> : <code class="type">?fkind:<a href="AstMap.html#TYPEmap_kind">map_kind</a> -> ?ford:<a href="AstMap.html#TYPEmap_ord">map_ord</a> -> <a href="AstMap.html#TYPEself_ord">self_ord</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>Mapping for ordinals. The default value of the argument would just
-    copy the ordinal ast.</p>
-</div>
+Mapping for ordinals. The default value of the argument would just
+    copy the ordinal ast.<br>
 </div>
 </body></html>

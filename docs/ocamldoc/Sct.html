@@ -45,13 +45,11 @@
 </div>
 <h1>Module <a href="type_Sct.html">Sct</a></h1>
 
-<pre><span id="MODULESct"><span class="keyword">module</span> Sct</span>: <code class="code">sig</code> <a href="Sct.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<p>Size change principle. This module implements a decision procedure based
+<pre><span class="keyword">module</span> Sct: <code class="code">sig</code> <a href="Sct.html">..</a> <code class="code">end</code></pre><div class="info module top">
+Size change principle. This module implements a decision procedure based
     on the work of Chin Soon Lee, Neil D. Jones and Amir M. Ben-Amram (POPL
     2001). It is used by PML to check that typing and subtyping proofs are
-    well-founded.</p>
-</div>
+    well-founded.<br>
 </div>
 <hr width="100%">
 
@@ -79,17 +77,13 @@
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Representation of the set with three elements: -1, 0 and ∞.</p>
-</div>
+Representation of the set with three elements: -1, 0 and ∞.<br>
 </div>
 
 
 <pre><span id="VALcmp_to_string"><span class="keyword">val</span> cmp_to_string</span> : <code class="type"><a href="Sct.html#TYPEcmp">cmp</a> -> string</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">cmp_to_string c</code> returns a string representation of the given <code class="code">cmp</code>
-    element on one character.</p>
-</div>
+<code class="code">cmp_to_string c</code> returns a string representation of the given <code class="code">cmp</code>
+    element on one character.<br>
 </div>
 
 <pre><code><span id="TYPEmatrix"><span class="keyword">type</span> <code class="type"></code>matrix</span> = {</code></pre><table class="typetable">
@@ -117,30 +111,22 @@
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>Size change matrix.</p>
-</div>
+Size change matrix.<br>
 </div>
 
 
 <pre><span id="TYPEindex"><span class="keyword">type</span> <code class="type"></code>index</span> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Abstract type used to refer to function symbols.</p>
-</div>
+Abstract type used to refer to function symbols.<br>
 </div>
 
 
 <pre><span id="VALint_of_index"><span class="keyword">val</span> int_of_index</span> : <code class="type"><a href="Sct.html#TYPEindex">index</a> -> int</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">int_of_index i</code> returns an <code class="code">int</code> corresponding to the index <code class="code">i</code>.</p>
-</div>
+<code class="code">int_of_index i</code> returns an <code class="code">int</code> corresponding to the index <code class="code">i</code>.<br>
 </div>
 
 <pre><span id="VALroot"><span class="keyword">val</span> root</span> : <code class="type"><a href="Sct.html#TYPEindex">index</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>Special index denoting the entry point.</p>
-</div>
+Special index denoting the entry point.<br>
 </div>
 
 <pre><code><span id="TYPEcall"><span class="keyword">type</span> <code class="type"></code>call</span> = {</code></pre><table class="typetable">
@@ -150,9 +136,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTcall.callee">callee</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEindex">index</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Key of the function symbol being called.</p>
-</div>
+Key of the function symbol being called.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -162,9 +146,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTcall.caller">caller</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEindex">index</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Key of the calling function symbol.</p>
-</div>
+Key of the calling function symbol.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -174,9 +156,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTcall.matrix">matrix</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEmatrix">matrix</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Size change matrix of the call.</p>
-</div>
+Size change matrix of the call.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -186,17 +166,14 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTcall.is_rec">is_rec</span>&nbsp;: <code class="type">bool</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Indicates if this is a recursive call.</p>
-</div>
+Indicates if this is a recursive call.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>A call <code class="code">{callee; caller; matrix; is_rec}</code> represents a call to the
+A call <code class="code">{callee; caller; matrix; is_rec}</code> represents a call to the
     function symbol with key <code class="code">callee</code> by the function symbole with the
     key <code class="code">caller</code>. The <code class="code">matrix</code> gives the relation between the parameters
     of the caller and the callee. The coefficient <code class="code">matrix.(a).(b)</code> give
@@ -206,16 +183,13 @@
     lower in the tree. It is <code class="code">false</code> for every call to subtyping in the
     typing algorithm and the same goes for rules introducing a new
     induction hypothesis. Every other call refers to a previously
-    introduced induction hypothesis and its boolean is <code class="code">true</code>.</p>
-</div>
+    introduced induction hypothesis and its boolean is <code class="code">true</code>.<br>
 </div>
 
 
 <pre><span id="TYPEcall_graph"><span class="keyword">type</span> <code class="type"></code>call_graph</span> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>The representation of the call graph.</p>
-</div>
+The representation of the call graph.<br>
 </div>
 
 
@@ -223,70 +197,50 @@
 
 
 <pre><span id="VALcreate"><span class="keyword">val</span> create</span> : <code class="type">unit -> <a href="Sct.html#TYPEt">t</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">create ()</code> returns a new, empty call graph.</p>
-</div>
+<code class="code">create ()</code> returns a new, empty call graph.<br>
 </div>
 
 <pre><span id="VALcopy"><span class="keyword">val</span> copy</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> <a href="Sct.html#TYPEt">t</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">copy g</code> returns a copy of the call graph <code class="code">g</code>.</p>
-</div>
+<code class="code">copy g</code> returns a copy of the call graph <code class="code">g</code>.<br>
 </div>
 
 <pre><span id="VALis_empty"><span class="keyword">val</span> is_empty</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">is_empty g</code> indicates whether the call graph <code class="code">g</code> contains calls.</p>
-</div>
+<code class="code">is_empty g</code> indicates whether the call graph <code class="code">g</code> contains calls.<br>
 </div>
 
 <pre><span id="VALadd_call"><span class="keyword">val</span> add_call</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> <a href="Sct.html#TYPEcall">call</a> -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">add_call g c</code> adds the call <code class="code">c</code> to the call graph <code class="code">g</code>.</p>
-</div>
+<code class="code">add_call g c</code> adds the call <code class="code">c</code> to the call graph <code class="code">g</code>.<br>
 </div>
 
 <pre><span id="VALcreate_symbol"><span class="keyword">val</span> create_symbol</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> string -> string array -> <a href="Sct.html#TYPEindex">index</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">create_symbol g name args</code> creates a new function symbol with the name
+<code class="code">create_symbol g name args</code> creates a new function symbol with the name
     <code class="code">name</code> and using <code class="code">args</code> as the name of its arguments. Note that the new
     symbol will have the arity <code class="code">Array.length args</code>. The value returned is
-    the <code class="code">index</code>, which can be used in a <code class="code">call</code>.</p>
-</div>
+    the <code class="code">index</code>, which can be used in a <code class="code">call</code>.<br>
 </div>
 
 <pre><span id="VALarity"><span class="keyword">val</span> arity</span> : <code class="type"><a href="Sct.html#TYPEindex">index</a> -> <a href="Sct.html#TYPEt">t</a> -> int</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">arity i g</code> returns the arity of the symbol with index <code class="code">i</code> in the call
-    graph <code class="code">g</code>.</p>
-</div>
+<code class="code">arity i g</code> returns the arity of the symbol with index <code class="code">i</code> in the call
+    graph <code class="code">g</code>.<br>
 </div>
 
 <pre><span id="VALdo_inline"><span class="keyword">val</span> do_inline</span> : <code class="type">bool Pervasives.ref</code></pre><div class="info ">
-<div class="info-desc">
-<p>Flag controling inlining. The default value is <code class="code">true</code>.</p>
-</div>
+Flag controling inlining. The default value is <code class="code">true</code>.<br>
 </div>
 
 <pre><span id="VALinline"><span class="keyword">val</span> inline</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> <a href="Sct.html#TYPEt">t</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">inline g</code> inlines the call graph <code class="code">g</code>, which is useful for printing more
+<code class="code">inline g</code> inlines the call graph <code class="code">g</code>, which is useful for printing more
     consise call graphs, or to store smaller call graphs. Note that if the
     flag <code class="code">do_inline</code> is set of <code class="code">false</code>, this function returns an unchanged
-    call graph.</p>
-</div>
+    call graph.<br>
 </div>
 
 <pre><span id="VALsct"><span class="keyword">val</span> sct</span> : <code class="type"><a href="Sct.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">sct g</code> runs the decision procedure on the call graph <code class="code">g</code>.</p>
-</div>
+<code class="code">sct g</code> runs the decision procedure on the call graph <code class="code">g</code>.<br>
 </div>
 
 <pre><span id="VALlatex_print_calls"><span class="keyword">val</span> latex_print_calls</span> : <code class="type">Format.formatter -> <a href="Sct.html#TYPEt">t</a> -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">latex_print_calls ff g</code> prints the call graph <code class="code">g</code> using a LaTeX format
-    on the <code class="code">Format.formatter</code> <code class="code">ff</code>.</p>
-</div>
+<code class="code">latex_print_calls ff g</code> prints the call graph <code class="code">g</code> using a LaTeX format
+    on the <code class="code">Format.formatter</code> <code class="code">ff</code>.<br>
 </div>
 </body></html>

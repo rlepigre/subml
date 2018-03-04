@@ -45,12 +45,10 @@
 </div>
 <h1>Module <a href="type_Pos.html">Pos</a></h1>
 
-<pre><span id="MODULEPos"><span class="keyword">module</span> Pos</span>: <code class="code">sig</code> <a href="Pos.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<p>Source code position management. This module can be used to map the
+<pre><span class="keyword">module</span> Pos: <code class="code">sig</code> <a href="Pos.html">..</a> <code class="code">end</code></pre><div class="info module top">
+Source code position management. This module can be used to map the
     elements of an abstract syntax tree to sequences of characters in a
-    source file.</p>
-</div>
+    source file.<br>
 </div>
 <hr width="100%">
 
@@ -61,9 +59,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTpos.fname">fname</span>&nbsp;: <code class="type">string option</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>File name associated to the position.</p>
-</div>
+File name associated to the position.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -73,9 +69,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTpos.start_line">start_line</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Line number of the starting point.</p>
-</div>
+Line number of the starting point.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -85,9 +79,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTpos.start_col">start_col</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Column number (utf8) of the starting point.</p>
-</div>
+Column number (utf8) of the starting point.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -97,9 +89,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTpos.end_line">end_line</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Line number of the ending point.</p>
-</div>
+Line number of the ending point.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -109,27 +99,21 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTpos.end_col">end_col</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Column number (utf8) of the ending point.</p>
-</div>
+Column number (utf8) of the ending point.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>Type of a position corresponding to a continuous range of characters in
-    a (utf8 encoded) source file.</p>
-</div>
+Type of a position corresponding to a continuous range of characters in
+    a (utf8 encoded) source file.<br>
 </div>
 
 
 <pre><span id="TYPEpopt"><span class="keyword">type</span> <code class="type"></code>popt</span> = <code class="type"><a href="Pos.html#TYPEpos">pos</a> option</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Convenient short name for an optional position.</p>
-</div>
+Convenient short name for an optional position.<br>
 </div>
 
 
@@ -140,9 +124,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTloc.elt">elt</span>&nbsp;: <code class="type">'a</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>The element that is being localised.</p>
-</div>
+The element that is being localised.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -152,86 +134,62 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTloc.pos">pos</span>&nbsp;: <code class="type"><a href="Pos.html#TYPEpopt">popt</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Position of the element in the source code.</p>
-</div>
+Position of the element in the source code.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>Type constructor extending a type (e.g. an element of an abstract syntax
-    tree) with a source code position.</p>
-</div>
+Type constructor extending a type (e.g. an element of an abstract syntax
+    tree) with a source code position.<br>
 </div>
 
 
 <pre><span id="TYPEstrloc"><span class="keyword">type</span> <code class="type"></code>strloc</span> = <code class="type">string <a href="Pos.html#TYPEloc">loc</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Localised string type (widely used).</p>
-</div>
+Localised string type (widely used).<br>
 </div>
 
 
 <pre><span id="VALmake"><span class="keyword">val</span> make</span> : <code class="type"><a href="Pos.html#TYPEpopt">popt</a> -> 'a -> 'a <a href="Pos.html#TYPEloc">loc</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">make pos elt</code> associates the position <code class="code">pos</code> to <code class="code">elt</code>.</p>
-</div>
+<code class="code">make pos elt</code> associates the position <code class="code">pos</code> to <code class="code">elt</code>.<br>
 </div>
 
 <pre><span id="VALin_pos"><span class="keyword">val</span> in_pos</span> : <code class="type"><a href="Pos.html#TYPEpos">pos</a> -> 'a -> 'a <a href="Pos.html#TYPEloc">loc</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">in_pos pos elt</code> associates the position <code class="code">pos</code> to <code class="code">elt</code>.</p>
-</div>
+<code class="code">in_pos pos elt</code> associates the position <code class="code">pos</code> to <code class="code">elt</code>.<br>
 </div>
 
 <pre><span id="VALnone"><span class="keyword">val</span> none</span> : <code class="type">'a -> 'a <a href="Pos.html#TYPEloc">loc</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">none elt</code> wraps <code class="code">elt</code> in a localisation structure with no specified
-    source position.</p>
-</div>
+<code class="code">none elt</code> wraps <code class="code">elt</code> in a localisation structure with no specified
+    source position.<br>
 </div>
 
 <pre><span id="VALmerge"><span class="keyword">val</span> merge</span> : <code class="type"><a href="Pos.html#TYPEpos">pos</a> -> <a href="Pos.html#TYPEpos">pos</a> -> <a href="Pos.html#TYPEpos">pos</a></code></pre>
 <pre><span id="VALunion"><span class="keyword">val</span> union</span> : <code class="type"><a href="Pos.html#TYPEpopt">popt</a> -> <a href="Pos.html#TYPEpopt">popt</a> -> <a href="Pos.html#TYPEpopt">popt</a></code></pre>
 <pre><span id="VALlocate"><span class="keyword">val</span> locate</span> : <code class="type">Input.buffer -> int -> Input.buffer -> int -> <a href="Pos.html#TYPEpos">pos</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">locate buf1 pos1 buf2 pos2</code> builds a position structure given two
+<code class="code">locate buf1 pos1 buf2 pos2</code> builds a position structure given two
     DeCaP input buffers. This function can be used by DeCaP to generate
-    the position of elements during parsing.</p>
-</div>
-<ul class="info-attributes">
-<li><b>See also</b> <a href="http://lama.univ-savoie.fr/decap/">DeCap</a></li>
-</ul>
+    the position of elements during parsing.<br>
+<b>See also</b> <a href="http://lama.univ-savoie.fr/decap/">DeCap</a><br>
 </div>
 
 <pre><span id="VALpos_to_string"><span class="keyword">val</span> pos_to_string</span> : <code class="type"><a href="Pos.html#TYPEpos">pos</a> -> string</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">pos_to_string pos</code> transforms the position <code class="code">pos</code> into a readable
-    format.</p>
-</div>
+<code class="code">pos_to_string pos</code> transforms the position <code class="code">pos</code> into a readable
+    format.<br>
 </div>
 
 <pre><span id="VALprint_pos"><span class="keyword">val</span> print_pos</span> : <code class="type">Pervasives.out_channel -> <a href="Pos.html#TYPEpos">pos</a> -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">print_pos oc pos</code> prints the position <code class="code">pos</code> to the channel <code class="code">oc</code>.</p>
-</div>
+<code class="code">print_pos oc pos</code> prints the position <code class="code">pos</code> to the channel <code class="code">oc</code>.<br>
 </div>
 
 <pre><span id="VALshort_pos_to_string"><span class="keyword">val</span> short_pos_to_string</span> : <code class="type"><a href="Pos.html#TYPEpos">pos</a> -> string</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">short_pos_to_string pos</code> is similar to <code class="code">pos_to_string pos</code> but uses
-    a shorter format.</p>
-</div>
+<code class="code">short_pos_to_string pos</code> is similar to <code class="code">pos_to_string pos</code> but uses
+    a shorter format.<br>
 </div>
 
 <pre><span id="VALprint_short_pos"><span class="keyword">val</span> print_short_pos</span> : <code class="type">Pervasives.out_channel -> <a href="Pos.html#TYPEpos">pos</a> -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">print_short_pos oc pos</code> prints the position <code class="code">pos</code> to the channel <code class="code">oc</code>
-    using a shorter format that <code class="code">print_pos oc pos</code>.</p>
-</div>
+<code class="code">print_short_pos oc pos</code> prints the position <code class="code">pos</code> to the channel <code class="code">oc</code>
+    using a shorter format that <code class="code">print_pos oc pos</code>.<br>
 </div>
 </body></html>

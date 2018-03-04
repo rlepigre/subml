@@ -52,49 +52,47 @@
 </div>
 <h1>Module <a href="type_Compare.html">Compare</a></h1>
 
-<pre><span id="MODULECompare"><span class="keyword">module</span> Compare</span>: <code class="code">sig</code> <a href="Compare.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<h4 id="3_Comparisonontypestermsandordis">          Comparison on types, terms and ordis                    </h4></div>
+<pre><span class="keyword">module</span> Compare: <code class="code">sig</code> <a href="Compare.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Comparisonontypestermsandordis">          Comparison on types, terms and ordis                    </h3><br>
 </div>
 <hr width="100%">
-<h3 id="2_Generalfunction">                     General function                                </h3>
+<br>
+<h2 id="2_Generalfunction">                     General function                                </h2><br>
+
 <pre><span id="VALeq_assoc"><span class="keyword">val</span> eq_assoc</span> : <code class="type">('b -> 'b -> bool) -> ('a * 'b) list -> ('a * 'b) list -> bool</code></pre>
 <pre><span id="VALeq_option"><span class="keyword">val</span> eq_option</span> : <code class="type">('a -> 'a -> bool) -> 'a option -> 'a option -> bool</code></pre>
-<pre><span id="VALeq_strict"><span class="keyword">val</span> eq_strict</span> : <code class="type">bool Pervasives.ref</code></pre><p>this boolean control the fact that an equality is strict:
-    i.e. it can not instanciate unification variables</p>
+<pre><span id="VALeq_strict"><span class="keyword">val</span> eq_strict</span> : <code class="type">bool Pervasives.ref</code></pre><br>
+this boolean control the fact that an equality is strict:
+    i.e. it can not instanciate unification variables<br>
 
 <pre><span id="VALstrict"><span class="keyword">val</span> strict</span> : <code class="type">('a -> bool) -> 'a -> bool</code></pre><div class="info ">
-<div class="info-desc">
-<p>make a function strict by changing and restoring <code class="code">eq_strict</code></p>
-</div>
+make a function strict by changing and restoring <code class="code">eq_strict</code><br>
 </div>
 
 <pre><span id="VALconstant_mbind"><span class="keyword">val</span> constant_mbind</span> : <code class="type">int -> 'a -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, 'a) Bindlib.mbinder</code></pre>
 <pre><span id="VALmbind_assoc"><span class="keyword">val</span> mbind_assoc</span> : <code class="type">(('a * 'b Bindlib.bindbox) list -> 'c Bindlib.bindbox) -><br>       int -><br>       ('a * (<a href="Ast.html#TYPEordi">Ast.ordi</a>, 'b) Bindlib.mbinder) list -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, 'c) Bindlib.mbinder</code></pre>
 <pre><span id="VALset_kuvar"><span class="keyword">val</span> set_kuvar</span> : <code class="type">(<a href="Ast.html#TYPEkind">Ast.kind</a>, 'a) <a href="Ast.html#TYPEuvar">Ast.uvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p>function to set type variables (a more complex
-    function <code class="code">safe_set_kuvar</code> exists)</p>
-</div>
+function to set type variables (a more complex
+    function <code class="code">safe_set_kuvar</code> exists)<br>
 </div>
 
 <pre><span id="VALset_ouvar"><span class="keyword">val</span> set_ouvar</span> : <code class="type">?msg:string -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, 'a) <a href="Ast.html#TYPEuvar">Ast.uvar</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p>function to set ordi variables</p>
+function to set ordi variables<br>
 </div>
-</div>
-<p>forward references to function binding ordis in kinds and ordinals</p>
+<br>
+forward references to function binding ordis in kinds and ordinals<br>
 
 <pre><span id="VALfbind_ordis"><span class="keyword">val</span> fbind_ordis</span> : <code class="type">(<a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a>) Pervasives.ref</code></pre><div class="info ">
-<div class="info-desc">
-<p>TODO: reorder the definition to minimize mutual recursion</p>
-</div>
+TODO: reorder the definition to minimize mutual recursion<br>
 </div>
 
-<pre><span id="VALfobind_ordis"><span class="keyword">val</span> fobind_ordis</span> : <code class="type">(<a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a>) Pervasives.ref</code></pre><h3 id="2_Ordinalcomparisons">                    Ordinal comparisons                              </h3>
+<pre><span id="VALfobind_ordis"><span class="keyword">val</span> fobind_ordis</span> : <code class="type">(<a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a>) Pervasives.ref</code></pre><br>
+<h2 id="2_Ordinalcomparisons">                    Ordinal comparisons                              </h2><br>
+
 <pre><span id="VALeq_ordis"><span class="keyword">val</span> eq_ordis</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre>
 <pre><span id="VALeq_obinder"><span class="keyword">val</span> eq_obinder</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEokbinder">Ast.okbinder</a> -> <a href="Ast.html#TYPEokbinder">Ast.okbinder</a> -> bool</code></pre>
-<pre><span id="VALoptpr"><span class="keyword">val</span> optpr</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> option -> unit</code></pre><p>try to set OUVar(p,os) with o. Return true in case of success.</p>
+<pre><span id="VALoptpr"><span class="keyword">val</span> optpr</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> option -> unit</code></pre><br>
+try to set OUVar(p,os) with o. Return true in case of success.<br>
 
 <pre><span id="VALsafe_set_ouvar"><span class="keyword">val</span> safe_set_ouvar</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEouvar">Ast.ouvar</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
 <pre><span id="VALis_positive"><span class="keyword">val</span> is_positive</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
@@ -105,13 +103,19 @@
 <pre><span id="VALleqi_ordi"><span class="keyword">val</span> leqi_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> int -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
 <pre><span id="VALleq_ordi"><span class="keyword">val</span> leq_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
 <pre><span id="VALless_ordi"><span class="keyword">val</span> less_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
-<pre><span id="VALless_opt_ordi"><span class="keyword">val</span> less_opt_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option * <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><h3 id="2_Equalityonkinds">                    Equality on kinds                                </h3>
+<pre><span id="VALless_opt_ordi"><span class="keyword">val</span> less_opt_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option * <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><br>
+<h2 id="2_Equalityonkinds">                    Equality on kinds                                </h2><br>
+
 <pre><span id="VALeq_kind"><span class="keyword">val</span> eq_kind</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre>
 <pre><span id="VALeq_kbinder"><span class="keyword">val</span> eq_kbinder</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -> bool</code></pre>
-<pre><span id="VALeq_tkbinder"><span class="keyword">val</span> eq_tkbinder</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -> bool</code></pre><h3 id="2_Equalityonterms">                    Equality on terms                                </h3>
+<pre><span id="VALeq_tkbinder"><span class="keyword">val</span> eq_tkbinder</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -> bool</code></pre><br>
+<h2 id="2_Equalityonterms">                    Equality on terms                                </h2><br>
+
 <pre><span id="VALeq_term"><span class="keyword">val</span> eq_term</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEterm">Ast.term</a> -> bool</code></pre>
 <pre><span id="VALeq_tbinder"><span class="keyword">val</span> eq_tbinder</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder -> bool</code></pre>
-<pre><span id="VALeq_tcnst"><span class="keyword">val</span> eq_tcnst</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre><h3 id="2_Strictequalities">                    Strict equalities                                </h3>
+<pre><span id="VALeq_tcnst"><span class="keyword">val</span> eq_tcnst</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre><br>
+<h2 id="2_Strictequalities">                    Strict equalities                                </h2><br>
+
 <pre><span id="VALstrict_eq_kind"><span class="keyword">val</span> strict_eq_kind</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre>
 <pre><span id="VALstrict_eq_kbinder"><span class="keyword">val</span> strict_eq_kbinder</span> : <code class="type">(<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -> bool</code></pre>
 <pre><span id="VALstrict_eq_tkbinder"><span class="keyword">val</span> strict_eq_tkbinder</span> : <code class="type">(<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -> bool</code></pre>
@@ -125,7 +129,9 @@
 <pre><span id="VALouvar_kind_occur"><span class="keyword">val</span> ouvar_kind_occur</span> : <code class="type">?safe_ordis:<a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEouvar">Ast.ouvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre>
 <pre><span id="VALkuvar_occur"><span class="keyword">val</span> kuvar_occur</span> : <code class="type">?safe_ordis:<a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEkuvar">Ast.kuvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEoccur">Ast.occur</a></code></pre>
 <pre><span id="VALkuvar_ord_occur"><span class="keyword">val</span> kuvar_ord_occur</span> : <code class="type">?safe_ordis:<a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEkuvar">Ast.kuvar</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
-<pre><span id="VALouvar_mbind_occur"><span class="keyword">val</span> ouvar_mbind_occur</span> : <code class="type"><a href="Ast.html#TYPEouvar">Ast.ouvar</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><h3 id="2_Protectionoftests">                    Protection of tests                              </h3>
+<pre><span id="VALouvar_mbind_occur"><span class="keyword">val</span> ouvar_mbind_occur</span> : <code class="type"><a href="Ast.html#TYPEouvar">Ast.ouvar</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><br>
+<h2 id="2_Protectionoftests">                    Protection of tests                              </h2><br>
+
 <pre><span id="VALeq_kind"><span class="keyword">val</span> eq_kind</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre>
 <pre><span id="VALeq_kbinder"><span class="keyword">val</span> eq_kbinder</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -> bool</code></pre>
 <pre><span id="VALeq_tkbinder"><span class="keyword">val</span> eq_tkbinder</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -><br>       (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder -> bool</code></pre>
@@ -135,7 +141,9 @@
 <pre><span id="VALeq_ord_wit"><span class="keyword">val</span> eq_ord_wit</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEord_wit">Ast.ord_wit</a> -> <a href="Ast.html#TYPEord_wit">Ast.ord_wit</a> -> bool</code></pre>
 <pre><span id="VALleq_ordi"><span class="keyword">val</span> leq_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
 <pre><span id="VALless_ordi"><span class="keyword">val</span> less_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
-<pre><span id="VALless_opt_ordi"><span class="keyword">val</span> less_opt_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option * <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><h3 id="2_Searchingfunctions">                    Searching functions                              </h3>
+<pre><span id="VALless_opt_ordi"><span class="keyword">val</span> less_opt_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option * <a href="Ast.html#TYPEordi">Ast.ordi</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> option -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><br>
+<h2 id="2_Searchingfunctions">                    Searching functions                              </h2><br>
+
 <pre><span id="VALassoc_ordi"><span class="keyword">val</span> assoc_ordi</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a> * 'a) list -> 'a</code></pre>
 <pre><span id="VALassoc_kind"><span class="keyword">val</span> assoc_kind</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEkind">Ast.kind</a> * 'a) list -> 'a</code></pre>
 <pre><span id="VALassoc_term"><span class="keyword">val</span> assoc_term</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -> (<a href="Ast.html#TYPEterm">Ast.term</a> * 'a) list -> 'a</code></pre>
