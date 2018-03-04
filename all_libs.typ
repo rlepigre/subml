@@ -46,7 +46,8 @@ include "size.typ"
 include "hard.typ"
 (* A little code on lazy naturals (interesting for termination) *)
 include "lazy_nat.typ"
-include "flot.typ"
+(* Filter on stream, using μ and ν mixed type *)
+include "stream_filter.typ"
 include "ordinal.typ"
 include "lambda.typ"
 include "simply.typ"
