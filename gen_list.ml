@@ -7,7 +7,8 @@ let is_title : string -> bool = fun str ->
   let str = String.trim str in
   let len = String.length str in
   if len < 6 then false else
-  str.[0] = '(' && str.[1] = '*' && str.[2] = '*' && str.[len-2] = '*' && str.[len-1] = ')'
+  str.[0] = '(' && str.[1] = '*' && str.[2] = '*' && str.[len-2] = '*'
+  && str.[len-1] = ')'
 
 let get_title : string -> string = fun str ->
   let str = String.trim str in
@@ -63,9 +64,10 @@ let parse : string -> (string * info list) list = fun file ->
 let output_html (ss : (string * info list) list) =
   let eLink="enableJavascript.html" in
   let print_link ch (n, l) =
-    Printf.fprintf ch "<a class=\"submlfile\" href=\"%s\" title=\"load %s\" " eLink l;
+    Printf.fprintf ch "<a class=\"submlfile\" href=\"%s\" " eLink;
+    Printf.fprintf ch "title=\"load %s\" " l;
     Printf.fprintf ch "onclick=\"loadsubmlfile('%s'); return false;\"" l;
-    Printf.fprintf ch ">%s</a>\n" l
+    Printf.fprintf ch ">%s</a>" l
   in
   let print_desc ch d =
     match d with
@@ -74,15 +76,17 @@ let output_html (ss : (string * info list) list) =
   in
   let output_sect (n, is) =
     match is with
-    | []  -> ()
-    | [(d,l)] -> Printf.printf "<h3>%s (%a%a)</h3>\n" l print_link (n, l) print_desc d;
-    | _   -> Printf.printf "<h3>%s</h3>\n" n;
-             Printf.printf "<ul>\n";
-             let print_link (d,l) =
-               Printf.printf "  <li>%a%a</li>\n" print_link (n, l) print_desc d
-             in
-             List.iter print_link is;
-             Printf.printf "</ul>\n"
+    | []      -> ()
+    | [(d,l)] ->
+        Printf.printf "<h3>%s (%a)</h3>\n" n print_link (n, l);
+    | _       ->
+        Printf.printf "<h3>%s</h3>\n" n;
+        Printf.printf "<ul>\n";
+        let print_link (d,l) =
+          Printf.printf "  <li>%a%a</li>\n" print_link (n, l) print_desc d
+        in
+        List.iter print_link is;
+        Printf.printf "</ul>\n"
   in
   List.iter output_sect ss
 

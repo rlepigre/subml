@@ -76,10 +76,7 @@ command! -nargs=+ ABBackslash    call s:DefAB(<f-args>)
 command! -nargs=+ ABBackslashEat call s:DefABEat(<f-args>)
 
 " Usual abbreviations.
-
 ab ->      →
-ab *       ×
-ab (-      ∈
 ab \\      λ<c-r>=Eatspace()<cr>
 
 " Abbreviations starting with backslash.

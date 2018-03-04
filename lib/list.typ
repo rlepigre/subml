@@ -31,6 +31,11 @@ val rec nth : ∀A.List(A) → Nat → Option(A) = fun l n →
   | Z   → hd l
   | S x → (case l of [] → None | a::l → nth l x)
 
+val rec iter : ∀A.(A → {}) → List(A) → {} = fun f l →
+  case l of
+  | []   → {}
+  | x::l → f x; iter f l
+
 val rec map : ∀A B.∀α.((A → B) → SList(α,A) → SList(α,B)) = fun f l →
   case l of
   | []   → []
@@ -77,22 +82,32 @@ val rec append : ∀A.(List(A) → List(A) → List(A)) = fun l1 l2 →
 
 val rec concat : ∀A.(List(List(A)) → List(A)) = fun l →
   case l of
-  | []      → []
+  | []   → []
   | x::l → append x (concat l)
 
 val rec fold_left : ∀A B.((B → A → B) → B → List(A) → B) = fun f e l →
   case l of
-  | []      → e
+  | []   → e
   | x::l → fold_left f (f e x) l
 
 val rec assoc : ∀A B.(A → Bool) → List(A × B) → Option(B) = fun f l →
   case l of
-  | []      → None
+  | []   → None
   | x::l → if f x.1 then Some x.2 else (assoc f l)
+
+val rec mem_assoc : ∀A B.(A → Bool) → List(A × B) → Bool = fun f l →
+  case l of
+  | []   → fls
+  | x::l → if f x.1 then tru else mem_assoc f l
+
+val rec filter : ∀A.(A → Bool) → List(A) → List(A) = fun f l →
+  case l of
+  | []   → []
+  | x::l → if f x then x :: filter f l else filter f l
 
 val rec rev_append : ∀A.List(A) → List(A) → List(A) = fun l1 l2 →
   case l1 of
-  | [] → l2
+  | []   → l2
   | x::l → rev_append l (x :: l2)
 
 val rev : ∀A.List(A) → List(A) = fun l → rev_append l []

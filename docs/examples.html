@@ -1,108 +1,58 @@
-<h3>tutorial.typ (<a class="submlfile" href="enableJavascript.html" title="load tutorial.typ" onclick="loadsubmlfile('tutorial.typ'); return false;">tutorial.typ</a>
-)</h3>
+<h3>Tutorial (<a class="submlfile" href="enableJavascript.html" title="load tutorial.typ" onclick="loadsubmlfile('tutorial.typ'); return false;">tutorial.typ</a>)</h3>
 <h3>Standard library</h3>
 <ul>
-  <li><a class="submlfile" href="enableJavascript.html" title="load prelude.typ" onclick="loadsubmlfile('prelude.typ'); return false;">prelude.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load nat.typ" onclick="loadsubmlfile('nat.typ'); return false;">nat.typ</a>
-: Unary natural numbers </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load list.typ" onclick="loadsubmlfile('list.typ'); return false;">list.typ</a>
-: Linked lists </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load applist.typ" onclick="loadsubmlfile('applist.typ'); return false;">applist.typ</a>
-: Lists with an append constructor added (super type of lists) </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load set.typ" onclick="loadsubmlfile('set.typ'); return false;">set.typ</a>
-: Set with unbalanced binary search tree </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load natbin.typ" onclick="loadsubmlfile('natbin.typ'); return false;">natbin.typ</a>
-: Binary representation of natural numbers </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load stream.typ" onclick="loadsubmlfile('stream.typ'); return false;">stream.typ</a>
-: Infinite streams </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load state_stream.typ" onclick="loadsubmlfile('state_stream.typ'); return false;">state_stream.typ</a>
-: Infinite streams with an internal state </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load state_array.typ" onclick="loadsubmlfile('state_array.typ'); return false;">state_array.typ</a>
-: The array state monad </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load tree23.typ" onclick="loadsubmlfile('tree23.typ'); return false;">tree23.typ</a>
-: Map implementation using 2-3 trees </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load int.typ" onclick="loadsubmlfile('int.typ'); return false;">int.typ</a>
-: Unary representation of integers with nat as a subtype and no trailing zero </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load real.typ" onclick="loadsubmlfile('real.typ'); return false;">real.typ</a>
-: Signed digit representation of natural numbers, following Alex Simpson </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load prelude.typ" onclick="loadsubmlfile('prelude.typ'); return false;">prelude.typ</a>: simple, common types and function (booleans, option, ...) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load nat.typ" onclick="loadsubmlfile('nat.typ'); return false;">nat.typ</a>: unary natural numbers </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load list.typ" onclick="loadsubmlfile('list.typ'); return false;">list.typ</a>: usual list type </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load applist.typ" onclick="loadsubmlfile('applist.typ'); return false;">applist.typ</a>: supertype of lists with constant time concatenation </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load assoc.typ" onclick="loadsubmlfile('assoc.typ'); return false;">assoc.typ</a>: naive implementation lists </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load set.typ" onclick="loadsubmlfile('set.typ'); return false;">set.typ</a>: set with unbalanced binary search tree </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load natbin.typ" onclick="loadsubmlfile('natbin.typ'); return false;">natbin.typ</a>: binary representation of natural numbers </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load stream.typ" onclick="loadsubmlfile('stream.typ'); return false;">stream.typ</a>: streams (or infinite lists) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load state_stream.typ" onclick="loadsubmlfile('state_stream.typ'); return false;">state_stream.typ</a>: alternative representation of streams, using an internal state </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load state_array.typ" onclick="loadsubmlfile('state_array.typ'); return false;">state_array.typ</a>: state monad with an association list as state </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load tree23.typ" onclick="loadsubmlfile('tree23.typ'); return false;">tree23.typ</a>: maps implemented using 2-3 trees </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load trie.typ" onclick="loadsubmlfile('trie.typ'); return false;">trie.typ</a>: trie data structure with basic operations </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load int.typ" onclick="loadsubmlfile('int.typ'); return false;">int.typ</a>: unary representation of integers (supertype of nat, no trailing zero) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load real.typ" onclick="loadsubmlfile('real.typ'); return false;">real.typ</a>: signed digit representation of real numbers (following Alex Simpson) </li>
 </ul>
-<h3>Sorting</h3>
+<h3>Sorting functions on lists</h3>
 <ul>
-  <li><a class="submlfile" href="enableJavascript.html" title="load insert_sort.typ" onclick="loadsubmlfile('insert_sort.typ'); return false;">insert_sort.typ</a>
-: insertion sort, typed as size preserving </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load quick_sort.typ" onclick="loadsubmlfile('quick_sort.typ'); return false;">quick_sort.typ</a>
-: quick sort, not typed as sized preserving </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load heap.typ" onclick="loadsubmlfile('heap.typ'); return false;">heap.typ</a>
-: heap sort, not typed as sized preserving </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load insert_sort.typ" onclick="loadsubmlfile('insert_sort.typ'); return false;">insert_sort.typ</a>: size-preserving insertion sort </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load quick_sort.typ" onclick="loadsubmlfile('quick_sort.typ'); return false;">quick_sort.typ</a>: quicksort function </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load heap_sort.typ" onclick="loadsubmlfile('heap_sort.typ'); return false;">heap_sort.typ</a>: heapsort function </li>
 </ul>
-<h3>Miscellaneous</h3>
+<h3>Church encoding examples</h3>
 <ul>
-  <li><a class="submlfile" href="enableJavascript.html" title="load subfix.typ" onclick="loadsubmlfile('subfix.typ'); return false;">subfix.typ</a>
-: various tests with subtyping on fixpoint </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load size.typ" onclick="loadsubmlfile('size.typ'); return false;">size.typ</a>
-: various tests with sized type and termination </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load hard.typ" onclick="loadsubmlfile('hard.typ'); return false;">hard.typ</a>
-: An accepted function not passing the semi-continuous condition </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load lazy_nat.typ" onclick="loadsubmlfile('lazy_nat.typ'); return false;">lazy_nat.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load flot.typ" onclick="loadsubmlfile('flot.typ'); return false;">flot.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load ordinal.typ" onclick="loadsubmlfile('ordinal.typ'); return false;">ordinal.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load lambda.typ" onclick="loadsubmlfile('lambda.typ'); return false;">lambda.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load simply.typ" onclick="loadsubmlfile('simply.typ'); return false;">simply.typ</a>
-</li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/bool.typ" onclick="loadsubmlfile('church/bool.typ'); return false;">church/bool.typ</a>: Church-encoded booleans </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/nat.typ" onclick="loadsubmlfile('church/nat.typ'); return false;">church/nat.typ</a>: Church naturals </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/data.typ" onclick="loadsubmlfile('church/data.typ'); return false;">church/data.typ</a>: Church-encoded sums and products </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/list.typ" onclick="loadsubmlfile('church/list.typ'); return false;">church/list.typ</a>: Church-encoded lists </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/error.typ" onclick="loadsubmlfile('church/error.typ'); return false;">church/error.typ</a>: Church-encoded error monad (option type) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/state.typ" onclick="loadsubmlfile('church/state.typ'); return false;">church/state.typ</a>: Church-encoded state monad </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/stream.typ" onclick="loadsubmlfile('church/stream.typ'); return false;">church/stream.typ</a>: Church-encoded streams (infinite lists) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load church/david.typ" onclick="loadsubmlfile('church/david.typ'); return false;">church/david.typ</a>: infimum on Church numeral by René David </li>
 </ul>
-<h3>Church encoding</h3>
+<h3>Scott encoding examples</h3>
 <ul>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/bool.typ" onclick="loadsubmlfile('church/bool.typ'); return false;">church/bool.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/nat.typ" onclick="loadsubmlfile('church/nat.typ'); return false;">church/nat.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/data.typ" onclick="loadsubmlfile('church/data.typ'); return false;">church/data.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/david.typ" onclick="loadsubmlfile('church/david.typ'); return false;">church/david.typ</a>
-: infimum on Church's numeral by Ren&eacute; David </li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/error.typ" onclick="loadsubmlfile('church/error.typ'); return false;">church/error.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/list.typ" onclick="loadsubmlfile('church/list.typ'); return false;">church/list.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/state.typ" onclick="loadsubmlfile('church/state.typ'); return false;">church/state.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load church/stream.typ" onclick="loadsubmlfile('church/stream.typ'); return false;">church/stream.typ</a>
-</li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load scott/nat.typ" onclick="loadsubmlfile('scott/nat.typ'); return false;">scott/nat.typ</a>: Scott-encoded natural numbers </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load scott/list.typ" onclick="loadsubmlfile('scott/list.typ'); return false;">scott/list.typ</a>: Scott-encoded lists </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load scott/stream.typ" onclick="loadsubmlfile('scott/stream.typ'); return false;">scott/stream.typ</a>: Scott-encoded streams (inifinte lists) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load scott/natbin.typ" onclick="loadsubmlfile('scott/natbin.typ'); return false;">scott/natbin.typ</a>: binary representation of natural numbers </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load scott/tree.typ" onclick="loadsubmlfile('scott/tree.typ'); return false;">scott/tree.typ</a>: Scott-like encoded for binary trees </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load scott/nat_as_prod.typ" onclick="loadsubmlfile('scott/nat_as_prod.typ'); return false;">scott/nat_as_prod.typ</a>: other encoding Scott naturals using records </li>
 </ul>
-<h3>Scott encoding</h3>
+<h3>Other examples of interest</h3>
 <ul>
-  <li><a class="submlfile" href="enableJavascript.html" title="load scott/nat.typ" onclick="loadsubmlfile('scott/nat.typ'); return false;">scott/nat.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load scott/natbin.typ" onclick="loadsubmlfile('scott/natbin.typ'); return false;">scott/natbin.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load scott/list.typ" onclick="loadsubmlfile('scott/list.typ'); return false;">scott/list.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load scott/tree.typ" onclick="loadsubmlfile('scott/tree.typ'); return false;">scott/tree.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load scott/stream.typ" onclick="loadsubmlfile('scott/stream.typ'); return false;">scott/stream.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load scott/nat_as_prod.typ" onclick="loadsubmlfile('scott/nat_as_prod.typ'); return false;">scott/nat_as_prod.typ</a>
-</li>
-</ul>
-<h3>Test files</h3>
-<ul>
-  <li><a class="submlfile" href="enableJavascript.html" title="load dotproj.typ" onclick="loadsubmlfile('dotproj.typ'); return false;">dotproj.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load dotprojeps.typ" onclick="loadsubmlfile('dotprojeps.typ'); return false;">dotprojeps.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load tree.typ" onclick="loadsubmlfile('tree.typ'); return false;">tree.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load polyrec.typ" onclick="loadsubmlfile('polyrec.typ'); return false;">polyrec.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load permutte.typ" onclick="loadsubmlfile('permutte.typ'); return false;">permutte.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load nonterm.typ" onclick="loadsubmlfile('nonterm.typ'); return false;">nonterm.typ</a>
-</li>
-  <li><a class="submlfile" href="enableJavascript.html" title="load failterm.typ" onclick="loadsubmlfile('failterm.typ'); return false;">failterm.typ</a>
-</li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load hard.typ" onclick="loadsubmlfile('hard.typ'); return false;">hard.typ</a>: terminating function not satisfying the usual semi-continuity condition </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load lazy_nat.typ" onclick="loadsubmlfile('lazy_nat.typ'); return false;">lazy_nat.typ</a>: lazy variant of unary natural numbers (interesting for termination) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load stream_filter.typ" onclick="loadsubmlfile('stream_filter.typ'); return false;">stream_filter.typ</a>: filters on streams (using mixed inductive and coinductive types) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load ordinal.typ" onclick="loadsubmlfile('ordinal.typ'); return false;">ordinal.typ</a>: type of ordinals with specific addition functions </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load lambda.typ" onclick="loadsubmlfile('lambda.typ'); return false;">lambda.typ</a>: λ-calculus using parapetric higher-order abstract syntax </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load simply.typ" onclick="loadsubmlfile('simply.typ'); return false;">simply.typ</a>: simply-typed λ-calculus </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load tree.typ" onclick="loadsubmlfile('tree.typ'); return false;">tree.typ</a>: red-black trees as a subtype of binary trees </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load dotproj.typ" onclick="loadsubmlfile('dotproj.typ'); return false;">dotproj.typ</a>: illustration of the dot-projection for abstract types </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load dotprojeps.typ" onclick="loadsubmlfile('dotprojeps.typ'); return false;">dotprojeps.typ</a>: other formulation of the dot projection using epsilons </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load permute.typ" onclick="loadsubmlfile('permute.typ'); return false;">permute.typ</a>: addition function with permuted arguments (interesting for termination) </li>
+  <li><a class="submlfile" href="enableJavascript.html" title="load size.typ" onclick="loadsubmlfile('size.typ'); return false;">size.typ</a>: various examples with sized-types </li>
 </ul>

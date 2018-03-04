@@ -56,45 +56,55 @@
         the lefthand side. The syntax of the language is exhibited in the
         <a class="submlfile" href="javascript:loadsubmlfile('tutorial.typ')">tutorial</a>
         that is loaded in the editor by default. Other examples marked by
-        yellow links can be loaded into the editor at any time. In particular,
-        the <a class="submlfile" href="javascript:loadsubmlfile('lib/prelude.typ')">prelude</a>
-        is automatically loaded into the interpreter. The standard library of
-        SubML includes <a class="submlfile" href="javascript:loadsubmlfile('lib/nat.typ')">unary natural numbers</a>
-        (lib/nat.typ), <a class="submlfile" href="javascript:loadsubmlfile('lib/list.typ')">lists</a>
-        (lib/list.typ) and <a class="submlfile" href="javascript:loadsubmlfile('lib/set.typ')">sets</a>
-        (lib/set.typ) implemented using binary search trees. A library for
-        <a class="submlfile" href="javascript:loadsubmlfile('lib/applist.typ')">append lists</a>
-        (lib/applist.typ) with constant time append operation is also provided.
-        The type of append lists is a supertype of the type of lists. Other
-        advanced examples expoiting subtyping are given in the example section
-        below.
+        yellow links can be loaded into the editor at any time. The standard
+        library of SubML includes
+        <a class="submlfile" href="javascript:loadsubmlfile('nat.typ')">unary natural numbers</a>,
+        <a class="submlfile" href="javascript:loadsubmlfile('list.typ')">lists</a>
+        and <a class="submlfile" href="javascript:loadsubmlfile('set.typ')">sets</a>
+        implemented using binary search trees. A library for
+        <a class="submlfile" href="javascript:loadsubmlfile('applist.typ')">append lists</a>
+        with constant time append operation (as a supertype of lists) is also
+        provided.
       </p>
-      <h2>Syntax</h2>
       <p>
-        SubML is using unicode syntax, which can be inserted using specific
-        TeX-like macros listed bellow, followed by a space character.
+        The syntax of the language contains several unicode characters. They
+        can be inserted in the editor on the lefthand side of the page using
+        the TeX-like macros listed bellow (followed by a space).
       </p>
-      <ul style="font-family: monospace;">
-        <li>→ : '-&gt;' / '\to'</li>
-        <li>× : '*' / '\times'</li>
-        <li>λ : '\' / '\lambda'</li>
-        <li>∀ : '\forall'</li>
-        <li>∃ : '\exists'</li>
-        <li>μ : '\mu'</li>
-        <li>ν : '\nu'</li>
-        <li>⊆ : '\sub'</li>
-        <li>∞ : '\infty'</li>
-        <li>α : '\alpha'</li>
-        <li>β : '\beta'</li>
-        <li>γ : '\gamma'</li>
-        <li>δ : '\delta'</li>
-        <li>ε : '\epsilon'</li>
-        <li>∈ : '\in'</li>
-        <li>∉ : '\notin'</li>
-        <li>… : '\dots'</li>
-      </ul>
+      <table style="font-family: monospace;">
+        <tr>
+          <td style="width:30px;">→</td><td style="width:120px;">-&gt;</td>
+          <td style="width:30px;">→</td><td style="width:120px;">\to</td>
+          <td style="width:30px;">×</td><td style="width:100px;">\times</td>
+        </tr>
+        <tr>
+          <td style="width:30px;">λ</td><td style="width:100px;">\lambda</td>
+          <td style="width:30px;">∀</td><td style="width:120px;">\forall</td>
+          <td style="width:30px;">∃</td><td style="width:120px;">\exists</td>
+        </tr>
+        <tr>
+          <td style="width:30px;">μ</td><td style="width:120px;">\mu</td>
+          <td style="width:30px;">ν</td><td style="width:120px;">\nu</td>
+          <td style="width:30px;">⊆</td><td style="width:120px;">\sub</td>
+        </tr>
+        <tr>
+          <td style="width:30px;">∞</td><td style="width:120px;">\infty</td>
+          <td style="width:30px;">α</td><td style="width:120px;">\alpha</td>
+          <td style="width:30px;">β</td><td style="width:120px;">\beta</td>
+        </tr>
+        <tr>
+          <td style="width:30px;">γ</td><td style="width:120px;">\gamma</td>
+          <td style="width:30px;">δ</td><td style="width:120px;">\delta</td>
+          <td style="width:30px;">ε</td><td style="width:120px;">\epsilon</td>
+        </tr>
+        <tr>
+          <td style="width:30px;">∈</td><td style="width:120px;">\in</td>
+          <td style="width:30px;">∉</td><td style="width:120px;">\notin</td>
+          <td style="width:30px;">…</td><td style="width:120px;">\dots</td>
+        <tr>
+      </table>
 
-      <h2>Full list of examples</h2>
+      <h2>List of examples</h2>
       <div id="examples"></div>
       <script>
         $("#examples").load("examples.html");
