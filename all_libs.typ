@@ -23,6 +23,8 @@ include "state_stream.typ"
 include "state_array.typ"
 (* maps implemented using 2-3 trees *)
 include "tree23.typ"
+(* trie data structure with basic operations *)
+include "trie.typ"
 (* unary representation of integers (supertype of nat, no trailing zero) *)
 include "int.typ"
 (* signed digit representation of real numbers (following Alex Simpson) *)
@@ -37,7 +39,7 @@ include "quick_sort.typ"
 (* heapsort function *)
 include "heap_sort.typ"
 
-(** Church encoding *)
+(** Church encoding examples *)
 
 (* Church-encoded booleans *)
 include "church/bool.typ"
@@ -56,7 +58,7 @@ include "church/stream.typ"
 (* infimum on Church numeral by René David *)
 include "church/david.typ"
 
-(** Scott encoding *)
+(** Scott encoding examples *)
 
 (* Scott-encoded natural numbers *)
 include "scott/nat.typ"
@@ -71,7 +73,7 @@ include "scott/tree.typ"
 (* other encoding Scott naturals using records *)
 include "scott/nat_as_prod.typ"
 
-(** Examples *)
+(** Other examples of interest *)
 
 (* terminating function not satisfying the usual semi-continuity condition *)
 include "hard.typ"
@@ -96,5 +98,4 @@ include "permute.typ"
 
 (* various tests with sized type and termination *)
 include "size.typ"
-include "polyrec.typ"
 include "failterm.typ"
