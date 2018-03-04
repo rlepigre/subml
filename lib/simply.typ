@@ -64,7 +64,7 @@ type Nat0 = [ H | Z | S of Nat ]
 
 (** cmp n m return →
    H if n = m
-   m if m < n (variable below the substitude variable)
+   m if m < n (variable below the substituted variable)
    m-1 if m > n (free variable needs to decrease by one)
 *)
 val rec cmp : Nat → Nat → Nat0 = fun n m →

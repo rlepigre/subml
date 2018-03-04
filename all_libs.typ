@@ -50,6 +50,7 @@ include "lazy_nat.typ"
 include "stream_filter.typ"
 (* ordinal (an inductive type that converges slowly) with two additions *)
 include "ordinal.typ"
+(* parametricity in use for an implementation of lambda calculus using HOAS *)
 include "lambda.typ"
 include "simply.typ"
 
