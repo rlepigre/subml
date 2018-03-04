@@ -21,3 +21,6 @@ include "tests/diverging_must_fail.typ"
 
 (** Feature tests. *)
 include "tests/latex_generation.typ"
+
+(** Other tests. *)
+include "tests_misc.typ"

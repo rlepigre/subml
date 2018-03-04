@@ -95,7 +95,5 @@ include "dotproj.typ"
 include "dotprojeps.typ"
 (* addition function with permuted arguments (interesting for termination) *)
 include "permute.typ"
-
-(* various tests with sized type and termination *)
+(* various examples with sized-types *)
 include "size.typ"
-include "failterm.typ"
