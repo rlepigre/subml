@@ -23,4 +23,4 @@ include "tests/diverging_must_fail.typ"
 include "tests/latex_generation.typ"
 
 (** Other tests. *)
-include "tests_misc.typ"
+include "tests/tests_misc.typ"
