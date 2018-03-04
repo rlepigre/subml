@@ -44,6 +44,7 @@ include "subfix.typ"
 include "size.typ"
 (* An accepted function not passing the semi-continuous condition *)
 include "hard.typ"
+(* A little code on lazy naturals (interesting for termination) *)
 include "lazy_nat.typ"
 include "flot.typ"
 include "ordinal.typ"
