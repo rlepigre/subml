@@ -34,7 +34,7 @@ include "insert_sort.typ"
 (* quick sort, not typed as sized preserving *)
 include "quick_sort.typ"
 (* heap sort, not typed as sized preserving *)
-include "heap.typ"
+include "heap_sort.typ"
 
 (** Miscellaneous *)
 

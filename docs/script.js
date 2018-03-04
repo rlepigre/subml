@@ -47,12 +47,6 @@ $(function() {
           line = line.substring(0, pos.ch);
           if(line.length == 0 || line.charAt(line.length - 1) == ' '){
             instance.replaceSelection(" ");
-          } else if(line.charAt(line.length - 1) == '*'){
-            instance.setSelection({line : pos.line, ch : pos.ch - 1}, pos);
-            instance.replaceSelection("\u00D7 ");
-          } else if(line.charAt(line.length - 1) == '\\'){
-            instance.setSelection({line : pos.line, ch : pos.ch - 1}, pos);
-            instance.replaceSelection("\u03BB");
           } else if(line.charAt(line.length - 1) == '>') {
             if(line.length >= 2 && line.charAt(line.length - 2) == '-') {
               instance.setSelection({line : pos.line, ch : pos.ch - 2}, pos);
