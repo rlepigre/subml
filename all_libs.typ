@@ -3,43 +3,76 @@ include "tutorial.typ"
 
 (** Standard library *)
 
+(* simple, common types and function (booleans, option, ...) *)
 include "prelude.typ"
-(* Unary natural numbers *)
+(* unary natural numbers *)
 include "nat.typ"
-(* Linked lists *)
+(* usual list type *)
 include "list.typ"
-(* Lists with an append constructor added (super type of lists) *)
+(* supertype of lists with constant time concatenation *)
 include "applist.typ"
-(* Set with unbalanced binary search tree *)
+(* set with unbalanced binary search tree *)
 include "set.typ"
-(* Binary representation of natural numbers *)
+(* binary representation of natural numbers *)
 include "natbin.typ"
-(* Infinite streams *)
+(* streams (or infinite lists) *)
 include "stream.typ"
-(* Infinite streams with an internal state *)
+(* alternative representation of streams, using an internal state *)
 include "state_stream.typ"
-(* The array state monad *)
+(* state monad with an association list as state *)
 include "state_array.typ"
-(* Map implementation using 2-3 trees *)
+(* maps implemented using 2-3 trees *)
 include "tree23.typ"
-(* Unary representation of integers with nat as a subtype and no trailing zero *)
+(* unary representation of integers (supertype of nat, no trailing zero) *)
 include "int.typ"
-(* Signed digit representation of natural numbers, following Alex Simpson *)
+(* signed digit representation of real numbers (following Alex Simpson) *)
 include "real.typ"
 
-(** Sorting *)
+(** Sorting functions on lists *)
 
-(* insertion sort, typed as size preserving *)
+(* size-preserving insertion sort *)
 include "insert_sort.typ"
-(* quick sort, not typed as sized preserving *)
+(* quicksort function *)
 include "quick_sort.typ"
-(* heap sort, not typed as sized preserving *)
+(* heapsort function *)
 include "heap_sort.typ"
 
-(** Miscellaneous *)
+(** Church encoding *)
 
-(* various tests with subtyping on fixpoint *)
-include "subfix.typ"
+(* Church-encoded booleans *)
+include "church/bool.typ"
+(* Church naturals *)
+include "church/nat.typ"
+(* Church-encoded sums and products *)
+include "church/data.typ"
+(* Church-encoded lists *)
+include "church/list.typ"
+(* Church-encoded error monad (option type) *)
+include "church/error.typ"
+(* Church-encoded state monad *)
+include "church/state.typ"
+(* Church-encoded streams (infinite lists) *)
+include "church/stream.typ"
+(* infimum on Church numeral by René David *)
+include "church/david.typ"
+
+(** Scott encoding *)
+
+(* Scott-encoded natural numbers *)
+include "scott/nat.typ"
+(* Scott-encoded lists *)
+include "scott/list.typ"
+(* Scott-encoded streams (inifinte lists) *)
+include "scott/stream.typ"
+(* binary representation of natural numbers *)
+include "scott/natbin.typ"
+(* Scott-like encoded for binary trees *)
+include "scott/tree.typ"
+(* other encoding Scott naturals using records *)
+include "scott/nat_as_prod.typ"
+
+(** Examples *)
+
 (* various tests with sized type and termination *)
 include "size.typ"
 (* an accepted function not passing the semi-continuous condition *)
@@ -52,27 +85,6 @@ include "stream_filter.typ"
 include "ordinal.typ"
 include "lambda.typ"
 include "simply.typ"
-
-(** Church encoding *)
-include "church/bool.typ"
-include "church/nat.typ"
-include "church/data.typ"
-(* infimum on Church's numeral by Ren&eacute; David *)
-include "church/david.typ"
-include "church/error.typ"
-include "church/list.typ"
-include "church/state.typ"
-include "church/stream.typ"
-
-(** Scott encoding *)
-include "scott/nat.typ"
-include "scott/natbin.typ"
-include "scott/list.typ"
-include "scott/tree.typ"
-include "scott/stream.typ"
-include "scott/nat_as_prod.typ"
-
-(** Test files *)
 include "dotproj.typ"
 include "dotprojeps.typ"
 include "tree.typ"

@@ -1,4 +1,4 @@
-(* Church-encoded  error monad (option type). *)
+(* Church-encoded error monad (option type). *)
 
 type Err(A) = ∀X.((A → X) → X → X)
 

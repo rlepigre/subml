@@ -1,5 +1,6 @@
 (** Basic subtyping tests. *)
 include "tests/subtyping_tests.typ"
+include "tests/subfix_tests.typ"
 
 (** Mixed inductive and coinductive types. *)
 include "tests/munu2_generated.typ"
