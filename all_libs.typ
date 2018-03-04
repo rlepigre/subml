@@ -73,22 +73,25 @@ include "scott/nat_as_prod.typ"
 
 (** Examples *)
 
+(* terminating function not satisfying the usual semi-continuity condition *)
+include "hard.typ"
+(* lazy variant of unary natural numbers (interesting for termination) *)
+include "lazy_nat.typ"
+(* filters on streams (using mixed inductive and coinductive types) *)
+include "stream_filter.typ"
+(* type of ordinals with specific addition functions *)
+include "ordinal.typ"
+(* λ-calculus using parapetric higher-order abstract syntax *)
+include "lambda.typ"
+(* simply-typed λ-calculus *)
+include "simply.typ"
+(* red-black trees as a subtype of binary trees *)
+include "tree.typ"
+
 (* various tests with sized type and termination *)
 include "size.typ"
-(* an accepted function not passing the semi-continuous condition *)
-include "hard.typ"
-(* a little code on lazy naturals (interesting for termination) *)
-include "lazy_nat.typ"
-(* filter on stream, using μ and ν mixed type *)
-include "stream_filter.typ"
-(* ordinal (an inductive type that converges slowly) with two additions *)
-include "ordinal.typ"
-include "lambda.typ"
-include "simply.typ"
 include "dotproj.typ"
 include "dotprojeps.typ"
-include "tree.typ"
 include "polyrec.typ"
 include "permutte.typ"
-include "nonterm.typ"
 include "failterm.typ"

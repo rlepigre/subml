@@ -1,3 +1,5 @@
+(* Functions that must fail the termination checker. *)
+
 type Stream(A) = νX.{} → A × X
 type F = νX.{} → [ R of X | K of X ]
 
