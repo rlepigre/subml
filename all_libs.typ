@@ -42,12 +42,13 @@ include "heap.typ"
 include "subfix.typ"
 (* various tests with sized type and termination *)
 include "size.typ"
-(* An accepted function not passing the semi-continuous condition *)
+(* an accepted function not passing the semi-continuous condition *)
 include "hard.typ"
-(* A little code on lazy naturals (interesting for termination) *)
+(* a little code on lazy naturals (interesting for termination) *)
 include "lazy_nat.typ"
-(* Filter on stream, using μ and ν mixed type *)
+(* filter on stream, using μ and ν mixed type *)
 include "stream_filter.typ"
+(* ordinal (an inductive type that converges slowly) with two additions *)
 include "ordinal.typ"
 include "lambda.typ"
 include "simply.typ"

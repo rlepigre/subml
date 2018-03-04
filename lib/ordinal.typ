@@ -13,7 +13,7 @@ val rec add : ∀X.O(X) → O(X) → O(X) = fun n m →
   | L f → L (fun q → add (f q) m)
 
 (* A better definition for ordinals, semantics converges in 2^(2^ω).
-   Not sur that in does not converge before. *)
+   Not sure that it does not converge before. *)
 type Ord0 = μO.[Z | S of O | L of ∃X.X → O]
 
 check O(Ord) ⊆ Ord0
@@ -22,14 +22,14 @@ check O(Ord) ⊆ Ord0
 check O(Ord0) ⊆ Ord0
 !check Ord0 ⊆ O(Ord0)
 
-(* still addition works for Ord0 *)
+(* Still addition works for Ord0 *)
 val rec add : Ord0 → Ord0 → Ord0 = fun n m →
   case n of
   | Z   → m
   | S x → S(add x m)
   | L f → L (fun q → add (f q) m)
 
-(* A funny addition *)
+(* A funny addition, probably commutative *)
 val rec add0 : Ord0 → Ord0 → Ord0 = fun n m →
   case n of
   | Z   → m
@@ -45,10 +45,10 @@ val rec add1 : Ord0 → Ord0 → Ord0 = fun n m →
   | Z   → m
   | S x → S(add1 x m)
   | L f →
-  let X such that f : X → Ord0 in
-  (case m of
-  | Z → n
-  | S y → S(add1 n y)
-  | L g →
-  let Y such that g : Y → Ord0 in
-  L (fun (z:X×Y) → add1 (f z.1) (g z.2))))
+    let X such that f : X → Ord0 in
+    (case m of
+    | Z → n
+    | S y → S(add1 n y)
+    | L g →
+      let Y such that g : Y → Ord0 in
+      L (fun (z:X×Y) → add1 (f z.1) (g z.2))))
