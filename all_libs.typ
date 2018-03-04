@@ -11,6 +11,8 @@ include "nat.typ"
 include "list.typ"
 (* supertype of lists with constant time concatenation *)
 include "applist.typ"
+(* naive implementation lists *)
+include "assoc.typ"
 (* set with unbalanced binary search tree *)
 include "set.typ"
 (* binary representation of natural numbers *)

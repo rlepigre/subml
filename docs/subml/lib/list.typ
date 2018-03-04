@@ -31,6 +31,11 @@ val rec nth : ∀A.List(A) → Nat → Option(A) = fun l n →
   | Z   → hd l
   | S x → (case l of [] → None | a::l → nth l x)
 
+val rec iter : ∀A.(A → {}) → List(A) → {} = fun f l →
+  case l of
+  | []   → {}
+  | x::l → f x; iter f l
+
 val rec map : ∀A B.∀α.((A → B) → SList(α,A) → SList(α,B)) = fun f l →
   case l of
   | []   → []
