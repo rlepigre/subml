@@ -103,6 +103,15 @@
           <td style="width:30px;">…</td><td style="width:120px;">\dots</td>
         <tr>
       </table>
+      <p>
+        Note that <span style="font-family:monospace;">?val</span> is used to
+        mark a value declaration as potentially correct. A message is printed
+        in the case where it is accepted, and nothing happens if it fails to
+        type-check.
+        On the contrary, <span style="font-family:monospace;">!val</span> is
+        used to mark a value declaration as incorrect. It must be rejected by
+        the type-checker, and the program fails otherwise.
+      </p>
 
       <h2>List of examples</h2>
       <div id="examples"></div>
