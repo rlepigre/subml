@@ -1,6 +1,6 @@
 _build/
 src/config.ml
-subml.docdir/
+subml.docdir
 subml.native
 subml.byte
 submljs.byte
