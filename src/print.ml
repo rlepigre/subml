@@ -851,7 +851,7 @@ let mkSchema ?(ord_name="α") schema =
 
   let (a,b) = msubst schema.sch_judge os in
   let s, rel = match a with
-    | SchKind k -> kind_to_string false k, "⊂"
+    | SchKind k -> kind_to_string false k, "⊆"
     | SchTerm t -> term_to_string false (Pos.none (TFixY(None,0,t))), ":"
   in
   let o2s = String.concat ", "
@@ -937,7 +937,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   let sub2proof = sub2proof used_ind in
   let t2s = term_to_string true and k2s = kind_to_string false in
   let o2s = String.concat ", " (List.map (ordi_to_string false) os) in
-  let c = sprintf "%s ⊢ %s ∈ %s ⊂ %s" o2s (t2s t) (k2s a) (k2s b) in
+  let c = sprintf "%s ⊢ %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b) in
   match r with
   | _ when strict_eq_kind a b
                       -> axiomSN "$=$" c (* usefull because of unification *)
@@ -968,14 +968,14 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
                                 (mkSchema sch) (Sct.int_of_index sch.sch_index)
                          in
                          let name = sprintf "\\I{%i}" (Sct.int_of_index sch.sch_index) in
-                         let c' = sprintf "%s ⊢ %s ⊂ %s"
+                         let c' = sprintf "%s ⊢ %s ⊆ %s"
                                     o2s (k2s a) (k2s b) in
                          unarySN "\\S" c (unarySN "\\G" c' (hypN name p0))
   | Sub_Error(msg)    -> axiomSN (sprintf "ERROR(%s)" msg) c
   | Sub_Gen(sch,tros,((os0,t0,_,_,_) as p)) ->
      if List.mem sch.sch_index used_ind then (
        let c0 = mkSchema sch in
-       let c' = sprintf "%s ⊢ %s ⊂ %s"
+       let c' = sprintf "%s ⊢ %s ⊆ %s"
                   o2s (k2s a) (k2s b) in
        unarySN "\\S" c (
          unarySN "\\G" c'
