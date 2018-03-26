@@ -320,7 +320,7 @@ let rec print_ordi unfold unfolded_Y ff o =
             match k1 with
             | SchTerm t  -> fprintf ff "(%a∉%a)" (print_term false false None)
                               (Pos.none (TFixY(None,0,t))) pkind k2
-            | SchKind k1 -> fprintf ff "(%a \\not\\subset %a)" pkind k1
+            | SchKind k1 -> fprintf ff "(%a \\not\\subseteq %a)" pkind k1
                               pkind k2
           end;
           if Array.length os > 1 then fprintf ff "}_%d" (i+1)
