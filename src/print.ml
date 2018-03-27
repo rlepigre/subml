@@ -666,7 +666,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
          | TCoer(t,k) -> t, fun ff -> fprintf ff "%s %a" s pkind k
          | _          -> t, fun ff -> ()
        in
-       if !break_hint = 0 then begin
+       if !break_hint = 0 || !break_hint = 2 then begin
          let pfield ff (l,t) =
            let t, pt = fn ":" t in
            fprintf ff (if latex_mode () then "\\mathrm{%s} %t = %a" else "%s %t = %a")
