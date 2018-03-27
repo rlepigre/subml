@@ -940,7 +940,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   let c = sprintf "%s ⊢ %s ∈ %s ⊆ %s" o2s (t2s t) (k2s a) (k2s b) in
   match r with
   | _ when strict_eq_kind a b
-                      -> axiomSN "$=$" c (* usefull because of unification *)
+                      -> axiomSN "=" c (* usefull because of unification *)
   | Sub_Delay(pr)     -> sub2proof !pr
   | Sub_Lower         -> axiomSN "=" c
   | Sub_Func(p1,p2)   -> binarySN "→" c (sub2proof p1) (sub2proof p2)
