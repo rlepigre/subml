@@ -653,7 +653,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      if wrap then fprintf ff ")"
 
   | TReco(fs) ->
-     if is_tuple fs then begin
+     if is_tuple fs && List.length fs > 0 then begin
        pp_print_string ff "(";
        for i = 1 to List.length fs do
          if i = 2 then fprintf ff ", ";
