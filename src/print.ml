@@ -366,7 +366,7 @@ and print_kind unfold wrap unfolded_Y ff t =
              l pkind a
          in
          fprintf ff (if latex_mode () then "\\{%a%s\\}" else "{%a%s}")
-           (print_list pfield "; ") fs ext
+           (print_list pfield (if latex_mode () then ";\\;" else "; ")) fs ext
        end else begin
          assert (latex_mode ());
          decr break_hint;
@@ -673,7 +673,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
              l pt pterm t
          in
          fprintf ff (if latex_mode () then "\\{%a\\}" else "{%a}")
-           (print_list pfield "; ") fs
+           (print_list pfield (if latex_mode () then ";\\;" else "; ")) fs
        end else begin
          decr break_hint;
          let pfield ff (l,t) =
