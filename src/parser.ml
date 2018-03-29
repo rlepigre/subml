@@ -413,7 +413,7 @@ and parser latex_atom =
   | hash br:int_lit?[0] "?" id:uid "#"
       -> Latex.KindDef (br, in_pos _loc_id id)
   | "##" br:int_lit?[0] id:lid "#"
-      -> Latex.Term(br,false, in_pos _loc_id (PLVar(id)))
+      -> Latex.TProof(br, in_pos _loc_id id)
   | hash "!" id:lid "#"
       -> Latex.Sct(in_pos _loc_id id)
   | hash "?" id:lid "." name:lid i:{"." int_lit}?[0]

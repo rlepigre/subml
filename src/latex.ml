@@ -22,7 +22,7 @@ type latex_output =
   | Text    of string
   | List    of latex_output list
   | SProof  of pkind * pkind
-  | TProof  of typ_prf
+  | TProof  of int * strloc (* name of value *)
   | Sch     of string loc * string loc * int * string
   | Sct     of string loc
   | Witnesses
@@ -98,7 +98,11 @@ let rec output toplevel ch =
      if Sct.is_empty calls then Sct.latex_print_calls ch calls;
      fprintf ch "\\end{center}\n%!";
      ignore_witness := save
-  | TProof p      -> print_typing_proof ch p
+  | TProof(br,id) ->
+      begin
+        try print_typing_proof ch (Hashtbl.find val_env id.elt).proof
+        with Not_found -> raise(Unbound(id.elt, id.pos))
+      end
   | Witnesses     -> print_epsilon_tbls ch; reset_epsilon_tbls ()
   | KindOf(n,id)  ->
      let t =
