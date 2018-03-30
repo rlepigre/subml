@@ -11,6 +11,9 @@ open LibTools
 (** control some differences when printing for LaTeX or GraphML*)
 type print_mode = TeX | Gml | Asc
 
+let sanitize_name : string -> string = fun n ->
+  String.concat "\\_" (String.split_on_char '_' n)
+
 let print_mode = ref Asc
 let show_occur = ref true
 let latex_mode () = !print_mode = TeX
@@ -739,12 +742,20 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
        print_term
          ~give_pos true wrap unfolded_Y ff v.orig_value
      else
-       let name = if latex_mode () then v.tex_name else v.name in
+       let name =
+         if latex_mode () then
+           (if v.tex_name = v.name then sanitize_name v.name else v.tex_name)
+         else v.name
+       in
        pp_print_string ff name
   | TPrnt(s) ->
       fprintf ff "print(%S)" s
   | TFixY(_,_,f) ->
      let x = binder_name f in
+     let x =
+       if not (latex_mode () && String.length x > 1) then x
+       else Printf.sprintf "\\mathrm{%s}" (sanitize_name x)
+     in
      (match unfolded_Y with
      | Some l when not (List.memq f l) ->
         let unfolded_Y = Some (f :: l) in
