@@ -45,8 +45,9 @@
 </div>
 <h1>Module <a href="type_Print.html">Print</a></h1>
 
-<pre><span class="keyword">module</span> Print: <code class="code">sig</code> <a href="Print.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_AsciiPrinting">                              Ascii Printing                         </h3><br>
+<pre><span id="MODULEPrint"><span class="keyword">module</span> Print</span>: <code class="code">sig</code> <a href="Print.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_AsciiPrinting">                              Ascii Printing                         </h4></div>
 </div>
 <hr width="100%">
 
@@ -74,7 +75,9 @@
 </tr></table>
 
 <div class="info ">
-control some differences when printing for LaTeX or GraphML<br>
+<div class="info-desc">
+<p>control some differences when printing for LaTeX or GraphML</p>
+</div>
 </div>
 
 
@@ -84,24 +87,32 @@ control some differences when printing for LaTeX or GraphML<br>
 <pre><span id="VALlts"><span class="keyword">val</span> lts</span> : <code class="type">unit -> string</code></pre>
 <pre><span id="VALlt"><span class="keyword">val</span> lt</span> : <code class="type">Format.formatter -> unit</code></pre>
 <pre><span id="VALbreak_hint"><span class="keyword">val</span> break_hint</span> : <code class="type">int Pervasives.ref</code></pre><div class="info ">
-<code class="code">break_hint</code> allows line breaking for record, ...
+<div class="info-desc">
+<p><code class="code">break_hint</code> allows line breaking for record, ...
     It gives the number of nested records whose lines are
-    breaked<br>
+    breaked</p>
+</div>
 </div>
 
 <pre><span id="VALignore_witness"><span class="keyword">val</span> ignore_witness</span> : <code class="type">bool Pervasives.ref</code></pre><div class="info ">
-ignore witness in subtyping proofs<br>
+<div class="info-desc">
+<p>ignore witness in subtyping proofs</p>
+</div>
 </div>
 
 <pre><span id="VALis_tuple"><span class="keyword">val</span> is_tuple</span> : <code class="type">(string * 'a) list -> bool</code></pre><div class="info ">
-test if a list of record fields is a tuple<br>
+<div class="info-desc">
+<p>test if a list of record fields is a tuple</p>
+</div>
 </div>
 
 <pre><span id="VALordi_count"><span class="keyword">val</span> ordi_count</span> : <code class="type">int Pervasives.ref</code></pre><div class="info ">
-Managment of a table to name all choice constants (for ordinals,
+<div class="info-desc">
+<p>Managment of a table to name all choice constants (for ordinals,
     terms and type) when printing.  terms and ordinals are named the
     first time they are printed.  The table of all names and
-    definition can be printer later.<br>
+    definition can be printer later.</p>
+</div>
 </div>
 
 <pre><span id="VALordi_tbl"><span class="keyword">val</span> ordi_tbl</span> : <code class="type">(<a href="Ast.html#TYPEordi">Ast.ordi</a> * (<a href="Ast.html#TYPEordi">Ast.ordi</a> * bool)) list Pervasives.ref</code></pre>
@@ -113,12 +124,16 @@ Managment of a table to name all choice constants (for ordinals,
 <pre><span id="VALsearch_ordi_tbl"><span class="keyword">val</span> search_ordi_tbl</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a></code></pre>
 <pre><span id="VALunsugar_pattern"><span class="keyword">val</span> unsugar_pattern</span> : <code class="type">string -> string -> <a href="Ast.html#TYPEsugar">Ast.sugar</a> -> <a href="Ast.html#TYPEterm">Ast.term</a> -> string * <a href="Ast.html#TYPEterm'">Ast.term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
 <pre><span id="VALhas_kvar"><span class="keyword">val</span> has_kvar</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre><div class="info ">
-A test to avoid capture in match_kind below<br>
+<div class="info-desc">
+<p>A test to avoid capture in match_kind below</p>
+</div>
 </div>
 
 <pre><span id="VALmatch_kind"><span class="keyword">val</span> match_kind</span> : <code class="type"><a href="Ast.html#TYPEkuvar">Ast.kuvar</a> list -> <a href="Ast.html#TYPEouvar">Ast.ouvar</a> list -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre><div class="info ">
-Matching kind and ordinals, used for printing only,
-    in order to factorise definittion.<br>
+<div class="info-desc">
+<p>Matching kind and ordinals, used for printing only,
+    in order to factorise definittion.</p>
+</div>
 </div>
 
 <pre><span id="VALmatch_ordi"><span class="keyword">val</span> match_ordi</span> : <code class="type"><a href="Ast.html#TYPEouvar">Ast.ouvar</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>

@@ -35,6 +35,7 @@ let show_occur = ref true
 let latex_mode () = !print_mode = TeX
 let lts () = if !print_mode = Gml then "&lt;" else "<"
 let lt ch = fprintf ch "%s" (lts ())
+let print_redex_as_let = ref false
 
 (** [break_hint] allows line breaking for record, ...
     It gives the number of nested records whose lines are
@@ -658,6 +659,29 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      fprintf ff "λ%a" (fn true) t;
      if wrap then fprintf ff ")"
 
+  | TAppl({ elt = TAbst(ao,b,_)},u) when !print_redex_as_let ->
+     let pk ff ao =
+       match ao with
+       | Some k ->
+          fprintf ff ":%a" pkind k
+       | _ -> ()
+     in
+     let name = binder_name b in
+     let t = subst b (TVars name) in
+     let u = match (ao, u.elt) with
+       | Some _, TCoer(u,_) -> u
+       | _                  -> u
+     in
+     Printf.fprintf stderr "SUGAR LET\n";
+     fprintf ff (
+         if latex_mode () then
+           if !break_hint = 0 then
+             "\\LET %s%a = %a \\IN %a"
+           else
+             "\\begin{array}[t]{l}\\LET %s%a = %a \\IN\\\\ %a\\end{array}"
+         else
+           "let %s = %a%a in %a")
+       name pk ao pterm u pterm t
   | TAppl _ ->
     if wrap then fprintf ff "(";
     let rec fn acc t = match t.elt with

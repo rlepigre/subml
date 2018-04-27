@@ -573,11 +573,13 @@ type vset =
   | Verbose of bool
   | TeXFile of string
   | GmlFile of string
+  | PrntLet of bool
 
 let do_vset = function
   | Verbose b  -> verbose := b
   | TeXFile fn -> Io.set_tex_file fn
   | GmlFile fn -> Io.set_gml_file fn
+  | PrntLet b  -> Print.print_redex_as_let := true
 
 type command =
   | Type of string option * string * (string list * string list) * pkind
@@ -607,6 +609,7 @@ let parser vset top =
   | "verbose" b:enables               -> Verbose(b)
   | "texfile" fn:str_lit when not top -> TeXFile(fn)
   | "gmlfile" fn:str_lit when not top -> GmlFile(fn)
+  | "prntlet" b:enables               -> PrntLet(b)
 
 let parser command top =
   | type_kw (tn,n,args,k):kind_def         -> Type(tn,n,args,k)

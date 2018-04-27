@@ -43,8 +43,9 @@
 &nbsp;</div>
 <h1>Module <a href="type_Typing.html">Typing</a></h1>
 
-<pre><span class="keyword">module</span> Typing: <code class="code">sig</code> <a href="Typing.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_Typingandsubtypingalgorithms">                  Typing and subtyping algorithms                    </h3><br>
+<pre><span id="MODULETyping"><span class="keyword">module</span> Typing</span>: <code class="code">sig</code> <a href="Typing.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_Typingandsubtypingalgorithms">                  Typing and subtyping algorithms                    </h4></div>
 </div>
 <hr width="100%">
 
@@ -55,7 +56,9 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTind.Use"><span class="constructor">Use</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEschema">Ast.schema</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-The given induction hypothesis applies.<br>
+<div class="info-desc">
+<p>The given induction hypothesis applies.</p>
+</div>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -65,42 +68,54 @@ The given induction hypothesis applies.<br>
 <td align="left" valign="top" >
 <code><span id="TYPEELTind.New"><span class="constructor">New</span></span> <span class="keyword">of</span> <code class="type">(<a href="Ast.html#TYPEschema">Ast.schema</a> * <a href="Ast.html#TYPEkind">Ast.kind</a> * <a href="Ast.html#TYPEkind">Ast.kind</a> * (<a href="Ast.html#TYPEordi">Ast.ordi</a> * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list) option</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-The given induction hypothesis has been registered.<br>
+<div class="info-desc">
+<p>The given induction hypothesis has been registered.</p>
+</div>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-Result type of <code class="code">check_rec</code>.<br>
+<div class="info-desc">
+<p>Result type of <code class="code">check_rec</code>.</p>
+</div>
 </div>
 
 
 <pre><span id="VALcheck_rec"><span class="keyword">val</span> check_rec</span> : <code class="type"><a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a> -><br>       <a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Typing.html#TYPEind">ind</a> * <a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a></code></pre><div class="info ">
-<code class="code">check_rec ctxt t a b</code> checks whether a given pointed subtyping relation
+<div class="info-desc">
+<p><code class="code">check_rec ctxt t a b</code> checks whether a given pointed subtyping relation
     can be derived in the current context using an induction hypothesis. If
     not, the current schema is registered as an induction hypothesis so that
-    it can be used in a later call to <code class="code">check_rec</code>.<br>
+    it can be used in a later call to <code class="code">check_rec</code>.</p>
+</div>
 </div>
 
 <pre><span id="VALsearch_induction"><span class="keyword">val</span> search_induction</span> : <code class="type">(<a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a> -> 'a -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a>) -><br>       <a href="Ast.html#TYPEtyp_gen">Ast.typ_gen</a> Pervasives.ref -><br>       <a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a> -> 'a -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEschema">Ast.schema</a> list -> unit</code></pre>
 <pre><span id="VALcheck_fix"><span class="keyword">val</span> check_fix</span> : <code class="type">(<a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a> -> <a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a>) -><br>       (<a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a> -> 'a -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a>) -><br>       <a href="Ast.html#TYPEtyp_gen">Ast.typ_gen</a> Pervasives.ref -><br>       <a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a> -><br>       'a -><br>       bool option -><br>       int -> (<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> unit</code></pre>
 <pre><span id="VALsubtype"><span class="keyword">val</span> subtype</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> option -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> * <a href="Sct.html#TYPEt">Sct.t</a></code></pre>
 <pre><span id="VALis_subtype"><span class="keyword">val</span> is_subtype</span> : <code class="type"><a href="TypingBase.html#TYPEctxt">TypingBase.ctxt</a> -> <a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre><div class="info ">
-A boolean test for subtyping<br>
+<div class="info-desc">
+<p>A boolean test for subtyping</p>
+</div>
 </div>
 
 <pre><span id="VALtype_check"><span class="keyword">val</span> type_check</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> option -> <a href="Ast.html#TYPEkind">Ast.kind</a> * <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> * <a href="Sct.html#TYPEt">Sct.t</a></code></pre>
 <pre><span id="VALsubtype"><span class="keyword">val</span> subtype</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> option -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> * <a href="Sct.html#TYPEt">Sct.t</a></code></pre><div class="info ">
-<code class="code">subtype t a b</code> checks the pointed subtyping relation "t ∈ A ⊂ B". Since
+<div class="info-desc">
+<p><code class="code">subtype t a b</code> checks the pointed subtyping relation "t ∈ A ⊂ B". Since
     the term <code class="code">t</code> is optional, a generic witness is used when <code class="code">t = None</code>. The
     function returns a subtyping proof together with the successful instance
-    of the SCT.<br>
+    of the SCT.</p>
+</div>
 </div>
 
 <pre><span id="VALtype_check"><span class="keyword">val</span> type_check</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> option -> <a href="Ast.html#TYPEkind">Ast.kind</a> * <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> * <a href="Sct.html#TYPEt">Sct.t</a></code></pre><div class="info ">
-<code class="code">type_check t ko</code> type-checks the term <code class="code">t</code> against the optional type <code class="code">k</code>
+<div class="info-desc">
+<p><code class="code">type_check t ko</code> type-checks the term <code class="code">t</code> against the optional type <code class="code">k</code>
     (or a unification variable). The function returns a type for <code class="code">t</code> and the
     corresponding typing proof and successful instance of the SCT. When the
-    function is called with <code class="code">ko = Some k</code>, the returned type is <code class="code">k</code>.<br>
+    function is called with <code class="code">ko = Some k</code>, the returned type is <code class="code">k</code>.</p>
+</div>
 </div>
 </body></html>
