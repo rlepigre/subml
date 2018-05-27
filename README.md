@@ -7,14 +7,14 @@ To install `subml`, you will need `OCaml >= 4.03` with:
  - `ocamlfind` (build)
  - `earley` (https://github.com/rlepigre/ocaml-earley)
  - `earley-ocaml` (https://github.com/rlepigre/ocaml-earley-ocaml)
- - `bindlib` (https://github.com/rlepigre/ocaml-bindlib)
+ - `bindlib` (version 4.0.5, https://github.com/rlepigre/ocaml-bindlib)
  - `GNU make` and other standard utilities
 
 Obtaining the dependencies with `opam`:
 
 ```bash
 opam switch 4.06 # or whatever version >= 4.03
-opam install ocamlbuild ocamlfind bindlib earley earley-ocaml
+opam install ocamlbuild ocamlfind bindlib.4.0.5 earley earley-ocaml
 ```
 
 Compilation:
