@@ -2,11 +2,11 @@
 (**{3                   Usefull fonction on terms                         }*)
 (***************************************************************************)
 
+open LibTools
 open Ast
 open Pos
 open Bindlib
 open Format
-open LibTools
 
 (** Test if a term is in normal form for CBV *)
 let is_normal : term -> bool = fun t ->

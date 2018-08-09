@@ -2,6 +2,7 @@
 (**{3                    Binding relating functions                        }*)
 (****************************************************************************)
 
+open LibTools
 open Ast
 open Pos
 open Bindlib

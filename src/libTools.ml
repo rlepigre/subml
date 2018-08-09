@@ -50,31 +50,56 @@ let rec list_ref_iter : ('a -> unit) -> 'a list ref -> unit =
 
 (*{2 Bindlib extension }*)
 
-open Bindlib
+module Bindlib = struct
+  include Bindlib
 
-type ('a,'b,'c) mmbinder = ('a, ('b,'c) mbinder) mbinder
+  type 'a bindbox = 'a box
 
-let mmbinder_arities : type a b c.(a,b,c) mmbinder -> a -> int * int =
-  fun b dum ->
-    let aa = mbinder_arity b in
-    let b = msubst b (Array.make aa dum) in
-    let ba = mbinder_arity b in
-    (aa, ba)
+  let box_of_var = box_var
 
-let mmbinder_names : type a b c.(a,b,c) mmbinder -> a
-                       -> string array * string array =
-  fun b dum ->
-    let aa = mbinder_arity b in
-    let an = mbinder_names b in
-    let b = msubst b (Array.make aa dum) in
-    let bn = mbinder_names b in
-    (an, bn)
+  let bind mkfree x f =
+    let x = new_var mkfree x in
+    bind_var x (f (box_var x))
 
-let mmsubst b xs ys = msubst (msubst b xs) ys
+  let mbind mkfree xs f =
+    let xs = new_mvar mkfree xs in
+    bind_mvar xs (f (Array.map box_var xs))
 
-let mmsubst_dummy b duma dumb =
-  let (aa, bb) = mmbinder_arities b duma in
-  mmsubst b (Array.make aa duma) (Array.make bb dumb)
+  let vbind mkfree x f =
+    let x = new_var mkfree x in
+    bind_var x (f x)
+
+  let mvbind mkfree xs f =
+    let xs = new_mvar mkfree xs in
+    bind_mvar xs (f xs)
+
+  let binder_from_fun mkfree name f =
+    unbox (bind mkfree name (box_apply f)) 
+
+  type ('a,'b,'c) mmbinder = ('a, ('b,'c) mbinder) mbinder
+
+  let mmbinder_arities : type a b c.(a,b,c) mmbinder -> a -> int * int =
+    fun b dum ->
+      let aa = mbinder_arity b in
+      let b = msubst b (Array.make aa dum) in
+      let ba = mbinder_arity b in
+      (aa, ba)
+
+  let mmbinder_names : type a b c.(a,b,c) mmbinder -> a
+                         -> string array * string array =
+    fun b dum ->
+      let aa = mbinder_arity b in
+      let an = mbinder_names b in
+      let b = msubst b (Array.make aa dum) in
+      let bn = mbinder_names b in
+      (an, bn)
+
+  let mmsubst b xs ys = msubst (msubst b xs) ys
+
+  let mmsubst_dummy b duma dumb =
+    let (aa, bb) = mmbinder_arities b duma in
+    mmsubst b (Array.make aa duma) (Array.make bb dumb)
+end
 
 (*{2 Printing }*)
 

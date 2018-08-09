@@ -2,6 +2,7 @@
 (**{3                 Functions related to generalisation                  }*)
 (****************************************************************************)
 
+open LibTools
 open Ast
 open Compare
 open Pos

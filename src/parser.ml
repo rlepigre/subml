@@ -1,6 +1,8 @@
 (****************************************************************************)
 (**{3                           You guessed it                             }*)
 (****************************************************************************)
+
+open LibTools
 open Earley
 open Bindlib
 open Ast
@@ -11,7 +13,6 @@ open TypingBase
 open Typing
 open Raw
 open Format
-open LibTools
 
 (* Definition of a "location" function for DeCaP. *)
 #define LOCATE locate

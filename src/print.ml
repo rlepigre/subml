@@ -1,12 +1,13 @@
 (****************************************************************************)
 (**{3                               Ascii Printing                         }*)
 (****************************************************************************)
+
+open LibTools
 open Bindlib
 open Format
 open Ast
 open Pos
 open Compare
-open LibTools
 
 module String = struct
   include String

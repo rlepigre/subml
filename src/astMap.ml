@@ -2,6 +2,7 @@
 (**{3                      Mapping of kind and ordinals                    }*)
 (****************************************************************************)
 
+open LibTools
 open Ast
 open Bindlib
 
