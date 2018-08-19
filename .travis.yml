@@ -22,7 +22,7 @@ before_install:
   - opam init
   - opam switch ${OCAML_VERSION}
   - eval `opam config env`
-  - opam install ocamlbuild ocamlfind bindlib earley earley-ocaml
+  - opam install ocamlbuild ocamlfind bindlib.4.0.5 earley earley-ocaml
   - make
 install:
   - make install
