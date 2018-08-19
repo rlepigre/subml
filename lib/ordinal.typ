@@ -52,3 +52,16 @@ val rec add1 : Ord0 → Ord0 → Ord0 = fun n m →
     | L g →
       let Y such that g : Y → Ord0 in
       L (fun (z:X×Y) → add1 (f z.1) (g z.2))))
+
+val ordId : Ord0 → Ord0 = fun x → x
+val big : Ord0 = L ordId
+
+val big2 : Ord0 = add0 big big
+val big2_1 : Ord0 = add1 big big
+val big3 : Ord0 = add0 (S big) (S big)
+val big3_1 : Ord0 = add1 (S big) (S big)
+
+eval big2
+eval big2_1
+eval big3
+eval big3_1
