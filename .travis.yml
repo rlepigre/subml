@@ -18,7 +18,7 @@ before_install:
   # Initialize the switch.
   - opam init --compiler=${OCAML_VERSION}
   - eval `opam config env`
-  - opam install ocamlbuild ocamlfind bindlib.4.0.5 earley earley-ocaml
+  - opam install ocamlbuild ocamlfind bindlib.5.0.0 earley earley-ocaml
   - make
 install:
   - make install
