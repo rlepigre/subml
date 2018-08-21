@@ -51,7 +51,7 @@ let rec map_kind : ?fkind:map_kind -> ?ford:map_ord -> self_kind
                         (fun x -> map_kind  ~occ (subst f (KVari x)))
     | KFixN(o,f)   -> kfixn (binder_name f) (map_ordi ~occ:(neg occ) o)
                         (fun x -> map_kind  ~occ (subst f (KVari x)))
-    | KVari(x)     -> box_of_var x
+    | KVari(x)     -> box_var x
     | KDefi(d,o,a) -> let fn i =
                         map_ordi ~occ:(compose d.tdef_ovariance.(i) occ)
                       in
@@ -81,7 +81,7 @@ and map_ordi : ?fkind:map_kind -> ?ford:map_ord -> self_ord
   let map_ordi = map_ordi ~fkind ~ford in
   ford occ o map_kind map_ordi (
     function
-    | OVari x -> box_of_var x
+    | OVari x -> box_var x
     | OVars s -> box (OVars s)
     | OSucc o -> osucc (map_ordi ~occ o)
     | OLess(o,In(t,w))  -> oless_In (map_ordi ~occ o) (box t)

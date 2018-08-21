@@ -139,10 +139,10 @@ let add_term : string -> tvar -> env -> env = fun x t env ->
   { env with terms = (x,t) :: env.terms }
 
 let add_kind : string -> kvar -> occur -> env -> env = fun x k occ env ->
-  { env with kinds = (x,(box_of_var k,occ)) :: env.kinds }
+  { env with kinds = (x, (box_var k, occ)) :: env.kinds }
 
 let add_ordi : string -> ovar -> occur -> env -> env = fun x o occ env ->
-  { env with ordinals = (x,(box_of_var o,occ)) :: env.ordinals }
+  { env with ordinals = (x, (box_var o, occ)) :: env.ordinals }
 
 let add_kinds : string array -> kvar array -> env -> env = fun ksn ks env ->
   let fn (i,env) x =  (i+1, add_kind ksn.(i) x Non env) in

@@ -175,7 +175,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
       | OConv when occ = sNeg && not manual ->
          let n = !i in incr i;
          let v = new_ovari ("o_" ^ string_of_int n) in
-         res := (mk_free_o v, (n, v, ref true)) :: !res; box_of_var v
+         res := (mk_free_o v, (n, v, ref true)) :: !res; box_var v
       | o -> def_ord o
     in
     res
@@ -216,10 +216,10 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
   let k1 = match k1 with
     | SchKind k1 ->
        box_apply (fun k -> SchKind k)
-         (bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k1)
+         (bind_fn ~from_generalise:true ords (Array.map box_var ovars) k1)
     | SchTerm _  -> box k1
   in
-  let k2 = bind_fn ~from_generalise:true ords (Array.map box_of_var ovars) k2 in
+  let k2 = bind_fn ~from_generalise:true ords (Array.map box_var ovars) k2 in
   let both = box_pair k1 k2 in
   let both = unbox (bind_mvar ovars both) in
 

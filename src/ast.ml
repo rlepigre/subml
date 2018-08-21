@@ -373,14 +373,14 @@ let verbose : bool ref = ref false
 (** {2 Bindbox type shortcuts}                                              *)
 (****************************************************************************)
 
-type tvar = term' var
-type tbox = term bindbox
+type tvar = term' Bindlib.var
+type tbox = term Bindlib.box
 
-type kvar = kind var
-type kbox = kind bindbox
+type kvar = kind Bindlib.var
+type kbox = kind Bindlib.box
 
-type ovar = ordi var
-type obox = ordi bindbox
+type ovar = ordi Bindlib.var
+type obox = ordi Bindlib.box
 
 (** Kind variable management. *)
 let mk_free_k : kind var -> kind =
@@ -425,7 +425,7 @@ let oless_Gen o i s = box_apply2 (fun o s -> OLess(o,Gen(i,s))) o s
 (****************************************************************************)
 
 let kvari : string -> kbox =
-  fun x -> box_of_var (new_kvari x)
+  fun x -> box_var (new_kvari x)
 
 let kfunc : kbox -> kbox -> kbox =
   box_apply2 (fun t u -> KFunc(t,u))
@@ -522,7 +522,7 @@ let tcoer : Pos.popt -> tbox -> kbox -> tbox =
 
 let tvari : Pos.popt -> term' var -> tbox =
   fun p x ->
-    box_apply (Pos.make p) (box_of_var x)
+    box_apply (Pos.make p) (box_var x)
 
 let tabst : Pos.popt -> kbox option -> Pos.strloc -> sugar ->
             (tvar -> tbox) -> tbox =
@@ -589,13 +589,13 @@ let tcnst : (term', term) binder -> kbox -> kbox -> tbox =
 (****************************************************************************)
 
 let bot : kind =
-  unbox (kkall "X" (fun x -> box_of_var x))
+  unbox (kkall "X" (fun x -> box_var x))
 
 let top : kind =
-  unbox (kkexi "X" (fun x -> box_of_var x))
+  unbox (kkexi "X" (fun x -> box_var x))
 
 let idt : tbox =
-  let fn x = box_apply Pos.none (box_of_var x) in
+  let fn x = box_apply Pos.none (box_var x) in
   tabst None None (Pos.none "x") SgNop fn
 
 let generic_tcnst : kbox -> kbox -> tbox =

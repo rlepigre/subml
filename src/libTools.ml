@@ -53,10 +53,6 @@ let rec list_ref_iter : ('a -> unit) -> 'a list ref -> unit =
 module Bindlib = struct
   include Bindlib
 
-  type 'a bindbox = 'a box
-
-  let box_of_var = box_var
-
   let bind mkfree x f =
     let x = new_var mkfree x in
     bind_var x (f (box_var x))

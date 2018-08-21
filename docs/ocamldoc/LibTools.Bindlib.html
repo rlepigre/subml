@@ -45,10 +45,6 @@
 
 <pre><span class="keyword">include</span> Bindlib</pre>
 
-<pre><span id="TYPEbindbox"><span class="keyword">type</span> <code class="type">'a</code> bindbox</span> = <code class="type">'a box</code> </pre>
-
-
-<pre><span id="VALbox_of_var"><span class="keyword">val</span> box_of_var</span> : <code class="type">'a var -> 'a box</code></pre>
 <pre><span id="VALbind"><span class="keyword">val</span> bind</span> : <code class="type">('a var -> 'a) -> string -> ('a box -> 'b box) -> ('a, 'b) binder box</code></pre>
 <pre><span id="VALmbind"><span class="keyword">val</span> mbind</span> : <code class="type">('a var -> 'a) -><br>       string array -> ('a box array -> 'b box) -> ('a, 'b) mbinder box</code></pre>
 <pre><span id="VALvbind"><span class="keyword">val</span> vbind</span> : <code class="type">('a var -> 'a) -> string -> ('a var -> 'b box) -> ('a, 'b) binder box</code></pre>
