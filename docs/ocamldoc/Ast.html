@@ -58,17 +58,15 @@
 </div>
 <h1>Module <a href="type_Ast.html">Ast</a></h1>
 
-<pre><span id="MODULEAst"><span class="keyword">module</span> Ast</span>: <code class="code">sig</code> <a href="Ast.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<p>Abstract syntax tree. Definition of the internal representation of SubML's
-    types, terms and syntactic ordinals in an abstract syntax tree (AST).</p>
-</div>
-<ul class="info-attributes">
-<li><b>Author(s):</b> Christophe Raffalli &lt;christophe.raffalli@univ-savoie.fr&gt;, Rodolphe Lepigre &lt;rodolphe.lepigre@univ-savoie.fr&gt;</li>
-</ul>
+<pre><span class="keyword">module</span> Ast: <code class="code">sig</code> <a href="Ast.html">..</a> <code class="code">end</code></pre><div class="info module top">
+Abstract syntax tree. Definition of the internal representation of SubML's
+    types, terms and syntactic ordinals in an abstract syntax tree (AST).<br>
+<b>Author(s):</b> Christophe Raffalli &lt;christophe.raffalli@univ-savoie.fr&gt;, Rodolphe Lepigre &lt;rodolphe.lepigre@univ-savoie.fr&gt;<br>
 </div>
 <hr width="100%">
-<h3 id="2_MaintypesfortheAST">Main types for the AST</h3>
+<br>
+<h2 id="2_MaintypesfortheAST">Main types for the AST</h2><br>
+
 <pre><code><span id="TYPEoccur"><span class="keyword">type</span> <code class="type"></code>occur</span> = </code></pre><table class="typetable">
 <tr>
 <td align="left" valign="top" >
@@ -76,9 +74,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELToccur.Non"><span class="constructor">Non</span></span></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>The variable does not occur.</p>
-</div>
+The variable does not occur.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -88,9 +84,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELToccur.Pos"><span class="constructor">Pos</span></span> <span class="keyword">of</span> <code class="type">bool</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>The variable occurs only positively.</p>
-</div>
+The variable occurs only positively.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -100,9 +94,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELToccur.Neg"><span class="constructor">Neg</span></span> <span class="keyword">of</span> <code class="type">bool</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>The variable occurs only negatively.</p>
-</div>
+The variable occurs only negatively.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -112,9 +104,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELToccur.All"><span class="constructor">All</span></span></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>The variable occurs both positively and negatively.</p>
-</div>
+The variable occurs both positively and negatively.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -124,17 +114,13 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELToccur.Reg"><span class="constructor">Reg</span></span> <span class="keyword">of</span> <code class="type">int * <a href="Ast.html#TYPEoccur">occur</a> array</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Special constructor for constructing the variance of definitions.</p>
-</div>
+Special constructor for constructing the variance of definitions.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Occurence markers for variables.</p>
-</div>
+Occurence markers for variables.<br>
 </div>
 
 
@@ -143,11 +129,9 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTkind.KVari"><span class="constructor">KVari</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkind">kind</a> Bindlib.var</code></code></td>
+<code><span id="TYPEELTkind.KVari"><span class="constructor">KVari</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkind">kind</a> LibTools.Bindlib.var</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Free type variable.</p>
-</div>
+Free type variable.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -157,9 +141,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KFunc"><span class="constructor">KFunc</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkind">kind</a> * <a href="Ast.html#TYPEkind">kind</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Arrow type.</p>
-</div>
+Arrow type.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -169,9 +151,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KProd"><span class="constructor">KProd</span></span> <span class="keyword">of</span> <code class="type">(string * <a href="Ast.html#TYPEkind">kind</a>) list * bool</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>if true: the record is extensible</p>
-</div>
+if true: the record is extensible<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -181,9 +161,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KDSum"><span class="constructor">KDSum</span></span> <span class="keyword">of</span> <code class="type">(string * <a href="Ast.html#TYPEkind">kind</a>) list</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Sum (of Variant) type.</p>
-</div>
+Sum (of Variant) type.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -193,9 +171,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KKAll"><span class="constructor">KKAll</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkkbinder">kkbinder</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Universal quantifier over a type.</p>
-</div>
+Universal quantifier over a type.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -205,9 +181,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KKExi"><span class="constructor">KKExi</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkkbinder">kkbinder</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Corresponding existential quantifier.</p>
-</div>
+Corresponding existential quantifier.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -217,9 +191,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KOAll"><span class="constructor">KOAll</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEokbinder">okbinder</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Universal quantifier over an ordinal.</p>
-</div>
+Universal quantifier over an ordinal.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -229,9 +201,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KOExi"><span class="constructor">KOExi</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEokbinder">okbinder</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Corresponding existential quantifier.</p>
-</div>
+Corresponding existential quantifier.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -241,9 +211,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KFixM"><span class="constructor">KFixM</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a> * <a href="Ast.html#TYPEkkbinder">kkbinder</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Least fixpoint with ordinal size.</p>
-</div>
+Least fixpoint with ordinal size.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -253,9 +221,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KFixN"><span class="constructor">KFixN</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a> * <a href="Ast.html#TYPEkkbinder">kkbinder</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Greatest fixpoint with ordinal size.</p>
-</div>
+Greatest fixpoint with ordinal size.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -265,9 +231,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KDefi"><span class="constructor">KDefi</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkdefi">kdefi</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>User-defined type with its arguments.</p>
-</div>
+User-defined type with its arguments.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -277,9 +241,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KUCst"><span class="constructor">KUCst</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * <a href="Ast.html#TYPEkkbinder">kkbinder</a> * bool</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Universal witness.</p>
-</div>
+Universal witness.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -289,9 +251,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KECst"><span class="constructor">KECst</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * <a href="Ast.html#TYPEkkbinder">kkbinder</a> * bool</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Existential witness.</p>
-</div>
+Existential witness.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -301,9 +261,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KUVar"><span class="constructor">KUVar</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkuvar">kuvar</a> * <a href="Ast.html#TYPEordi">ordi</a> array</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Unification variable.</p>
-</div>
+Unification variable.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -313,9 +271,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KMRec"><span class="constructor">KMRec</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a> <a href="Subset.html#TYPEset">Subset.set</a> * <a href="Ast.html#TYPEkind">kind</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Ordinal conjunction. FIXME wrong name</p>
-</div>
+Ordinal conjunction. FIXME wrong name<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -325,9 +281,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KNRec"><span class="constructor">KNRec</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a> <a href="Subset.html#TYPEset">Subset.set</a> * <a href="Ast.html#TYPEkind">kind</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Ordinal disjunction. FIXME wrong name</p>
-</div>
+Ordinal disjunction. FIXME wrong name<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -337,41 +291,31 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkind.KPrnt"><span class="constructor">KPrnt</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkprint">kprint</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Special pretty-printing constructor.</p>
-</div>
+Special pretty-printing constructor.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Ast of kinds (or types).</p>
-</div>
+Ast of kinds (or types).<br>
 </div>
 
 
-<pre><span id="TYPEokbinder"><span class="keyword">type</span> <code class="type"></code>okbinder</span> = <code class="type">(<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) Bindlib.binder</code> </pre>
+<pre><span id="TYPEokbinder"><span class="keyword">type</span> <code class="type"></code>okbinder</span> = <code class="type">(<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) LibTools.Bindlib.binder</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p><code class="code">Bindlib</code> binder for an ordinal in a kind.</p>
-</div>
+<code class="code">Bindlib</code> binder for an ordinal in a kind.<br>
 </div>
 
 
-<pre><span id="TYPEkkbinder"><span class="keyword">type</span> <code class="type"></code>kkbinder</span> = <code class="type">(<a href="Ast.html#TYPEkind">kind</a>, <a href="Ast.html#TYPEkind">kind</a>) Bindlib.binder</code> </pre>
+<pre><span id="TYPEkkbinder"><span class="keyword">type</span> <code class="type"></code>kkbinder</span> = <code class="type">(<a href="Ast.html#TYPEkind">kind</a>, <a href="Ast.html#TYPEkind">kind</a>) LibTools.Bindlib.binder</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p><code class="code">Bindlib</code> binder for a kind in a kind.</p>
-</div>
+<code class="code">Bindlib</code> binder for a kind in a kind.<br>
 </div>
 
 
 <pre><span id="TYPEkdefi"><span class="keyword">type</span> <code class="type"></code>kdefi</span> = <code class="type"><a href="Ast.html#TYPEkdef">kdef</a> * <a href="Ast.html#TYPEordi">ordi</a> array * <a href="Ast.html#TYPEkind">kind</a> array</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Fully applied type definition with its ordinal and kind arguments.</p>
-</div>
+Fully applied type definition with its ordinal and kind arguments.<br>
 </div>
 
 
@@ -382,9 +326,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkprint.FreeVr"><span class="constructor">FreeVr</span></span> <span class="keyword">of</span> <code class="type">string</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Used to print a variable.</p>
-</div>
+Used to print a variable.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -394,17 +336,13 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkprint.DotPrj"><span class="constructor">DotPrj</span></span> <span class="keyword">of</span> <code class="type">string * string</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Used to print a dot projection.</p>
-</div>
+Used to print a dot projection.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Pretty-printing markers for free variables and dot-projection.</p>
-</div>
+Pretty-printing markers for free variables and dot-projection.<br>
 </div>
 
 
@@ -415,9 +353,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkdef.tdef_name">tdef_name</span>&nbsp;: <code class="type">string</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Name of the type constructor.</p>
-</div>
+Name of the type constructor.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -427,9 +363,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkdef.tdef_tex_name">tdef_tex_name</span>&nbsp;: <code class="type">string</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>LateX Name of the type constructor.</p>
-</div>
+LateX Name of the type constructor.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -439,9 +373,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkdef.tdef_oarity">tdef_oarity</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Number of ordinal parameters.</p>
-</div>
+Number of ordinal parameters.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -451,9 +383,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkdef.tdef_karity">tdef_karity</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Number of type parameters.</p>
-</div>
+Number of type parameters.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -463,9 +393,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkdef.tdef_ovariance">tdef_ovariance</span>&nbsp;: <code class="type"><a href="Ast.html#TYPEoccur">occur</a> array</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Variance of the ordinal parameters</p>
-</div>
+Variance of the ordinal parameters<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -475,9 +403,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkdef.tdef_kvariance">tdef_kvariance</span>&nbsp;: <code class="type"><a href="Ast.html#TYPEoccur">occur</a> array</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Variance of the type parameters</p>
-</div>
+Variance of the type parameters<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -487,50 +413,38 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkdef.tdef_value">tdef_value</span>&nbsp;: <code class="type"><a href="Ast.html#TYPEokmkbinder">okmkbinder</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Definition of the constructor.</p>
-</div>
+Definition of the constructor.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>User-defined type with ordinal and kind parameters.</p>
-</div>
+User-defined type with ordinal and kind parameters.<br>
 </div>
 
 
 <pre><span id="TYPEokmkbinder"><span class="keyword">type</span> <code class="type"></code>okmkbinder</span> = <code class="type"><a href="Ast.html#TYPEkind">kind</a> <a href="Ast.html#TYPEfrom_kinds">from_kinds</a> <a href="Ast.html#TYPEfrom_ordis">from_ordis</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p><code class="code">Bindlib</code> type for a kind parametrised by ordinals and kinds.</p>
-</div>
+<code class="code">Bindlib</code> type for a kind parametrised by ordinals and kinds.<br>
 </div>
 
 
 <pre><span id="TYPEokmtbinder"><span class="keyword">type</span> <code class="type"></code>okmtbinder</span> = <code class="type"><a href="Ast.html#TYPEterm">term</a> <a href="Ast.html#TYPEfrom_kinds">from_kinds</a> <a href="Ast.html#TYPEfrom_ordis">from_ordis</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p><code class="code">Bindlib</code> type for a term parametrised by ordinals and kinds.</p>
-</div>
+<code class="code">Bindlib</code> type for a term parametrised by ordinals and kinds.<br>
 </div>
 
 
-<pre><span id="TYPEfrom_ordis"><span class="keyword">type</span> <code class="type">'a</code> from_ordis</span> = <code class="type">(<a href="Ast.html#TYPEordi">ordi</a>, 'a) Bindlib.mbinder</code> </pre>
+<pre><span id="TYPEfrom_ordis"><span class="keyword">type</span> <code class="type">'a</code> from_ordis</span> = <code class="type">(<a href="Ast.html#TYPEordi">ordi</a>, 'a) LibTools.Bindlib.mbinder</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>General <code class="code">Bindlib</code> types for <code class="code">'a</code> parametrised by ordinals.</p>
-</div>
+General <code class="code">Bindlib</code> types for <code class="code">'a</code> parametrised by ordinals.<br>
 </div>
 
 
-<pre><span id="TYPEfrom_kinds"><span class="keyword">type</span> <code class="type">'a</code> from_kinds</span> = <code class="type">(<a href="Ast.html#TYPEkind">kind</a>, 'a) Bindlib.mbinder</code> </pre>
+<pre><span id="TYPEfrom_kinds"><span class="keyword">type</span> <code class="type">'a</code> from_kinds</span> = <code class="type">(<a href="Ast.html#TYPEkind">kind</a>, 'a) LibTools.Bindlib.mbinder</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>General <code class="code">Bindlib</code> types for <code class="code">'a</code> parametrised by kinds.</p>
-</div>
+General <code class="code">Bindlib</code> types for <code class="code">'a</code> parametrised by kinds.<br>
 </div>
 
 
@@ -541,9 +455,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTuvar.uvar_key">uvar_key</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Unique key (or UID).</p>
-</div>
+Unique key (or UID).<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -560,18 +472,14 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTuvar.uvar_arity">uvar_arity</span>&nbsp;: <code class="type">int</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Arity of the variable.</p>
-</div>
+Arity of the variable.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>Unification variable type managed using a union-find algorithm.</p>
-</div>
+Unification variable type managed using a union-find algorithm.<br>
 </div>
 
 
@@ -595,9 +503,7 @@
 
 <pre><span id="TYPEkuvar"><span class="keyword">type</span> <code class="type"></code>kuvar</span> = <code class="type">(<a href="Ast.html#TYPEkind">kind</a>, <a href="Ast.html#TYPEkuvar_state">kuvar_state</a>) <a href="Ast.html#TYPEuvar">uvar</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Unification variable for a kind.</p>
-</div>
+Unification variable for a kind.<br>
 </div>
 
 
@@ -608,9 +514,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkuvar_state.Free"><span class="constructor">Free</span></span></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>No constraint.</p>
-</div>
+No constraint.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -620,9 +524,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkuvar_state.DSum"><span class="constructor">DSum</span></span> <span class="keyword">of</span> <code class="type">(string * <a href="Ast.html#TYPEkind">kind</a> <a href="Ast.html#TYPEfrom_ordis">from_ordis</a>) list</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Has the given constructors.</p>
-</div>
+Has the given constructors.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -632,18 +534,14 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTkuvar_state.Prod"><span class="constructor">Prod</span></span> <span class="keyword">of</span> <code class="type">(string * <a href="Ast.html#TYPEkind">kind</a> <a href="Ast.html#TYPEfrom_ordis">from_ordis</a>) list</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Has the given fields.</p>
-</div>
+Has the given fields.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>State of a unification variable for kinds, useful for the inference of sum
-    types and product types.</p>
-</div>
+State of a unification variable for kinds, useful for the inference of sum
+    types and product types.<br>
 </div>
 
 
@@ -652,11 +550,9 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTordi.OVari"><span class="constructor">OVari</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.var</code></code></td>
+<code><span id="TYPEELTordi.OVari"><span class="constructor">OVari</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.var</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Free ordinal variable.</p>
-</div>
+Free ordinal variable.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -666,9 +562,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTordi.OConv"><span class="constructor">OConv</span></span></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>ordinal that makes fixpoints converge.</p>
-</div>
+ordinal that makes fixpoints converge.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -678,10 +572,8 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTordi.OMaxi"><span class="constructor">OMaxi</span></span></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>OConv + omega, ordinal defining the model.
-                          only appears in OLess</p>
-</div>
+OConv + omega, ordinal defining the model.
+                          only appears in OLess<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -691,9 +583,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTordi.OSucc"><span class="constructor">OSucc</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Succesor of an ordinal.</p>
-</div>
+Succesor of an ordinal.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -703,9 +593,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTordi.OLess"><span class="constructor">OLess</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEordi">ordi</a> * <a href="Ast.html#TYPEord_wit">ord_wit</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Ordinal witness.</p>
-</div>
+Ordinal witness.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -715,9 +603,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTordi.OUVar"><span class="constructor">OUVar</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEouvar">ouvar</a> * <a href="Ast.html#TYPEordi">ordi</a> array</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Unification variables for ordinals.</p>
-</div>
+Unification variables for ordinals.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -727,25 +613,19 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTordi.OVars"><span class="constructor">OVars</span></span> <span class="keyword">of</span> <code class="type">string</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>for printing only</p>
-</div>
+for printing only<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Abstract syntax tree for ordinals.</p>
-</div>
+Abstract syntax tree for ordinals.<br>
 </div>
 
 
 <pre><span id="TYPEouvar"><span class="keyword">type</span> <code class="type"></code>ouvar</span> = <code class="type">(<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEordi">ordi</a> <a href="Ast.html#TYPEfrom_ordis">from_ordis</a> option * <a href="Ast.html#TYPEordi">ordi</a> <a href="Ast.html#TYPEfrom_ordis">from_ordis</a> option)<br>       <a href="Ast.html#TYPEuvar">uvar</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Unification variable for an ordinal.</p>
-</div>
+Unification variable for an ordinal.<br>
 </div>
 
 
@@ -754,12 +634,10 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTord_wit.In"><span class="constructor">In</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) Bindlib.binder</code></code></td>
+<code><span id="TYPEELTord_wit.In"><span class="constructor">In</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) LibTools.Bindlib.binder</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p><code class="code">OLess(o',In(t,f))</code> refers to an ordinal <code class="code">o</code> smaller than <code class="code">o'</code> and such
-     that <code class="code">t</code> has type <code class="code">Bindlib.subst f o</code>.</p>
-</div>
+<code class="code">OLess(o',In(t,f))</code> refers to an ordinal <code class="code">o</code> smaller than <code class="code">o'</code> and such
+     that <code class="code">t</code> has type <code class="code">Bindlib.subst f o</code>.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -767,12 +645,10 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTord_wit.NotIn"><span class="constructor">NotIn</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) Bindlib.binder</code></code></td>
+<code><span id="TYPEELTord_wit.NotIn"><span class="constructor">NotIn</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) LibTools.Bindlib.binder</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p><code class="code">OLess(o',NotIn(t,f))</code> refers to an ordinal <code class="code">o</code> smaller than <code class="code">o'</code> and
-     such that <code class="code">t</code> does not have type <code class="code">Bindlib.subst f o</code>.</p>
-</div>
+<code class="code">OLess(o',NotIn(t,f))</code> refers to an ordinal <code class="code">o</code> smaller than <code class="code">o'</code> and
+     such that <code class="code">t</code> does not have type <code class="code">Bindlib.subst f o</code>.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -782,25 +658,19 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTord_wit.Gen"><span class="constructor">Gen</span></span> <span class="keyword">of</span> <code class="type">int * <a href="Ast.html#TYPEschema">schema</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>the i-th member of a counter example to e schema</p>
-</div>
+the i-th member of a counter example to e schema<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Ordinal constraints carried by ordinal witnesses.</p>
-</div>
+Ordinal constraints carried by ordinal witnesses.<br>
 </div>
 
 
 <pre><span id="TYPEterm"><span class="keyword">type</span> <code class="type"></code>term</span> = <code class="type"><a href="Ast.html#TYPEterm'">term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Abstract syntax tree for terms, with a source code position.</p>
-</div>
+Abstract syntax tree for terms, with a source code position.<br>
 </div>
 
 
@@ -842,9 +712,7 @@
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>syntactic sugar from parsing</p>
-</div>
+syntactic sugar from parsing<br>
 </div>
 
 
@@ -853,11 +721,9 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTterm'.TVari"><span class="constructor">TVari</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm'">term'</a> Bindlib.var</code></code></td>
+<code><span id="TYPEELTterm'.TVari"><span class="constructor">TVari</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm'">term'</a> LibTools.Bindlib.var</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Free λ-variable.</p>
-</div>
+Free λ-variable.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -865,11 +731,9 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTterm'.TAbst"><span class="constructor">TAbst</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkind">kind</a> option * (<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) Bindlib.binder * <a href="Ast.html#TYPEsugar">sugar</a></code></code></td>
+<code><span id="TYPEELTterm'.TAbst"><span class="constructor">TAbst</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkind">kind</a> option * (<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) LibTools.Bindlib.binder * <a href="Ast.html#TYPEsugar">sugar</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>λ-abstraction.</p>
-</div>
+λ-abstraction.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -879,9 +743,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TAppl"><span class="constructor">TAppl</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * <a href="Ast.html#TYPEterm">term</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Application.</p>
-</div>
+Application.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -891,9 +753,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TReco"><span class="constructor">TReco</span></span> <span class="keyword">of</span> <code class="type">(string * <a href="Ast.html#TYPEterm">term</a>) list</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Record.</p>
-</div>
+Record.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -903,9 +763,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TProj"><span class="constructor">TProj</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * string</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Projection.</p>
-</div>
+Projection.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -915,9 +773,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TCons"><span class="constructor">TCons</span></span> <span class="keyword">of</span> <code class="type">string * <a href="Ast.html#TYPEterm">term</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Variant.</p>
-</div>
+Variant.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -927,9 +783,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TCase"><span class="constructor">TCase</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * (string * <a href="Ast.html#TYPEterm">term</a>) list * <a href="Ast.html#TYPEterm">term</a> option</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Case analysis.</p>
-</div>
+Case analysis.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -939,9 +793,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TDefi"><span class="constructor">TDefi</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEtdef">tdef</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Defined term.</p>
-</div>
+Defined term.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -949,14 +801,12 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTterm'.TFixY"><span class="constructor">TFixY</span></span> <span class="keyword">of</span> <code class="type">bool option * int * (<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) Bindlib.binder</code></code></td>
+<code><span id="TYPEELTterm'.TFixY"><span class="constructor">TFixY</span></span> <span class="keyword">of</span> <code class="type">bool option * int * (<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) LibTools.Bindlib.binder</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Fixpoint combinator. the integer is an indications for the termination
+Fixpoint combinator. the integer is an indications for the termination
       checker. It indicates the number of unrolling to build the induction
       hypothesis. The boolean indicates if contravariant Conv must not be
-      replaced by ordinal parameters</p>
-</div>
+      replaced by ordinal parameters<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -966,9 +816,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TAbrt"><span class="constructor">TAbrt</span></span></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Error.</p>
-</div>
+Error.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -978,9 +826,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TCoer"><span class="constructor">TCoer</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEterm">term</a> * <a href="Ast.html#TYPEkind">kind</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Type coercion.</p>
-</div>
+Type coercion.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -990,9 +836,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TMLet"><span class="constructor">TMLet</span></span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEokmkbinder">okmkbinder</a> * <a href="Ast.html#TYPEterm">term</a> option * <a href="Ast.html#TYPEokmtbinder">okmtbinder</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Matching over a type to access the typing environment.</p>
-</div>
+Matching over a type to access the typing environment.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1000,12 +844,10 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTterm'.TCnst"><span class="constructor">TCnst</span></span> <span class="keyword">of</span> <code class="type">(<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) Bindlib.binder * <a href="Ast.html#TYPEkind">kind</a> * <a href="Ast.html#TYPEkind">kind</a></code></code></td>
+<code><span id="TYPEELTterm'.TCnst"><span class="constructor">TCnst</span></span> <span class="keyword">of</span> <code class="type">(<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) LibTools.Bindlib.binder * <a href="Ast.html#TYPEkind">kind</a> * <a href="Ast.html#TYPEkind">kind</a></code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Witness (a.k.a. epsilon). <code class="code">Cnst(f,a,b)</code> denotes a term <code class="code">u</code> of type <code class="code">a</code>
-      such that <code class="code">Bindlib.subst f u</code> does not have type <code class="code">b</code>.</p>
-</div>
+Witness (a.k.a. epsilon). <code class="code">Cnst(f,a,b)</code> denotes a term <code class="code">u</code> of type <code class="code">a</code>
+      such that <code class="code">Bindlib.subst f u</code> does not have type <code class="code">b</code>.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1015,10 +857,8 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TPrnt"><span class="constructor">TPrnt</span></span> <span class="keyword">of</span> <code class="type">string</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Print a message on the screen. Note that this operation performs is a
-      side-effect.</p>
-</div>
+Print a message on the screen. Note that this operation performs is a
+      side-effect.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1028,17 +868,13 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTterm'.TVars"><span class="constructor">TVars</span></span> <span class="keyword">of</span> <code class="type">string</code></code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Special pretty printing constructor</p>
-</div>
+Special pretty printing constructor<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Abstract syntax tree for terms.</p>
-</div>
+Abstract syntax tree for terms.<br>
 </div>
 
 
@@ -1049,9 +885,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTtdef.name">name</span>&nbsp;: <code class="type">string</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Name of the term.</p>
-</div>
+Name of the term.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1061,9 +895,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTtdef.tex_name">tex_name</span>&nbsp;: <code class="type">string</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Latex name of the term.</p>
-</div>
+Latex name of the term.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1073,9 +905,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTtdef.value">value</span>&nbsp;: <code class="type"><a href="Ast.html#TYPEterm">term</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Evaluated term.</p>
-</div>
+Evaluated term.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1085,9 +915,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTtdef.orig_value">orig_value</span>&nbsp;: <code class="type"><a href="Ast.html#TYPEterm">term</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Original term (not evaluated).</p>
-</div>
+Original term (not evaluated).<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1097,9 +925,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTtdef.ttype">ttype</span>&nbsp;: <code class="type"><a href="Ast.html#TYPEkind">kind</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Type of the term.</p>
-</div>
+Type of the term.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1109,9 +935,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTtdef.proof">proof</span>&nbsp;: <code class="type"><a href="Ast.html#TYPEtyp_prf">typ_prf</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>Typing proof.</p>
-</div>
+Typing proof.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1121,18 +945,14 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTtdef.calls_graph">calls_graph</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEt">Sct.t</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>SCT instance.</p>
-</div>
+SCT instance.<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>Term definition (user defined term)</p>
-</div>
+Term definition (user defined term)<br>
 </div>
 
 
@@ -1143,9 +963,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTschema.sch_index">sch_index</span>&nbsp;: <code class="type"><a href="Sct.html#TYPEindex">Sct.index</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>index of the schema in the sct call graph</p>
-</div>
+index of the schema in the sct call graph<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1155,9 +973,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTschema.sch_posit">sch_posit</span>&nbsp;: <code class="type">int list</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>the index of positive ordinals</p>
-</div>
+the index of positive ordinals<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1167,9 +983,7 @@
 <td align="left" valign="top" >
 <code><span id="TYPEELTschema.sch_relat">sch_relat</span>&nbsp;: <code class="type">(int * int) list</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>relation between ordinals</p>
-</div>
+relation between ordinals<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -1177,21 +991,17 @@
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTschema.sch_judge">sch_judge</span>&nbsp;: <code class="type">(<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEterm_or_kind">term_or_kind</a> * <a href="Ast.html#TYPEkind">kind</a>) Bindlib.mbinder</code>;</code></td>
+<code><span id="TYPEELTschema.sch_judge">sch_judge</span>&nbsp;: <code class="type">(<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEterm_or_kind">term_or_kind</a> * <a href="Ast.html#TYPEkind">kind</a>) LibTools.Bindlib.mbinder</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-<div class="info-desc">
-<p>judgement</p>
-</div>
+judgement<br>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
 }
 
 <div class="info ">
-<div class="info-desc">
-<p>the type of a general typing judgement, i.e. with
-    quantified ordinals</p>
-</div>
+the type of a general typing judgement, i.e. with
+    quantified ordinals<br>
 </div>
 
 
@@ -1200,7 +1010,7 @@
 <td align="left" valign="top" >
 <code><span class="keyword">|</span></code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTterm_or_kind.SchTerm"><span class="constructor">SchTerm</span></span> <span class="keyword">of</span> <code class="type">(<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) Bindlib.binder</code></code></td>
+<code><span id="TYPEELTterm_or_kind.SchTerm"><span class="constructor">SchTerm</span></span> <span class="keyword">of</span> <code class="type">(<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) LibTools.Bindlib.binder</code></code></td>
 
 </tr>
 <tr>
@@ -1212,7 +1022,9 @@
 </tr></table>
 
 
-<h3 id="2_Representationofprooftrees">Representation of proof trees</h3>
+<br>
+<h2 id="2_Representationofprooftrees">Representation of proof trees</h2><br>
+
 <pre><code><span id="TYPEsub_rule"><span class="keyword">type</span> <code class="type"></code>sub_rule</span> = </code></pre><table class="typetable">
 <tr>
 <td align="left" valign="top" >
@@ -1384,17 +1196,13 @@
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Subtyping proof</p>
-</div>
+Subtyping proof<br>
 </div>
 
 
 <pre><span id="TYPEsub_prf"><span class="keyword">type</span> <code class="type"></code>sub_prf</span> = <code class="type"><a href="Ast.html#TYPEordi">ordi</a> list * <a href="Ast.html#TYPEterm">term</a> * <a href="Ast.html#TYPEkind">kind</a> * <a href="Ast.html#TYPEkind">kind</a> * <a href="Ast.html#TYPEsub_rule">sub_rule</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>the integer is referenced by induction hyp (<code class="code">Sub_Ind</code>)</p>
-</div>
+the integer is referenced by induction hyp (<code class="code">Sub_Ind</code>)<br>
 </div>
 
 
@@ -1506,9 +1314,7 @@
 </tr></table>
 
 <div class="info ">
-<div class="info-desc">
-<p>Typing proof</p>
-</div>
+Typing proof<br>
 </div>
 
 
@@ -1540,24 +1346,23 @@
 
 
 
-<pre><span id="VALeq_uvar"><span class="keyword">val</span> eq_uvar</span> : <code class="type">('a, 'b) <a href="Ast.html#TYPEuvar">uvar</a> -> ('c, 'd) <a href="Ast.html#TYPEuvar">uvar</a> -> bool</code></pre><p>Equality on variables</p>
+<pre><span id="VALeq_uvar"><span class="keyword">val</span> eq_uvar</span> : <code class="type">('a, 'b) <a href="Ast.html#TYPEuvar">uvar</a> -> ('c, 'd) <a href="Ast.html#TYPEuvar">uvar</a> -> bool</code></pre><br>
+Equality on variables<br>
 
 <pre><span id="VALtdummy"><span class="keyword">val</span> tdummy</span> : <code class="type"><a href="Ast.html#TYPEterm'">term'</a></code></pre>
 <pre><span id="VALpdummy"><span class="keyword">val</span> pdummy</span> : <code class="type"><a href="Ast.html#TYPEterm'">term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
 <pre><span id="VALkdummy"><span class="keyword">val</span> kdummy</span> : <code class="type"><a href="Ast.html#TYPEkind">kind</a></code></pre>
-<pre><span id="VALodummy"><span class="keyword">val</span> odummy</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a></code></pre><h3 id="2_Unfoldingunificationvariablesindirectionsanddefinitions">Unfolding unification variables indirections and definitions.
-      Also perform mu/nu contractions</h3>
+<pre><span id="VALodummy"><span class="keyword">val</span> odummy</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a></code></pre><br>
+<h2 id="2_Unfoldingunificationvariablesindirectionsanddefinitions">Unfolding unification variables indirections and definitions.
+      Also perform mu/nu contractions</h2><br>
+
 <pre><span id="VALcontract_mu"><span class="keyword">val</span> contract_mu</span> : <code class="type">bool Pervasives.ref</code></pre><div class="info ">
-<div class="info-desc">
-<p>This flags controls the merging of consecutive mu and nu
-    (true by default disables by --no-contr)</p>
-</div>
+This flags controls the merging of consecutive mu and nu
+    (true by default disables by --no-contr)<br>
 </div>
 
 <pre><span id="VALis_set"><span class="keyword">val</span> is_set</span> : <code class="type">('a, 'b) <a href="Ast.html#TYPEuvar">uvar</a> -> bool</code></pre><div class="info ">
-<div class="info-desc">
-<p>Main shared function</p>
-</div>
+Main shared function<br>
 </div>
 
 <pre><span id="VALis_unset"><span class="keyword">val</span> is_unset</span> : <code class="type">('a, 'b) <a href="Ast.html#TYPEuvar">uvar</a> -> bool</code></pre>
@@ -1566,31 +1371,27 @@
 <pre><span id="VALis_mu"><span class="keyword">val</span> is_mu</span> : <code class="type">bool -> <a href="Ast.html#TYPEkkbinder">kkbinder</a> -> bool</code></pre>
 <pre><span id="VALis_nu"><span class="keyword">val</span> is_nu</span> : <code class="type">bool -> <a href="Ast.html#TYPEkkbinder">kkbinder</a> -> bool</code></pre>
 <pre><span id="VALfull_repr"><span class="keyword">val</span> full_repr</span> : <code class="type"><a href="Ast.html#TYPEkind">kind</a> -> <a href="Ast.html#TYPEkind">kind</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>The main function: unfold type variables indirections and definitions</p>
-</div>
+The main function: unfold type variables indirections and definitions<br>
 </div>
 
 <pre><span id="VALrepr"><span class="keyword">val</span> repr</span> : <code class="type"><a href="Ast.html#TYPEkind">kind</a> -> <a href="Ast.html#TYPEkind">kind</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>The main function: unfold type variables indirections only</p>
-</div>
+The main function: unfold type variables indirections only<br>
 </div>
 
 <pre><span id="VALorepr"><span class="keyword">val</span> orepr</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> -> <a href="Ast.html#TYPEordi">ordi</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>Unfold ordinal variables indirections</p>
+Unfold ordinal variables indirections<br>
 </div>
-</div>
-<h3 id="2_Pointertoprintingfunctionfromprintmltouseindebugging">Pointer to printing function from "print.ml", to use in debugging </h3>
+<br>
+<h2 id="2_Pointertoprintingfunctionfromprintmltouseindebugging">Pointer to printing function from "print.ml", to use in debugging </h2><br>
+
 <pre><span id="VALfprint_term"><span class="keyword">val</span> fprint_term</span> : <code class="type">(bool -> Format.formatter -> <a href="Ast.html#TYPEterm">term</a> -> unit) Pervasives.ref</code></pre>
 <pre><span id="VALfprint_kind"><span class="keyword">val</span> fprint_kind</span> : <code class="type">(bool -> Format.formatter -> <a href="Ast.html#TYPEkind">kind</a> -> unit) Pervasives.ref</code></pre>
-<pre><span id="VALfprint_ordi"><span class="keyword">val</span> fprint_ordi</span> : <code class="type">(bool -> Format.formatter -> <a href="Ast.html#TYPEordi">ordi</a> -> unit) Pervasives.ref</code></pre><h3 id="2_Frequentlyusedtypesandfunctions">Frequently used types and functions</h3>
+<pre><span id="VALfprint_ordi"><span class="keyword">val</span> fprint_ordi</span> : <code class="type">(bool -> Format.formatter -> <a href="Ast.html#TYPEordi">ordi</a> -> unit) Pervasives.ref</code></pre><br>
+<h2 id="2_Frequentlyusedtypesandfunctions">Frequently used types and functions</h2><br>
+
 <pre><span id="TYPEval_env"><span class="keyword">type</span> <code class="type"></code>val_env</span> = <code class="type">(string, <a href="Ast.html#TYPEtdef">tdef</a>) Hashtbl.t</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>Value and type environments.</p>
-</div>
+Value and type environments.<br>
 </div>
 
 
@@ -1599,53 +1400,53 @@
 
 <pre><span id="VALtyp_env"><span class="keyword">val</span> typ_env</span> : <code class="type"><a href="Ast.html#TYPEtyp_env">typ_env</a></code></pre>
 <pre><span id="VALval_env"><span class="keyword">val</span> val_env</span> : <code class="type"><a href="Ast.html#TYPEval_env">val_env</a></code></pre>
-<pre><span id="VALverbose"><span class="keyword">val</span> verbose</span> : <code class="type">bool Pervasives.ref</code></pre><h3 id="2_Bindboxtypeshortcuts">Bindbox type shortcuts</h3>
-<pre><span id="TYPEtvar"><span class="keyword">type</span> <code class="type"></code>tvar</span> = <code class="type"><a href="Ast.html#TYPEterm'">term'</a> Bindlib.var</code> </pre>
+<pre><span id="VALverbose"><span class="keyword">val</span> verbose</span> : <code class="type">bool Pervasives.ref</code></pre><br>
+<h2 id="2_Bindboxtypeshortcuts">Bindbox type shortcuts</h2><br>
+
+<pre><span id="TYPEtvar"><span class="keyword">type</span> <code class="type"></code>tvar</span> = <code class="type"><a href="Ast.html#TYPEterm'">term'</a> LibTools.Bindlib.var</code> </pre>
 
 
-<pre><span id="TYPEtbox"><span class="keyword">type</span> <code class="type"></code>tbox</span> = <code class="type"><a href="Ast.html#TYPEterm">term</a> Bindlib.bindbox</code> </pre>
+<pre><span id="TYPEtbox"><span class="keyword">type</span> <code class="type"></code>tbox</span> = <code class="type"><a href="Ast.html#TYPEterm">term</a> <a href="LibTools.Bindlib.html#TYPEbindbox">LibTools.Bindlib.bindbox</a></code> </pre>
 
 
-<pre><span id="TYPEkvar"><span class="keyword">type</span> <code class="type"></code>kvar</span> = <code class="type"><a href="Ast.html#TYPEkind">kind</a> Bindlib.var</code> </pre>
+<pre><span id="TYPEkvar"><span class="keyword">type</span> <code class="type"></code>kvar</span> = <code class="type"><a href="Ast.html#TYPEkind">kind</a> LibTools.Bindlib.var</code> </pre>
 
 
-<pre><span id="TYPEkbox"><span class="keyword">type</span> <code class="type"></code>kbox</span> = <code class="type"><a href="Ast.html#TYPEkind">kind</a> Bindlib.bindbox</code> </pre>
+<pre><span id="TYPEkbox"><span class="keyword">type</span> <code class="type"></code>kbox</span> = <code class="type"><a href="Ast.html#TYPEkind">kind</a> <a href="LibTools.Bindlib.html#TYPEbindbox">LibTools.Bindlib.bindbox</a></code> </pre>
 
 
-<pre><span id="TYPEovar"><span class="keyword">type</span> <code class="type"></code>ovar</span> = <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.var</code> </pre>
+<pre><span id="TYPEovar"><span class="keyword">type</span> <code class="type"></code>ovar</span> = <code class="type"><a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.var</code> </pre>
 
 
-<pre><span id="TYPEobox"><span class="keyword">type</span> <code class="type"></code>obox</span> = <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox</code> </pre>
+<pre><span id="TYPEobox"><span class="keyword">type</span> <code class="type"></code>obox</span> = <code class="type"><a href="Ast.html#TYPEordi">ordi</a> <a href="LibTools.Bindlib.html#TYPEbindbox">LibTools.Bindlib.bindbox</a></code> </pre>
 
 
-<pre><span id="VALmk_free_k"><span class="keyword">val</span> mk_free_k</span> : <code class="type"><a href="Ast.html#TYPEkind">kind</a> Bindlib.var -> <a href="Ast.html#TYPEkind">kind</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>Kind variable management.</p>
-</div>
-</div>
-
-<pre><span id="VALnew_kvari"><span class="keyword">val</span> new_kvari</span> : <code class="type">string -> <a href="Ast.html#TYPEkind">kind</a> Bindlib.var</code></pre>
-<pre><span id="VALmk_free_t"><span class="keyword">val</span> mk_free_t</span> : <code class="type"><a href="Ast.html#TYPEterm'">term'</a> Bindlib.var -> <a href="Ast.html#TYPEterm'">term'</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>Term variable management.</p>
-</div>
+<pre><span id="VALmk_free_k"><span class="keyword">val</span> mk_free_k</span> : <code class="type"><a href="Ast.html#TYPEkind">kind</a> LibTools.Bindlib.var -> <a href="Ast.html#TYPEkind">kind</a></code></pre><div class="info ">
+Kind variable management.<br>
 </div>
 
-<pre><span id="VALnew_tvari"><span class="keyword">val</span> new_tvari</span> : <code class="type">string -> <a href="Ast.html#TYPEterm'">term'</a> Bindlib.var</code></pre>
+<pre><span id="VALnew_kvari"><span class="keyword">val</span> new_kvari</span> : <code class="type">string -> <a href="Ast.html#TYPEkind">kind</a> LibTools.Bindlib.var</code></pre>
+<pre><span id="VALmk_free_t"><span class="keyword">val</span> mk_free_t</span> : <code class="type"><a href="Ast.html#TYPEterm'">term'</a> LibTools.Bindlib.var -> <a href="Ast.html#TYPEterm'">term'</a></code></pre><div class="info ">
+Term variable management.<br>
+</div>
+
+<pre><span id="VALnew_tvari"><span class="keyword">val</span> new_tvari</span> : <code class="type">string -> <a href="Ast.html#TYPEterm'">term'</a> LibTools.Bindlib.var</code></pre>
 <pre><span id="VALmk_free_o"><span class="keyword">val</span> mk_free_o</span> : <code class="type"><a href="Ast.html#TYPEovar">ovar</a> -> <a href="Ast.html#TYPEordi">ordi</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>Ordinal variable management.</p>
-</div>
+Ordinal variable management.<br>
 </div>
 
-<pre><span id="VALnew_ovari"><span class="keyword">val</span> new_ovari</span> : <code class="type">string -> <a href="Ast.html#TYPEovar">ovar</a></code></pre><h3 id="2_Smartconstructorsforordinals">Smart constructors for ordinals</h3>
-<pre><span id="VALoconv"><span class="keyword">val</span> oconv</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox</code></pre>
-<pre><span id="VALosucc"><span class="keyword">val</span> osucc</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox -> <a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox</code></pre>
+<pre><span id="VALnew_ovari"><span class="keyword">val</span> new_ovari</span> : <code class="type">string -> <a href="Ast.html#TYPEovar">ovar</a></code></pre><br>
+<h2 id="2_Smartconstructorsforordinals">Smart constructors for ordinals</h2><br>
+
+<pre><span id="VALoconv"><span class="keyword">val</span> oconv</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box</code></pre>
+<pre><span id="VALosucc"><span class="keyword">val</span> osucc</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box -> <a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box</code></pre>
 <pre><span id="VALoadd"><span class="keyword">val</span> oadd</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> -> int -> <a href="Ast.html#TYPEordi">ordi</a></code></pre>
 <pre><span id="VALouvar"><span class="keyword">val</span> ouvar</span> : <code class="type"><a href="Ast.html#TYPEouvar">ouvar</a> -> <a href="Ast.html#TYPEobox">obox</a> array -> <a href="Ast.html#TYPEobox">obox</a></code></pre>
-<pre><span id="VALoless_In"><span class="keyword">val</span> oless_In</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox -><br>       <a href="Ast.html#TYPEterm">term</a> Bindlib.bindbox -><br>       (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) Bindlib.binder Bindlib.bindbox -><br>       <a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox</code></pre>
-<pre><span id="VALoless_NotIn"><span class="keyword">val</span> oless_NotIn</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox -><br>       <a href="Ast.html#TYPEterm">term</a> Bindlib.bindbox -><br>       (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) Bindlib.binder Bindlib.bindbox -><br>       <a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox</code></pre>
-<pre><span id="VALoless_Gen"><span class="keyword">val</span> oless_Gen</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox -><br>       int -> <a href="Ast.html#TYPEschema">schema</a> Bindlib.bindbox -> <a href="Ast.html#TYPEordi">ordi</a> Bindlib.bindbox</code></pre><h3 id="2_Smartconstructorsforkinds">Smart constructors for kinds</h3>
+<pre><span id="VALoless_In"><span class="keyword">val</span> oless_In</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box -><br>       <a href="Ast.html#TYPEterm">term</a> LibTools.Bindlib.box -><br>       (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) LibTools.Bindlib.binder LibTools.Bindlib.box -><br>       <a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box</code></pre>
+<pre><span id="VALoless_NotIn"><span class="keyword">val</span> oless_NotIn</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box -><br>       <a href="Ast.html#TYPEterm">term</a> LibTools.Bindlib.box -><br>       (<a href="Ast.html#TYPEordi">ordi</a>, <a href="Ast.html#TYPEkind">kind</a>) LibTools.Bindlib.binder LibTools.Bindlib.box -><br>       <a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box</code></pre>
+<pre><span id="VALoless_Gen"><span class="keyword">val</span> oless_Gen</span> : <code class="type"><a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box -><br>       int -> <a href="Ast.html#TYPEschema">schema</a> LibTools.Bindlib.box -> <a href="Ast.html#TYPEordi">ordi</a> LibTools.Bindlib.box</code></pre><br>
+<h2 id="2_Smartconstructorsforkinds">Smart constructors for kinds</h2><br>
+
 <pre><span id="VALkvari"><span class="keyword">val</span> kvari</span> : <code class="type">string -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre>
 <pre><span id="VALkfunc"><span class="keyword">val</span> kfunc</span> : <code class="type"><a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre>
 <pre><span id="VALkprod"><span class="keyword">val</span> kprod</span> : <code class="type">bool -> (string * <a href="Ast.html#TYPEkbox">kbox</a>) list -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre>
@@ -1662,9 +1463,11 @@
 <pre><span id="VALkfixm"><span class="keyword">val</span> kfixm</span> : <code class="type">string -> <a href="Ast.html#TYPEobox">obox</a> -> (<a href="Ast.html#TYPEkvar">kvar</a> -> <a href="Ast.html#TYPEkbox">kbox</a>) -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre>
 <pre><span id="VALkuvar"><span class="keyword">val</span> kuvar</span> : <code class="type"><a href="Ast.html#TYPEkuvar">kuvar</a> -> <a href="Ast.html#TYPEobox">obox</a> array -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre>
 <pre><span id="VALkucst"><span class="keyword">val</span> kucst</span> : <code class="type">string -> <a href="Ast.html#TYPEtbox">tbox</a> -> (<a href="Ast.html#TYPEkvar">kvar</a> -> <a href="Ast.html#TYPEkbox">kbox</a>) -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre>
-<pre><span id="VALkecst"><span class="keyword">val</span> kecst</span> : <code class="type">string -> <a href="Ast.html#TYPEtbox">tbox</a> -> (<a href="Ast.html#TYPEkvar">kvar</a> -> <a href="Ast.html#TYPEkbox">kbox</a>) -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre><h3 id="2_Smartconstructorsforterms">Smart constructors for terms</h3>
+<pre><span id="VALkecst"><span class="keyword">val</span> kecst</span> : <code class="type">string -> <a href="Ast.html#TYPEtbox">tbox</a> -> (<a href="Ast.html#TYPEkvar">kvar</a> -> <a href="Ast.html#TYPEkbox">kbox</a>) -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre><br>
+<h2 id="2_Smartconstructorsforterms">Smart constructors for terms</h2><br>
+
 <pre><span id="VALtcoer"><span class="keyword">val</span> tcoer</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> <a href="Ast.html#TYPEtbox">tbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
-<pre><span id="VALtvari"><span class="keyword">val</span> tvari</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> <a href="Ast.html#TYPEterm'">term'</a> Bindlib.var -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
+<pre><span id="VALtvari"><span class="keyword">val</span> tvari</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> <a href="Ast.html#TYPEterm'">term'</a> LibTools.Bindlib.var -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
 <pre><span id="VALtabst"><span class="keyword">val</span> tabst</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -><br>       <a href="Ast.html#TYPEkbox">kbox</a> option -><br>       <a href="Pos.html#TYPEstrloc">Pos.strloc</a> -> <a href="Ast.html#TYPEsugar">sugar</a> -> (<a href="Ast.html#TYPEtvar">tvar</a> -> <a href="Ast.html#TYPEtbox">tbox</a>) -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
 <pre><span id="VALtappl"><span class="keyword">val</span> tappl</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> <a href="Ast.html#TYPEtbox">tbox</a> -> <a href="Ast.html#TYPEtbox">tbox</a> -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
 <pre><span id="VALtreco"><span class="keyword">val</span> treco</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> (string * <a href="Ast.html#TYPEtbox">tbox</a>) list -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
@@ -1677,31 +1480,31 @@
 <pre><span id="VALtabrt"><span class="keyword">val</span> tabrt</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
 <pre><span id="VALtfixy"><span class="keyword">val</span> tfixy</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> int -> <a href="Pos.html#TYPEstrloc">Pos.strloc</a> -> (<a href="Ast.html#TYPEtvar">tvar</a> -> <a href="Ast.html#TYPEtbox">tbox</a>) -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
 <pre><span id="VALtmlet"><span class="keyword">val</span> tmlet</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -><br>       string array -><br>       string array -><br>       (<a href="Ast.html#TYPEovar">ovar</a> array -> <a href="Ast.html#TYPEkvar">kvar</a> array -> <a href="Ast.html#TYPEkbox">kbox</a>) -><br>       <a href="Ast.html#TYPEtbox">tbox</a> option -> (<a href="Ast.html#TYPEovar">ovar</a> array -> <a href="Ast.html#TYPEkvar">kvar</a> array -> <a href="Ast.html#TYPEtbox">tbox</a>) -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre>
-<pre><span id="VALtcnst"><span class="keyword">val</span> tcnst</span> : <code class="type">(<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) Bindlib.binder -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre><h3 id="2_Definitionofcommontypesandterms">Definition of common types and terms</h3>
+<pre><span id="VALtcnst"><span class="keyword">val</span> tcnst</span> : <code class="type">(<a href="Ast.html#TYPEterm'">term'</a>, <a href="Ast.html#TYPEterm">term</a>) LibTools.Bindlib.binder -><br>       <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre><br>
+<h2 id="2_Definitionofcommontypesandterms">Definition of common types and terms</h2><br>
+
 <pre><span id="VALbot"><span class="keyword">val</span> bot</span> : <code class="type"><a href="Ast.html#TYPEkind">kind</a></code></pre>
 <pre><span id="VALtop"><span class="keyword">val</span> top</span> : <code class="type"><a href="Ast.html#TYPEkind">kind</a></code></pre>
 <pre><span id="VALidt"><span class="keyword">val</span> idt</span> : <code class="type"><a href="Ast.html#TYPEtbox">tbox</a></code></pre>
-<pre><span id="VALgeneric_tcnst"><span class="keyword">val</span> generic_tcnst</span> : <code class="type"><a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre><h3 id="2_Syntacticsugars">Syntactic sugars</h3>
+<pre><span id="VALgeneric_tcnst"><span class="keyword">val</span> generic_tcnst</span> : <code class="type"><a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEtbox">tbox</a></code></pre><br>
+<h2 id="2_Syntacticsugars">Syntactic sugars</h2><br>
+
 <pre><span id="VALdo_dot_proj"><span class="keyword">val</span> do_dot_proj</span> : <code class="type"><a href="Ast.html#TYPEterm">term</a> -> <a href="Ast.html#TYPEkind">kind</a> -> string -> <a href="Ast.html#TYPEkind">kind</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>dot projection: computing the witness</p>
-</div>
+dot projection: computing the witness<br>
 </div>
 
 <pre><span id="VALdot_proj"><span class="keyword">val</span> dot_proj</span> : <code class="type"><a href="Ast.html#TYPEtbox">tbox</a> -> string -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>dot projection: we compute the projection
+dot projection: we compute the projection
     if t is an epsilon or a definition.
-    We also deal with a special case for printing !)</p>
-</div>
+    We also deal with a special case for printing !)<br>
 </div>
 
 <pre><span id="VALwith_clause"><span class="keyword">val</span> with_clause</span> : <code class="type"><a href="Ast.html#TYPEkbox">kbox</a> -> string -> <a href="Ast.html#TYPEkbox">kbox</a> -> <a href="Ast.html#TYPEkbox">kbox</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>with clause</p>
+with clause<br>
 </div>
-</div>
-<h3 id="2_Variancefunction">Variance function</h3>
+<br>
+<h2 id="2_Variancefunction">Variance function</h2><br>
+
 <pre><span id="VALcombine"><span class="keyword">val</span> combine</span> : <code class="type"><a href="Ast.html#TYPEoccur">occur</a> -> <a href="Ast.html#TYPEoccur">occur</a> -> <a href="Ast.html#TYPEoccur">occur</a></code></pre>
 <pre><span id="VALcompose"><span class="keyword">val</span> compose</span> : <code class="type"><a href="Ast.html#TYPEoccur">occur</a> -> <a href="Ast.html#TYPEoccur">occur</a> -> <a href="Ast.html#TYPEoccur">occur</a></code></pre>
 <pre><span id="VALcompose2"><span class="keyword">val</span> compose2</span> : <code class="type"><a href="Ast.html#TYPEoccur">occur</a> -> <a href="Ast.html#TYPEoccur">occur</a> -> <a href="Ast.html#TYPEoccur">occur</a></code></pre>

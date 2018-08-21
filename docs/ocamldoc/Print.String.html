@@ -5,9 +5,7 @@
 <meta content="text/html; charset=utf8" http-equiv="Content-Type">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="Start" href="index.html">
-<link rel="previous" href="Error.html">
-<link rel="next" href="Generalise.html">
-<link rel="Up" href="index.html">
+<link rel="Up" href="Print.html">
 <link title="Index of types" rel=Appendix href="index_types.html">
 <link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
 <link title="Index of values" rel=Appendix href="index_values.html">
@@ -36,18 +34,15 @@
 <link title="Term" rel="Chapter" href="Term.html">
 <link title="Timed" rel="Chapter" href="Timed.html">
 <link title="TypingBase" rel="Chapter" href="TypingBase.html">
-<link title="Typing" rel="Chapter" href="Typing.html"><title>Eval</title>
+<link title="Typing" rel="Chapter" href="Typing.html"><title>Print.String</title>
 </head>
 <body>
-<div class="navbar"><a class="pre" href="Error.html" title="Error">Previous</a>
-&nbsp;<a class="up" href="index.html" title="Index">Up</a>
-&nbsp;<a class="post" href="Generalise.html" title="Generalise">Next</a>
-</div>
-<h1>Module <a href="type_Eval.html">Eval</a></h1>
+<div class="navbar">&nbsp;<a class="up" href="Print.html" title="Print">Up</a>
+&nbsp;</div>
+<h1>Module <a href="type_Print.String.html">Print.String</a></h1>
 
-<pre><span class="keyword">module</span> Eval: <code class="code">sig</code> <a href="Eval.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_Callbyvalueevaluation">                      Call by value evaluation                        </h3><br>
-</div>
-<hr width="100%">
+<pre><span class="keyword">module</span> String: <code class="code">sig</code> <a href="Print.String.html">..</a> <code class="code">end</code></pre><hr width="100%">
 
-<pre><span id="VALeval"><span class="keyword">val</span> eval</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEterm">Ast.term</a></code></pre></body></html>
+<pre><span class="keyword">include</span> String</pre>
+
+<pre><span id="VALsplit_on_char"><span class="keyword">val</span> split_on_char</span> : <code class="type">char -> string -> string list</code></pre></body></html>

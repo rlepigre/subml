@@ -50,96 +50,84 @@
 </div>
 <h1>Module <a href="type_Binding.html">Binding</a></h1>
 
-<pre><span id="MODULEBinding"><span class="keyword">module</span> Binding</span>: <code class="code">sig</code> <a href="Binding.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<h4 id="3_Bindingrelatingfunctions">                   Binding relating functions                        </h4></div>
+<pre><span class="keyword">module</span> Binding: <code class="code">sig</code> <a href="Binding.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Bindingrelatingfunctions">                   Binding relating functions                        </h3><br>
 </div>
 <hr width="100%">
-<h3 id="2_bindingsofatypeinatypeandordinals">              bindings of a type in a type and ordinals              </h3>
-<pre><span id="VALbind_kuvar"><span class="keyword">val</span> bind_kuvar</span> : <code class="type"><a href="Ast.html#TYPEkuvar">Ast.kuvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder</code></pre><div class="info ">
-<div class="info-desc">
-<p>binding a unification variable in a kind</p>
+<br>
+<h2 id="2_bindingsofatypeinatypeandordinals">              bindings of a type in a type and ordinals              </h2><br>
+
+<pre><span id="VALbind_kuvar"><span class="keyword">val</span> bind_kuvar</span> : <code class="type"><a href="Ast.html#TYPEkuvar">Ast.kuvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) LibTools.Bindlib.binder</code></pre><div class="info ">
+binding a unification variable in a kind<br>
 </div>
-</div>
-<h3 id="2_Kindvariableinstanciation">                      Kind variable instanciation                    </h3>
+<br>
+<h2 id="2_Kindvariableinstanciation">                      Kind variable instanciation                    </h2><br>
+
 <pre><span id="EXCEPTIONOccur_check"><span class="keyword">exception</span> Occur_check</span></pre>
 <div class="info ">
-<div class="info-desc">
-<p>Raised by set_kuvar if instanciation is illegal because it
-    creates cyclic types</p>
-</div>
+Raised by set_kuvar if instanciation is illegal because it
+    creates cyclic types<br>
 </div>
 
 <pre><span id="VALsafe_set_kuvar"><span class="keyword">val</span> safe_set_kuvar</span> : <code class="type"><a href="Ast.html#TYPEoccur">Ast.occur</a> -> <a href="Ast.html#TYPEkuvar">Ast.kuvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> <a href="Ast.html#TYPEfrom_ordis">Ast.from_ordis</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p>Set kuvar with kind.</p>
-<ul>
+Set kuvar with kind.<ul>
 <li>use the previous function 'make_safe'</li>
 <li>does the occur check</li>
 <li>if the kuvar_state is not Free, is uses the state and ignore the
       argumemt. Therefore it is not safe to assume that the unification
       variables is related to k after seting</li>
 </ul>
+<br>
 </div>
-</div>
-<h3 id="2_instanciatetypeunificationvariablesfromstate">        instanciate type unification variables from state            </h3>
+<br>
+<h2 id="2_instanciatetypeunificationvariablesfromstate">        instanciate type unification variables from state            </h2><br>
+
 <pre><span id="VALuvar_use_state"><span class="keyword">val</span> uvar_use_state</span> : <code class="type"><a href="Ast.html#TYPEkuvar">Ast.kuvar</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><div class="info ">
-<div class="info-desc">
-<p>Force a type unification variable to use its state. Return true if
-    the variable is changed</p>
+Force a type unification variable to use its state. Return true if
+    the variable is changed<br>
 </div>
-</div>
-<h3 id="2_bindingsofordinalsintypeandordinals">              bindings of ordinals in type and ordinals              </h3><p>The main difficulty here is for unification variable for kind or ordinals
+<br>
+<h2 id="2_bindingsofordinalsintypeandordinals">              bindings of ordinals in type and ordinals              </h2><br>
+<br>
+The main difficulty here is for unification variable for kind or ordinals
     If we bind o in a variable ?1(o1,...,on) that may use o while o is not
     among its parameter, we must create a new variable ?2 and set
     ?1(x1,...,xn) to ?2(x1,...,xn,o). This appends in general for more
-    than one variable. See the comment in the KUVar and OUVar cases</p>
+    than one variable. See the comment in the KUVar and OUVar cases<br>
 
 <pre><span id="VALindex"><span class="keyword">val</span> index</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> array -> 'a array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> 'a</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">index os x u</code> searches the index <code class="code">i</code> of <code class="code">u</code> in <code class="code">os</code> and returns <code class="code">x.(i)</code></p>
-</div>
+<code class="code">index os x u</code> searches the index <code class="code">i</code> of <code class="code">u</code> in <code class="code">os</code> and returns <code class="code">x.(i)</code><br>
 </div>
 
 <pre><span id="VALbind_both"><span class="keyword">val</span> bind_both</span> : <code class="type">?from_generalise:bool -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEobox">Ast.obox</a> array -> <a href="AstMap.html#TYPEself_kind">AstMap.self_kind</a> * <a href="AstMap.html#TYPEself_ord">AstMap.self_ord</a></code></pre>
-<pre><span id="VALbind_fn"><span class="keyword">val</span> bind_fn</span> : <code class="type">?from_generalise:bool -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEobox">Ast.obox</a> array -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkbox">Ast.kbox</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">bind_fn ?(from_generalise=false) os x k</code>
+<pre><span id="VALbind_fn"><span class="keyword">val</span> bind_fn</span> : <code class="type">?from_generalise:bool -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEobox">Ast.obox</a> array -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> LibTools.Bindlib.box</code></pre><div class="info ">
+<code class="code">bind_fn ?(from_generalise=false) os x k</code>
     Bind an array <code class="code">os</code> of ordinals in the kind <code class="code">k</code>. <code class="code">x</code> is the array
-    of bindlib variables to be used</p>
-</div>
+    of bindlib variables to be used<br>
 </div>
 
-<pre><span id="VALbind_gn"><span class="keyword">val</span> bind_gn</span> : <code class="type">?from_generalise:bool -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEobox">Ast.obox</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEobox">Ast.obox</a></code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">bind_gn ?(from_generalise=false) len os x o</code>
+<pre><span id="VALbind_gn"><span class="keyword">val</span> bind_gn</span> : <code class="type">?from_generalise:bool -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEobox">Ast.obox</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> LibTools.Bindlib.box</code></pre><div class="info ">
+<code class="code">bind_gn ?(from_generalise=false) len os x o</code>
     Bind an array <code class="code">os</code> of ordinals in the ordinal <code class="code">o</code>. <code class="code">x</code> is the array
-    of bindlib variables to be used</p>
-</div>
-</div>
-
-<pre><span id="VALobind_ordis"><span class="keyword">val</span> obind_ordis</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, <a href="Ast.html#TYPEordi">Ast.ordi</a>) Bindlib.mbinder</code></pre><div class="info ">
-<div class="info-desc">
-<p>binding ordinals in one ordinal</p>
-</div>
+    of bindlib variables to be used<br>
 </div>
 
-<pre><span id="VALbind_ordis"><span class="keyword">val</span> bind_ordis</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.mbinder</code></pre><div class="info ">
-<div class="info-desc">
-<p>binding ordinals in one kind</p>
-</div>
+<pre><span id="VALobind_ordis"><span class="keyword">val</span> obind_ordis</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, <a href="Ast.html#TYPEordi">Ast.ordi</a>) LibTools.Bindlib.mbinder</code></pre><div class="info ">
+binding ordinals in one ordinal<br>
 </div>
 
-<pre><span id="VALbind_ouvar"><span class="keyword">val</span> bind_ouvar</span> : <code class="type"><a href="Ast.html#TYPEouvar">Ast.ouvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) Bindlib.binder</code></pre><div class="info ">
-<div class="info-desc">
-<p>binding of one ordinal in one kind</p>
+<pre><span id="VALbind_ordis"><span class="keyword">val</span> bind_ordis</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> array -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) LibTools.Bindlib.mbinder</code></pre><div class="info ">
+binding ordinals in one kind<br>
 </div>
+
+<pre><span id="VALbind_ouvar"><span class="keyword">val</span> bind_ouvar</span> : <code class="type"><a href="Ast.html#TYPEouvar">Ast.ouvar</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEordi">Ast.ordi</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) LibTools.Bindlib.binder</code></pre><div class="info ">
+binding of one ordinal in one kind<br>
 </div>
-<h3 id="2_Instanciateordinalunificationvariablesfromstate">      Instanciate ordinal unification variables from state           </h3>
+<br>
+<h2 id="2_Instanciateordinalunificationvariablesfromstate">      Instanciate ordinal unification variables from state           </h2><br>
+
 <pre><span id="VALouvar_use_state"><span class="keyword">val</span> ouvar_use_state</span> : <code class="type">(<a href="Ast.html#TYPEordi">Ast.ordi</a> -> 'a) -> <a href="Ast.html#TYPEordi">Ast.ordi</a> list -> <a href="Ast.html#TYPEouvar">Ast.ouvar</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> array -> bool</code></pre><div class="info ">
-<div class="info-desc">
-<p>Force an ordinal unification variable to use its state. Return true if
-    the variable is changed</p>
-</div>
+Force an ordinal unification variable to use its state. Return true if
+    the variable is changed<br>
 </div>
 </body></html>

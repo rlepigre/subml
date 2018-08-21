@@ -45,48 +45,38 @@
 </div>
 <h1>Module <a href="type_Timed.html">Timed</a></h1>
 
-<pre><span id="MODULETimed"><span class="keyword">module</span> Timed</span>: <code class="code">sig</code> <a href="Timed.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<h4 id="3_Undoablereferences">                       Undoable references                           </h4></div>
+<pre><span class="keyword">module</span> Timed: <code class="code">sig</code> <a href="Timed.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Undoablereferences">                       Undoable references                           </h3><br>
 </div>
 <hr width="100%">
-<p>This module provides alternative functions for updating references
+<br>
+This module provides alternative functions for updating references
     (that is, terms of type <code class="code">'a ref</code>) and enables the restoration of a
-    previously saved state by "undoing" the updates.</p>
+    previously saved state by "undoing" the updates.<br>
 
-<pre><span id="MODULETime"><span class="keyword">module</span> <a href="Timed.Time.html">Time</a></span>: <code class="code">sig</code> <a href="Timed.Time.html">..</a> <code class="code">end</code></pre>
+<pre><span class="keyword">module</span> <a href="Timed.Time.html">Time</a>: <code class="code">sig</code> <a href="Timed.Time.html">..</a> <code class="code">end</code></pre>
 <pre><span id="VAL(:=)"><span class="keyword">val</span> (:=)</span> : <code class="type">'a Pervasives.ref -> 'a -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p>This function can be used to update a reference, which recording
+This function can be used to update a reference, which recording
     the changes. This is done transparently, so this function can be
-    used as the usual update function.</p>
-</div>
+    used as the usual update function.<br>
 </div>
 
 <pre><span id="VALincr"><span class="keyword">val</span> incr</span> : <code class="type">int Pervasives.ref -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p>Incrementation function for a reference of type <code class="code">int</code>. The update
-    is again transparently recorded.</p>
-</div>
+Incrementation function for a reference of type <code class="code">int</code>. The update
+    is again transparently recorded.<br>
 </div>
 
 <pre><span id="VALdecr"><span class="keyword">val</span> decr</span> : <code class="type">int Pervasives.ref -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p>Same as <code class="code">incr</code>, but decrements the <code class="code">int</code>.</p>
-</div>
+Same as <code class="code">incr</code>, but decrements the <code class="code">int</code>.<br>
 </div>
 
 <pre><span id="VALpure_apply"><span class="keyword">val</span> pure_apply</span> : <code class="type">('a -> 'b) -> 'a -> 'b</code></pre><div class="info ">
-<div class="info-desc">
-<p>Apply the given function to the given argument while taking care
-    of rolling back possible changes to the state of references.</p>
-</div>
+Apply the given function to the given argument while taking care
+    of rolling back possible changes to the state of references.<br>
 </div>
 
 <pre><span id="VALpure_test"><span class="keyword">val</span> pure_test</span> : <code class="type">('a -> bool) -> 'a -> bool</code></pre><div class="info ">
-<div class="info-desc">
-<p>Apply the given test function to the given argument and rollback
-    possible changes ONLY if the value <code class="code">false</code> is returned.</p>
-</div>
+Apply the given test function to the given argument and rollback
+    possible changes ONLY if the value <code class="code">false</code> is returned.<br>
 </div>
 </body></html>

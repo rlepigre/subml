@@ -45,36 +45,30 @@
 </div>
 <h1>Module <a href="type_TypingBase.html">TypingBase</a></h1>
 
-<pre><span id="MODULETypingBase"><span class="keyword">module</span> TypingBase</span>: <code class="code">sig</code> <a href="TypingBase.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<h4 id="3_Datastructureandbasicfunctionsfortyping">           Data structure and basic functions for typing             </h4></div>
+<pre><span class="keyword">module</span> TypingBase: <code class="code">sig</code> <a href="TypingBase.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Datastructureandbasicfunctionsfortyping">           Data structure and basic functions for typing             </h3><br>
 </div>
 <hr width="100%">
-<p>Main function for typing and subtyping</p>
+<br>
+Main function for typing and subtyping<br>
 
 <pre><span id="EXCEPTIONType_error"><span class="keyword">exception</span> Type_error</span> <span class="keyword">of</span> <code class="type">string</code></pre>
 <div class="info ">
-<div class="info-desc">
-<p>Raised in case of type error, not propagated because replaced by
-    an error constructor in the proof</p>
-</div>
+Raised in case of type error, not propagated because replaced by
+    an error constructor in the proof<br>
 </div>
 
 <pre><span id="VALtype_error"><span class="keyword">val</span> type_error</span> : <code class="type">string -> 'a</code></pre>
 <pre><span id="EXCEPTIONSubtype_error"><span class="keyword">exception</span> Subtype_error</span> <span class="keyword">of</span> <code class="type">string</code></pre>
 <div class="info ">
-<div class="info-desc">
-<p>Raised in case of subtyping error, not propagated because replaced by
-    an error constructor in the proof</p>
-</div>
+Raised in case of subtyping error, not propagated because replaced by
+    an error constructor in the proof<br>
 </div>
 
 <pre><span id="VALsubtype_error"><span class="keyword">val</span> subtype_error</span> : <code class="type">string -> 'a</code></pre>
 <pre><span id="EXCEPTIONLoop_error"><span class="keyword">exception</span> Loop_error</span> <span class="keyword">of</span> <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a></code></pre>
 <div class="info ">
-<div class="info-desc">
-<p>Raised when the termination checkers fails, propagated</p>
-</div>
+Raised when the termination checkers fails, propagated<br>
 </div>
 
 <pre><span id="VALloop_error"><span class="keyword">val</span> loop_error</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> 'a</code></pre>
@@ -130,22 +124,16 @@
 
 <pre><span id="TYPEfix_induction"><span class="keyword">type</span> <code class="type"></code>fix_induction</span> = <code class="type">(<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) Bindlib.binder * <a href="Ast.html#TYPEschema">Ast.schema</a> list Pervasives.ref</code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>induction hypothesis for typing recursive programs</p>
-</div>
+induction hypothesis for typing recursive programs<br>
 </div>
 
 
 <pre><span id="VALempty_ctxt"><span class="keyword">val</span> empty_ctxt</span> : <code class="type">unit -> <a href="TypingBase.html#TYPEctxt">ctxt</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>the initial empty context</p>
-</div>
+the initial empty context<br>
 </div>
 
 <pre><span id="VALrun_fix_todo"><span class="keyword">val</span> run_fix_todo</span> : <code class="type"><a href="TypingBase.html#TYPEctxt">ctxt</a> -> unit</code></pre><div class="info ">
-<div class="info-desc">
-<p>run the registered functions.</p>
-</div>
+run the registered functions.<br>
 </div>
 
 <pre><span id="VALfind_indexes"><span class="keyword">val</span> find_indexes</span> : <code class="type"><a href="Sct.html#TYPEt">Sct.t</a> -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       <a href="Sct.html#TYPEindex">Sct.index</a> -><br>       <a href="Sct.html#TYPEindex">Sct.index</a> -> (int * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list -> (int * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list -> <a href="Sct.html#TYPEmatrix">Sct.matrix</a></code></pre>
@@ -153,15 +141,11 @@
 <pre><span id="VALbuild_call"><span class="keyword">val</span> build_call</span> : <code class="type"><a href="TypingBase.html#TYPEctxt">ctxt</a> -> <a href="Sct.html#TYPEindex">Sct.index</a> -> (int * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list -> bool -> <a href="Sct.html#TYPEcall">Sct.call</a></code></pre>
 <pre><span id="VALadd_call"><span class="keyword">val</span> add_call</span> : <code class="type"><a href="TypingBase.html#TYPEctxt">ctxt</a> -> <a href="Sct.html#TYPEindex">Sct.index</a> -> (int * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list -> bool -> unit</code></pre>
 <pre><span id="VALopred"><span class="keyword">val</span> opred</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEord_wit">Ast.ord_wit</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>construction of an ordinal &lt; o such that w</p>
-</div>
+construction of an ordinal &lt; o such that w<br>
 </div>
 
 <pre><span id="VALofindpred"><span class="keyword">val</span> ofindpred</span> : <code class="type"><a href="TypingBase.html#TYPEctxt">ctxt</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>find an ordinal o' &lt; o</p>
-</div>
+find an ordinal o' &lt; o<br>
 </div>
 
 <pre><span id="VALdot_proj"><span class="keyword">val</span> dot_proj</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> string -> <a href="Ast.html#TYPEkind">Ast.kind</a></code></pre>

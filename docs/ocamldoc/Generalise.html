@@ -45,90 +45,77 @@
 </div>
 <h1>Module <a href="type_Generalise.html">Generalise</a></h1>
 
-<pre><span id="MODULEGeneralise"><span class="keyword">module</span> Generalise</span>: <code class="code">sig</code> <a href="Generalise.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<div class="info-desc">
-<h4 id="3_Functionsrelatedtogeneralisation">                Functions related to generalisation                  </h4></div>
+<pre><span class="keyword">module</span> Generalise: <code class="code">sig</code> <a href="Generalise.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<h3 id="3_Functionsrelatedtogeneralisation">                Functions related to generalisation                  </h3><br>
 </div>
 <hr width="100%">
 
 <pre><span id="EXCEPTIONFailGeneralise"><span class="keyword">exception</span> FailGeneralise</span></pre>
 <div class="info ">
-<div class="info-desc">
-<p>Raised when generalisation is not a good idea.
-    Currently when</p>
-<ul>
+Raised when generalisation is not a good idea.
+    Currently when<ul>
 <li>KMRec and KNRec are present.</li>
 </ul>
-</div>
+<br>
 </div>
 
 <pre><span id="TYPEparticular"><span class="keyword">type</span> <code class="type">'a</code> particular</span> = <code class="type">(int * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list * <a href="Ast.html#TYPEordi">Ast.ordi</a> list * 'a * <a href="Ast.html#TYPEkind">Ast.kind</a></code> </pre>
 <div class="info ">
-<div class="info-desc">
-<p>the type of a particular judgement, ordinal being witnesses or
-    ordinal variables</p>
-</div>
+the type of a particular judgement, ordinal being witnesses or
+    ordinal variables<br>
 </div>
 
 
 <pre><span id="VALrecompose"><span class="keyword">val</span> recompose</span> : <code class="type">?general:bool -> <a href="Ast.html#TYPEschema">Ast.schema</a> -> <a href="Ast.html#TYPEterm_or_kind">Ast.term_or_kind</a> <a href="Generalise.html#TYPEparticular">particular</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>function to apply a schema. I</p>
-<ul>
+function to apply a schema. I<ul>
 <li>If <code class="code">general = false</code>, it replace the ordinals with appropriate
       witnesses to prove the schema (not to use it).</li>
 <li>If <code class="code">general = true</code>, we want to use the schema and all ordinals
       are replaced with variables</li>
 </ul>
-</div>
+<br>
 </div>
 
 <pre><span id="VALrecompose_kind"><span class="keyword">val</span> recompose_kind</span> : <code class="type">?general:bool -> <a href="Ast.html#TYPEschema">Ast.schema</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> <a href="Generalise.html#TYPEparticular">particular</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>recompose for subtyping</p>
-</div>
+recompose for subtyping<br>
 </div>
 
 <pre><span id="VALrecompose_term"><span class="keyword">val</span> recompose_term</span> : <code class="type">?general:bool -> <a href="Ast.html#TYPEschema">Ast.schema</a> -> unit <a href="Generalise.html#TYPEparticular">particular</a></code></pre><div class="info ">
-<div class="info-desc">
-<p>recompose for typing</p>
-</div>
+recompose for typing<br>
 </div>
 
 <pre><span id="VALgeneralise"><span class="keyword">val</span> generalise</span> : <code class="type">?manual:bool -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       <a href="Ast.html#TYPEterm_or_kind">Ast.term_or_kind</a> -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Sct.html#TYPEt">Sct.t</a> -> (<a href="Ast.html#TYPEschema">Ast.schema</a> * (int * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list) option</code></pre><div class="info ">
-<div class="info-desc">
-<p><code class="code">generalise</code> create a schema from a judgement. All ordinals
+<code class="code">generalise</code> create a schema from a judgement. All ordinals
     that appear in the judgement are quantified over.
-    Ordinal appearing in witnesses are untouched.</p>
+    Ordinal appearing in witnesses are untouched.
+<p>
 
-<p>Each ordinal as an index used to denote it in the field
+    Each ordinal as an index used to denote it in the field
     <code class="code">sch_posit</code> and <code class="code">sch_relat</code>, to know which ordinals are positive,
-    or comparable with '&lt;'.</p>
+    or comparable with '&lt;'.
+<p>
 
-<p>This index is the same as the index in the mbinder <code class="code">sch_judge</code>
-    It returns the index of the original variable.</p>
+    This index is the same as the index in the mbinder <code class="code">sch_judge</code>
+    It returns the index of the original variable.
+<p>
 
-<p>It also returns the index of the original ordinals to build
-    the initial call in the call graph.</p>
+    It also returns the index of the original ordinals to build
+    the initial call in the call graph.
+<p>
 
-<p>Finaly in calls <code class="code">recompose ~genralise:false</code> to build the
+    Finaly in calls <code class="code">recompose ~genralise:false</code> to build the
     instance of the schema with the witnesses that is needed to
-    prove the schema.</p>
-</div>
+    prove the schema.<br>
 </div>
 
 <pre><span id="VALgeneralise"><span class="keyword">val</span> generalise</span> : <code class="type">?manual:bool -><br>       <a href="Ast.html#TYPEordi">Ast.ordi</a> list -><br>       <a href="Ast.html#TYPEterm_or_kind">Ast.term_or_kind</a> -><br>       <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Sct.html#TYPEt">Sct.t</a> -> (<a href="Ast.html#TYPEschema">Ast.schema</a> * (int * <a href="Ast.html#TYPEordi">Ast.ordi</a>) list) option</code></pre>
 <pre><span id="VALkuvar_list"><span class="keyword">val</span> kuvar_list</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> (<a href="Ast.html#TYPEkuvar">Ast.kuvar</a> * <a href="Ast.html#TYPEordi">Ast.ordi</a> array) list</code></pre><div class="info ">
-<div class="info-desc">
-<p>Returns the list of unification variables.
+Returns the list of unification variables.
     When a variable has arguments, they should be identical
-    for all occurences.</p>
-</div>
+    for all occurences.<br>
 </div>
 
 <pre><span id="VALouvar_list"><span class="keyword">val</span> ouvar_list</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEouvar">Ast.ouvar</a> list</code></pre><div class="info ">
-<div class="info-desc">
-<p>Same as above for ordinal variables</p>
-</div>
+Same as above for ordinal variables<br>
 </div>
 </body></html>
