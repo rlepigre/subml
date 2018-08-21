@@ -1,11 +1,12 @@
 (****************************************************************************)
 (**{3             Parser level AST and translation to final AST            }*)
 (****************************************************************************)
+
+open LibTools
 open Ast
 open Bindlib
 open Pos
 open Binding
-open LibTools
 
 type pordi = pordi' loc
 and pordi' =

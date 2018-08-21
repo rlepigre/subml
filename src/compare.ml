@@ -2,11 +2,11 @@
 (**{3           Comparison on types, terms and ordis                    }*)
 (****************************************************************************)
 
+open LibTools
 open Ast
 open Bindlib
 open Pos
 open Term
-open LibTools
 
 (****************************************************************************)
 (**{2                      General function                                }*)

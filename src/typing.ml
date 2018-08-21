@@ -1,6 +1,8 @@
 (****************************************************************************)
 (**{3                   Typing and subtyping algorithms                    }*)
 (****************************************************************************)
+
+open LibTools
 open Bindlib
 open Ast
 open Binding
@@ -11,7 +13,6 @@ open Term
 open Generalise
 open TypingBase
 open Error
-open LibTools
 
 (** Result type of [check_rec]. *)
 type ind =

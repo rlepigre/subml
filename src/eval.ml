@@ -2,10 +2,10 @@
 (**{3                       Call by value evaluation                        }*)
 (*****************************************************************************)
 
+open LibTools
 open Pos
 open Bindlib
 open Ast
-open LibTools
 
 (* Call-by-value function. Raises the exception Assert_failure on runtime
    error, but this should never happen... *)

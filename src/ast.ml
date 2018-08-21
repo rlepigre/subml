@@ -1,13 +1,12 @@
-
 (** Abstract syntax tree. Definition of the internal representation of SubML's
     types, terms and syntactic ordinals in an abstract syntax tree (AST).
     @author Christophe Raffalli <christophe.raffalli\@univ-savoie.fr>
     @author Rodolphe Lepigre <rodolphe.lepigre\@univ-savoie.fr> *)
 
+open LibTools
 open Bindlib
 open Subset
 open Format
-open LibTools
 
 (****************************************************************************)
 (** {2 Main types for the AST}                                              *)
@@ -308,7 +307,7 @@ let rec repr : bool -> kind -> kind = fun unfold -> function
        | KFixM(OConv,g) -> subst g x
        | _              -> assert false (* Unreachable. *)
      in
-     let f = binder_from_fun (binder_name f) aux in
+     let f = binder_from_fun (fun x -> KVari(x)) (binder_name f) aux in
      let a' = KFixM(OConv, f) in
      repr unfold a'
   | KFixN(OConv,f) when !contract_mu && is_nu unfold f ->
@@ -317,7 +316,7 @@ let rec repr : bool -> kind -> kind = fun unfold -> function
        | KFixN(OConv,g) -> subst g x
        | _              -> assert false (* Unreachable. *)
      in
-     let f = binder_from_fun (binder_name f) aux in
+     let f = binder_from_fun (fun x -> KVari(x)) (binder_name f) aux in
      let a' = KFixN(OConv, f) in
      repr unfold a'
   | KDefi({tdef_value = v}, os, ks) when unfold ->
@@ -634,12 +633,12 @@ let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
     match full_repr a with
     | KKExi(f) ->
        if binder_name f = s then subst f b else begin
-         KKExi(binder_from_fun (binder_name f) (fun x ->
+         KKExi(binder_from_fun mk_free_k (binder_name f) (fun x ->
            fn (subst f x) b))
        end
     | KKAll(f) ->
        if binder_name f = s then subst f b else begin
-         KKAll(binder_from_fun (binder_name f) (fun x ->
+         KKAll(binder_from_fun mk_free_k (binder_name f) (fun x ->
            fn (subst f x) b))
        end
     | KFixM(OConv,f) -> fn (subst f (KFixM(OConv,f))) b
