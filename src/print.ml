@@ -529,11 +529,11 @@ and print_kind unfold wrap unfolded_Y ff t =
   | KNRec(p,a) ->
      if wrap then pp_print_string ff "(";
      let fmt = format_of_string (
-       if latex_mode () then "%a ∨ {%a}" else "%a ∨ %a")
+       if latex_mode () then "{%a} ↪ {%a}" else "%a ↪ %a")
      in
-     let sep = if latex_mode () then ", " else " ∨ " in
-     fprintf ff fmt pkindw a
-       (print_list (fun ff o -> pordi ff o) sep) (Subset.unsafe_get p);
+     let sep = if latex_mode () then ", " else " ↪ " in
+     fprintf ff fmt (print_list (fun ff o -> pordi ff o) sep)
+       (Subset.unsafe_get p) pkindw a;
      if wrap then pp_print_string ff ")";
   | KPrnt x -> match x with
   | FreeVr s -> pp_print_string ff s
@@ -1012,8 +1012,8 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   | Sub_FixN_r(p)     -> unarySN "ν_r" c (sub2proof p)
   | Sub_And_l(p)      -> unarySN "∧_l" c (sub2proof p)
   | Sub_And_r(p)      -> unarySN "∧_r" c (sub2proof p)
-  | Sub_Or_l(p)       -> unarySN "∨_l" c (sub2proof p)
-  | Sub_Or_r(p)       -> unarySN "∨_r" c (sub2proof p)
+  | Sub_Or_l(p)       -> unarySN "↪_l" c (sub2proof p)
+  | Sub_Or_r(p)       -> unarySN "↪_r" c (sub2proof p)
   | Sub_Ind(sch)      -> let p0 = sprintf
                                 (if latex_mode () then "\\H{%s}{%d}"
                                  else "[%s]_{%d}")
