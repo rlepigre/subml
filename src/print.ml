@@ -737,8 +737,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      (match c, t.elt with
      | "Nil", TReco [] -> fprintf ff "[]"
      | "Cons", TReco l when List.sort compare (List.map fst l) = ["hd"; "tl"] ->
-        let cons = if latex_mode () then "{::}" else "::" in
-        fprintf ff "%a%s%a" pterm (List.assoc "hd" l) cons pterm (List.assoc "tl" l)
+        fprintf ff "%a::%a" pterm (List.assoc "hd" l) pterm (List.assoc "tl" l)
      | _, TReco([]) -> fprintf ff "%s" c
      | _         -> fprintf ff "%s %a" c wterm t);
        if wrap then fprintf ff ")";
