@@ -213,10 +213,11 @@ let latex_print_calls ff tbl =
     in
     fprintf ff "    N%d -> N%d [label = \"\\left(\\begin{smallmatrix}"
       (index j) (index i);
-    for i = 0 to ai - 1 do
-      if i > 0 then fprintf ff "\\cr\n";
-      for j = 0 to aj - 1 do
-        if j > 0 then fprintf ff "&";
+
+    for j = 0 to aj - 1 do
+      if j > 0 then fprintf ff "\\cr\n";
+      for i = 0 to ai - 1 do
+        if i > 0 then fprintf ff "&";
         let c =
           match m.tab.(j).(i) with
           | Infi -> "\\infty"
