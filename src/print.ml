@@ -673,7 +673,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
        | Some _, TCoer(u,_) -> u
        | _                  -> u
      in
-     Printf.fprintf stderr "SUGAR LET\n";
+     (* Printf.fprintf stderr "SUGAR LET\n"; *)
      fprintf ff (
          if latex_mode () then
            if !break_hint = 0 then
