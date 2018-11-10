@@ -55,8 +55,8 @@
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_call&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.call&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;create_symbol&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;string&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;string&nbsp;array&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.index<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;arity&nbsp;:&nbsp;<span class="constructor">Sct</span>.index&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;int<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;do_inline&nbsp;:&nbsp;bool&nbsp;<span class="constructor">Pervasives</span>.ref<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;do_inline&nbsp;:&nbsp;bool&nbsp;<span class="constructor">Stdlib</span>.ref<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;inline&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;sct&nbsp;:&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;latex_print_calls&nbsp;:&nbsp;<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;latex_print_calls&nbsp;:&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sct</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
 <span class="keyword">end</span></code></body></html>

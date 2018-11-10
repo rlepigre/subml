@@ -45,118 +45,115 @@
 </div>
 <h1>Module <a href="type_Parser.html">Parser</a></h1>
 
-<pre><span class="keyword">module</span> Parser: <code class="code">sig</code> <a href="Parser.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_Youguessedit">                          You guessed it                             </h3><br>
-</div>
-<hr width="100%">
+<pre><span id="MODULEParser"><span class="keyword">module</span> Parser</span>: <code class="code">sig</code> <a href="Parser.html">..</a> <code class="code">end</code></pre><hr width="100%">
 
 <pre><span id="EXCEPTIONUnclosed"><span class="keyword">exception</span> Unclosed</span> <span class="keyword">of</span> <code class="type">bool * <a href="Pos.html#TYPEpopt">Pos.popt</a></code></pre>
 
-<pre><span id="VALunclosed_comment"><span class="keyword">val</span> unclosed_comment</span> : <code class="type">bool -> Input.buffer * int -> 'a</code></pre>
-<pre><span id="VALsubml_blank"><span class="keyword">val</span> subml_blank</span> : <code class="type">Input.buffer -> int -> Input.buffer * int</code></pre>
-<pre><span id="VALkeywords"><span class="keyword">val</span> keywords</span> : <code class="type">(string, string) Hashtbl.t</code></pre>
+<pre><span id="VALunclosed_comment"><span class="keyword">val</span> unclosed_comment</span> : <code class="type">bool -> Earley_core.Input.buffer * int -> 'a</code></pre>
+<pre><span id="VALsubml_blank"><span class="keyword">val</span> subml_blank</span> : <code class="type">Earley_core.Input.buffer -> int -> Earley_core.Input.buffer * int</code></pre>
+<pre><span id="VALkeywords"><span class="keyword">val</span> keywords</span> : <code class="type">(string, string) Stdlib.Hashtbl.t</code></pre>
 <pre><span id="VALis_keyword"><span class="keyword">val</span> is_keyword</span> : <code class="type">string -> bool</code></pre>
 <pre><span id="VALcheck_not_keyword"><span class="keyword">val</span> check_not_keyword</span> : <code class="type">string -> unit</code></pre>
-<pre><span id="VALnew_keyword"><span class="keyword">val</span> new_keyword</span> : <code class="type">string -> unit Earley.grammar</code></pre>
-<pre><span id="VALglist_sep"><span class="keyword">val</span> glist_sep</span> : <code class="type">'a Earley.grammar -> 'b Earley.grammar -> 'a list Earley.grammar</code></pre>
-<pre><span id="VALglist_sep'"><span class="keyword">val</span> glist_sep'</span> : <code class="type">'a Earley.grammar -> 'b Earley.grammar -> 'a list Earley.grammar</code></pre>
-<pre><span id="VALglist_sep''"><span class="keyword">val</span> glist_sep''</span> : <code class="type">'a Earley.grammar -> 'b Earley.grammar -> 'a list Earley.grammar</code></pre>
-<pre><span id="VALlist_sep"><span class="keyword">val</span> list_sep</span> : <code class="type">'a Earley.grammar -> string -> 'a list Earley.grammar</code></pre>
-<pre><span id="VALlist_sep'"><span class="keyword">val</span> list_sep'</span> : <code class="type">'a Earley.grammar -> string -> 'a list Earley.grammar</code></pre>
-<pre><span id="VALlist_sep''"><span class="keyword">val</span> list_sep''</span> : <code class="type">'a Earley.grammar -> string -> 'a list Earley.grammar</code></pre>
-<pre><span id="VALstr_lit"><span class="keyword">val</span> str_lit</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALint_lit"><span class="keyword">val</span> int_lit</span> : <code class="type">int Earley.grammar</code></pre>
-<pre><span id="VALlid"><span class="keyword">val</span> lid</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALuid"><span class="keyword">val</span> uid</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALloptident"><span class="keyword">val</span> loptident</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALllid"><span class="keyword">val</span> llid</span> : <code class="type"><a href="Pos.html#TYPEstrloc">Pos.strloc</a> Earley.grammar</code></pre>
-<pre><span id="VALgreek"><span class="keyword">val</span> greek</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALlgid"><span class="keyword">val</span> lgid</span> : <code class="type">string Earley.grammar</code></pre>
+<pre><span id="VALnew_keyword"><span class="keyword">val</span> new_keyword</span> : <code class="type">string -> unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALglist_sep"><span class="keyword">val</span> glist_sep</span> : <code class="type">'a Earley_core.Earley.grammar -><br>       'b Earley_core.Earley.grammar -> 'a list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALglist_sep'"><span class="keyword">val</span> glist_sep'</span> : <code class="type">'a Earley_core.Earley.grammar -><br>       'b Earley_core.Earley.grammar -> 'a list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALglist_sep''"><span class="keyword">val</span> glist_sep''</span> : <code class="type">'a Earley_core.Earley.grammar -><br>       'b Earley_core.Earley.grammar -> 'a list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlist_sep"><span class="keyword">val</span> list_sep</span> : <code class="type">'a Earley_core.Earley.grammar -> string -> 'a list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlist_sep'"><span class="keyword">val</span> list_sep'</span> : <code class="type">'a Earley_core.Earley.grammar -> string -> 'a list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlist_sep''"><span class="keyword">val</span> list_sep''</span> : <code class="type">'a Earley_core.Earley.grammar -> string -> 'a list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALstr_lit"><span class="keyword">val</span> str_lit</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALint_lit"><span class="keyword">val</span> int_lit</span> : <code class="type">int Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlid"><span class="keyword">val</span> lid</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALuid"><span class="keyword">val</span> uid</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALloptident"><span class="keyword">val</span> loptident</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALllid"><span class="keyword">val</span> llid</span> : <code class="type"><a href="Pos.html#TYPEstrloc">Pos.strloc</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALgreek"><span class="keyword">val</span> greek</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlgid"><span class="keyword">val</span> lgid</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
 <pre><span id="VALbuild_prod"><span class="keyword">val</span> build_prod</span> : <code class="type">'a list -> (string * 'a) list</code></pre>
-<pre><span id="VALcase_kw"><span class="keyword">val</span> case_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALrec_kw"><span class="keyword">val</span> rec_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALlet_kw"><span class="keyword">val</span> let_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALsuch_kw"><span class="keyword">val</span> such_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALthat_kw"><span class="keyword">val</span> that_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALval_kw"><span class="keyword">val</span> val_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALof_kw"><span class="keyword">val</span> of_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALin_kw"><span class="keyword">val</span> in_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALfix_kw"><span class="keyword">val</span> fix_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALfun_kw"><span class="keyword">val</span> fun_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALif_kw"><span class="keyword">val</span> if_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALthen_kw"><span class="keyword">val</span> then_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALelse_kw"><span class="keyword">val</span> else_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALwith_kw"><span class="keyword">val</span> with_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALtype_kw"><span class="keyword">val</span> type_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALabrt_kw"><span class="keyword">val</span> abrt_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALclear_kw"><span class="keyword">val</span> clear_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALquit_kw"><span class="keyword">val</span> quit_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALexit_kw"><span class="keyword">val</span> exit_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALeval_kw"><span class="keyword">val</span> eval_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALset_kw"><span class="keyword">val</span> set_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALinclude_kw"><span class="keyword">val</span> include_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALcheck_kw"><span class="keyword">val</span> check_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALlatex_kw"><span class="keyword">val</span> latex_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALgraphml_kw"><span class="keyword">val</span> graphml_kw</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALarrow"><span class="keyword">val</span> arrow</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALforall"><span class="keyword">val</span> forall</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALexists"><span class="keyword">val</span> exists</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALmu"><span class="keyword">val</span> mu</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALnu"><span class="keyword">val</span> nu</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALtime"><span class="keyword">val</span> time</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALlambda"><span class="keyword">val</span> lambda</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALdot"><span class="keyword">val</span> dot</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALcomma"><span class="keyword">val</span> comma</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALsubset"><span class="keyword">val</span> subset</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALinfty"><span class="keyword">val</span> infty</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALeps"><span class="keyword">val</span> eps</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALkuvar"><span class="keyword">val</span> kuvar</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALouvar"><span class="keyword">val</span> ouvar</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALdots"><span class="keyword">val</span> dots</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALmem"><span class="keyword">val</span> mem</span> : <code class="type">bool Earley.grammar</code></pre>
-<pre><span id="VALis_rec"><span class="keyword">val</span> is_rec</span> : <code class="type">bool Earley.grammar</code></pre>
-<pre><span id="VALenables"><span class="keyword">val</span> enables</span> : <code class="type">bool Earley.grammar</code></pre>
-<pre><span id="VALordi"><span class="keyword">val</span> ordi</span> : <code class="type"><a href="Raw.html#TYPEpordi">Raw.pordi</a> Earley.grammar</code></pre>
-<pre><span id="VALkind"><span class="keyword">val</span> kind</span> : <code class="type"><a href="Raw.html#TYPEpkind">Raw.pkind</a> Earley.grammar</code></pre>
-<pre><span id="VALkind_atm"><span class="keyword">val</span> kind_atm</span> : <code class="type"><a href="Raw.html#TYPEpkind">Raw.pkind</a> Earley.grammar</code></pre>
-<pre><span id="VALkind_prd"><span class="keyword">val</span> kind_prd</span> : <code class="type"><a href="Raw.html#TYPEpkind">Raw.pkind</a> Earley.grammar</code></pre>
-<pre><span id="VALext"><span class="keyword">val</span> ext</span> : <code class="type">bool Earley.grammar</code></pre>
-<pre><span id="VALepsilon"><span class="keyword">val</span> epsilon</span> : <code class="type"><a href="Raw.html#TYPEpkind'">Raw.pkind'</a> Earley.grammar</code></pre>
-<pre><span id="VALkind_args"><span class="keyword">val</span> kind_args</span> : <code class="type">(<a href="Raw.html#TYPEpordi">Raw.pordi</a> list * <a href="Raw.html#TYPEpkind">Raw.pkind</a> list) Earley.grammar</code></pre>
-<pre><span id="VALkind_prod"><span class="keyword">val</span> kind_prod</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) list Earley.grammar</code></pre>
-<pre><span id="VALkind_dsum"><span class="keyword">val</span> kind_dsum</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option) list Earley.grammar</code></pre>
-<pre><span id="VALkind_reco"><span class="keyword">val</span> kind_reco</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) list Earley.grammar</code></pre>
-<pre><span id="VALwith_eq"><span class="keyword">val</span> with_eq</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) Earley.grammar</code></pre>
-<pre><span id="VALterm"><span class="keyword">val</span> term</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALtapp"><span class="keyword">val</span> tapp</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALtseq"><span class="keyword">val</span> tseq</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALtcol"><span class="keyword">val</span> tcol</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALtatm"><span class="keyword">val</span> tatm</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALvar"><span class="keyword">val</span> var</span> : <code class="type">(<a href="Pos.html#TYPEstrloc">Pos.strloc</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option) Earley.grammar</code></pre>
-<pre><span id="VALlet_var"><span class="keyword">val</span> let_var</span> : <code class="type">(<a href="Pos.html#TYPEstrloc">Pos.strloc</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option) Earley.grammar</code></pre>
-<pre><span id="VALterm_llet"><span class="keyword">val</span> term_llet</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALords_kinds"><span class="keyword">val</span> ords_kinds</span> : <code class="type">(string list * string list) Earley.grammar</code></pre>
-<pre><span id="VALterm_mlet"><span class="keyword">val</span> term_mlet</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALterm_cond"><span class="keyword">val</span> term_cond</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALterm_reco"><span class="keyword">val</span> term_reco</span> : <code class="type">(string * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) list Earley.grammar</code></pre>
-<pre><span id="VALterm_prod"><span class="keyword">val</span> term_prod</span> : <code class="type">(string * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) list Earley.grammar</code></pre>
-<pre><span id="VALfield"><span class="keyword">val</span> field</span> : <code class="type">(string * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley.grammar</code></pre>
-<pre><span id="VALterm_list"><span class="keyword">val</span> term_list</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley.grammar</code></pre>
-<pre><span id="VALpats"><span class="keyword">val</span> pats</span> : <code class="type">(string * <a href="Raw.html#TYPEppat">Raw.ppat</a> * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) list Earley.grammar</code></pre>
-<pre><span id="VALfpat"><span class="keyword">val</span> fpat</span> : <code class="type"><a href="Raw.html#TYPEppat">Raw.ppat</a> Earley.grammar</code></pre>
-<pre><span id="VALrpat"><span class="keyword">val</span> rpat</span> : <code class="type"><a href="Raw.html#TYPEppat">Raw.ppat</a> Earley.grammar</code></pre>
-<pre><span id="VALpattern"><span class="keyword">val</span> pattern</span> : <code class="type">(string * <a href="Raw.html#TYPEppat">Raw.ppat</a>) Earley.grammar</code></pre>
-<pre><span id="VALcase"><span class="keyword">val</span> case</span> : <code class="type">(string * <a href="Raw.html#TYPEppat">Raw.ppat</a> * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley.grammar</code></pre>
-<pre><span id="VALdefault"><span class="keyword">val</span> default</span> : <code class="type">(<a href="Raw.html#TYPEppat">Raw.ppat</a> * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley.grammar</code></pre>
-<pre><span id="VALhash"><span class="keyword">val</span> hash</span> : <code class="type">unit Earley.grammar</code></pre>
-<pre><span id="VALtex_simple"><span class="keyword">val</span> tex_simple</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALtex_name"><span class="keyword">val</span> tex_name</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALtex_name_aux"><span class="keyword">val</span> tex_name_aux</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALtex_text"><span class="keyword">val</span> tex_text</span> : <code class="type"><a href="Latex.html#TYPElatex_output">Latex.latex_output</a> Earley.grammar</code></pre>
-<pre><span id="VALlatex_atom"><span class="keyword">val</span> latex_atom</span> : <code class="type"><a href="Latex.html#TYPElatex_output">Latex.latex_output</a> Earley.grammar</code></pre>
-<pre><span id="VALsub"><span class="keyword">val</span> sub</span> : <code class="type">(<a href="Raw.html#TYPEpkind">Raw.pkind</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) Earley.grammar</code></pre>
-<pre><span id="VALtex_name"><span class="keyword">val</span> tex_name</span> : <code class="type">string Earley.grammar</code></pre>
-<pre><span id="VALtex_text"><span class="keyword">val</span> tex_text</span> : <code class="type"><a href="Latex.html#TYPElatex_output">Latex.latex_output</a> Earley.grammar</code></pre>
+<pre><span id="VALcase_kw"><span class="keyword">val</span> case_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALrec_kw"><span class="keyword">val</span> rec_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlet_kw"><span class="keyword">val</span> let_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALsuch_kw"><span class="keyword">val</span> such_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALthat_kw"><span class="keyword">val</span> that_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALval_kw"><span class="keyword">val</span> val_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALof_kw"><span class="keyword">val</span> of_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALin_kw"><span class="keyword">val</span> in_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALfix_kw"><span class="keyword">val</span> fix_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALfun_kw"><span class="keyword">val</span> fun_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALif_kw"><span class="keyword">val</span> if_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALthen_kw"><span class="keyword">val</span> then_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALelse_kw"><span class="keyword">val</span> else_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALwith_kw"><span class="keyword">val</span> with_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtype_kw"><span class="keyword">val</span> type_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALabrt_kw"><span class="keyword">val</span> abrt_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALclear_kw"><span class="keyword">val</span> clear_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALquit_kw"><span class="keyword">val</span> quit_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALexit_kw"><span class="keyword">val</span> exit_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALeval_kw"><span class="keyword">val</span> eval_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALset_kw"><span class="keyword">val</span> set_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALinclude_kw"><span class="keyword">val</span> include_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALcheck_kw"><span class="keyword">val</span> check_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlatex_kw"><span class="keyword">val</span> latex_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALgraphml_kw"><span class="keyword">val</span> graphml_kw</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALarrow"><span class="keyword">val</span> arrow</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALforall"><span class="keyword">val</span> forall</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALexists"><span class="keyword">val</span> exists</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALmu"><span class="keyword">val</span> mu</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALnu"><span class="keyword">val</span> nu</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtime"><span class="keyword">val</span> time</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlambda"><span class="keyword">val</span> lambda</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALdot"><span class="keyword">val</span> dot</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALcomma"><span class="keyword">val</span> comma</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALsubset"><span class="keyword">val</span> subset</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALinfty"><span class="keyword">val</span> infty</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALeps"><span class="keyword">val</span> eps</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkuvar"><span class="keyword">val</span> kuvar</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALouvar"><span class="keyword">val</span> ouvar</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALdots"><span class="keyword">val</span> dots</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALmem"><span class="keyword">val</span> mem</span> : <code class="type">bool Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALis_rec"><span class="keyword">val</span> is_rec</span> : <code class="type">bool Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALenables"><span class="keyword">val</span> enables</span> : <code class="type">bool Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALordi"><span class="keyword">val</span> ordi</span> : <code class="type"><a href="Raw.html#TYPEpordi">Raw.pordi</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind"><span class="keyword">val</span> kind</span> : <code class="type"><a href="Raw.html#TYPEpkind">Raw.pkind</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind_atm"><span class="keyword">val</span> kind_atm</span> : <code class="type"><a href="Raw.html#TYPEpkind">Raw.pkind</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind_prd"><span class="keyword">val</span> kind_prd</span> : <code class="type"><a href="Raw.html#TYPEpkind">Raw.pkind</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALext"><span class="keyword">val</span> ext</span> : <code class="type">bool Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALepsilon"><span class="keyword">val</span> epsilon</span> : <code class="type"><a href="Raw.html#TYPEpkind'">Raw.pkind'</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind_args"><span class="keyword">val</span> kind_args</span> : <code class="type">(<a href="Raw.html#TYPEpordi">Raw.pordi</a> list * <a href="Raw.html#TYPEpkind">Raw.pkind</a> list) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind_prod"><span class="keyword">val</span> kind_prod</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind_dsum"><span class="keyword">val</span> kind_dsum</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option) list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind_reco"><span class="keyword">val</span> kind_reco</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALwith_eq"><span class="keyword">val</span> with_eq</span> : <code class="type">(string * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALterm"><span class="keyword">val</span> term</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtapp"><span class="keyword">val</span> tapp</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtseq"><span class="keyword">val</span> tseq</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtcol"><span class="keyword">val</span> tcol</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtatm"><span class="keyword">val</span> tatm</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALvar"><span class="keyword">val</span> var</span> : <code class="type">(<a href="Pos.html#TYPEstrloc">Pos.strloc</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlet_var"><span class="keyword">val</span> let_var</span> : <code class="type">(<a href="Pos.html#TYPEstrloc">Pos.strloc</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALterm_llet"><span class="keyword">val</span> term_llet</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALords_kinds"><span class="keyword">val</span> ords_kinds</span> : <code class="type">(string list * string list) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALterm_mlet"><span class="keyword">val</span> term_mlet</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALterm_cond"><span class="keyword">val</span> term_cond</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALterm_reco"><span class="keyword">val</span> term_reco</span> : <code class="type">(string * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALterm_prod"><span class="keyword">val</span> term_prod</span> : <code class="type">(string * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALfield"><span class="keyword">val</span> field</span> : <code class="type">(string * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALterm_list"><span class="keyword">val</span> term_list</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALpats"><span class="keyword">val</span> pats</span> : <code class="type">(string * <a href="Raw.html#TYPEppat">Raw.ppat</a> * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) list Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALfpat"><span class="keyword">val</span> fpat</span> : <code class="type"><a href="Raw.html#TYPEppat">Raw.ppat</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALrpat"><span class="keyword">val</span> rpat</span> : <code class="type"><a href="Raw.html#TYPEppat">Raw.ppat</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALpattern"><span class="keyword">val</span> pattern</span> : <code class="type">(string * <a href="Raw.html#TYPEppat">Raw.ppat</a>) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALcase"><span class="keyword">val</span> case</span> : <code class="type">(string * <a href="Raw.html#TYPEppat">Raw.ppat</a> * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALdefault"><span class="keyword">val</span> default</span> : <code class="type">(<a href="Raw.html#TYPEppat">Raw.ppat</a> * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALhash"><span class="keyword">val</span> hash</span> : <code class="type">unit Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtex_simple"><span class="keyword">val</span> tex_simple</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtex_name"><span class="keyword">val</span> tex_name</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtex_name_aux"><span class="keyword">val</span> tex_name_aux</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtex_text"><span class="keyword">val</span> tex_text</span> : <code class="type"><a href="Latex.html#TYPElatex_output">Latex.latex_output</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALlatex_atom"><span class="keyword">val</span> latex_atom</span> : <code class="type"><a href="Latex.html#TYPElatex_output">Latex.latex_output</a> Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALsub"><span class="keyword">val</span> sub</span> : <code class="type">(<a href="Raw.html#TYPEpkind">Raw.pkind</a> * <a href="Raw.html#TYPEpkind">Raw.pkind</a>) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtex_name"><span class="keyword">val</span> tex_name</span> : <code class="type">string Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALtex_text"><span class="keyword">val</span> tex_text</span> : <code class="type"><a href="Latex.html#TYPElatex_output">Latex.latex_output</a> Earley_core.Earley.grammar</code></pre>
 <pre><span id="TYPEname"><span class="keyword">type</span> <code class="type"></code>name</span> = <code class="type">string option * string</code> </pre>
 
 
@@ -192,10 +189,10 @@
 <pre><span id="VALnew_val"><span class="keyword">val</span> new_val</span> : <code class="type"><a href="Parser.html#TYPEflag">flag</a> -> <a href="Parser.html#TYPEname">name</a> -> <a href="Raw.html#TYPEpkind">Raw.pkind</a> option -> <a href="Raw.html#TYPEpterm">Raw.pterm</a> -> unit</code></pre>
 <pre><span id="VALcheck_sub"><span class="keyword">val</span> check_sub</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> <a href="Parser.html#TYPEflag">flag</a> -> <a href="Raw.html#TYPEpkind">Raw.pkind</a> -> <a href="Raw.html#TYPEpkind">Raw.pkind</a> -> unit</code></pre>
 <pre><span id="VALeval_term"><span class="keyword">val</span> eval_term</span> : <code class="type"><a href="Raw.html#TYPEpterm">Raw.pterm</a> -> unit</code></pre>
-<pre><span id="VALread_file"><span class="keyword">val</span> read_file</span> : <code class="type">(string -> unit) Pervasives.ref</code></pre>
+<pre><span id="VALread_file"><span class="keyword">val</span> read_file</span> : <code class="type">(string -> unit) Stdlib.ref</code></pre>
 <pre><span id="VALinclude_file"><span class="keyword">val</span> include_file</span> : <code class="type">string -> unit</code></pre>
 <pre><span id="VALoutput_graphml"><span class="keyword">val</span> output_graphml</span> : <code class="type"><a href="Pos.html#TYPEstrloc">Pos.strloc</a> -> unit</code></pre>
-<pre><span id="VALflag"><span class="keyword">val</span> flag</span> : <code class="type"><a href="Parser.html#TYPEflag">flag</a> Earley.grammar</code></pre>
+<pre><span id="VALflag"><span class="keyword">val</span> flag</span> : <code class="type"><a href="Parser.html#TYPEflag">flag</a> Earley_core.Earley.grammar</code></pre>
 <pre><code><span id="TYPEvset"><span class="keyword">type</span> <code class="type"></code>vset</span> = </code></pre><table class="typetable">
 <tr>
 <td align="left" valign="top" >
@@ -304,9 +301,9 @@
 
 
 <pre><span id="VALexecute"><span class="keyword">val</span> execute</span> : <code class="type"><a href="Parser.html#TYPEcommand">command</a> -> unit</code></pre>
-<pre><span id="VALkind_def"><span class="keyword">val</span> kind_def</span> : <code class="type">(string option * string * (string list * string list) * <a href="Raw.html#TYPEpkind">Raw.pkind</a>)<br>       Earley.grammar</code></pre>
-<pre><span id="VALkind_def_args"><span class="keyword">val</span> kind_def_args</span> : <code class="type">(string list * string list) Earley.grammar</code></pre>
-<pre><span id="VALval_def"><span class="keyword">val</span> val_def</span> : <code class="type">((string option * string) * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option * <a href="Raw.html#TYPEpterm">Raw.pterm</a>) Earley.grammar</code></pre>
+<pre><span id="VALkind_def"><span class="keyword">val</span> kind_def</span> : <code class="type">(string option * string * (string list * string list) * <a href="Raw.html#TYPEpkind">Raw.pkind</a>)<br>       Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALkind_def_args"><span class="keyword">val</span> kind_def_args</span> : <code class="type">(string list * string list) Earley_core.Earley.grammar</code></pre>
+<pre><span id="VALval_def"><span class="keyword">val</span> val_def</span> : <code class="type">((string option * string) * <a href="Raw.html#TYPEpkind">Raw.pkind</a> option * <a href="Raw.html#TYPEpterm">Raw.pterm</a>)<br>       Earley_core.Earley.grammar</code></pre>
 <pre><span id="VALtoplevel_of_string"><span class="keyword">val</span> toplevel_of_string</span> : <code class="type">string -> <a href="Parser.html#TYPEcommand">command</a></code></pre>
 <pre><span id="VALeval_string"><span class="keyword">val</span> eval_string</span> : <code class="type">string -> string -> unit</code></pre>
 <pre><span id="VALeval_file"><span class="keyword">val</span> eval_file</span> : <code class="type">string -> unit</code></pre>

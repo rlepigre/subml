@@ -45,12 +45,13 @@
 </div>
 <h1>Module <a href="type_Print.html">Print</a></h1>
 
-<pre><span class="keyword">module</span> Print: <code class="code">sig</code> <a href="Print.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_AsciiPrinting">                              Ascii Printing                         </h3><br>
+<pre><span id="MODULEPrint"><span class="keyword">module</span> Print</span>: <code class="code">sig</code> <a href="Print.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_AsciiPrinting">                              Ascii Printing                         </h4></div>
 </div>
 <hr width="100%">
 
-<pre><span class="keyword">module</span> <a href="Print.String.html">String</a>: <code class="code">sig</code> <a href="Print.String.html">..</a> <code class="code">end</code></pre>
+<pre><span id="MODULEString"><span class="keyword">module</span> <a href="Print.String.html">String</a></span>: <code class="code">sig</code> <a href="Print.String.html">..</a> <code class="code">end</code></pre>
 <pre><code><span id="TYPEprint_mode"><span class="keyword">type</span> <code class="type"></code>print_mode</span> = </code></pre><table class="typetable">
 <tr>
 <td align="left" valign="top" >
@@ -75,88 +76,102 @@
 </tr></table>
 
 <div class="info ">
-control some differences when printing for LaTeX or GraphML<br>
+<div class="info-desc">
+<p>control some differences when printing for LaTeX or GraphML</p>
+</div>
 </div>
 
 
 <pre><span id="VALsanitize_name"><span class="keyword">val</span> sanitize_name</span> : <code class="type">string -> string</code></pre>
-<pre><span id="VALprint_mode"><span class="keyword">val</span> print_mode</span> : <code class="type"><a href="Print.html#TYPEprint_mode">print_mode</a> Pervasives.ref</code></pre>
-<pre><span id="VALshow_occur"><span class="keyword">val</span> show_occur</span> : <code class="type">bool Pervasives.ref</code></pre>
+<pre><span id="VALprint_mode"><span class="keyword">val</span> print_mode</span> : <code class="type"><a href="Print.html#TYPEprint_mode">print_mode</a> Stdlib.ref</code></pre>
+<pre><span id="VALshow_occur"><span class="keyword">val</span> show_occur</span> : <code class="type">bool Stdlib.ref</code></pre>
 <pre><span id="VALlatex_mode"><span class="keyword">val</span> latex_mode</span> : <code class="type">unit -> bool</code></pre>
 <pre><span id="VALlts"><span class="keyword">val</span> lts</span> : <code class="type">unit -> string</code></pre>
-<pre><span id="VALlt"><span class="keyword">val</span> lt</span> : <code class="type">Format.formatter -> unit</code></pre>
-<pre><span id="VALprint_redex_as_let"><span class="keyword">val</span> print_redex_as_let</span> : <code class="type">bool Pervasives.ref</code></pre>
-<pre><span id="VALbreak_hint"><span class="keyword">val</span> break_hint</span> : <code class="type">int Pervasives.ref</code></pre><div class="info ">
-<code class="code">break_hint</code> allows line breaking for record, ...
+<pre><span id="VALlt"><span class="keyword">val</span> lt</span> : <code class="type">Stdlib.Format.formatter -> unit</code></pre>
+<pre><span id="VALprint_redex_as_let"><span class="keyword">val</span> print_redex_as_let</span> : <code class="type">bool Stdlib.ref</code></pre>
+<pre><span id="VALbreak_hint"><span class="keyword">val</span> break_hint</span> : <code class="type">int Stdlib.ref</code></pre><div class="info ">
+<div class="info-desc">
+<p><code class="code">break_hint</code> allows line breaking for record, ...
     It gives the number of nested records whose lines are
-    breaked<br>
+    breaked</p>
+</div>
 </div>
 
-<pre><span id="VALignore_witness"><span class="keyword">val</span> ignore_witness</span> : <code class="type">bool Pervasives.ref</code></pre><div class="info ">
-ignore witness in subtyping proofs<br>
+<pre><span id="VALignore_witness"><span class="keyword">val</span> ignore_witness</span> : <code class="type">bool Stdlib.ref</code></pre><div class="info ">
+<div class="info-desc">
+<p>ignore witness in subtyping proofs</p>
+</div>
 </div>
 
 <pre><span id="VALis_tuple"><span class="keyword">val</span> is_tuple</span> : <code class="type">(string * 'a) list -> bool</code></pre><div class="info ">
-test if a list of record fields is a tuple<br>
+<div class="info-desc">
+<p>test if a list of record fields is a tuple</p>
+</div>
 </div>
 
-<pre><span id="VALordi_count"><span class="keyword">val</span> ordi_count</span> : <code class="type">int Pervasives.ref</code></pre><div class="info ">
-Managment of a table to name all choice constants (for ordinals,
+<pre><span id="VALordi_count"><span class="keyword">val</span> ordi_count</span> : <code class="type">int Stdlib.ref</code></pre><div class="info ">
+<div class="info-desc">
+<p>Managment of a table to name all choice constants (for ordinals,
     terms and type) when printing.  terms and ordinals are named the
     first time they are printed.  The table of all names and
-    definition can be printer later.<br>
+    definition can be printer later.</p>
+</div>
 </div>
 
-<pre><span id="VALordi_tbl"><span class="keyword">val</span> ordi_tbl</span> : <code class="type">(<a href="Ast.html#TYPEordi">Ast.ordi</a> * (<a href="Ast.html#TYPEordi">Ast.ordi</a> * bool)) list Pervasives.ref</code></pre>
-<pre><span id="VALepsilon_term_tbl"><span class="keyword">val</span> epsilon_term_tbl</span> : <code class="type">(<a href="Ast.html#TYPEterm">Ast.term</a> * (<a href="Ast.html#TYPEterm">Ast.term</a> * string * int)) list Pervasives.ref</code></pre>
-<pre><span id="VALepsilon_type_tbl"><span class="keyword">val</span> epsilon_type_tbl</span> : <code class="type">((<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) LibTools.Bindlib.binder *<br>        (string * int * <a href="Ast.html#TYPEterm">Ast.term</a> * bool))<br>       list Pervasives.ref</code></pre>
+<pre><span id="VALordi_tbl"><span class="keyword">val</span> ordi_tbl</span> : <code class="type">(<a href="Ast.html#TYPEordi">Ast.ordi</a> * (<a href="Ast.html#TYPEordi">Ast.ordi</a> * bool)) list Stdlib.ref</code></pre>
+<pre><span id="VALepsilon_term_tbl"><span class="keyword">val</span> epsilon_term_tbl</span> : <code class="type">(<a href="Ast.html#TYPEterm">Ast.term</a> * (<a href="Ast.html#TYPEterm'">Ast.term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a> * string * int)) list Stdlib.ref</code></pre>
+<pre><span id="VALepsilon_type_tbl"><span class="keyword">val</span> epsilon_type_tbl</span> : <code class="type">((<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) LibTools.Bindlib.binder *<br>        (string * int * <a href="Ast.html#TYPEterm">Ast.term</a> * bool))<br>       list Stdlib.ref</code></pre>
 <pre><span id="VALreset_epsilon_tbls"><span class="keyword">val</span> reset_epsilon_tbls</span> : <code class="type">unit -> unit</code></pre>
 <pre><span id="VALsearch_type_tbl"><span class="keyword">val</span> search_type_tbl</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -><br>       (<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) LibTools.Bindlib.binder -> bool -> string * int</code></pre>
-<pre><span id="VALsearch_term_tbl"><span class="keyword">val</span> search_term_tbl</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -> ('a, 'b) LibTools.Bindlib.binder -> <a href="Ast.html#TYPEterm">Ast.term</a> * string * int</code></pre>
+<pre><span id="VALsearch_term_tbl"><span class="keyword">val</span> search_term_tbl</span> : <code class="type"><a href="Ast.html#TYPEterm">Ast.term</a> -><br>       ('a, 'b) LibTools.Bindlib.binder -> <a href="Ast.html#TYPEterm'">Ast.term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a> * string * int</code></pre>
 <pre><span id="VALsearch_ordi_tbl"><span class="keyword">val</span> search_ordi_tbl</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a></code></pre>
-<pre><span id="VALunsugar_pattern"><span class="keyword">val</span> unsugar_pattern</span> : <code class="type">string -> string -> <a href="Ast.html#TYPEsugar">Ast.sugar</a> -> <a href="Ast.html#TYPEterm">Ast.term</a> -> string * <a href="Ast.html#TYPEterm'">Ast.term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
+<pre><span id="VALunsugar_pattern"><span class="keyword">val</span> unsugar_pattern</span> : <code class="type">string -><br>       string -> <a href="Ast.html#TYPEsugar">Ast.sugar</a> -> <a href="Ast.html#TYPEterm'">Ast.term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a> -> string * <a href="Ast.html#TYPEterm'">Ast.term'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
 <pre><span id="VALhas_kvar"><span class="keyword">val</span> has_kvar</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre><div class="info ">
-A test to avoid capture in match_kind below<br>
+<div class="info-desc">
+<p>A test to avoid capture in match_kind below</p>
+</div>
 </div>
 
 <pre><span id="VALmatch_kind"><span class="keyword">val</span> match_kind</span> : <code class="type"><a href="Ast.html#TYPEkuvar">Ast.kuvar</a> list -> <a href="Ast.html#TYPEouvar">Ast.ouvar</a> list -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> bool</code></pre><div class="info ">
-Matching kind and ordinals, used for printing only,
-    in order to factorise definittion.<br>
+<div class="info-desc">
+<p>Matching kind and ordinals, used for printing only,
+    in order to factorise definittion.</p>
+</div>
 </div>
 
 <pre><span id="VALmatch_ordi"><span class="keyword">val</span> match_ordi</span> : <code class="type"><a href="Ast.html#TYPEouvar">Ast.ouvar</a> list -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> bool</code></pre>
 <pre><span id="VALtry_fold_def"><span class="keyword">val</span> try_fold_def</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkind">Ast.kind</a></code></pre>
-<pre><span id="VALprint_ordi"><span class="keyword">val</span> print_ordi</span> : <code class="type">bool -> Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> unit</code></pre>
-<pre><span id="VALprint_index_ordi"><span class="keyword">val</span> print_index_ordi</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> unit</code></pre>
+<pre><span id="VALprint_ordi"><span class="keyword">val</span> print_ordi</span> : <code class="type">bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> unit</code></pre>
+<pre><span id="VALprint_index_ordi"><span class="keyword">val</span> print_index_ordi</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> unit</code></pre>
 <pre><span id="VALnew_prvar"><span class="keyword">val</span> new_prvar</span> : <code class="type">(<a href="Ast.html#TYPEkind">Ast.kind</a>, <a href="Ast.html#TYPEkind">Ast.kind</a>) LibTools.Bindlib.binder -> <a href="Ast.html#TYPEkind">Ast.kind</a></code></pre>
-<pre><span id="VALprint_kind"><span class="keyword">val</span> print_kind</span> : <code class="type">bool -> Format.formatter -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> unit</code></pre>
-<pre><span id="VALprint_occur"><span class="keyword">val</span> print_occur</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEoccur">Ast.occur</a> -> unit</code></pre>
-<pre><span id="VALpkind_def"><span class="keyword">val</span> pkind_def</span> : <code class="type">bool -> Format.formatter -> <a href="Ast.html#TYPEkdef">Ast.kdef</a> -> unit</code></pre>
-<pre><span id="VALprint_term"><span class="keyword">val</span> print_term</span> : <code class="type">?unfolded_Y:(<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) LibTools.Bindlib.binder list option -><br>       ?give_pos:bool -> bool -> Format.formatter -> <a href="Ast.html#TYPEterm">Ast.term</a> -> unit</code></pre>
+<pre><span id="VALprint_kind"><span class="keyword">val</span> print_kind</span> : <code class="type">bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> unit</code></pre>
+<pre><span id="VALprint_occur"><span class="keyword">val</span> print_occur</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEoccur">Ast.occur</a> -> unit</code></pre>
+<pre><span id="VALpkind_def"><span class="keyword">val</span> pkind_def</span> : <code class="type">bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEkdef">Ast.kdef</a> -> unit</code></pre>
+<pre><span id="VALprint_term"><span class="keyword">val</span> print_term</span> : <code class="type">?unfolded_Y:(<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) LibTools.Bindlib.binder list option -><br>       ?give_pos:bool -> bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEterm">Ast.term</a> -> unit</code></pre>
 <pre><span id="VALterm_to_string"><span class="keyword">val</span> term_to_string</span> : <code class="type">bool -> <a href="Ast.html#TYPEterm">Ast.term</a> -> string</code></pre>
 <pre><span id="VALordi_to_string"><span class="keyword">val</span> ordi_to_string</span> : <code class="type">bool -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> string</code></pre>
 <pre><span id="VALkind_to_string"><span class="keyword">val</span> kind_to_string</span> : <code class="type">bool -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> string</code></pre>
-<pre><span id="VALsub_used_ind"><span class="keyword">val</span> sub_used_ind</span> : <code class="type"><a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> -> <a href="Sct.html#TYPEindex">Sct.index</a> list</code></pre>
-<pre><span id="VALtyp_used_ind"><span class="keyword">val</span> typ_used_ind</span> : <code class="type"><a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> <a href="Sct.html#TYPEindex">Sct.index</a> list</code></pre>
+<pre><span id="VALsub_used_ind"><span class="keyword">val</span> sub_used_ind</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list * <a href="Ast.html#TYPEterm">Ast.term</a> * <a href="Ast.html#TYPEkind">Ast.kind</a> * <a href="Ast.html#TYPEkind">Ast.kind</a> * <a href="Ast.html#TYPEsub_rule">Ast.sub_rule</a> -><br>       <a href="Sct.html#TYPEindex">Sct.index</a> list</code></pre>
+<pre><span id="VALtyp_used_ind"><span class="keyword">val</span> typ_used_ind</span> : <code class="type"><a href="Ast.html#TYPEordi">Ast.ordi</a> list * <a href="Ast.html#TYPEterm">Ast.term</a> * <a href="Ast.html#TYPEkind">Ast.kind</a> * <a href="Ast.html#TYPEtyp_rule">Ast.typ_rule</a> -> <a href="Sct.html#TYPEindex">Sct.index</a> list</code></pre>
 <pre><span id="VALis_refl"><span class="keyword">val</span> is_refl</span> : <code class="type"><a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> -> bool</code></pre>
 <pre><span id="VALmkSchema"><span class="keyword">val</span> mkSchema</span> : <code class="type">?ord_name:string -> <a href="Ast.html#TYPEschema">Ast.schema</a> -> string</code></pre>
-<pre><span id="VALprint_schema"><span class="keyword">val</span> print_schema</span> : <code class="type">?ord_name:string -> Format.formatter -> <a href="Ast.html#TYPEschema">Ast.schema</a> -> unit</code></pre>
+<pre><span id="VALprint_schema"><span class="keyword">val</span> print_schema</span> : <code class="type">?ord_name:string -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEschema">Ast.schema</a> -> unit</code></pre>
 <pre><span id="VALtyp2proof"><span class="keyword">val</span> typ2proof</span> : <code class="type"><a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> string <a href="Proof.html#TYPEproof">Proof.proof</a></code></pre>
 <pre><span id="VALsub2proof"><span class="keyword">val</span> sub2proof</span> : <code class="type"><a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> -> string <a href="Proof.html#TYPEproof">Proof.proof</a></code></pre>
 <pre><span id="VALsub2proof"><span class="keyword">val</span> sub2proof</span> : <code class="type"><a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> -> string <a href="Proof.html#TYPEproof">Proof.proof</a></code></pre>
 <pre><span id="VALtyp2proof"><span class="keyword">val</span> typ2proof</span> : <code class="type"><a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> string <a href="Proof.html#TYPEproof">Proof.proof</a></code></pre>
-<pre><span id="VALprint_typing_proof"><span class="keyword">val</span> print_typing_proof</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> unit</code></pre>
-<pre><span id="VALprint_subtyping_proof"><span class="keyword">val</span> print_subtyping_proof</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> -> unit</code></pre>
-<pre><span id="VALprint_term"><span class="keyword">val</span> print_term</span> : <code class="type">?unfolded_Y:(<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) LibTools.Bindlib.binder list option -><br>       ?give_pos:bool -> bool -> Format.formatter -> <a href="Ast.html#TYPEterm">Ast.term</a> -> unit</code></pre>
-<pre><span id="VALprint_kind"><span class="keyword">val</span> print_kind</span> : <code class="type">bool -> Format.formatter -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> unit</code></pre>
-<pre><span id="VALkind"><span class="keyword">val</span> kind</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> unit</code></pre>
-<pre><span id="VALterm"><span class="keyword">val</span> term</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEterm">Ast.term</a> -> unit</code></pre>
-<pre><span id="VALprint_kind_def"><span class="keyword">val</span> print_kind_def</span> : <code class="type">bool -> Format.formatter -> <a href="Ast.html#TYPEkdef">Ast.kdef</a> -> unit</code></pre>
-<pre><span id="VALprint_ordi"><span class="keyword">val</span> print_ordi</span> : <code class="type">bool -> Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> unit</code></pre>
-<pre><span id="VALprint_ordis"><span class="keyword">val</span> print_ordis</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> list -> unit</code></pre>
-<pre><span id="VALprint_position"><span class="keyword">val</span> print_position</span> : <code class="type">Format.formatter -> <a href="Pos.html#TYPEpos">Pos.pos</a> option -> unit</code></pre>
-<pre><span id="VALprint_epsilon_tbls"><span class="keyword">val</span> print_epsilon_tbls</span> : <code class="type">Format.formatter -> unit</code></pre>
+<pre><span id="VALprint_typing_proof"><span class="keyword">val</span> print_typing_proof</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> unit</code></pre>
+<pre><span id="VALprint_subtyping_proof"><span class="keyword">val</span> print_subtyping_proof</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEsub_prf">Ast.sub_prf</a> -> unit</code></pre>
+<pre><span id="VALprint_term"><span class="keyword">val</span> print_term</span> : <code class="type">?unfolded_Y:(<a href="Ast.html#TYPEterm'">Ast.term'</a>, <a href="Ast.html#TYPEterm">Ast.term</a>) LibTools.Bindlib.binder list option -><br>       ?give_pos:bool -> bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEterm">Ast.term</a> -> unit</code></pre>
+<pre><span id="VALprint_kind"><span class="keyword">val</span> print_kind</span> : <code class="type">bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> unit</code></pre>
+<pre><span id="VALkind"><span class="keyword">val</span> kind</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEkind">Ast.kind</a> -> unit</code></pre>
+<pre><span id="VALterm"><span class="keyword">val</span> term</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEterm">Ast.term</a> -> unit</code></pre>
+<pre><span id="VALprint_kind_def"><span class="keyword">val</span> print_kind_def</span> : <code class="type">bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEkdef">Ast.kdef</a> -> unit</code></pre>
+<pre><span id="VALprint_ordi"><span class="keyword">val</span> print_ordi</span> : <code class="type">bool -> Stdlib.Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> -> unit</code></pre>
+<pre><span id="VALprint_ordis"><span class="keyword">val</span> print_ordis</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEordi">Ast.ordi</a> list -> unit</code></pre>
+<pre><span id="VALprint_position"><span class="keyword">val</span> print_position</span> : <code class="type">Stdlib.Format.formatter -> <a href="Pos.html#TYPEpos">Pos.pos</a> option -> unit</code></pre>
+<pre><span id="VALprint_epsilon_tbls"><span class="keyword">val</span> print_epsilon_tbls</span> : <code class="type">Stdlib.Format.formatter -> unit</code></pre>
 <pre><span id="EXCEPTIONFind_tdef"><span class="keyword">exception</span> Find_tdef</span> <span class="keyword">of</span> <code class="type"><a href="Ast.html#TYPEkdef">Ast.kdef</a></code></pre>
 
 <pre><span id="VALfind_tdef"><span class="keyword">val</span> find_tdef</span> : <code class="type"><a href="Ast.html#TYPEkind">Ast.kind</a> -> <a href="Ast.html#TYPEkdef">Ast.kdef</a></code></pre>
-<pre><span id="VALordi_to_printer"><span class="keyword">val</span> ordi_to_printer</span> : <code class="type">'a * <a href="Ast.html#TYPEordi">Ast.ordi</a> -> Format.formatter -> unit</code></pre></body></html>
+<pre><span id="VALordi_to_printer"><span class="keyword">val</span> ordi_to_printer</span> : <code class="type">'a * <a href="Ast.html#TYPEordi">Ast.ordi</a> -> Stdlib.Format.formatter -> unit</code></pre></body></html>

@@ -45,8 +45,9 @@
 </div>
 <h1>Module <a href="type_Latex.html">Latex</a></h1>
 
-<pre><span class="keyword">module</span> Latex: <code class="code">sig</code> <a href="Latex.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_LaTeXprinting">                            LaTeX printing                           </h3><br>
+<pre><span id="MODULELatex"><span class="keyword">module</span> Latex</span>: <code class="code">sig</code> <a href="Latex.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_LaTeXprinting">                            LaTeX printing                           </h4></div>
 </div>
 <hr width="100%">
 
@@ -133,7 +134,7 @@
 
 <pre><span id="VALsearch_schemas"><span class="keyword">val</span> search_schemas</span> : <code class="type">string -> <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> <a href="Ast.html#TYPEschema">Ast.schema</a> list</code></pre>
 <pre><span id="VALto_string"><span class="keyword">val</span> to_string</span> : <code class="type"><a href="Latex.html#TYPElatex_output">latex_output</a> -> string</code></pre>
-<pre><span id="VALoutput"><span class="keyword">val</span> output</span> : <code class="type">Format.formatter -> <a href="Latex.html#TYPElatex_output">latex_output</a> -> unit</code></pre>
-<pre><span id="VALoutput"><span class="keyword">val</span> output</span> : <code class="type">Format.formatter -> <a href="Latex.html#TYPElatex_output">latex_output</a> -> unit</code></pre>
-<pre><span id="VALignore_latex"><span class="keyword">val</span> ignore_latex</span> : <code class="type">bool Pervasives.ref</code></pre>
-<pre><span id="VALordi_to_printer"><span class="keyword">val</span> ordi_to_printer</span> : <code class="type">'a * <a href="Ast.html#TYPEordi">Ast.ordi</a> -> (Format.formatter -> unit) * (Format.formatter -> unit)</code></pre></body></html>
+<pre><span id="VALoutput"><span class="keyword">val</span> output</span> : <code class="type">Stdlib.Format.formatter -> <a href="Latex.html#TYPElatex_output">latex_output</a> -> unit</code></pre>
+<pre><span id="VALoutput"><span class="keyword">val</span> output</span> : <code class="type">Stdlib.Format.formatter -> <a href="Latex.html#TYPElatex_output">latex_output</a> -> unit</code></pre>
+<pre><span id="VALignore_latex"><span class="keyword">val</span> ignore_latex</span> : <code class="type">bool Stdlib.ref</code></pre>
+<pre><span id="VALordi_to_printer"><span class="keyword">val</span> ordi_to_printer</span> : <code class="type">'a * <a href="Ast.html#TYPEordi">Ast.ordi</a> -><br>       (Stdlib.Format.formatter -> unit) * (Stdlib.Format.formatter -> unit)</code></pre></body></html>

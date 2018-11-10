@@ -45,45 +45,61 @@
 </div>
 <h1>Module <a href="type_Graph.html">Graph</a></h1>
 
-<pre><span class="keyword">module</span> Graph: <code class="code">sig</code> <a href="Graph.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_GraphMLproofprinting">                      GraphML proof printing                          </h3><br>
+<pre><span id="MODULEGraph"><span class="keyword">module</span> Graph</span>: <code class="code">sig</code> <a href="Graph.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_GraphMLproofprinting">                      GraphML proof printing                          </h4></div>
 </div>
 <hr width="100%">
-<br>
-The goal of this module is to render proof as graphml
-    that are easy to navigate with Yed<br>
+<p>The goal of this module is to render proof as graphml
+    that are easy to navigate with Yed</p>
 
 <pre><span id="VALhead"><span class="keyword">val</span> head</span> : <code class="type">string</code></pre><div class="info ">
-File header<br>
+<div class="info-desc">
+<p>File header</p>
+</div>
 </div>
 
 <pre><span id="VALtail"><span class="keyword">val</span> tail</span> : <code class="type">string</code></pre><div class="info ">
-File trailer<br>
+<div class="info-desc">
+<p>File trailer</p>
+</div>
 </div>
 
-<pre><span id="VALnode"><span class="keyword">val</span> node</span> : <code class="type">Format.formatter -> string -> string -> unit</code></pre><div class="info ">
-Node printing<br>
+<pre><span id="VALnode"><span class="keyword">val</span> node</span> : <code class="type">Stdlib.Format.formatter -> string -> string -> unit</code></pre><div class="info ">
+<div class="info-desc">
+<p>Node printing</p>
+</div>
 </div>
 
-<pre><span id="VALuNode"><span class="keyword">val</span> uNode</span> : <code class="type">Format.formatter -> string -> (Format.formatter -> unit) -> unit</code></pre><div class="info ">
-Node printing<br>
+<pre><span id="VALuNode"><span class="keyword">val</span> uNode</span> : <code class="type">Stdlib.Format.formatter -><br>       string -> (Stdlib.Format.formatter -> unit) -> unit</code></pre><div class="info ">
+<div class="info-desc">
+<p>Node printing</p>
+</div>
 </div>
 
-<pre><span id="VALedge"><span class="keyword">val</span> edge</span> : <code class="type">Format.formatter -> string -> string -> unit</code></pre><div class="info ">
-Edge printing<br>
+<pre><span id="VALedge"><span class="keyword">val</span> edge</span> : <code class="type">Stdlib.Format.formatter -> string -> string -> unit</code></pre><div class="info ">
+<div class="info-desc">
+<p>Edge printing</p>
+</div>
 </div>
 
-<pre><span id="VALrevEdge"><span class="keyword">val</span> revEdge</span> : <code class="type">Format.formatter -> string -> string -> unit</code></pre><div class="info ">
-Edge printing<br>
+<pre><span id="VALrevEdge"><span class="keyword">val</span> revEdge</span> : <code class="type">Stdlib.Format.formatter -> string -> string -> unit</code></pre><div class="info ">
+<div class="info-desc">
+<p>Edge printing</p>
+</div>
 </div>
 
-<pre><span id="VALgroupBegin"><span class="keyword">val</span> groupBegin</span> : <code class="type">Format.formatter -> string -> unit</code></pre>
-<pre><span id="VALgroupEnd"><span class="keyword">val</span> groupEnd</span> : <code class="type">Format.formatter -> unit</code></pre>
-<pre><span id="VALto_nodes"><span class="keyword">val</span> to_nodes</span> : <code class="type">Format.formatter -> string <a href="Proof.html#TYPEproof">Proof.proof</a> -> unit</code></pre><div class="info ">
-Proof printing, without header and trailer<br>
+<pre><span id="VALgroupBegin"><span class="keyword">val</span> groupBegin</span> : <code class="type">Stdlib.Format.formatter -> string -> unit</code></pre>
+<pre><span id="VALgroupEnd"><span class="keyword">val</span> groupEnd</span> : <code class="type">Stdlib.Format.formatter -> unit</code></pre>
+<pre><span id="VALto_nodes"><span class="keyword">val</span> to_nodes</span> : <code class="type">Stdlib.Format.formatter -> string <a href="Proof.html#TYPEproof">Proof.proof</a> -> unit</code></pre><div class="info ">
+<div class="info-desc">
+<p>Proof printing, without header and trailer</p>
+</div>
 </div>
 
-<pre><span id="VALoutput"><span class="keyword">val</span> output</span> : <code class="type">Format.formatter -> <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> unit</code></pre><div class="info ">
-Complete proof printing<br>
+<pre><span id="VALoutput"><span class="keyword">val</span> output</span> : <code class="type">Stdlib.Format.formatter -> <a href="Ast.html#TYPEtyp_prf">Ast.typ_prf</a> -> unit</code></pre><div class="info ">
+<div class="info-desc">
+<p>Complete proof printing</p>
+</div>
 </div>
 </body></html>

@@ -45,8 +45,9 @@
 </div>
 <h1>Module <a href="type_Io.html">Io</a></h1>
 
-<pre><span class="keyword">module</span> Io: <code class="code">sig</code> <a href="Io.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_Outputfunctionsgeneralandfordebuggingchannels">Output functions, general and for debugging channels</h3><br>
+<pre><span id="MODULEIo"><span class="keyword">module</span> Io</span>: <code class="code">sig</code> <a href="Io.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_Outputfunctionsgeneralandfordebuggingchannels">Output functions, general and for debugging channels</h4></div>
 </div>
 <hr width="100%">
 
@@ -55,35 +56,35 @@
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.out">out</span>&nbsp;: <code class="type">Format.formatter</code>;</code></td>
+<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.out">out</span>&nbsp;: <code class="type">Stdlib.Format.formatter</code>;</code></td>
 
 </tr>
 <tr>
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.err">err</span>&nbsp;: <code class="type">Format.formatter</code>;</code></td>
+<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.err">err</span>&nbsp;: <code class="type">Stdlib.Format.formatter</code>;</code></td>
 
 </tr>
 <tr>
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.log">log</span>&nbsp;: <code class="type">Format.formatter</code>;</code></td>
+<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.log">log</span>&nbsp;: <code class="type">Stdlib.Format.formatter</code>;</code></td>
 
 </tr>
 <tr>
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.tex">tex</span>&nbsp;: <code class="type">Format.formatter</code>;</code></td>
+<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.tex">tex</span>&nbsp;: <code class="type">Stdlib.Format.formatter</code>;</code></td>
 
 </tr>
 <tr>
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.gml">gml</span>&nbsp;: <code class="type">Format.formatter</code>;</code></td>
+<code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTfmts.gml">gml</span>&nbsp;: <code class="type">Stdlib.Format.formatter</code>;</code></td>
 
 </tr></table>
 }
@@ -91,17 +92,17 @@
 
 
 <pre><span id="VALfmts"><span class="keyword">val</span> fmts</span> : <code class="type"><a href="Io.html#TYPEfmts">fmts</a></code></pre>
-<pre><span id="VALout"><span class="keyword">val</span> out</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALerr"><span class="keyword">val</span> err</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALlog"><span class="keyword">val</span> log</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALtex"><span class="keyword">val</span> tex</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALnul"><span class="keyword">val</span> nul</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALpath"><span class="keyword">val</span> path</span> : <code class="type">string list Pervasives.ref</code></pre>
-<pre><span id="VALread_file"><span class="keyword">val</span> read_file</span> : <code class="type">(string -> Input.buffer) Pervasives.ref</code></pre>
-<pre><span id="VALfile"><span class="keyword">val</span> file</span> : <code class="type">string -> Input.buffer</code></pre>
+<pre><span id="VALout"><span class="keyword">val</span> out</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALerr"><span class="keyword">val</span> err</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALlog"><span class="keyword">val</span> log</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALtex"><span class="keyword">val</span> tex</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALnul"><span class="keyword">val</span> nul</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALpath"><span class="keyword">val</span> path</span> : <code class="type">string list Stdlib.ref</code></pre>
+<pre><span id="VALread_file"><span class="keyword">val</span> read_file</span> : <code class="type">(string -> Earley_core.Input.buffer) Stdlib.ref</code></pre>
+<pre><span id="VALfile"><span class="keyword">val</span> file</span> : <code class="type">string -> Earley_core.Input.buffer</code></pre>
 <pre><span id="VALset_tex_file"><span class="keyword">val</span> set_tex_file</span> : <code class="type">string -> unit</code></pre>
 <pre><span id="VALset_gml_file"><span class="keyword">val</span> set_gml_file</span> : <code class="type">string -> unit</code></pre>
-<pre><span id="VALdebug"><span class="keyword">val</span> debug</span> : <code class="type">string Pervasives.ref</code></pre>
+<pre><span id="VALdebug"><span class="keyword">val</span> debug</span> : <code class="type">string Stdlib.ref</code></pre>
 <pre><span id="VALdebug_sct"><span class="keyword">val</span> debug_sct</span> : <code class="type">char</code></pre>
 <pre><span id="VALdebug_uni"><span class="keyword">val</span> debug_uni</span> : <code class="type">char</code></pre>
 <pre><span id="VALdebug_sub"><span class="keyword">val</span> debug_sub</span> : <code class="type">char</code></pre>
@@ -110,11 +111,11 @@
 <pre><span id="VALdebug_ord"><span class="keyword">val</span> debug_ord</span> : <code class="type">char</code></pre>
 <pre><span id="VALdebug_ind"><span class="keyword">val</span> debug_ind</span> : <code class="type">char</code></pre>
 <pre><span id="VALdebug_all"><span class="keyword">val</span> debug_all</span> : <code class="type">string</code></pre>
-<pre><span id="VALlog_sct"><span class="keyword">val</span> log_sct</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALlog_uni"><span class="keyword">val</span> log_uni</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALlog_sub"><span class="keyword">val</span> log_sub</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALlog_typ"><span class="keyword">val</span> log_typ</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALlog_mat"><span class="keyword">val</span> log_mat</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALlog_ord"><span class="keyword">val</span> log_ord</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
-<pre><span id="VALlog_ind"><span class="keyword">val</span> log_ind</span> : <code class="type">('a, Format.formatter, unit) Pervasives.format -> 'a</code></pre>
+<pre><span id="VALlog_sct"><span class="keyword">val</span> log_sct</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALlog_uni"><span class="keyword">val</span> log_uni</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALlog_sub"><span class="keyword">val</span> log_sub</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALlog_typ"><span class="keyword">val</span> log_typ</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALlog_mat"><span class="keyword">val</span> log_mat</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALlog_ord"><span class="keyword">val</span> log_ord</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
+<pre><span id="VALlog_ind"><span class="keyword">val</span> log_ind</span> : <code class="type">('a, Stdlib.Format.formatter, unit) Stdlib.format -> 'a</code></pre>
 <pre><span id="VALset_debug"><span class="keyword">val</span> set_debug</span> : <code class="type">string -> unit</code></pre></body></html>

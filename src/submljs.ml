@@ -1,3 +1,4 @@
+open Earley_core
 open Format
 open Parser
 open Io

@@ -45,8 +45,9 @@
 </div>
 <h1>Module <a href="type_Raw.html">Raw</a></h1>
 
-<pre><span class="keyword">module</span> Raw: <code class="code">sig</code> <a href="Raw.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_ParserlevelASTandtranslationtofinalAST">            Parser level AST and translation to final AST            </h3><br>
+<pre><span id="MODULERaw"><span class="keyword">module</span> Raw</span>: <code class="code">sig</code> <a href="Raw.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_ParserlevelASTandtranslationtofinalAST">            Parser level AST and translation to final AST            </h4></div>
 </div>
 <hr width="100%">
 
@@ -317,11 +318,11 @@
 <pre><span id="VALlist_cons"><span class="keyword">val</span> list_cons</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
 <pre><span id="VALunit_var"><span class="keyword">val</span> unit_var</span> : <code class="type"><a href="Pos.html#TYPEpopt">Pos.popt</a> -> string <a href="Pos.html#TYPEloc">Pos.loc</a> * <a href="Raw.html#TYPEpkind'">pkind'</a> <a href="Pos.html#TYPEloc">Pos.loc</a> option</code></pre>
 <pre><span id="VALsequence"><span class="keyword">val</span> sequence</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
-<pre><span id="VALfixpoint_depth"><span class="keyword">val</span> fixpoint_depth</span> : <code class="type">int Pervasives.ref</code></pre>
+<pre><span id="VALfixpoint_depth"><span class="keyword">val</span> fixpoint_depth</span> : <code class="type">int Stdlib.ref</code></pre>
 <pre><span id="VALpfixY"><span class="keyword">val</span> pfixY</span> : <code class="type"><a href="Pos.html#TYPEstrloc">Pos.strloc</a> * <a href="Raw.html#TYPEpkind">pkind</a> option -><br>       <a href="Pos.html#TYPEpos">Pos.pos</a> -> int option -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
 <pre><span id="VALpcoer"><span class="keyword">val</span> pcoer</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpkind">pkind</a> option -> <a href="Raw.html#TYPEpterm">pterm</a></code></pre>
 <pre><span id="VALpadd"><span class="keyword">val</span> padd</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEpordi">pordi</a> -> int -> <a href="Raw.html#TYPEpordi">pordi</a></code></pre>
-<pre><span id="VALpappl"><span class="keyword">val</span> pappl</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
+<pre><span id="VALpappl"><span class="keyword">val</span> pappl</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
 <pre><span id="VALapply_rpat"><span class="keyword">val</span> apply_rpat</span> : <code class="type">string -> <a href="Raw.html#TYPEppat">ppat</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>
 <pre><span id="VALplabs"><span class="keyword">val</span> plabs</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEppat">ppat</a> list -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm">pterm</a></code></pre>
 <pre><span id="VALpcond"><span class="keyword">val</span> pcond</span> : <code class="type"><a href="Pos.html#TYPEpos">Pos.pos</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm">pterm</a> -> <a href="Raw.html#TYPEpterm'">pterm'</a> <a href="Pos.html#TYPEloc">Pos.loc</a></code></pre>

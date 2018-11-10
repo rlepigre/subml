@@ -45,8 +45,9 @@
 </div>
 <h1>Module <a href="type_Subset.html">Subset</a></h1>
 
-<pre><span class="keyword">module</span> Subset: <code class="code">sig</code> <a href="Subset.html">..</a> <code class="code">end</code></pre><div class="info module top">
-<h3 id="3_Implementattionofmutablesetsviasubsetconstraints">      Implementattion of mutable sets via subset constraints         </h3><br>
+<pre><span id="MODULESubset"><span class="keyword">module</span> Subset</span>: <code class="code">sig</code> <a href="Subset.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<h4 id="3_Implementattionofmutablesetsviasubsetconstraints">      Implementattion of mutable sets via subset constraints         </h4></div>
 </div>
 <hr width="100%">
 
@@ -75,7 +76,9 @@
 <td align="left" valign="top" >
 <code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTset.set">set</span>&nbsp;: <code class="type">'a <a href="Subset.html#TYPEelts">elts</a></code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-The current value of the set.<br>
+<div class="info-desc">
+<p>The current value of the set.</p>
+</div>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr>
@@ -85,7 +88,9 @@ The current value of the set.<br>
 <td align="left" valign="top" >
 <code><span class="keyword">mutable&nbsp;</span><span id="TYPEELTset.frozen">frozen</span>&nbsp;: <code class="type">bool</code>;</code></td>
 <td class="typefieldcomment" align="left" valign="top" ><code>(*</code></td><td class="typefieldcomment" align="left" valign="top" ><div class="info ">
-if true, the set is frozen and will not change anymore<br>
+<div class="info-desc">
+<p>if true, the set is frozen and will not change anymore</p>
+</div>
 </div>
 </td><td class="typefieldcomment" align="left" valign="bottom" ><code>*)</code></td>
 </tr></table>
@@ -95,20 +100,28 @@ if true, the set is frozen and will not change anymore<br>
 
 <pre><span id="VALcreate"><span class="keyword">val</span> create</span> : <code class="type">'a list -> 'a <a href="Subset.html#TYPEset">set</a></code></pre>
 <pre><span id="VALtest"><span class="keyword">val</span> test</span> : <code class="type">('a -> 'a -> bool) -> 'a <a href="Subset.html#TYPEset">set</a> -> 'a list -> bool</code></pre><div class="info ">
-test if a set is contained in a list for the given equality.
-    if the set is not frozen, it will decrease<br>
+<div class="info-desc">
+<p>test if a set is contained in a list for the given equality.
+    if the set is not frozen, it will decrease</p>
+</div>
 </div>
 
 <pre><span id="VALis_empty"><span class="keyword">val</span> is_empty</span> : <code class="type">'a <a href="Subset.html#TYPEset">set</a> -> bool</code></pre><div class="info ">
-check if a set is empty<br>
+<div class="info-desc">
+<p>check if a set is empty</p>
+</div>
 </div>
 
 <pre><span id="VALget"><span class="keyword">val</span> get</span> : <code class="type">'a <a href="Subset.html#TYPEset">set</a> -> 'a list</code></pre><div class="info ">
-get the current value of a set and froze it<br>
+<div class="info-desc">
+<p>get the current value of a set and froze it</p>
+</div>
 </div>
 
 <pre><span id="VALunsafe_get"><span class="keyword">val</span> unsafe_get</span> : <code class="type">'a <a href="Subset.html#TYPEset">set</a> -> 'a list</code></pre><div class="info ">
-get the current value of a set without frozing it.
-    should only be used for printing. Return [] for CoFinite<br>
+<div class="info-desc">
+<p>get the current value of a set without frozing it.
+    should only be used for printing. Return [] for CoFinite</p>
+</div>
 </div>
 </body></html>
