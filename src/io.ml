@@ -1,5 +1,6 @@
 (**{3 Output functions, general and for debugging channels}*)
 
+open Earley_core
 open Format
 
 type fmts =

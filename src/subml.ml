@@ -43,7 +43,7 @@ let spec = Arg.align
                      'y': size change principle
                      'm': sct matrix coefficient" )
   ; ( "--debug-parser"
-    , Arg.Set_int Earley.debug_lvl
+    , Arg.Set_int Earley_core.Earley.debug_lvl
     , "i Set the debug lvl of earley" )
   ; ( "-I"
     , Arg.String (fun s -> Io.path := s :: !Io.path)

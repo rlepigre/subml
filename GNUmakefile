@@ -25,7 +25,6 @@ all: depchecks _build/src/subml.native
 # Check for ocamlfind, ocamlbuild and pa_ocaml on the system.
 HAS_OCAMLFIND  := $(shell which ocamlfind 2> /dev/null)
 HAS_OCAMLBUILD := $(shell which ocamlbuild 2> /dev/null)
-HAS_PA_OCAML   := $(shell which pa_ocaml 2> /dev/null)
 
 # Check for the bindlib and earley library.
 HAS_BINDLIB    := $(shell ocamlfind query -format %p bindlib 2> /dev/null)
@@ -38,9 +37,6 @@ ifndef HAS_OCAMLBUILD
 endif
 ifndef HAS_OCAMLFIND
 	$(error "The ocamlfind program is required...")
-endif
-ifndef HAS_PA_OCAML
-	$(error "The pa_ocaml (earley-ocaml) is required...")
 endif
 ifndef HAS_BINDLIB
 	$(error "The bindlib library is required...")

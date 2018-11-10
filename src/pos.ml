@@ -2,6 +2,7 @@
     elements of an abstract syntax tree to sequences of characters in a
     source file. *)
 
+open Earley_core
 
 (** Type of a position corresponding to a continuous range of characters in
     a (utf8 encoded) source file. *)

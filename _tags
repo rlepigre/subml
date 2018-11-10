@@ -1,5 +1,5 @@
 "src"             : traverse
-true              : package(earley)
+true              : package(earley.core)
 true              : package(bindlib)
 "src/parser.ml"   : pp(pa_ocaml)
 "src/submljs.ml"  : package(lwt.syntax)

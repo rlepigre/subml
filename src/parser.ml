@@ -2,6 +2,7 @@
 (**{3                           You guessed it                             }*)
 (****************************************************************************)
 
+open Earley_core
 open LibTools
 open Earley
 open Bindlib
