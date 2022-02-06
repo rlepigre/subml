@@ -24,6 +24,7 @@ dependencies (SubML itself will not be installed).
 ```bash
 git clone git@github.com:rlepigre/subml.git
 cd subml
+opam install . --deps-only
 make
 ```
 You can then run Subml using `dune exec -- subml`. For example, you
