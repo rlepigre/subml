@@ -1,7 +1,3 @@
-VIMDIR   = $(HOME)/.vim
-NVIMDIR  = $(HOME)/.config/nvim
-EMACSDIR = $(shell opam var prefix)/share/emacs/site-lisp
-
 all:
 	@dune build
 .PHONY: all
@@ -58,53 +54,41 @@ distclean: clean
 
 uninstall:
 	@dune uninstall
-ifneq ($(wildcard $(VIMDIR)/.),)
-	rm -rf $(VIMDIR)/syntax/subml.vim
-	rm -rf $(VIMDIR)/ftdetect/subml.vim
-endif
-ifneq ($(wildcard $(NVIMDIR)/.),)
-	rm -rf $(NVIMDIR)/syntax/subml.vim
-	rm -rf $(NVIMDIR)/ftdetect/subml.vim
-endif
-ifneq ($(wildcard $(EMACSDIR)/.),)
-	rm -rf $(EMACSDIR)/subml
-endif
 .PHONY: uninstall
 
 install:
 	@dune install
 .PHONY: install
 
+VIMDIR = $(HOME)/.vim
 install_vim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim
-ifneq ($(wildcard $(VIMDIR)/.),)
-	install -m 755 -d $(VIMDIR)/syntax
-	install -m 755 -d $(VIMDIR)/ftdetect
-	install -m 644 editors/vim/syntax/subml.vim $(VIMDIR)/syntax
-	install -m 644 editors/vim/ftdetect/subml.vim $(VIMDIR)/ftdetect
-	@echo -e "\e[36mVim mode installed.\e[39m"
-else
-	@echo -e "\e[36mWill not install vim mode.\e[39m"
-endif
+	@install -m 755 -d $(VIMDIR)/syntax
+	@install -m 755 -d $(VIMDIR)/ftdetect
+	@install -m 644 editors/vim/syntax/subml.vim $(VIMDIR)/syntax
+	@install -m 644 editors/vim/ftdetect/subml.vim $(VIMDIR)/ftdetect
+	@echo "Vim mode installed to [$(VIMDIR)]."
 .PHONY: install_vim
 
+NVIMDIR = $(HOME)/.config/nvim
 install_nvim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim
-ifneq ($(wildcard $(NVIMDIR)/.),)
-	install -m 755 -d $(NVIMDIR)/syntax
-	install -m 755 -d $(NVIMDIR)/ftdetect
-	install -m 644 editors/vim/syntax/subml.vim $(NVIMDIR)/syntax
-	install -m 644 editors/vim/ftdetect/subml.vim $(NVIMDIR)/ftdetect
-	@echo -e "\e[36mNeovim mode installed.\e[39m"
-else
-	@echo -e "\e[36mWill not install neovim mode.\e[39m"
-endif
+	@install -m 755 -d $(NVIMDIR)/syntax
+	@install -m 755 -d $(NVIMDIR)/ftdetect
+	@install -m 644 editors/vim/syntax/subml.vim $(NVIMDIR)/syntax
+	@install -m 644 editors/vim/ftdetect/subml.vim $(NVIMDIR)/ftdetect
+	@echo "Neovim mode installed to [$(NVIMDIR)]."
 .PHONY: install_nvim
 
+EMACSDIR = $(shell opam var prefix)/share/emacs/site-lisp
 install_emacs: editors/emacs/subml-mode.el
-ifneq ($(wildcard $(EMACSDIR)/.),)
-	install -m 755 -d $(EMACSDIR)/subml
-	install -m 644 editors/emacs/subml-mode.el $(EMACSDIR)/subml
-	@echo -e "\e[36mEmacs mode installed.\e[39m"
-else
-	@echo -e "\e[36mWill not install emacs mode.\e[39m"
-endif
+	@install -m 755 -d $(EMACSDIR)/subml
+	@install -m 644 editors/emacs/subml-mode.el $(EMACSDIR)/subml
+	@echo "Emacs mode installed ot [$(EMACSDIR)]."
 .PHONY: install_emacs
+
+uninstall_editor_modes:
+	@rm -f $(VIMDIR)/syntax/subml.vim
+	@rm -f $(VIMDIR)/ftdetect/subml.vim
+	@rm -f $(NVIMDIR)/syntax/subml.vim
+	@rm -f $(NVIMDIR)/ftdetect/subml.vim
+	@rm -rf $(EMACSDIR)/subml
+.PHONY: uninstall_editor_modes

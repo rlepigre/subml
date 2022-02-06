@@ -83,3 +83,10 @@ make install_emacs
 
 **Note:** the mode is installed under the standard `share/emacs/site-lisp`
 folder, according the the `$PREFIX`.
+
+#### Removing editor modes
+
+To remove all installed editor modes just use the `uninstall_editor_modes`.
+```bash
+make uninstall_editor_modes
+```
