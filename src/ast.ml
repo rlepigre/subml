@@ -14,42 +14,62 @@ open Format
 
 (** Occurence markers for variables. *)
 type occur =
-  | Non (** The variable does not occur. *)
-  | Pos of bool (** The variable occurs only positively. *)
-  | Neg of bool (** The variable occurs only negatively. *)
-  | All (** The variable occurs both positively and negatively. *)
+  | Non
+  (** The variable does not occur. *)
+  | Pos of bool
+  (** The variable occurs only positively. *)
+  | Neg of bool
+  (** The variable occurs only negatively. *)
+  | All
+  (** The variable occurs both positively and negatively. *)
   | Reg of int * occur array
   (** Special constructor for constructing the variance of definitions. *)
 
 (** Ast of kinds (or types). *)
 type kind =
-  | KVari of kind var             (** Free type variable. *)
-  | KFunc of kind * kind          (** Arrow type. *)
-  | KProd of (string * kind) list (** Record (or product) type.*)
-             * bool               (** if true: the record is extensible *)
-  | KDSum of (string * kind) list (** Sum (of Variant) type. *)
-  | KKAll of kkbinder             (** Universal quantifier over a type. *)
-  | KKExi of kkbinder             (** Corresponding existential quantifier. *)
-  | KOAll of okbinder             (** Universal quantifier over an ordinal. *)
-  | KOExi of okbinder             (** Corresponding existential quantifier. *)
-  | KFixM of ordi * kkbinder      (** Least fixpoint with ordinal size. *)
-  | KFixN of ordi * kkbinder      (** Greatest fixpoint with ordinal size. *)
-  | KDefi of kdefi                (** User-defined type with its arguments. *)
+  | KVari of kind var
+  (** Free type variable. *)
+  | KFunc of kind * kind
+  (** Arrow type. *)
+  | KProd of (string * kind) list * bool
+  (** Record (or product) type, boolean [true] if the record is extensible *)
+  | KDSum of (string * kind) list
+  (** Sum (of Variant) type. *)
+  | KKAll of kkbinder
+  (** Universal quantifier over a type. *)
+  | KKExi of kkbinder
+  (** Corresponding existential quantifier. *)
+  | KOAll of okbinder
+  (** Universal quantifier over an ordinal. *)
+  | KOExi of okbinder
+  (** Corresponding existential quantifier. *)
+  | KFixM of ordi * kkbinder
+  (** Least fixpoint with ordinal size. *)
+  | KFixN of ordi * kkbinder
+  (** Greatest fixpoint with ordinal size. *)
+  | KDefi of kdefi
+  (** User-defined type with its arguments. *)
 
-  (** Witnesses (a.k.a. epsilons) used with quantifiers over types. Note that
-     the boolean is [true] if the term is closed. This is a necessary
-     optimisation to keep physical equality and therefore avoid
-     traversing witnesses in comparison tests *)
+  (* Witnesses (a.k.a. epsilons) used with quantifiers over types. *)
 
-  | KUCst of term * kkbinder * bool (** Universal witness. *)
-  | KECst of term * kkbinder * bool (** Existential witness. *)
+  | KUCst of term * kkbinder * bool
+  (** Universal witness, boolean [true] if the term is closed. *)
+  | KECst of term * kkbinder * bool
+  (** Existential witness, boolean [true] if the term is closed. *)
 
-  (** Special constructors (not accessible to user). *)
+  (* NOTE: the boolean is an optimisation: it allows preserving physical
+     equality and therefore avoid traversing witnesses in comparison tests. *)
 
-  | KUVar of kuvar * ordi array   (** Unification variable. *)
-  | KMRec of ordi set * kind      (** Ordinal conjunction. FIXME wrong name *)
-  | KNRec of ordi set * kind      (** Ordinal disjunction. FIXME wrong name *)
-  | KPrnt of kprint               (** Special pretty-printing constructor. *)
+  (* Special constructors (not accessible to user). *)
+
+  | KUVar of kuvar * ordi array
+  (** Unification variable. *)
+  | KMRec of ordi set * kind
+  (** Ordinal conjunction. FIXME wrong name *)
+  | KNRec of ordi set * kind
+  (** Ordinal disjunction. FIXME wrong name *)
+  | KPrnt of kprint
+  (** Special pretty-printing constructor. *)
 
 (** [Bindlib] binder for an ordinal in a kind. *)
 and okbinder = (ordi, kind) binder
@@ -89,10 +109,12 @@ and 'a from_kinds = (kind  , 'a) mbinder
 
 (** Unification variable type managed using a union-find algorithm. *)
 and ('a,'b) uvar =
-  { uvar_key   : int                      (** Unique key (or UID). *)
-      (** Value of the variable, or some information *)
+  { uvar_key   : int
+  (** Unique key (or UID). *)
   ; uvar_state   : ('a, 'b) uvar_state ref
-  ; uvar_arity : int                      (** Arity of the variable. *) }
+  (** Value of the variable, or some information *)
+  ; uvar_arity : int
+  (** Arity of the variable. *) }
 
 and ('a, 'b) uvar_state = Set of 'a from_ordis | Unset of 'b
 
@@ -297,7 +319,7 @@ let uvar_state :  ('a,'b) uvar -> 'b = fun u ->
   | Unset b -> b
 
 let rec repr : bool -> kind -> kind = fun unfold -> function
-  | KUVar({uvar_state = {contents = Set k}; uvar_arity=arity}, os) ->
+  | KUVar({uvar_state = {contents = Set k}; uvar_arity=arity; _}, os) ->
      assert (mbinder_arity k = arity);
      assert (Array.length os = arity);
      repr unfold (msubst k os)
@@ -319,7 +341,7 @@ let rec repr : bool -> kind -> kind = fun unfold -> function
      let f = binder_from_fun (fun x -> KVari(x)) (binder_name f) aux in
      let a' = KFixN(OConv, f) in
      repr unfold a'
-  | KDefi({tdef_value = v}, os, ks) when unfold ->
+  | KDefi({tdef_value = v; _}, os, ks) when unfold ->
       repr unfold (msubst (msubst v os) ks)
   | KMRec(p,k) when Subset.is_empty p -> repr unfold k
   | KNRec(p,k) when Subset.is_empty p -> repr unfold k
@@ -342,7 +364,7 @@ let      repr : kind -> kind = fun k -> repr false k
 (** Unfold ordinal variables indirections *)
 let rec orepr o =
   match o with
-  | OUVar({uvar_state = {contents = Set o}}, os) ->  orepr (msubst o os)
+  | OUVar({uvar_state = {contents = Set o}; _}, os) ->  orepr (msubst o os)
   | OSucc o -> OSucc (orepr o)
   | o -> o
 
@@ -612,7 +634,7 @@ let rec do_dot_proj t k s = match full_repr k with
   | KKExi(f) ->
      let c = KECst(t,f,true) in
      if binder_name f = s then c else do_dot_proj t (subst f c) s
-  | k ->
+  | _ ->
      failwith "Illegal dot projection"
 
 (** dot projection: we compute the projection
@@ -622,7 +644,7 @@ let dot_proj : tbox -> string -> kbox = fun t s ->
   let fn t = match Pos.(t.elt) with
     | TDefi(d) -> do_dot_proj t d.ttype s
     | TCnst(_,a,_) -> do_dot_proj t a s
-    | TVars x -> KPrnt (DotPrj(x,s)) (** printing only *)
+    | TVars x -> KPrnt (DotPrj(x,s)) (* printing only *)
     | _ -> kdummy
   in
   box_apply fn t
@@ -643,7 +665,7 @@ let with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
        end
     | KFixM(OConv,f) -> fn (subst f (KFixM(OConv,f))) b
     | KFixN(OConv,f) -> fn (subst f (KFixN(OConv,f))) b
-    | k       ->
+    | _       ->
       failwith ("Illegal use of \"with\" on variable "^s^".")
   in
   box_apply2 fn a b

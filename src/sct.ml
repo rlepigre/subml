@@ -204,12 +204,12 @@ let latex_print_calls ff tbl =
   in
   List.iter f (List.filter (fun (i,_) ->
     List.exists (fun c -> i = c.caller || i = c.callee) calls) arities);
-  let print_call arities {callee = i; caller = j; matrix = m} =
-    let {name = namej; arity = aj; args = prj} =
-      try List.assoc j arities with Not_found -> assert false
+  let print_call arities {callee = i; caller = j; matrix = m; _} =
+    let aj =
+      try (List.assoc j arities).arity with Not_found -> assert false
     in
-    let {name = namei; arity = ai; args = pri} =
-      try List.assoc i arities with Not_found -> assert false
+    let ai =
+      try (List.assoc i arities).arity with Not_found -> assert false
     in
     fprintf ff "    N%d -> N%d [label = \"\\left(\\begin{smallmatrix}"
       (index j) (index i);
@@ -270,8 +270,8 @@ let sct_only : t -> bool = fun ftbl ->
     let rec fn () =
       match !new_edges with
       | [] -> ()
-      | {callee = i; caller = j}::l when j < 0 -> new_edges := l; fn () (* ignore root *)
-      | ({callee = i; caller = j; matrix = m} as c)::l ->
+      | {callee = _; caller = j; _}::l when j < 0 -> new_edges := l; fn () (* ignore root *)
+      | ({callee = i; caller = j; matrix = m; _} as c)::l ->
         assert (i >= 0);
         new_edges := l;
         if add_edge i j m then begin
@@ -326,7 +326,7 @@ let inline : t -> t = fun g ->
   let rec fn ({callee = j; caller = i; matrix = m; is_rec = r} as c) =
     try
       match Hashtbl.find tbl i with
-      | One {caller = k; matrix = m'} ->
+      | One {caller = k; matrix = m';_} ->
           fn {callee = j; caller = k; matrix = prod m' m; is_rec = r}
       | _ -> c
     with Not_found -> c
@@ -336,8 +336,8 @@ let inline : t -> t = fun g ->
   let rec gn calls =
     let removed_one = ref false in
     let calls =
-      let fn {caller} =
-        let b = List.exists (fun {callee} -> caller = callee) calls in
+      let fn {caller;_} =
+        let b = List.exists (fun {callee;_} -> caller = callee) calls in
         if not b then removed_one := true; b
       in
       List.filter fn calls

@@ -41,7 +41,7 @@ let strict f a =
   res
 
 let constant_mbind size k =
-  unbox (mbind mk_free_o (Array.make size "_") (fun x -> box k))
+  unbox (mbind mk_free_o (Array.make size "_") (fun _ -> box k))
 
 let mbind_assoc cst size l =
   unbox (mbind mk_free_o (Array.make size "α")
@@ -74,8 +74,8 @@ let set_ouvar ?(msg="") v o =
   assert (is_unset v);
   Timed.(v.uvar_state := Set o)
 
-(** forward references to function binding ordis in kinds and ordinals *)
-(** TODO: reorder the definition to minimize mutual recursion *)
+(** Forward references to function binding ordis in kinds and ordinals.
+    TODO: reorder the definition to minimize mutual recursion. *)
 let fbind_ordis  : (ordi array -> kind -> kind from_ordis) ref
     = ref (fun _ -> assert false)
 let fobind_ordis : (ordi array -> ordi -> ordi from_ordis) ref
@@ -171,9 +171,9 @@ and leqi_ordi pos o1 i o2 =
   | (o1         , OSucc o2  ) -> leqi_ordi pos o1 (i-1) o2
   | (OSucc o1   ,       o2  ) -> leqi_ordi pos o1 (i+1) o2
   (* the existing constraint is enough *)
-  | (OUVar({uvar_state = {contents = Unset (_, Some o')}},os), o2)
+  | (OUVar({uvar_state = {contents = Unset (_, Some o')}; _},os), o2)
        when strict (leqi_ordi pos (msubst o' os) (i-1)) o2 -> true
-  | (o1         , OUVar({uvar_state = {contents = Unset (Some o',_)}},os))
+  | (o1         , OUVar({uvar_state = {contents = Unset (Some o',_)}; _},os))
        when strict (leqi_ordi pos o1 i) (msubst o' os) -> true
   (* variable on the right, we improve the lower bound *)
   | (o1         , OUVar(p,os)) when not !eq_strict &&
@@ -341,7 +341,7 @@ and gen_occur :
     if List.memq k !adone_k then acc else (
     adone_k := k :: !adone_k;
     match k with
-    | KVari(x)   -> acc
+    | KVari(_)   -> acc
     | KFunc(a,b) -> aux (neg occ) (aux occ acc b ) a
     | KProd(ks,_)
     | KDSum(ks)  -> List.fold_left (fun acc (_,k) -> aux occ acc k) acc ks
@@ -353,8 +353,7 @@ and gen_occur :
     | KFixN(o,f) -> aux occ (aux3 acc o) (subst f kdummy)
     | KDefi(d,o,a) ->
        let acc = ref acc in
-       Array.iteri (fun i o ->
-         acc := aux3 !acc o) o;
+       Array.iter (fun o -> acc := aux3 !acc o) o;
        Array.iteri (fun i k ->
          acc := aux (compose occ d.tdef_kvariance.(i)) !acc k) a;
        !acc
@@ -374,7 +373,7 @@ and gen_occur :
     | TCoer(t,_)
     | TProj(t,_)
     | TCons(_,t)     -> aux2 acc t
-    | TMLet(b,x,bt)  -> aux2 acc (mmsubst_dummy bt odummy kdummy)
+    | TMLet(_,_,bt)  -> aux2 acc (mmsubst_dummy bt odummy kdummy)
     | TFixY(_,_,f)
     | TAbst(_,f,_)   -> aux2 acc (subst f tdummy)
     | TAppl(t1, t2)  -> aux2 (aux2 acc t1) t2

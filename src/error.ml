@@ -47,7 +47,7 @@ let rec check_sub_proof (p, t, k1, k2, r) =
     | Sub_Gen(_,_,p)       -> check_sub_proof p
     | Sub_Func   (p1, p2) -> check_sub_proof p1 &&& check_sub_proof p2
     | Sub_Prod   ps
-    | Sub_DSum   ps       -> for_all (fun (l,p) -> check_sub_proof p) ps
+    | Sub_DSum   ps       -> for_all (fun (_,p) -> check_sub_proof p) ps
     | Sub_Lower
     | Sub_Ind _           -> None
     | Sub_Error msg       -> Some [ Msg msg ]
@@ -106,7 +106,7 @@ let display_error ch = function
   | Typ(p,t,k)     -> fprintf ch "TYP %a ⊢ %a : %a\n" print_ordis p
                               (print_term ~give_pos:true false) t
                               (print_kind false) k
-  | Sub(p,t,k1,k2) -> fprintf ch "SUB %a ⊢ %a ⊂ %a\n"
+  | Sub(p,_,k1,k2) -> fprintf ch "SUB %a ⊢ %a ⊂ %a\n"
                               print_ordis p
                               (print_kind false) k1
                               (print_kind false) k2

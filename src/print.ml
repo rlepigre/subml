@@ -78,9 +78,9 @@ let search_type_tbl u f is_exists =
        this is just for printing after all … *)
     let (name,index,_,_) = assoc_kkind f !epsilon_type_tbl in
     (name, index)
-  with not_found ->
+  with Not_found ->
     let base = binder_name f in
-    let fn acc (_,(base',i,u,is_exists)) =
+    let fn acc (_,(base',i,_,_)) =
       if base = base' then max acc i else acc
     in
     let max = List.fold_left fn (-1) !epsilon_type_tbl
@@ -92,7 +92,7 @@ let search_type_tbl u f is_exists =
 let search_term_tbl (t:term) f =
   try
     assoc_term t !epsilon_term_tbl
-  with not_found ->
+  with Not_found ->
     let base = binder_name f in
     let fn acc (_,(_,base',i)) =
       if base = base' then max acc i else acc
@@ -124,7 +124,7 @@ let unsugar_pattern cons oname s t =
   in
   let names = ref [] in
   let rec fn n t = match t.elt with
-    | TAppl({ elt = TAbst(_,f,_) },_) when n > 0 ->
+    | TAppl({ elt = TAbst(_,f,_); _},_) when n > 0 ->
        let name = binder_name f in
        names := name :: !names;
        let x = TVars name in
@@ -159,20 +159,20 @@ let has_kvar : kind -> bool = fun k ->
     match repr k with
     | KFunc(a,b) -> fn a; fn b
     | KProd(ls,_)
-    | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
+    | KDSum(ls)  -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)   -> fn (subst f kdummy)
     | KFixM(o,f) -> gn o; fn (subst f kdummy)
     | KFixN(o,f) -> gn o; fn (subst f kdummy)
     | KOAll(f)
     | KOExi(f)   -> fn (subst f odummy)
-    | KUVar(u,_) -> ()
-    | KDefi(d,o,a) -> Array.iter fn a
+    | KUVar(_,_) -> ()
+    | KDefi(_,_,a) -> Array.iter fn a
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | KVari _    -> raise Exit
-    | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> fn (subst f kdummy)
+    | KUCst(_,f,_)
+    | KECst(_,f,_) -> fn (subst f kdummy)
     | KPrnt _    -> ()
   and gn o = match orepr o with
     | OUVar _ -> ()
@@ -245,8 +245,8 @@ let try_fold_def : kind -> kind = fun k ->
   let save_debug = !Io.debug in
   Io.debug := "";
   let match_def k def = (* TODO: share code with TMLet *)
-    let kargs = Array.init def.tdef_karity (fun n -> new_kuvar ()) in
-    let oargs = Array.init def.tdef_oarity (fun n -> new_ouvar ()) in
+    let kargs = Array.init def.tdef_karity (fun _ -> new_kuvar ()) in
+    let oargs = Array.init def.tdef_oarity (fun _ -> new_ouvar ()) in
     let lkargs = List.map (function KUVar(u,_) -> u | _ -> assert false)
       (Array.to_list kargs) in
     let loargs = List.map (function OUVar(u,_) -> u | _ -> assert false)
@@ -410,7 +410,7 @@ and print_kind unfold wrap unfolded_Y ff t =
       fprintf ff "[%a]" (print_list pvariant st) cs
   | KKAll(_)  ->
      if wrap then pp_print_string ff "(";
-      let rec fn prefix ch = function
+      let rec fn prefix _ = function
         | KKAll(f) ->
            let x = new_prvar f in
            let npr = if latex_mode () then "\\," else " " in
@@ -421,7 +421,7 @@ and print_kind unfold wrap unfolded_Y ff t =
       if wrap then pp_print_string ff ")"
   | KKExi(_)  ->
       if wrap then pp_print_string ff "(";
-      let rec fn prefix ch = function
+      let rec fn prefix _ = function
         | KKExi(f) ->
            let x = new_prvar f in
            let npr = if latex_mode () then "\\," else " " in
@@ -432,7 +432,7 @@ and print_kind unfold wrap unfolded_Y ff t =
       if wrap then pp_print_string ff ")"
   | KOAll(_)  ->
      if wrap then pp_print_string ff "(";
-     let rec fn prefix ch = function
+     let rec fn prefix _ = function
         | KOAll(f) ->
            let x = OVars (binder_name f) in
            let npr = if latex_mode () then "\\," else " " in
@@ -443,7 +443,7 @@ and print_kind unfold wrap unfolded_Y ff t =
       if wrap then pp_print_string ff "(";
   | KOExi(_)  ->
      if wrap then pp_print_string ff "(";
-     let rec fn prefix ch = function
+     let rec fn prefix _ = function
         | KOExi(f) ->
            let x = OVars (binder_name f) in
            let npr = if latex_mode () then "\\," else " " in
@@ -640,7 +640,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
   | TVars(s) ->
      pp_print_string ff s
   (* TODO: unsugar let too *)
-  | TAbst(ao,b,_) ->
+  | TAbst(_,_,_) ->
      if wrap then fprintf ff "(";
      let rec fn first ff t = match t.elt with
        | TAbst(ao,b,s) ->
@@ -660,7 +660,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      fprintf ff "λ%a" (fn true) t;
      if wrap then fprintf ff ")"
 
-  | TAppl({ elt = TAbst(ao,b,_)},u) when !print_redex_as_let ->
+  | TAppl({ elt = TAbst(ao,b,_); _},u) when !print_redex_as_let ->
      let pk ff ao =
        match ao with
        | Some k ->
@@ -708,7 +708,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
        let fn s t =
          match t.elt with
          | TCoer(t,k) -> t, fun ff -> fprintf ff "%s %a" s pkind k
-         | _          -> t, fun ff -> ()
+         | _          -> t, fun _ -> ()
        in
        if !break_hint = 0 || !break_hint = 2 then begin
          let pfield ff (l,t) =
@@ -761,11 +761,11 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
        in
        let pdefault ff = function
          | None -> ()
-         | Some({elt = TAbst(_,f,_)}) ->
+         | Some({elt = TAbst(_,f,_); _}) ->
             let x = binder_name f in
             let t = subst f (mk_free_t (new_tvari x)) in
             fprintf ff "%s%s → %a" !bar x pterm t;
-         | Some b           -> assert false
+         | Some _           -> assert false
        in
        if !break_hint > 0 then begin
          decr break_hint;
@@ -804,7 +804,7 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
      | _ ->
         fprintf ff (if latex_mode () then "\\mathrm{%s}" else "%s") x)
   | TAbrt        -> fprintf ff "Abort"
-  | TCnst(f,a,b) ->
+  | TCnst(f,_,_) ->
      let t, name, index = search_term_tbl t f in
      if name = "" then
        pterm ff t
@@ -850,7 +850,7 @@ let rec sub_used_ind (_, _, _, _, r) =
   | Sub_Gen(_,_,p)      -> sub_used_ind p
   | Sub_Func   (p1, p2) -> sub_used_ind p1 @ sub_used_ind p2
   | Sub_Prod   ps
-  | Sub_DSum   ps       -> List.fold_left (fun acc (l,p) -> acc @ sub_used_ind p) [] ps
+  | Sub_DSum   ps       -> List.fold_left (fun acc (_,p) -> acc @ sub_used_ind p) [] ps
   | Sub_Ind sch         -> [sch.sch_index]
   | Sub_Lower
   | Sub_Error _         -> []
@@ -995,8 +995,8 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
   | Sub_Delay(pr)     -> sub2proof !pr
   | Sub_Lower         -> axiomSN "=" c
   | Sub_Func(p1,p2)   -> binarySN "→" c (sub2proof p1) (sub2proof p2)
-  | Sub_Prod(ps)      -> n_arySN "×" c (List.map (fun (l,p) -> sub2proof p) ps)
-  | Sub_DSum(ps)      -> n_arySN "+" c (List.map (fun (l,p) -> sub2proof p) ps)
+  | Sub_Prod(ps)      -> n_arySN "×" c (List.map (fun (_,p) -> sub2proof p) ps)
+  | Sub_DSum(ps)      -> n_arySN "+" c (List.map (fun (_,p) -> sub2proof p) ps)
   | Sub_KAll_r(p)     -> unarySN "∀_r" c (sub2proof p)
   | Sub_KAll_l(p)     -> unarySN "∀_l" c (sub2proof p)
   | Sub_KExi_l(p)     -> unarySN "∃_l" c (sub2proof p)
@@ -1023,7 +1023,7 @@ and     sub2proof : Sct.index list -> sub_prf -> string Proof.proof =
                                     o2s (k2s a) (k2s b) in
                          unarySN "\\S" c (unarySN "\\G" c' (hypN name p0))
   | Sub_Error(msg)    -> axiomSN (sprintf "ERROR(%s)" msg) c
-  | Sub_Gen(sch,tros,((os0,t0,_,_,_) as p)) ->
+  | Sub_Gen(sch,tros,((_,t0,_,_,_) as p)) ->
      if List.mem sch.sch_index used_ind then (
        let c0 = mkSchema sch in
        let c' = sprintf "%s ⊢ %s ⊆ %s"
@@ -1096,7 +1096,7 @@ let print_epsilon_tbls ff =
             (print_kind false) k
             newline
     ) epsilon_type_tbl;
-  list_ref_iter (fun (t,(t0,name,index)) ->
+  list_ref_iter (fun (t,(_,name,index)) ->
     match t.elt with
     | TCnst(f,a,b) when name <> "" ->
        let x = mk_free_t (new_tvari (binder_name f)) in

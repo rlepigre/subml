@@ -15,7 +15,7 @@ open AstMap
 (** binding a unification variable in a kind *)
 let bind_kuvar : kuvar -> kind -> (kind, kind) binder = fun v k ->
   unbox (bind mk_free_k "X" (fun x ->
-    let fkind _ k self_kind _ def_kind =
+    let fkind _ k _ _ def_kind =
       match repr k with
       | KUVar(u,_) -> assert(is_unset u); if eq_uvar v u then x else box k
       | k -> def_kind k
@@ -163,8 +163,8 @@ let rec bind_both ?(from_generalise=false) os x =
          in
          let v = new_kuvara ~state (u.uvar_arity + Array.length os'') in
          let new_ords = Array.map self_ord new_ords in
-         (** Avoid seting v with a third variable w ...
-             TODO: check why this is necessary *)
+         (* Avoid seting v with a third variable w ...
+            TODO: check why this is necessary *)
          fresh_uvar := (v, new_ords) :: !fresh_uvar;
          let k = unbox (mbind mk_free_o (Array.make u.uvar_arity "α") (fun x ->
            kuvar v (Array.init new_len
@@ -177,20 +177,20 @@ let rec bind_both ?(from_generalise=false) os x =
          in
          set_kuvar u k;
          kuvar v new_ords
-    | KUCst(t,f,cl) | KECst(t,f,cl) when from_generalise || os = [||] ->
+    | KUCst(_,_,cl) | KECst(_,_,cl) when from_generalise || os = [||] ->
          if cl then box k else map_kind k
     | k -> def_kind k
     in
     if Bindlib.is_closed res then box k else res
   in
-  let ford _ o (self_kind:self_kind) (self_ord:self_ord) def_ord =
+  let ford _ o (_:self_kind) (self_ord:self_ord) def_ord =
     let o = orepr o in
     let res =
       try  index os x o with Not_found ->
       match o with
       | OUVar(u,_)   when List.mem_assq u !fresh_ovar -> ouvar u (List.assq u !fresh_ovar)
       | OUVar(u,os') ->
-         (** Similar to KUVar above *)
+         (* Similar to KUVar above *)
          let os'' = List.filter (fun o ->
            not (Array.exists (strict_eq_ordi o) os') &&
              (not (ouvar_occur u o)))

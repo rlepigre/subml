@@ -35,7 +35,7 @@ let search_schemas name p =
          let osnames = Array.init (mbinder_arity sch.sch_judge)
                            (fun i -> "α_"^string_of_int i) in
          let os = Array.map (fun s -> OVars s) osnames in
-         let (a,b) = msubst sch.sch_judge os in
+         let (a,_) = msubst sch.sch_judge os in
          match a with
          | SchTerm f when binder_name f = name -> res := sch :: !res
          | _ -> raise Not_found
@@ -43,7 +43,7 @@ let search_schemas name p =
         gn p
     | _ -> ()
 
-  and gn (p, t, k, r) =
+  and gn (_, _, _, r) =
     match r with
     | Typ_YGen ptr -> fn ptr
     | Typ_Coer   (_, p)
@@ -97,7 +97,7 @@ let rec output toplevel ch =
      if Sct.is_empty calls then Sct.latex_print_calls ch calls;
      fprintf ch "\\end{center}\n%!";
      ignore_witness := save
-  | TProof(br,id) ->
+  | TProof(_,id) ->
       begin
         try print_typing_proof ch (Hashtbl.find val_env id.elt).proof
         with Not_found -> raise(Unbound(id.elt, id.pos))
@@ -111,7 +111,7 @@ let rec output toplevel ch =
          Not_found -> raise (Unbound(id.elt,id.pos))
      in
      break_hint := n; print_kind false ch t.ttype; break_hint := 0
-  | KindDef(n,id)  ->
+  | KindDef(_,id)  ->
      let t =
        try
          Hashtbl.find typ_env id.elt

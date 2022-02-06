@@ -25,7 +25,7 @@ type 'a particular = (int * ordi) list * ordi list * 'a * kind
     - If [general = true], we want to use the schema and all ordinals
       are replaced with variables *)
 let recompose : ?general:bool -> schema -> term_or_kind particular =
-  fun ?(general=true) ({ sch_posit = pos; sch_relat = rel; sch_judge = both } as schema) ->
+  fun ?(general=true) ({sch_posit = pos; sch_relat = rel; sch_judge = both; _} as schema) ->
     let res = ref [] in
     let forbidden = ref [] in
     let arity = mbinder_arity both in
@@ -73,7 +73,7 @@ let recompose_term : ?general:bool -> schema -> unit particular =
   fun ?(general=true) schema ->
     let (os,pos,t,k2) = recompose ~general schema in
     let t = match t with
-      | SchTerm t -> ()
+      | SchTerm _ -> ()
       | SchKind _ -> assert false (* Should not happen. *)
     in (os,pos,t,k2)
 
@@ -123,9 +123,9 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
    *)
   let rec eps_search keep o =
     match orepr o with
-    | OLess(o',w) ->
+    | OLess(o',_) ->
        (try
-          let (n,v,k) = assoc_ordi o !res in
+          let (n,_,k) = assoc_ordi o !res in
           k := !k || keep;
           (n,o)
         with
@@ -157,7 +157,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
      constraints because schema with unification variables are
      problematic.
   *)
-  let ford occ o (self_kind:self_kind) (self_ord:self_ord) def_ord =
+  let ford occ o (_:self_kind) (self_ord:self_ord) def_ord =
     let o = orepr o in
     let res =
       match o with
@@ -177,14 +177,14 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
     in
     res
   in
-  let fkind occ k (self_kind:self_kind) (self_ord:self_ord) def_kind =
+  let fkind _ k (self_kind:self_kind) (_:self_ord) def_kind =
     match full_repr k with
-    | KMRec(_,k)
-    | KNRec(_,k) -> raise FailGeneralise
+    | KMRec(_,_)
+    | KNRec(_,_) -> raise FailGeneralise
       (* NOTE:Lets unroll once more to propagate positiveness infos *)
-    | KDefi(td,os,ks) -> assert false
+    | KDefi(_,_,_) -> assert false
       (* TODO: should not open definition if the definition has no mu/nu *)
-    | KUCst(t,f,cl) | KECst(t,f,cl) ->
+    | KUCst(_,_,cl) | KECst(_,_,cl) ->
        if cl then box k else map_kind k (* NOTE: no generalization in witness *)
     | KUVar(v,os) as k -> (* FIXME: duplicated code in type_infer *)
        if uvar_use_state v os then self_kind k else def_kind k
@@ -202,11 +202,11 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
   let pos = List.map (fun o -> fst (eps_search false o)) pos in
 
   (* we keep only the ordinals that are not under witnesses *)
-  let res = List.filter (fun (o,(n,v,k)) -> !k) !res in
+  let res = List.filter (fun (_,(_,_,k)) -> !k) !res in
 
   (* we collect the corresponding variables and ordinals *)
-  let ovars = Array.of_list (List.map (fun (o,(n,v,_)) -> v) res) in
-  let ords  = Array.of_list (List.map (fun (o,(n,v,_)) -> o) res) in
+  let ovars = Array.of_list (List.map (fun (_,(_,v,_)) -> v) res) in
+  let ords  = Array.of_list (List.map (fun (o,_      ) -> o) res) in
   Io.log_uni "bind in generalise\n%!";
 
   (* and now we really bind the generaliszed ordinals *)
@@ -223,14 +223,14 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
   (* in the schema, the positibe ordinals and relation are given by integer,
      so we build a table giving the position of each bound ordinals in
      the schema *)
-  let tbl = List.mapi (fun i (o,(n,v,k)) -> (n,i)) res in
+  let tbl = List.mapi (fun i (_,(n,_,_)) -> (n,i)) res in
   (* we also build the list of ordinals by index, as it is needed to
      build the call matrix for the sct *)
   let os = List.mapi (fun i (o,_) -> (i, o)) res in
 
   (* this function apply trasitivity in the relation to ignore intermediate
      ordinals that are not bound *)
-  let rec next start n =
+  let rec next _ n =
     if List.exists (fun (q,_) -> n = q) tbl then n else
       try
         let l = List.find_all (fun (n',_) -> n = n') !relation in
@@ -256,7 +256,7 @@ let generalise : ?manual:bool -> ordi list -> term_or_kind -> kind
   let rel = List.filter (fun (n,p) ->
     List.exists (fun (q,_) -> n = q) tbl && List.exists (fun (q,_) -> p = q) tbl) rel in
   let rel = List.map (fun (n,p) -> List.assoc n tbl, List.assoc p tbl) rel in
-  let rel = List.sort_uniq (fun (x,y) (x',y') -> x - x') rel in
+  let rel = List.sort_uniq (fun (x,_) (x',_) -> x - x') rel in
 
   Io.log_sub "generalise pos: %a\n%!"
     (fun ff l -> List.iter (Format.fprintf ff "%d ") l) pos;
@@ -302,8 +302,8 @@ let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
     | KDSum(ls)    -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
     | KKExi(f)     -> fn (subst f kdummy)
-    | KFixM(o,f)
-    | KFixN(o,f)   -> fn (subst f kdummy)
+    | KFixM(_,f)
+    | KFixN(_,f)   -> fn (subst f kdummy)
     | KOAll(f)
     | KOExi(f)     -> fn (subst f odummy)
     | KUVar(u,os)  ->
@@ -311,16 +311,16 @@ let kuvar_list : kind -> (kuvar * ordi array) list = fun k ->
          match uvar_state u with
          | Free -> ()
          | DSum l | Prod l ->
-            List.iter (fun (c,f) -> fn (msubst f (Array.make (mbinder_arity f) odummy))) l
+            List.iter (fun (_,f) -> fn (msubst f (Array.make (mbinder_arity f) odummy))) l
        end;
        if not (List.exists (fun (u',_) -> eq_uvar u u') !r) then
          r := (u,os) :: !r
-    | KDefi(d,_,a) -> Array.iter fn a
+    | KDefi(_,_,a) -> Array.iter fn a
     | KMRec _
     | KNRec _      -> assert false
     | KVari _      -> ()
-    | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> fn (subst f kdummy)
+    | KUCst(_,f,_)
+    | KECst(_,f,_) -> fn (subst f kdummy)
     | KPrnt _ -> assert false)
   in
   fn k; !r
@@ -344,12 +344,12 @@ let ouvar_list : kind -> ouvar list = fun k ->
     | KFixN(o,f)   -> gn o; fn (subst f kdummy)
     | KOAll(f)
     | KOExi(f)     -> fn (subst f odummy)
-    | KDefi(d,o,a) -> Array.iter gn o;  Array.iter fn a
+    | KDefi(_,o,a) -> Array.iter gn o;  Array.iter fn a
     | KMRec _
     | KNRec _      -> assert false
     | KVari _      -> ()
-    | KUCst(_,f,cl)
-    | KECst(_,f,cl)-> fn (subst f kdummy)
+    | KUCst(_,f,_)
+    | KECst(_,f,_) -> fn (subst f kdummy)
     | KPrnt _      -> assert false)
   and gn o =
     match orepr o with

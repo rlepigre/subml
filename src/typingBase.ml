@@ -119,10 +119,10 @@ let rec opred : ordi -> ord_wit -> ordi = fun o w ->
   let o = orepr o in
   match o with
   | OSucc o' -> o'
-  | OUVar({uvar_state = {contents = Unset (None,None)}; uvar_arity = a} as p, os) ->
+  | OUVar({uvar_state = {contents = Unset (None,None)}; uvar_arity = a; _} as p, os) ->
      let o' = OUVar(new_ouvara a,os) in
      assert (safe_set_ouvar [] p os (OSucc o')); o'
-  | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = a} as p, os)
+  | OUVar({uvar_state = {contents = Unset (Some o', _)}; uvar_arity = _; _} as p, os)
                                                    when not (ouvar_mbind_occur p o' os) ->
      set_ouvar p o'; opred o w
   | OUVar _ ->
@@ -143,7 +143,7 @@ let rec ofindpred : ctxt -> ordi -> ordi = fun ctxt o ->
      if is_positive pos o then new_ouvar ~upper:(constant_mbind 0 o) ()
                           else raise Not_found
   | OUVar(u,os) ->
-    (** find a positive ordinal that may be equal to an OUVar(u,os) *)
+    (* find a positive ordinal that may be equal to an OUVar(u,os) *)
     let o' =
       try List.find
             (fun o ->
@@ -165,11 +165,11 @@ let rec dot_proj t k s = match full_repr k with
   | KKExi(f) ->
      let c = KECst(t,f,true) in (* NOTE: used only for close term *)
      if binder_name f = s then c else dot_proj t (subst f c) s
-  | k ->
+  | _ ->
      raise Not_found
 (* FIXME: end of the function which certainly miss cases *)
 
-let print_nz ff ctxt =
+let print_nz _ ctxt =
   let p_aux = print_ordi false in
   match ctxt.non_zero with
       | [] -> ()
@@ -196,11 +196,11 @@ let add_positives ctxt gamma =
 let has_leading_ord_quantifier : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
-    | KFunc(a,b) -> fn b
+    | KFunc(_,b) -> fn b
     | KProd(ls,_)
-    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
-    | KOAll(f)
-    | KOExi(f)   -> true
+    | KDSum(ls)  -> List.exists (fun (_,a) -> fn a) ls
+    | KOAll(_)
+    | KOExi(_)   -> true
     | KKAll(f)
     | KKExi(f)
     | KFixM(_,f)
@@ -215,11 +215,11 @@ let has_leading_ord_quantifier : kind -> bool = fun k ->
 let has_leading_exists : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
-    | KFunc(a,b) -> false
+    | KFunc(_,_) -> false
     | KProd(ls,_)
-    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
-    | KKExi(f)   -> true
-    | KOExi(f)   -> true
+    | KDSum(ls)  -> List.exists (fun (_,a) -> fn a) ls
+    | KKExi(_)
+    | KOExi(_)   -> true
     | KOAll(f)   -> fn (subst f odummy)
     | KKAll(f)
     | KFixM(_,f)
@@ -233,11 +233,11 @@ let has_leading_exists : kind -> bool = fun k ->
 let has_leading_forall : kind -> bool = fun k ->
   let rec fn k =
     match full_repr k with
-    | KFunc(a,b) -> false
+    | KFunc(_,_) -> false
     | KProd(ls,_)
-    | KDSum(ls)  -> List.exists (fun (l,a) -> fn a) ls
-    | KKAll(f)   -> true
-    | KOAll(f)   -> true
+    | KDSum(ls)  -> List.exists (fun (_,a) -> fn a) ls
+    | KKAll(_)
+    | KOAll(_)   -> true
     | KOExi(f)   -> fn (subst f odummy)
     | KKExi(f)
     | KFixM(_,f)
@@ -253,20 +253,20 @@ let has_uvar : kind -> bool = fun k ->
     match repr k with
     | KFunc(a,b) -> fn a; fn b
     | KProd(ls,_)
-    | KDSum(ls)  -> List.iter (fun (l,a) -> fn a) ls
+    | KDSum(ls)  -> List.iter (fun (_,a) -> fn a) ls
     | KKAll(f)
-    | KKExi(f)   -> fn (subst f kdummy)
-    | KFixM(o,f) -> fn (subst f kdummy)
-    | KFixN(o,f) -> fn (subst f kdummy)
+    | KKExi(f)
+    | KFixM(_,f)
+    | KFixN(_,f) -> fn (subst f kdummy)
     | KOAll(f)
     | KOExi(f)   -> fn (subst f odummy)
     | KUVar(_) -> raise Exit
-    | KDefi(d,o,a) -> Array.iter fn a
+    | KDefi(_,_,a) -> Array.iter fn a
     | KMRec(_,k)
     | KNRec(_,k) -> fn k
     | KVari _    -> ()
-    | KUCst(_,f,cl)
-    | KECst(_,f,cl) -> fn (subst f kdummy)
+    | KUCst(_,f,_)
+    | KECst(_,f,_) -> fn (subst f kdummy)
     | KPrnt _    -> assert false
   in
   try

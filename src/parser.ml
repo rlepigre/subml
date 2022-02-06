@@ -266,7 +266,7 @@ and parser kind_args =
 and parser kind_prod = fs:(glist_sep'' kind_atm time) -> build_prod fs
 and parser kind_dsum = (list_sep (parser uid a:{_:of_kw kind}?) "|")
 and parser kind_reco = (list_sep (parser lid ":" kind) ";")
-and parser with_eq   = _:with_kw s:uid "=" b:kind_atm
+and parser with_eq   = _:with_kw uid "=" kind_atm
 
 (****************************************************************************
  *                              Parsers for terms                           *
@@ -358,7 +358,7 @@ and parser pats = _:"|"? ps:(list_sep case "|")
 and parser fpat =
   | x:let_var                          -> Simple (Some x)
   | "(" x:let_var ")"                  -> Simple (Some x)
-  | "{" ls:(list_sep (parser l:lid "=" x:var) ";") "}" -> Record ls
+  | "{" ls:(list_sep (parser lid "=" var) ";") "}" -> Record ls
   | "(" ls:(glist_sep'' var comma) ")" -> Record (build_prod ls)
 
 and parser rpat =
@@ -421,7 +421,7 @@ and parser latex_atom =
              ordname:{"~" lgid}?["α"]  "#"
       -> Latex.Sch(in_pos _loc_id id,in_pos _loc_name name,i,ordname)
 
-and parser sub = (change_layout (parser a:kind _:subset b:kind) subml_blank)
+and parser sub = (change_layout (parser kind _:subset kind) subml_blank)
 
 (* Entry points. *)
 let tex_name = change_layout tex_name no_blank
@@ -484,14 +484,14 @@ exception OK
 let check pos flag f a =
   let res =
     try f a with
-    | Error.Error l as e ->
+    | Error.Error _ as e ->
         begin
           match flag with
           | MustPass -> raise e
           | MustFail
           | CanFail  -> raise OK
         end
-    | Loop_error p as e ->
+    | Loop_error _ as e ->
         begin
           match flag with
           | MustPass -> raise e
@@ -580,7 +580,7 @@ let do_vset = function
   | Verbose b  -> verbose := b
   | TeXFile fn -> Io.set_tex_file fn
   | GmlFile fn -> Io.set_gml_file fn
-  | PrntLet b  -> Print.print_redex_as_let := true
+  | PrntLet b  -> Print.print_redex_as_let := b
 
 type command =
   | Type of string option * string * (string list * string list) * pkind

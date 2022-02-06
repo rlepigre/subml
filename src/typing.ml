@@ -25,7 +25,7 @@ type ind =
     can be derived in the current context using an induction hypothesis. If
     not, the current schema is registered as an induction hypothesis so that
     it can be used in a later call to [check_rec]. *)
-let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt t a b ->
+let check_rec : ctxt -> term -> kind -> kind -> ind * ctxt = fun ctxt _ a b ->
   (* HEURISTIC avoiding loops by unifying ordinal variables. When variables
      are kept, the program loops on useful examples. *)
   let _ =
@@ -148,10 +148,10 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
     (ctxt0.non_zero, t0, a0, b0, Sub_Lower)
   else try try
     let rule = match (a, b) with
-    | (KMRec(ptr,a), _           ) ->
+    | (KMRec(_,a)  , _           ) ->
        Sub_And_l(subtype ctxt0 t0 a b0)
 
-    | (_           , KNRec(ptr,b))->
+    | (_           , KNRec(_,b)  ) ->
        Sub_Or_r(subtype ctxt0 t0 a0 b)
 
     | (KNRec(ptr,a), KUVar _     )
@@ -299,13 +299,13 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
         let p = subtype ctxt0 t0 (subst f (OLess(OMaxi, In(t0,f)))) b0 in
         Sub_OExi_l(p)
 
-    | (KUVar(ua,os), b            ) -> (* NOTE: deal with KProd(_,true) and
+    | (KUVar(ua,os), _            ) -> (* NOTE: deal with KProd(_,true) and
                                           may be too much incomplete in this case *)
         let bb = bind_ordis os b0 in (* NOTE: may instanciate ua *)
         if is_unset ua then safe_set_kuvar sNeg ua bb os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
 
-    | (a           ,(KUVar(ub,os)))  ->
+    | (_           ,(KUVar(ub,os)))  ->
         let aa = bind_ordis os a0 in (* NOTE: may instanciate ub *)
         if is_unset ub then safe_set_kuvar sPos ub aa os;
         let (_,_,_,_,r) = subtype ctxt0 t0 a0 b0 in r
@@ -483,8 +483,8 @@ let rec subtype : ctxt -> term -> kind -> kind -> sub_prf = fun ctxt0 t0 a0 b0 -
 (** A boolean test for subtyping *)
 let is_subtype ctxt t a b =
   Timed.pure_test (fun () ->
-    (** protect the call graph, because we don't need the proof we only
-        want to instantiate some unification variables *)
+    (* protect the call graph, because we don't need the proof we only
+       want to instantiate some unification variables *)
     let ctxt = { ctxt with call_graphs = Sct.copy ctxt.call_graphs} in
     let prf = subtype ctxt t a b in
     try check_sub_proof prf; true with Error _ -> false) ()
@@ -502,9 +502,9 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
       | TMLet(bk,x,bt) ->
          let kx =
            match x with
-           | None                       -> c
-           | Some({elt = TCnst(_,c,_)}) -> c
-           | Some({elt = TDefi(d)})     -> d.ttype
+           | None                          -> c
+           | Some({elt = TCnst(_,c,_); _}) -> c
+           | Some({elt = TDefi(d)    ; _}) -> d.ttype
            (* NOTE other cases not allowed by parser *)
            | Some(_)                    -> assert false
          in
@@ -589,7 +589,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let p3 =
            match d, full_repr k with
            | None, _ -> None
-           | Some f, KUVar({ uvar_state = { contents = Unset (DSum ts) }}, os)  ->
+           | Some f, KUVar({ uvar_state = { contents = Unset (DSum ts) }; _}, os)  ->
               let ts = List.filter (fun (c,_) -> not (List.mem_assoc c l)) ts in
               let ts = List.map (fun (c,k) -> (c, msubst k os)) ts in
               Some (type_check ctxt f (KFunc(KDSum ts,c)))
@@ -609,7 +609,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let check () = check_fix type_check subtype prf ctxt t manual depth f c in
          Timed.(ctxt.fix_todo := check :: !(ctxt.fix_todo));
          Typ_YGen prf
-      | TCnst(_,a,b) ->
+      | TCnst(_,a,_) ->
          let p = subtype ctxt t a c in
          Typ_Cnst(p)
       | TAbrt        ->

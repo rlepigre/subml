@@ -25,6 +25,7 @@ let head = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 let tail = "</graph>
 </graphml>
 "
+
 (** Node printing *)
 let node ch = fprintf ch
 "<node id=\"%s\">

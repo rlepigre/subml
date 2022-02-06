@@ -13,7 +13,7 @@ let rec eval : term -> term = fun t0 ->
   match t0.elt with
   (* Type annotations are ignored. *)
   | TCoer(t,_)   -> eval t
-  | TMLet(b,x,bt)-> eval (mmsubst_dummy bt odummy kdummy)
+  | TMLet(_,_,bt)-> eval (mmsubst_dummy bt odummy kdummy)
   (* Unfold definition. *)
   | TDefi(v)     -> eval v.value
   (* A value has been reached. *)

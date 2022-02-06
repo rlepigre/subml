@@ -10,7 +10,6 @@
  (public_name subml)
  (modules (:standard \ submljs subml))
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
- (flags (:standard -w -50-9-27))
  (wrapped false)
  (libraries earley.core bindlib))
 
