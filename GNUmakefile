@@ -1,9 +1,6 @@
-PREFIX := $(shell opam var prefix)
-LIBDIR := $(shell opam var share)
-BINDIR := $(shell opam var bin)
-
 VIMDIR   = $(HOME)/.vim
-EMACSDIR = $(PREFIX)/share/emacs/site-lisp
+NVIMDIR  = $(HOME)/.config/nvim
+EMACSDIR = $(shell opam var prefix)/share/emacs/site-lisp
 
 all:
 	@dune build
@@ -54,30 +51,30 @@ docs/subml.js: _build/default/src/submljs.bc.js
 clean:
 	@dune clean
 
-.PHONY: distclean
 distclean: clean
 	@rm -f $(GENERATED_TESTS)
 	@rm -f tests/latex_generation.tex
-	@find -type f -name "*~"  -exec rm {} \;
-	@find -type f -name "#*#" -exec rm {} \;
-	@find -type f -name ".#*" -exec rm {} \;
+.PHONY: distclean
 
-.PHONY: uninstall
 uninstall:
 	@dune uninstall
 ifneq ($(wildcard $(VIMDIR)/.),)
 	rm -rf $(VIMDIR)/syntax/subml.vim
 	rm -rf $(VIMDIR)/ftdetect/subml.vim
 endif
+ifneq ($(wildcard $(NVIMDIR)/.),)
+	rm -rf $(NVIMDIR)/syntax/subml.vim
+	rm -rf $(NVIMDIR)/ftdetect/subml.vim
+endif
 ifneq ($(wildcard $(EMACSDIR)/.),)
 	rm -rf $(EMACSDIR)/subml
 endif
+.PHONY: uninstall
 
-.PHONY: install
 install:
 	@dune install
+.PHONY: install
 
-.PHONY: install_vim
 install_vim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim
 ifneq ($(wildcard $(VIMDIR)/.),)
 	install -m 755 -d $(VIMDIR)/syntax
@@ -88,8 +85,20 @@ ifneq ($(wildcard $(VIMDIR)/.),)
 else
 	@echo -e "\e[36mWill not install vim mode.\e[39m"
 endif
+.PHONY: install_vim
 
-.PHONY: install_emacs
+install_nvim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim
+ifneq ($(wildcard $(NVIMDIR)/.),)
+	install -m 755 -d $(NVIMDIR)/syntax
+	install -m 755 -d $(NVIMDIR)/ftdetect
+	install -m 644 editors/vim/syntax/subml.vim $(NVIMDIR)/syntax
+	install -m 644 editors/vim/ftdetect/subml.vim $(NVIMDIR)/ftdetect
+	@echo -e "\e[36mNeovim mode installed.\e[39m"
+else
+	@echo -e "\e[36mWill not install neovim mode.\e[39m"
+endif
+.PHONY: install_nvim
+
 install_emacs: editors/emacs/subml-mode.el
 ifneq ($(wildcard $(EMACSDIR)/.),)
 	install -m 755 -d $(EMACSDIR)/subml
@@ -98,3 +107,4 @@ ifneq ($(wildcard $(EMACSDIR)/.),)
 else
 	@echo -e "\e[36mWill not install emacs mode.\e[39m"
 endif
+.PHONY: install_emacs

@@ -49,7 +49,7 @@ Useful links:
 Editor support
 --------------
 
-#### Vim (or Neovim)
+#### Vim
 
 Just use the `install_vim` target.
 
@@ -60,6 +60,18 @@ make install_vim
 **Note:** the syntax coloring and automatic format detection for `.typ` files
 is user-specific by default. Files are installed under `$HOME/.vim` in the
 standard way.
+
+#### Neovim
+
+Just use the `install_nvim` target.
+
+```bash
+make install_nvim
+```
+
+**Note:** the syntax coloring and automatic format detection for `.typ` files
+is user-specific by default. Files are installed under `$HOME/.config/nvim` in
+the standard way.
 
 #### Emacs
 
