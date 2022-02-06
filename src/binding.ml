@@ -4,9 +4,7 @@
 
 open LibTools
 open Ast
-open Pos
 open Bindlib
-open Term
 open Compare
 open AstMap
 

@@ -10,8 +10,6 @@ open Binding
 open Print
 open Pos
 open Compare
-open Term
-open Error
 open LibTools
 
 (** Raised in case of type error, not propagated because replaced by
@@ -177,7 +175,7 @@ let print_nz ff ctxt =
       | [] -> ()
       | l -> Io.log "  (%a)\n\n%!" (print_list p_aux ", ") l
 
-let rec add_pos positives o =
+let add_pos positives o =
   let o = orepr o in
   match o with
   | OConv | OSucc _ -> positives

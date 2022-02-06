@@ -6,7 +6,6 @@ open Format
 open Ast
 open Print
 open Pos
-open Compare
 open LibTools
 open Raw
 
@@ -27,7 +26,7 @@ type latex_output =
   | Sct     of string loc
   | Witnesses
 
-let rec search_schemas name p =
+let search_schemas name p =
   let res = ref [] in
 
   let rec fn ptr = match !ptr with

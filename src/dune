@@ -1,0 +1,29 @@
+(rule
+ (targets version.ml)
+ (action
+  (with-stdout-to version.ml
+    (run ocaml unix.cma %{dep:tools/gen_version.ml})))
+ (mode fallback))
+
+(library
+ (name subml_lib)
+ (public_name subml)
+ (modules (:standard \ submljs subml))
+ (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
+ (flags (:standard -w -50-9-27))
+ (wrapped false)
+ (libraries earley.core bindlib))
+
+(executable
+ (name subml)
+ (public_name subml)
+ (modules subml)
+ (libraries earley.core bindlib subml_lib))
+
+(executable
+ (name submljs)
+ (modules submljs)
+ (modes js)
+ (preprocess (pps js_of_ocaml-ppx))
+ (optional)
+ (libraries earley.core bindlib subml_lib js_of_ocaml))

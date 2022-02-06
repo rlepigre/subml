@@ -38,7 +38,7 @@ let assoc_gen : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b =
     [list_ref_iter fn r] ensure that [fn] has been called on
     all initial elements of !r and all elements that are member
     on !r at the end of the call. *)
-let rec list_ref_iter : ('a -> unit) -> 'a list ref -> unit =
+let list_ref_iter : ('a -> unit) -> 'a list ref -> unit =
   fun fn ptr ->
     let rec gn old nouv = function
       | l when l == old ->
@@ -108,7 +108,7 @@ let rec print_list pelem sep ff = function
   | e::es -> fprintf ff "%a%s%a" pelem e sep (print_list pelem sep) es
 
 (** array printing *)
-let rec print_array pelem sep ff ls =
+let print_array pelem sep ff ls =
   print_list pelem sep ff (Array.to_list ls)
 
 let print_strlist = print_list pp_print_string

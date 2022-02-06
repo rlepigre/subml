@@ -856,7 +856,7 @@ let rec sub_used_ind (_, _, _, _, r) =
   | Sub_Error _         -> []
 
 and typ_used_ind (_, _, _, r) =
-  let rec fn ptr = match !ptr with
+  let fn ptr = match !ptr with
     | Todo              -> []
     | Unroll(_,_,p)     -> typ_used_ind p
     | Induction(s,p)    -> s.sch_index :: sub_used_ind p

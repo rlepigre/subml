@@ -6,7 +6,6 @@ open LibTools
 open Ast
 open Bindlib
 open Pos
-open Binding
 
 type pordi = pordi' loc
 and pordi' =

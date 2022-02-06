@@ -628,7 +628,7 @@ let dot_proj : tbox -> string -> kbox = fun t s ->
   box_apply fn t
 
 (** with clause *)
-let rec with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
+let with_clause : kbox -> string -> kbox -> kbox = fun a s b ->
   let rec fn a b =
     match full_repr a with
     | KKExi(f) ->

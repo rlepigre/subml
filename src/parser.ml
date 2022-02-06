@@ -13,7 +13,6 @@ open Eval
 open TypingBase
 open Typing
 open Raw
-open Format
 
 (* Definition of a "location" function for DeCaP. *)
 #define LOCATE locate

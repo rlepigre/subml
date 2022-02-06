@@ -1,81 +1,17 @@
-HAS_OPAM := $(shell which opam 2> /dev/null)
+PREFIX := $(shell opam var prefix)
+LIBDIR := $(shell opam var share)
+BINDIR := $(shell opam var bin)
 
-ifdef HAS_OPAM
-PREFIX := $(shell opam config var prefix)
-LIBDIR := $(shell opam config var share)
-BINDIR := $(shell opam config var bin)
-else
-PREFIX := /usr/local
-LIBDIR := $(PREFIX)/lib
-BINDIR : = $(PREFIX)/bin
-endif
-
-VERSION  = devel
 VIMDIR   = $(HOME)/.vim
 EMACSDIR = $(PREFIX)/share/emacs/site-lisp
 
-OBUILD   = ocamlbuild -use-ocamlfind -quiet
+all:
+	@dune build
+.PHONY: all
 
-#### Main target #############################################################
-
-all: depchecks _build/src/subml.native
-
-#### Checking for dependencies ###############################################
-
-# Check for ocamlfind, ocamlbuild and pa_ocaml on the system.
-HAS_OCAMLFIND  := $(shell which ocamlfind 2> /dev/null)
-HAS_OCAMLBUILD := $(shell which ocamlbuild 2> /dev/null)
-
-# Check for the bindlib and earley library.
-HAS_BINDLIB    := $(shell ocamlfind query -format %p bindlib 2> /dev/null)
-HAS_EARLEY     := $(shell ocamlfind query -format %p earley 2> /dev/null)
-
-.PHONY: depchecks
-depchecks:
-ifndef HAS_OCAMLBUILD
-	$(error "The ocamlbuild program is required...")
-endif
-ifndef HAS_OCAMLFIND
-	$(error "The ocamlfind program is required...")
-endif
-ifndef HAS_BINDLIB
-	$(error "The bindlib library is required...")
-endif
-ifndef HAS_EARLEY
-	$(error "The earley library is required...")
-endif
-
-#### Source files and compilation ############################################
-
-MLFILES = $(wildcard src/*.ml src/*.mli) src/config.ml
-
-src/config.ml:
-	@echo "[GEN] $@"
-	@echo 'let default_path = ["."; "./lib"; "$(LIBDIR)/subml"]' > $@
-	@echo 'let version = "$(VERSION)"' >> $@
-
-_build/src/subml.native: $(MLFILES)
-	@echo "[OPT] $@"
-	@$(OBUILD) src/subml.native
-
-_build/src/subml.p.native: $(MLFILES)
-	@echo "[OPT] $@"
-	@$(OBUILD) src/subml.p.native
-
-_build/src/submljs.byte: $(MLFILES)
-	@echo "[BYT] $@"
-	@$(OBUILD) src/submljs.byte
-
-#### Tests and source code validation ########################################
-
-.PHONY: validate
-validate: src/config.ml
-	@echo -n "Lines with tabs in .ml : "
-	@grep -P '\t' src/*.ml src/*.mli | wc -l
-	@echo -n "Lines with tabs in .typ: "
-	@grep -P '\t' lib/*.typ lib/*/*.typ | wc -l
-	@echo -n "Longest line           : "
-	@wc -L src/*.ml src/*.mli | tail -n 1 | colrm 1 4 | colrm 4 10
+doc:
+	@dune build @doc
+.PHONY: doc
 
 GENERATED_TESTS = tests/munu2_generated.typ tests/munu3_generated.typ
 
@@ -85,56 +21,50 @@ tests/munu2_generated.typ: tests/munu.ml
 tests/munu3_generated.typ: tests/munu.ml
 	@ocaml $^ 3 > $@
 
-.PHONY: tests
-tests: _build/src/subml.native $(GENERATED_TESTS) validate
+tests: $(GENERATED_TESTS)
 	@echo "Running libraries and examples... "
-	@./$< --quit all_libs.typ > /dev/null
+	@dune exec -- subml --quit all_libs.typ > /dev/null
 	@echo "Running tests... "
-	@./$< --quit all_tests.typ > /dev/null
+	@dune exec -- subml --quit all_tests.typ > /dev/null
 	@echo "All good!"
+.PHONY: tests
 
-#### Documentation and webpage ###############################################
-
-.PHONY: www
-www: docs/subml.js docs/examples.html _build/src/subml.docdir/index.html
+www: docs/subml.js docs/examples.html doc
 	@rm -rf docs/subml/*
 	@rm -rf docs/ocamldoc/*
 	@cp -r lib docs/subml/lib
-	@cp -r _build/src/subml.docdir/* docs/ocamldoc
+	@cp -r _build/default/_doc/_html/* docs/ocamldoc/
 	@cp tutorial.typ docs/subml
+.PHONY: www
+
+serve: www
+	@cd docs && python3 -m http.server
+.PHONY: serve
 
 docs/examples.html: gen_list.ml all_libs.typ
 	@ocaml $^ > $@
 
-docs/subml.js: _build/src/submljs.byte
-	@echo "[JSO] $@"
-	@js_of_ocaml --pretty --noinline +weak.js -o $@ $<
+_build/default/src/submljs.bc.js:
+	@dune build $@
 
-_build/src/subml.docdir/index.html: src/config.ml
-	@echo "[DOC] $@"
-	@$(OBUILD) -ocamldoc 'ocamldoc -charset utf8' src/subml.docdir/index.html
-
-#### Cleaning targets ########################################################
+docs/subml.js: _build/default/src/submljs.bc.js
+	@cp $< $@
 
 .PHONY: clean
 clean:
-	@$(OBUILD) -clean
+	@dune clean
 
 .PHONY: distclean
 distclean: clean
-	@rm -f src/config.ml
 	@rm -f $(GENERATED_TESTS)
 	@rm -f tests/latex_generation.tex
 	@find -type f -name "*~"  -exec rm {} \;
 	@find -type f -name "#*#" -exec rm {} \;
 	@find -type f -name ".#*" -exec rm {} \;
 
-#### Installation targets ####################################################
-
 .PHONY: uninstall
 uninstall:
-	rm -f  $(BINDIR)/subml
-	rm -rf $(LIBDIR)/subml
+	@dune uninstall
 ifneq ($(wildcard $(VIMDIR)/.),)
 	rm -rf $(VIMDIR)/syntax/subml.vim
 	rm -rf $(VIMDIR)/ftdetect/subml.vim
@@ -144,16 +74,8 @@ ifneq ($(wildcard $(EMACSDIR)/.),)
 endif
 
 .PHONY: install
-install: _build/src/subml.native
-	install -m 755 -d $(BINDIR)
-	install -m 755 -d $(LIBDIR)
-	install -m 755 -d $(LIBDIR)/subml
-	install -m 755 -d $(LIBDIR)/subml/church
-	install -m 755 -d $(LIBDIR)/subml/scott
-	install -m 755 $< $(BINDIR)/subml
-	install -m 644 ./lib/*.typ        $(LIBDIR)/subml
-	install -m 644 ./lib/church/*.typ $(LIBDIR)/subml/church
-	install -m 644 ./lib/scott/*.typ  $(LIBDIR)/subml/scott
+install:
+	@dune install
 
 .PHONY: install_vim
 install_vim: editors/vim/syntax/subml.vim editors/vim/ftdetect/subml.vim

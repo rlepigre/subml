@@ -5,10 +5,7 @@
 open LibTools
 open Ast
 open Compare
-open Pos
 open Bindlib
-open Format
-open Term
 open Binding
 open Print
 open AstMap

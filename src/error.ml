@@ -57,7 +57,7 @@ let rec check_sub_proof (p, t, k1, k2, r) =
   | Some l -> Some (Sub(p,t,k1,k2) :: l)
 
 and check_typ_proof (p, t, k, r) =
-  let rec fn ptr = match !ptr with
+  let fn ptr = match !ptr with
     | Todo -> Some [ Msg "Cannot find inductive hypothesis" ]
     | Induction(_,p) -> check_sub_proof p
     | Unroll(_,_,p) -> check_typ_proof p

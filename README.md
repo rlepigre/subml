@@ -1,43 +1,52 @@
-[![Build Status](https://travis-ci.org/rlepigre/subml.svg?branch=master)](https://travis-ci.org/rlepigre/subml)
+SubML (prototype) language
+==========================
 
-### Dependencies
+The SubML language provides polymorphic types and subtyping, but also
+existential types, inductive types and coinductive types.
 
-To install `subml`, you will need `OCaml >= 4.03` with:
- - `ocamlbuild` (build)
- - `ocamlfind` (build)
- - `earley` (https://github.com/rlepigre/ocaml-earley)
- - `bindlib` (version 5.0.1, https://github.com/rlepigre/ocaml-bindlib)
- - `GNU make` and other standard utilities
 
-Obtaining the dependencies with `opam`:
+Online interpreter
+------------------
 
+The easyest way to try SubML is to use our online interpreter, which
+can be found [here](https://rlepigre.github.io/subml/).
+
+
+Compiling from source
+---------------------
+
+If you prefer, you can also compile SubML from source, and run it on
+your machine. To do so, you will need a working version of OCaml (at
+least 4.07.0) and [opam](https://opam.ocaml.org/doc/Install.html).
+
+You can run the following commands to get the source and install the
+dependencies (SubML itself will not be installed).
 ```bash
-opam switch 4.06 # or whatever version >= 4.03
-opam install ocamlbuild ocamlfind bindlib.5.0.1 earley.2.0.0
-```
-
-Compilation:
-
-```bash
+git clone git@github.com:rlepigre/subml.git
+cd subml
 make
-make install # optional
 ```
+You can then run Subml using `dune exec -- subml`. For example, you
+can run file `lib/nat.typ` with `dune exec -- subml lib/nat.typ`.
 
-### Running the program
+**Note:** you must run the program in the main directory (where the
+`lib` directory is accessible).
 
-Run the command `subml` (or `./subml.native` if you did not install)
-Type `subml lib/nat.typ` to load the file `lib/nat.typ`.
 
-**Note:** you must run the program in the main directory (where the `lib`
-directory is accessible) if you did not install `subml`.
+Documentation
+-------------
 
-### Documentation
+Useful links:
+- File [tutorial.typ](./tutorial.typ) gives an introduction to the
+  language and its syntax.
+- The [online interpreter](https://rlepigre.github.io/subml/) lets
+  you evaluate existing programs, and also write new ones.
+- The [documentation](https://rlepigre.github.io/subml/ocamldoc/)
+  of the code gives some informations on the implementation.
 
- - See file `tutorial.typ` for in introduction to the language and its syntax
- - Online interpreter: https://rlepigre.github.io/subml/
- - OCamlDoc: https://rlepigre.github.io/subml/ocamldoc/
 
-### Editor support
+Editor support
+--------------
 
 #### Vim (or Neovim)
 

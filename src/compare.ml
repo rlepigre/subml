@@ -6,7 +6,6 @@ open LibTools
 open Ast
 open Bindlib
 open Pos
-open Term
 
 (****************************************************************************)
 (**{2                      General function                                }*)

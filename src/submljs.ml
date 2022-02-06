@@ -3,14 +3,16 @@ open Format
 open Parser
 open Io
 
-let js_object = Js.Unsafe.variable "Object"
-let js_self   = Js.Unsafe.variable "self"
-let post_msg  = Js.Unsafe.variable "postMessage"
-let syncload  = Js.Unsafe.variable "syncloadsubmlfile"
+open Js_of_ocaml
+
+let js_object = Js.Unsafe.pure_js_expr "Object"
+let js_self   = Js.Unsafe.pure_js_expr "self"
+let post_msg  = Js.Unsafe.pure_js_expr "postMessage"
+let syncload  = Js.Unsafe.pure_js_expr "syncloadsubmlfile"
 
 let onmessage event =
-  let fname = Js.to_string event##data##fname in
-  let args = Js.to_string event##data##args in
+  let fname = Js.to_string event##.data##.fname in
+  let args = Js.to_string event##.data##.args in
   if handle_exception (eval_string fname) args then
     Io.log "(* [LOG] Editor content loaded. *)\n%!"
   else
@@ -22,9 +24,12 @@ let output : string -> formatter = fun chname ->
   let flush () =
     let s = Buffer.contents buf in
     Buffer.clear buf;
-    let response = jsnew js_object () in
-    Js.Unsafe.set response (Js.string "typ") (Js.string chname);
-    Js.Unsafe.set response (Js.string "result") (Js.string s);
+    let response =
+      object%js
+        val typ = Js.string chname
+        val result = Js.string s
+      end
+    in
     ignore (Js.Unsafe.call post_msg js_self [|Js.Unsafe.inject response|])
   in
   make_formatter out flush

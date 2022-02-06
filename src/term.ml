@@ -6,7 +6,6 @@ open LibTools
 open Ast
 open Pos
 open Bindlib
-open Format
 
 (** Test if a term is in normal form for CBV *)
 let is_normal : term -> bool = fun t ->
