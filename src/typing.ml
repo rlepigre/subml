@@ -514,13 +514,13 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
          let kargs = Array.init ka (fun _ -> new_kuvar ()) in
          let k = mmsubst bk oargs kargs in
          let t = mmsubst bt oargs kargs in
-         if is_subtype ctxt (from_opt x t) kx k then
+         if is_subtype ctxt (Option.value x ~default:t) kx k then
            let p = type_check ctxt t c in
            Typ_Nope(p)
          else
            type_error "Type matching failed"
       | TAbst(ao,f,_) ->
-         let a = from_opt' ao new_kuvar in
+         let a = match ao with Some a -> a | None -> new_kuvar () in
          let b = new_kuvar () in
          let ptr = Subset.create ctxt.non_zero in
          let c' = KNRec(ptr,KFunc(a,b)) in
@@ -628,7 +628,7 @@ let rec type_check : ctxt -> term -> kind -> typ_prf = fun ctxt t c ->
     function returns a subtyping proof together with the successful instance
     of the SCT. *)
 let subtype : term option -> kind -> kind -> sub_prf * Sct.t = fun t a b ->
-  let t = from_opt t (unbox (generic_tcnst (box a) (box b))) in
+  let t = Option.value t ~default:(unbox (generic_tcnst (box a) (box b))) in
   let ctxt = empty_ctxt () in
   try
     let p = subtype ctxt t a b in
@@ -644,7 +644,7 @@ let subtype : term option -> kind -> kind -> sub_prf * Sct.t = fun t a b ->
     corresponding typing proof and successful instance of the SCT. When the
     function is called with [ko = Some k], the returned type is [k]. *)
 let type_check : term -> kind option -> kind * typ_prf * Sct.t = fun t k ->
-  let k = from_opt' k new_kuvar in
+  let k = match k with Some k -> k | None -> new_kuvar () in
   let ctxt = empty_ctxt () in
   let (prf, calls) =
     try

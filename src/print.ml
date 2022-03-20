@@ -9,22 +9,6 @@ open Ast
 open Pos
 open Compare
 
-module String = struct
-  include String
-
-  (* Borrowed from recent version of OCaml. *)
-  let split_on_char sep s =
-    let r = ref [] in
-    let j = ref (length s) in
-    for i = length s - 1 downto 0 do
-      if unsafe_get s i = sep then begin
-        r := sub s (i + 1) (!j - i - 1) :: !r;
-        j := i
-      end
-    done;
-    sub s 0 !j :: !r
-end
-
 (** control some differences when printing for LaTeX or GraphML*)
 type print_mode = TeX | Gml | Asc
 
@@ -607,8 +591,8 @@ and print_term ?(give_pos=false) unfold wrap unfolded_Y ff t =
   let pterm = print_term ~give_pos false false unfolded_Y in
   let pkind = print_kind false false unfolded_Y in
   if not (latex_mode ()) && give_pos && not unfold && t.pos <> None then
-    let pos = from_opt (map_opt short_pos_to_string t.pos) "..." in
-    fprintf ff "[%s]" pos
+    let pos = Option.map short_pos_to_string t.pos in
+    fprintf ff "[%s]" (Option.value pos ~default:"...")
   else match t.elt with
   | TCoer(t,a) ->
      if wrap then fprintf ff "(";
@@ -1066,8 +1050,8 @@ let print_ordi unfold ff o =
 let print_ordis = print_list (print_ordi false) ","
 
 let print_position ff pos =
-  let pos = from_opt (map_opt short_pos_to_string pos) "..." in
-  fprintf ff "[%s]" pos; pp_print_flush ff ()
+  let pos = Option.map short_pos_to_string pos in
+  fprintf ff "[%s]" (Option.value pos ~default:"..."); pp_print_flush ff ()
 
 let print_epsilon_tbls ff =
   let newline =

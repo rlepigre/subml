@@ -95,7 +95,7 @@ let apply_rpat c x t =
   | NilPat ->
      Pos.make t.pos (PLAbs(unit_var t.pos,t,SgNil))
   | Simple x ->
-     let x = from_opt x (unit_var t.pos) in
+     let x = Option.value x ~default:(unit_var t.pos) in
      Pos.make t.pos (PLAbs(x,t,SgNop))
   | Record r ->
      let is_cons =
@@ -278,7 +278,7 @@ and unsugar_kind : ?pos:occur -> env -> pkind -> kbox =
 and unsugar_term : env -> pterm -> tbox = fun env pt ->
   match pt.elt with
   | PLAbs((x,ko),t,s) ->
-     let ko = map_opt (unsugar_kind env) ko in
+     let ko = Option.map (unsugar_kind env) ko in
      let f xt = unsugar_term (add_term x.elt xt env) t in
      let pos = t.pos (* FIXME { t.pos with start_line = x.pos.start_line
                           ; start_col  = x.pos.start_col } *)
@@ -307,7 +307,7 @@ and unsugar_term : env -> pterm -> tbox = fun env pt ->
   | PProj(t,l)  -> tproj pt.pos (unsugar_term env t) l
   |PCase(t,cs,d)-> let f (c,x,t) = (c, unsugar_term env (apply_rpat c x t)) in
                    let g (x,t) = unsugar_term env (apply_rpat "_" x t) in
-                   tcase pt.pos (unsugar_term env t) (List.map f cs) (map_opt g d)
+                   tcase pt.pos (unsugar_term env t) (List.map f cs) (Option.map g d)
   | PReco(fs)   -> let f (l,t) = (l, unsugar_term env t) in
                    treco pt.pos (List.map f fs)
   | PFixY(x,n,t)-> let f xt = unsugar_term (add_term x.elt xt env) t in

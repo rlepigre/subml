@@ -175,7 +175,6 @@ let with_kw = new_keyword "with"
 let type_kw = new_keyword "type"
 let abrt_kw = new_keyword "abort"
 
-let clear_kw   = new_keyword "clear"
 let quit_kw    = new_keyword "quit"
 let exit_kw    = new_keyword "exit"
 let eval_kw    = new_keyword "eval"
@@ -514,9 +513,9 @@ let check pos flag f a =
 (* New value definition. *)
 let new_val : flag -> name -> pkind option -> pterm -> unit = fun fg nm k t ->
   let (tex_name, name) = nm in
-  let tex_name = from_opt tex_name ("\\mathrm{" ^ name ^ "}") in
+  let tex_name = Option.value tex_name ~default:("\\mathrm{" ^ name ^ "}") in
   let t = unbox (unsugar_term empty_env t) in
-  let k = map_opt (fun k -> unbox (unsugar_kind empty_env k)) k in
+  let k = Option.map (fun k -> unbox (unsugar_kind empty_env k)) k in
   try
     let (k, proof, calls_graph) = check t.pos fg (type_check t) k in
     if !verbose then Io.out "val %s : %a\n%!" name (print_kind false) k;
@@ -591,7 +590,6 @@ type command =
   | GrMl of string loc
   | LaTX of Latex.latex_output
   | VSet of vset
-  | Clr
   | Quit
 
 let execute = function
@@ -603,7 +601,6 @@ let execute = function
   | GrMl(id)          -> output_graphml id
   | LaTX(t)           -> Io.tex "%a%!" Latex.output t
   | VSet(s)           -> do_vset s
-  | Clr               -> LibTools.clear ()
   | Quit              -> raise End_of_file (* FIXME *)
 
 let parser vset top =
@@ -621,7 +618,6 @@ let parser command top =
   | _:graphml_kw id:llid                   -> GrMl(id)
   | latex_kw t:tex_text when not top       -> LaTX(t)
   | set_kw s:(vset top)                    -> VSet(s)
-  | _:clear_kw          when top           -> Clr
   | {quit_kw | exit_kw} when top           -> Quit
 
 

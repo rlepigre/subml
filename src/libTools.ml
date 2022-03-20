@@ -2,23 +2,18 @@
 (**{3                         General functions                            }*)
 (****************************************************************************)
 
-(*{2 functions related to ['a option] }*)
-let map_opt : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
-  match o with None -> None | Some e -> Some (f e)
+module Option = struct
+  type 'a t = 'a option
 
-let iter_opt : ('a -> unit) -> 'a option -> unit = fun f o ->
-  match o with None -> () | Some e -> f e
+  let map : ('a -> 'b) -> 'a option -> 'b option = fun f o ->
+    match o with None -> None | Some e -> Some (f e)
 
-let from_opt : 'a option -> 'a -> 'a = fun o d ->
-  match o with None -> d | Some e -> e
+  let iter : ('a -> unit) -> 'a option -> unit = fun f o ->
+    match o with None -> () | Some e -> f e
 
-let from_opt' : 'a option -> (unit -> 'a) -> 'a = fun o f ->
-  match o with None -> f () | Some e -> e
-
-let remember_first : 'a option ref -> 'a -> unit = fun ptr p ->
-  match !ptr with
-  | None -> ptr := Some p
-  | Some _ -> ()
+  let value : 'a option -> default:'a -> 'a = fun o ~default:d ->
+    match o with None -> d | Some e -> e
+end
 
 (*{2 functions related to ['a list] }*)
 
@@ -113,29 +108,3 @@ let print_array pelem sep ff ls =
 
 let print_strlist = print_list pp_print_string
 let print_strarray = print_array pp_print_string
-
-(*{2 Miscelaneous }*)
-
-(** clear the terminal *)
-let clear : unit -> unit =
-  fun () -> ignore (Sys.command "clear")
-
-(*
-exception Timeout
-
-(* Run a function with a timeout. If the timeout is reached before the end
-   of the computation then the exception Timeout is raised. Otherwise
-   everything goes the usual way. *)
-let timed : int -> ('a -> 'b) -> 'a -> 'b = fun time f x ->
-  let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) in
-  let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in
-  let reset_sigalrm () =
-    let _ = Unix.alarm 0 in
-    Sys.set_signal Sys.sigalrm old_behavior
-  in
-  try
-    let _ = Unix.alarm time in
-    let res = f x in
-    reset_sigalrm (); res
-  with e -> reset_sigalrm (); raise e
-*)
